@@ -73,15 +73,29 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData();
     const menuType = formData.get("menuType") as string;
-    const position = parseInt(formData.get("position") as string);
+    const positionStr = formData.get("position") as string;
+    const position = positionStr ? parseInt(positionStr, 10) : NaN;
     const linkUrl = formData.get("linkUrl") as string;
     const isActive = formData.get("isActive") === "true";
     const file = formData.get("file") as File | null;
     const existingImageUrl = formData.get("existingImageUrl") as string | null;
 
-    if (!menuType || !position || !linkUrl) {
+    console.log("Mega Menu Card Update Request:", {
+      menuType,
+      position,
+      positionStr,
+      linkUrl,
+      isActive,
+      hasFile: !!file,
+      existingImageUrl,
+    });
+
+    if (!menuType || isNaN(position) || !linkUrl) {
       return NextResponse.json(
-        { error: "menuType, position, and linkUrl are required" },
+        { 
+          error: "menuType, position, and linkUrl are required",
+          received: { menuType, position, linkUrl }
+        },
         { status: 400 }
       );
     }
@@ -95,7 +109,7 @@ export async function POST(req: NextRequest) {
 
     if (position < 1 || position > 2) {
       return NextResponse.json(
-        { error: "position must be 1 or 2" },
+        { error: "position must be 1 or 2", received: position },
         { status: 400 }
       );
     }
@@ -128,30 +142,85 @@ export async function POST(req: NextRequest) {
     }
 
     // Use upsert to create or update
-    const card = await db.megaMenuCard.upsert({
-      where: {
-        menuType_position: {
+    console.log("Attempting upsert with:", {
+      menuType,
+      position,
+      imageUrl,
+      linkUrl,
+      isActive,
+    });
+
+    let card;
+    try {
+      // Try to find existing card first
+      const existingCard = await db.megaMenuCard.findFirst({
+        where: {
           menuType: menuType as "SHOP" | "ABOUT",
           position: position,
         },
-      },
-      update: {
-        imageUrl,
-        linkUrl,
-        isActive,
-      },
-      create: {
-        menuType: menuType as "SHOP" | "ABOUT",
-        position: position,
-        imageUrl,
-        linkUrl,
-        isActive,
-      },
-    });
+      });
+
+      if (existingCard) {
+        // Update existing card
+        card = await db.megaMenuCard.update({
+          where: {
+            id: existingCard.id,
+          },
+          data: {
+            imageUrl,
+            linkUrl,
+            isActive,
+          },
+        });
+        console.log("Successfully updated card:", card.id);
+      } else {
+        // Create new card
+        card = await db.megaMenuCard.create({
+          data: {
+            menuType: menuType as "SHOP" | "ABOUT",
+            position: position,
+            imageUrl,
+            linkUrl,
+            isActive,
+          },
+        });
+        console.log("Successfully created card:", card.id);
+      }
+    } catch (upsertError: any) {
+      // Fallback to upsert if findFirst/update/create fails
+      console.log("Fallback to upsert method");
+      card = await db.megaMenuCard.upsert({
+        where: {
+          menuType_position: {
+            menuType: menuType as "SHOP" | "ABOUT",
+            position: position,
+          },
+        },
+        update: {
+          imageUrl,
+          linkUrl,
+          isActive,
+        },
+        create: {
+          menuType: menuType as "SHOP" | "ABOUT",
+          position: position,
+          imageUrl,
+          linkUrl,
+          isActive,
+        },
+      });
+      console.log("Successfully upserted card:", card.id);
+    }
 
     return NextResponse.json({ card }, { status: 201 });
   } catch (error: any) {
     console.error("Failed to create/update mega menu card:", error);
+    console.error("Error details:", {
+      code: error?.code,
+      message: error?.message,
+      meta: error?.meta,
+      stack: error?.stack,
+    });
     
     // Check if model doesn't exist
     if (error?.code === "P2021" || error?.message?.includes("does not exist") || error?.message?.includes("Unknown model")) {
@@ -161,10 +230,23 @@ export async function POST(req: NextRequest) {
       );
     }
     
+    // Check for Prisma unique constraint errors
+    if (error?.code === "P2002") {
+      return NextResponse.json(
+        { 
+          error: "A card with this menuType and position already exists",
+          details: error?.meta?.target,
+        },
+        { status: 409 }
+      );
+    }
+    
     return NextResponse.json(
       { 
         error: "Failed to create/update mega menu card",
-        details: error?.message || String(error)
+        details: error?.message || String(error),
+        code: error?.code,
+        meta: error?.meta,
       },
       { status: 500 }
     );

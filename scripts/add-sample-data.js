@@ -121,8 +121,8 @@ async function addSampleData() {
     console.log(`   Categories: ${categoryCount}\n`);
     console.log('✅ Sample data added successfully!');
     console.log('\n💡 Next steps:');
-    console.log('   1. Visit http://localhost:3000/products to see products');
-    console.log('   2. Visit http://localhost:3000/admin/products to manage products');
+    console.log('   1. Visit http://localhost:3001/products to see products');
+    console.log('   2. Visit http://localhost:3001/admin/products to manage products');
     console.log('   3. Login as admin to add/edit products');
 
   } catch (error) {

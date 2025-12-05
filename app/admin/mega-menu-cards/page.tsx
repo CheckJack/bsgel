@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -50,16 +50,25 @@ export default function MegaMenuCardsPage() {
         const data = await res.json();
         setCards(data.cards || []);
         
-        // Initialize form data
+        // Initialize form data for all possible card combinations
         const initialFormData: typeof formData = {};
-        (data.cards || []).forEach((card: MegaMenuCard) => {
-          const key = `${card.menuType}_${card.position}`;
-          initialFormData[key] = {
-            imageUrl: card.imageUrl,
-            linkUrl: card.linkUrl,
-            imageFile: null,
-            previewUrl: null,
-          };
+        const menuTypes: MenuType[] = ["SHOP", "ABOUT"];
+        const positions = [1, 2];
+        
+        // Initialize all combinations
+        menuTypes.forEach((menuType) => {
+          positions.forEach((position) => {
+            const key = `${menuType}_${position}`;
+            const card = (data.cards || []).find(
+              (c: MegaMenuCard) => c.menuType === menuType && c.position === position
+            );
+            initialFormData[key] = {
+              imageUrl: card?.imageUrl || "",
+              linkUrl: card?.linkUrl || "",
+              imageFile: null,
+              previewUrl: null,
+            };
+          });
         });
         setFormData(initialFormData);
       }
@@ -165,11 +174,14 @@ export default function MegaMenuCardsPage() {
         setEditingCard(null);
       } else {
         const errorData = await res.json();
-        setError(errorData.error || "Failed to save card");
+        const errorMessage = errorData.error || "Failed to save card";
+        const errorDetails = errorData.details ? `: ${errorData.details}` : "";
+        setError(`${errorMessage}${errorDetails}`);
+        console.error("API Error:", errorData);
       }
     } catch (error) {
       console.error("Failed to save card:", error);
-      setError("Failed to save card");
+      setError(`Failed to save card: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsSaving(false);
     }
@@ -178,6 +190,7 @@ export default function MegaMenuCardsPage() {
   const CardEditor = ({ menuType, position }: { menuType: MenuType; position: number }) => {
     const card = getCard(menuType, position);
     const key = `${menuType}_${position}`;
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const data = formData[key] || {
       imageUrl: card?.imageUrl || "",
       linkUrl: card?.linkUrl || "",
@@ -187,6 +200,11 @@ export default function MegaMenuCardsPage() {
 
     const isEditing = editingCard === key;
     const displayImage = data.previewUrl || data.imageUrl;
+
+    const handleUploadClick = () => {
+      fileInputRef.current?.click();
+      setEditingCard(key);
+    };
 
     return (
       <Card className="w-full">
@@ -215,27 +233,26 @@ export default function MegaMenuCardsPage() {
               Image
             </label>
             <div className="flex items-center gap-4">
-              <label className="flex-1">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    handleImageChange(menuType, position, file);
-                    setEditingCard(key);
-                  }}
-                  className="hidden"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setEditingCard(key)}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  {data.imageFile ? "Change Image" : "Upload Image"}
-                </Button>
-              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  handleImageChange(menuType, position, file);
+                  setEditingCard(key);
+                }}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleUploadClick}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {data.imageFile ? "Change Image" : "Upload Image"}
+              </Button>
             </div>
           </div>
 

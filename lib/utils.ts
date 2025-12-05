@@ -76,3 +76,6 @@ export function compressImage(
   })
 }
 
+// Re-export toast function from toast component
+export { toast } from "@/components/ui/toast"
+

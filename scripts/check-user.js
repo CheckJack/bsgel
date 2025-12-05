@@ -18,7 +18,7 @@ async function checkUser() {
     if (userCount === 0) {
       console.log('❌ NO USERS FOUND - Your account was deleted when the database was reset!\n');
       console.log('💡 You need to recreate your account:\n');
-      console.log('   1. Go to: http://localhost:3000/register');
+      console.log('   1. Go to: http://localhost:3001/register');
       console.log('   2. Register with: tiagolpc98@gmail.com');
       console.log('   3. Then make yourself admin (see below)\n');
     } else {
@@ -54,7 +54,7 @@ async function checkUser() {
         console.log(`\n❌ Your account (tiagolpc98@gmail.com) NOT FOUND`);
         console.log('   It was deleted when the database was reset.\n');
         console.log('💡 You need to recreate your account:\n');
-        console.log('   1. Go to: http://localhost:3000/register');
+        console.log('   1. Go to: http://localhost:3001/register');
         console.log('   2. Register with: tiagolpc98@gmail.com');
         console.log('   3. Then run: npm run make-admin tiagolpc98@gmail.com\n');
       }

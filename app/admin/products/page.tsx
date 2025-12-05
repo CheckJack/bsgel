@@ -7,12 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { formatPrice } from "@/lib/utils";
-import { Search, Lightbulb, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { toast } from "@/components/ui/toast";
+import { Search, Lightbulb, ChevronLeft, ChevronRight, X, Download, Copy, Filter } from "lucide-react";
 
 interface Product {
   id: string;
   name: string;
   price: string;
+  salePrice?: string | null;
+  discountPercentage?: number | null;
   featured: boolean;
   image: string | null;
   createdAt: string;
@@ -31,6 +34,7 @@ export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -40,9 +44,13 @@ export default function AdminProductsPage() {
   const [bulkEditData, setBulkEditData] = useState({
     categoryId: "",
     featured: "",
+    price: "",
+    discountPercentage: "",
   });
   const [isBulkEditing, setIsBulkEditing] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -62,20 +70,26 @@ export default function AdminProductsPage() {
   };
 
   useEffect(() => {
-    // Filter products based on search query
+    // Filter products based on search query and category
     let filtered = products;
 
     if (searchQuery.trim()) {
-      filtered = products.filter(
+      filtered = filtered.filter(
         (product) =>
           product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           product.id.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
+    if (categoryFilter) {
+      filtered = filtered.filter(
+        (product) => product.category?.id === categoryFilter
+      );
+    }
+
     setFilteredProducts(filtered);
-    setCurrentPage(1); // Reset to first page on search
-  }, [searchQuery, products]);
+    setCurrentPage(1); // Reset to first page on filter
+  }, [searchQuery, categoryFilter, products]);
 
   const fetchProducts = async () => {
     try {
@@ -87,6 +101,7 @@ export default function AdminProductsPage() {
       }
     } catch (error) {
       console.error("Failed to fetch products:", error);
+      toast("Failed to fetch products", "error");
     } finally {
       setIsLoading(false);
     }
@@ -103,6 +118,7 @@ export default function AdminProductsPage() {
       });
 
       if (res.ok) {
+        toast("Product deleted successfully", "success");
         fetchProducts();
         // Remove from selection if selected
         setSelectedProducts((prev) => {
@@ -110,9 +126,36 @@ export default function AdminProductsPage() {
           newSet.delete(id);
           return newSet;
         });
+      } else {
+        const error = await res.json();
+        toast(error.error || "Failed to delete product", "error");
       }
     } catch (error) {
       console.error("Failed to delete product:", error);
+      toast("Failed to delete product", "error");
+    }
+  };
+
+  const handleDuplicate = async (id: string) => {
+    setIsDuplicating(id);
+    try {
+      const res = await fetch(`/api/products/${id}/duplicate`, {
+        method: "POST",
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        toast(`Product duplicated successfully: ${data.name}`, "success");
+        fetchProducts();
+      } else {
+        const error = await res.json();
+        toast(error.error || "Failed to duplicate product", "error");
+      }
+    } catch (error) {
+      console.error("Failed to duplicate product:", error);
+      toast("Failed to duplicate product", "error");
+    } finally {
+      setIsDuplicating(null);
     }
   };
 
@@ -148,7 +191,7 @@ export default function AdminProductsPage() {
 
   const handleBulkEdit = async () => {
     if (selectedProducts.size === 0) {
-      alert("Please select at least one product");
+      toast("Please select at least one product", "warning");
       return;
     }
 
@@ -162,8 +205,26 @@ export default function AdminProductsPage() {
       updates.featured = bulkEditData.featured === "true";
     }
 
+    if (bulkEditData.price !== "") {
+      const price = parseFloat(bulkEditData.price);
+      if (isNaN(price) || price < 0) {
+        toast("Invalid price value", "error");
+        return;
+      }
+      updates.price = price;
+    }
+
+    if (bulkEditData.discountPercentage !== "") {
+      const discount = parseInt(bulkEditData.discountPercentage);
+      if (isNaN(discount) || discount < 0 || discount > 100) {
+        toast("Discount percentage must be between 0 and 100", "error");
+        return;
+      }
+      updates.discountPercentage = discount;
+    }
+
     if (Object.keys(updates).length === 0) {
-      alert("Please select at least one field to update");
+      toast("Please select at least one field to update", "warning");
       return;
     }
 
@@ -182,18 +243,18 @@ export default function AdminProductsPage() {
 
       if (res.ok) {
         const data = await res.json();
-        alert(`Successfully updated ${data.count} product(s)`);
+        toast(`Successfully updated ${data.count} product(s)`, "success");
         setShowBulkEditModal(false);
         setSelectedProducts(new Set());
-        setBulkEditData({ categoryId: "", featured: "" });
+        setBulkEditData({ categoryId: "", featured: "", price: "", discountPercentage: "" });
         fetchProducts();
       } else {
         const error = await res.json();
-        alert(`Failed to update products: ${error.error || "Unknown error"}`);
+        toast(error.error || "Failed to update products", "error");
       }
     } catch (error) {
       console.error("Failed to bulk edit products:", error);
-      alert("Failed to update products");
+      toast("Failed to update products", "error");
     } finally {
       setIsBulkEditing(false);
     }
@@ -201,7 +262,7 @@ export default function AdminProductsPage() {
 
   const handleBulkDelete = async () => {
     if (selectedProducts.size === 0) {
-      alert("Please select at least one product");
+      toast("Please select at least one product", "warning");
       return;
     }
 
@@ -224,18 +285,59 @@ export default function AdminProductsPage() {
 
       if (res.ok) {
         const data = await res.json();
-        alert(`Successfully deleted ${data.count} product(s)`);
+        toast(`Successfully deleted ${data.count} product(s)`, "success");
         setSelectedProducts(new Set());
         fetchProducts();
       } else {
         const error = await res.json();
-        alert(`Failed to delete products: ${error.error || "Unknown error"}`);
+        toast(error.error || "Failed to delete products", "error");
       }
     } catch (error) {
       console.error("Failed to bulk delete products:", error);
-      alert("Failed to delete products");
+      toast("Failed to delete products", "error");
     } finally {
       setIsBulkDeleting(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      // Create CSV content
+      const headers = ["ID", "Name", "Price", "Sale Price", "Discount %", "Category", "Featured", "Created At"];
+      const rows = filteredProducts.map((product) => [
+        product.id,
+        `"${product.name.replace(/"/g, '""')}"`,
+        product.price,
+        product.salePrice || "",
+        product.discountPercentage?.toString() || "",
+        product.category?.name || "",
+        product.featured ? "Yes" : "No",
+        new Date(product.createdAt).toLocaleDateString(),
+      ]);
+
+      const csvContent = [
+        headers.join(","),
+        ...rows.map((row) => row.join(",")),
+      ].join("\n");
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `products_${new Date().toISOString().split("T")[0]}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast(`Exported ${filteredProducts.length} products to CSV`, "success");
+    } catch (error) {
+      console.error("Failed to export products:", error);
+      toast("Failed to export products", "error");
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -258,6 +360,21 @@ export default function AdminProductsPage() {
       day: "numeric",
       year: "numeric",
     });
+  };
+
+  // Calculate sale percentage
+  const getSalePercentage = (product: Product): number | null => {
+    if (product.discountPercentage !== null && product.discountPercentage !== undefined) {
+      return product.discountPercentage;
+    }
+    if (product.salePrice) {
+      const price = parseFloat(product.price);
+      const salePrice = parseFloat(product.salePrice);
+      if (price > 0 && salePrice < price) {
+        return Math.round(((price - salePrice) / price) * 100);
+      }
+    }
+    return null;
   };
 
   if (isLoading) {
@@ -346,8 +463,27 @@ export default function AdminProductsPage() {
               </div>
             </div>
 
-            {/* Right side: Search and Add Button */}
-            <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center flex-1 lg:flex-initial lg:max-w-2xl">
+            {/* Right side: Search, Filter, Export and Add Button */}
+            <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center flex-1 lg:flex-initial lg:max-w-4xl">
+              {/* Category Filter */}
+              <div className="flex-1 sm:flex-initial sm:min-w-[180px]">
+                <div className="relative">
+                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">All Categories</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               {/* Search Bar */}
               <div className="flex-1">
                 <div className="relative">
@@ -361,6 +497,17 @@ export default function AdminProductsPage() {
                   />
                 </div>
               </div>
+
+              {/* Export Button */}
+              <Button
+                onClick={handleExport}
+                disabled={isExporting || filteredProducts.length === 0}
+                variant="outline"
+                className="flex-shrink-0"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {isExporting ? "Exporting..." : "Export"}
+              </Button>
 
               {/* Add New Button */}
               <Link href="/admin/products/new" className="flex-shrink-0">
@@ -422,98 +569,130 @@ export default function AdminProductsPage() {
                     </td>
                   </tr>
                 ) : (
-                  paginatedProducts.map((product) => (
-                    <tr
-                      key={product.id}
-                      className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                        selectedProducts.has(product.id) ? "bg-blue-50 dark:bg-blue-900/20" : ""
-                      }`}
-                    >
-                      {/* Checkbox Column */}
-                      <td className="px-6 py-4">
-                        <input
-                          type="checkbox"
-                          checked={selectedProducts.has(product.id)}
-                          onChange={() => handleSelectProduct(product.id)}
-                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                        />
-                      </td>
-                      {/* Product Column */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0">
-                            {product.image ? (
-                              <Image
-                                src={product.image}
-                                alt={product.name}
-                                fill
-                                sizes="56px"
-                                className="object-cover"
-                              />
+                  paginatedProducts.map((product) => {
+                    const salePercentage = getSalePercentage(product);
+                    return (
+                      <tr
+                        key={product.id}
+                        className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                          selectedProducts.has(product.id) ? "bg-blue-50 dark:bg-blue-900/20" : ""
+                        }`}
+                      >
+                        {/* Checkbox Column */}
+                        <td className="px-6 py-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedProducts.has(product.id)}
+                            onChange={() => handleSelectProduct(product.id)}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                          />
+                        </td>
+                        {/* Product Column */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0">
+                              {product.image ? (
+                                <Image
+                                  src={product.image}
+                                  alt={product.name}
+                                  fill
+                                  sizes="56px"
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500 text-xs">
+                                  No Image
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">
+                                {product.name}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Product ID */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-900 dark:text-gray-100">
+                            {getShortProductId(product.id)}
+                          </span>
+                        </td>
+
+                        {/* Price */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col">
+                            {product.salePrice ? (
+                              <>
+                                <span className="text-sm text-gray-400 dark:text-gray-500 line-through">
+                                  {formatPrice(product.price)}
+                                </span>
+                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                  {formatPrice(product.salePrice)}
+                                </span>
+                              </>
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500 text-xs">
-                                No Image
-                              </div>
+                              <span className="text-sm text-gray-900 dark:text-gray-100">
+                                {formatPrice(product.price)}
+                              </span>
                             )}
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">
-                              {product.name}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Product ID */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900 dark:text-gray-100">
-                          {getShortProductId(product.id)}
-                        </span>
-                      </td>
+                        {/* Sale */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {salePercentage !== null ? (
+                            <span className="text-sm font-medium text-red-600 dark:text-red-400">
+                              -{salePercentage}%
+                            </span>
+                          ) : (
+                            <span className="text-sm text-gray-400 dark:text-gray-500">—</span>
+                          )}
+                        </td>
 
-                      {/* Price */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900 dark:text-gray-100">
-                          {formatPrice(product.price)}
-                        </span>
-                      </td>
+                        {/* Start Date */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-900 dark:text-gray-100">
+                            {formatDate(product.createdAt)}
+                          </span>
+                        </td>
 
-                      {/* Sale */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900 dark:text-gray-100 font-medium">20</span>
-                      </td>
-
-                      {/* Start Date */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900 dark:text-gray-100">
-                          {formatDate(product.createdAt)}
-                        </span>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <Link href={`/admin/products/${product.id}`}>
+                        {/* Actions */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Link href={`/admin/products/${product.id}`}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs"
+                              >
+                                Edit
+                              </Button>
+                            </Link>
                             <Button
                               variant="outline"
                               size="sm"
                               className="text-xs"
+                              onClick={() => handleDuplicate(product.id)}
+                              disabled={isDuplicating === product.id}
+                              title="Duplicate product"
                             >
-                              Edit
+                              <Copy className="h-3 w-3" />
                             </Button>
-                          </Link>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="text-xs"
-                            onClick={() => handleDelete(product.id)}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="text-xs"
+                              onClick={() => handleDelete(product.id)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -524,7 +703,7 @@ export default function AdminProductsPage() {
             <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="text-sm text-gray-600 dark:text-gray-400">
-                  Showing {entriesPerPage} entries
+                  Showing {startIndex + 1} to {Math.min(endIndex, filteredProducts.length)} of {filteredProducts.length} entries
                 </div>
                 <div className="flex items-center gap-2 mx-auto sm:mx-0">
                   <button
@@ -592,7 +771,7 @@ export default function AdminProductsPage() {
                 <button
                   onClick={() => {
                     setShowBulkEditModal(false);
-                    setBulkEditData({ categoryId: "", featured: "" });
+                    setBulkEditData({ categoryId: "", featured: "", price: "", discountPercentage: "" });
                   }}
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 >
@@ -644,6 +823,42 @@ export default function AdminProductsPage() {
                     <option value="false">Not Featured</option>
                   </select>
                 </div>
+
+                {/* Price */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Price
+                  </label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={bulkEditData.price}
+                    onChange={(e) =>
+                      setBulkEditData({ ...bulkEditData, price: e.target.value })
+                    }
+                    placeholder="Leave empty to skip"
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Discount Percentage */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Discount Percentage (0-100)
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={bulkEditData.discountPercentage}
+                    onChange={(e) =>
+                      setBulkEditData({ ...bulkEditData, discountPercentage: e.target.value })
+                    }
+                    placeholder="Leave empty to skip"
+                    className="w-full"
+                  />
+                </div>
               </div>
 
               <div className="flex gap-3 mt-6">
@@ -658,7 +873,7 @@ export default function AdminProductsPage() {
                   variant="outline"
                   onClick={() => {
                     setShowBulkEditModal(false);
-                    setBulkEditData({ categoryId: "", featured: "" });
+                    setBulkEditData({ categoryId: "", featured: "", price: "", discountPercentage: "" });
                   }}
                   disabled={isBulkEditing}
                   className="flex-1"
@@ -673,4 +888,3 @@ export default function AdminProductsPage() {
     </div>
   );
 }
-

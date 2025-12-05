@@ -36,18 +36,18 @@ enum NotificationType {
 }
 
 model User {
-  id              String        @id @default(cuid())
-  email           String        @unique
+  id              String         @id @default(cuid())
+  email           String         @unique
   password        String
   name            String?
   image           String?
-  role            UserRole      @default(USER)
+  role            UserRole       @default(USER)
   certificationId String?
   certification   Certification? @relation(fields: [certificationId], references: [id], onDelete: SetNull)
   certificateUrl  String?
   shippingAddress String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   cart          Cart?
   orders        Order[]
@@ -69,23 +69,25 @@ model Category {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  products            Product[]
+  products                Product[]
   certificationCategories CertificationCategory[]
 }
 
 model Product {
-  id          String    @id @default(cuid())
-  name        String
-  description String?
-  price       Decimal   @db.Decimal(10, 2)
-  image       String?
-  images      String[]  @default([])
-  featured    Boolean   @default(false)
-  categoryId  String?
-  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  attributes  Json? // Store product attributes as JSON: { "size": ["S", "M", "L"], "color": ["Red", "Blue"] }
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  name               String
+  description        String?
+  price              Decimal   @db.Decimal(10, 2)
+  salePrice          Decimal?  @db.Decimal(10, 2) // Sale/discounted price
+  discountPercentage Int? // Discount percentage (0-100)
+  image              String?
+  images             String[]  @default([])
+  featured           Boolean   @default(false)
+  categoryId         String?
+  category           Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  attributes         Json? // Store product attributes as JSON: { "size": ["S", "M", "L"], "color": ["Red", "Blue"] }
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   cartItems  CartItem[]
   orderItems OrderItem[]
@@ -399,7 +401,7 @@ model Certification {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  users               User[]
+  users                   User[]
   certificationCategories CertificationCategory[]
 
   @@index([isActive])
@@ -407,12 +409,12 @@ model Certification {
 }
 
 model CertificationCategory {
-  id             String       @id @default(cuid())
+  id              String        @id @default(cuid())
   certificationId String
-  certification  Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
-  categoryId     String
-  category       Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  createdAt      DateTime     @default(now())
+  certification   Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  categoryId      String
+  category        Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
 
   @@unique([certificationId, categoryId])
   @@index([certificationId])
@@ -425,14 +427,14 @@ enum MegaMenuType {
 }
 
 model MegaMenuCard {
-  id          String       @id @default(cuid())
-  menuType    MegaMenuType
-  position    Int          // 1 or 2 (first or second card)
-  imageUrl    String       @db.Text
-  linkUrl     String       @db.Text
-  isActive    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id        String       @id @default(cuid())
+  menuType  MegaMenuType
+  position  Int // 1 or 2 (first or second card)
+  imageUrl  String       @db.Text
+  linkUrl   String       @db.Text
+  isActive  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   @@unique([menuType, position])
   @@index([menuType])
@@ -446,19 +448,19 @@ enum PageStatus {
 }
 
 model Page {
-  id          String     @id @default(cuid())
-  name        String
-  slug        String?    @unique
-  description String?    @db.Text
-  content     String?    @db.Text
-  template    String     @default("Default")
-  status      PageStatus @default(DRAFT)
-  sections    Json?      // Store page sections as JSON: { "heroSlider": { "slides": [...] }, "categoryBanner": { "categories": [...] }, ... }
-  seoTitle    String?
+  id             String     @id @default(cuid())
+  name           String
+  slug           String?    @unique
+  description    String?    @db.Text
+  content        String?    @db.Text
+  template       String     @default("Default")
+  status         PageStatus @default(DRAFT)
+  sections       Json? // Store page sections as JSON: { "heroSlider": { "slides": [...] }, "categoryBanner": { "categories": [...] }, ... }
+  seoTitle       String?
   seoDescription String?
-  seoUrl      String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  seoUrl         String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
   @@index([slug])
   @@index([status])

@@ -83,7 +83,7 @@ async function createAdmin() {
       console.log(`   Email: ${user.email}`);
       console.log(`   Name: ${user.name || 'N/A'}`);
       console.log(`   Role: ${user.role}`);
-      console.log('\n🎉 You can now login at: http://localhost:3000/login');
+      console.log('\n🎉 You can now login at: http://localhost:3001/login');
     }
   } catch (error) {
     console.error('\n❌ Error creating admin account:');

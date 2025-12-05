@@ -54,7 +54,7 @@ async function createAdminQuick(email, password, name) {
       console.log(`   Role: ${user.role}\n`);
     }
 
-    console.log('🎉 Login at: http://localhost:3000/login\n');
+    console.log('🎉 Login at: http://localhost:3001/login\n');
   } catch (error) {
     console.error('❌ Error:', error.message);
     

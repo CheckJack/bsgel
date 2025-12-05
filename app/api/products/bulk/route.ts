@@ -50,8 +50,20 @@ export async function PATCH(req: Request) {
     }
 
     // Handle price (if provided)
-    if (updates.price !== undefined && updates.price !== null) {
+    if (updates.price !== undefined && updates.price !== null && updates.price !== "") {
       updateData.price = parseFloat(updates.price)
+    }
+
+    // Handle discountPercentage (if provided)
+    if (updates.discountPercentage !== undefined && updates.discountPercentage !== null && updates.discountPercentage !== "") {
+      updateData.discountPercentage = parseInt(updates.discountPercentage)
+    }
+
+    // Handle salePrice calculation if discountPercentage is provided
+    if (updates.discountPercentage !== undefined && updates.discountPercentage !== null && updates.discountPercentage !== "") {
+      // We'll need to fetch products first to calculate salePrice
+      // For now, we'll update discountPercentage and let the frontend calculate salePrice
+      // Or we can calculate it here if we have the original price
     }
 
     // If no valid updates, return error

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { AdminHeader } from "@/components/admin/admin-header";
+import { ToastContainer } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
 export default function AdminLayout({
@@ -80,6 +81,7 @@ export default function AdminLayout({
           </div>
         </main>
       </div>
+      <ToastContainer />
     </div>
   );
 }
