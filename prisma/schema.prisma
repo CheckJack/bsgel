@@ -1,0 +1,466 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum NotificationType {
+  NEW_CUSTOMER
+  NEW_PROFESSIONAL_CERTIFICATION
+  ORDER
+  ORDER_STATUS
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  SYSTEM
+  SALON_REJECTED
+  SALON_APPROVED
+}
+
+model User {
+  id              String        @id @default(cuid())
+  email           String        @unique
+  password        String
+  name            String?
+  image           String?
+  role            UserRole      @default(USER)
+  certificationId String?
+  certification   Certification? @relation(fields: [certificationId], references: [id], onDelete: SetNull)
+  certificateUrl  String?
+  shippingAddress String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  cart          Cart?
+  orders        Order[]
+  chatMessages  ChatMessage[]
+  salon         Salon?
+  comments      Comment[]
+  notifications Notification[]
+
+  @@index([certificationId])
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  image       String?
+  icon        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products            Product[]
+  certificationCategories CertificationCategory[]
+}
+
+model Product {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  price       Decimal   @db.Decimal(10, 2)
+  image       String?
+  images      String[]  @default([])
+  featured    Boolean   @default(false)
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  attributes  Json? // Store product attributes as JSON: { "size": ["S", "M", "L"], "color": ["Red", "Blue"] }
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+}
+
+model Cart {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items CartItem[]
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+  total           Decimal     @db.Decimal(10, 2)
+  status          OrderStatus @default(PENDING)
+  paymentIntentId String?     @unique
+  shippingAddress String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  items OrderItem[]
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+
+  @@unique([orderId, productId])
+}
+
+model Attribute {
+  id        String   @id @default(cuid())
+  category  String
+  values    String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([category])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  permissions Json? // Store permissions as JSON
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum GalleryItemType {
+  FILE
+  FOLDER
+}
+
+model GalleryItem {
+  id          String          @id @default(cuid())
+  name        String
+  type        GalleryItemType
+  url         String? // For files, this is the file URL
+  mimeType    String? // For files, e.g., "image/jpeg", "application/pdf"
+  size        Int? // File size in bytes
+  folderId    String? // Parent folder ID
+  folder      GalleryItem?    @relation("FolderItems", fields: [folderId], references: [id], onDelete: Cascade)
+  items       GalleryItem[]   @relation("FolderItems")
+  description String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([folderId])
+}
+
+model Salon {
+  id              String      @id @default(cuid())
+  name            String
+  address         String
+  city            String
+  postalCode      String?
+  phone           String?
+  email           String?
+  website         String?
+  latitude        Float?
+  longitude       Float?
+  image           String?     @db.Text
+  logo            String?     @db.Text
+  images          String[]    @default([])
+  description     String?     @db.Text
+  workingHours    Json? // Store working hours as JSON: { "monday": { "open": "09:00", "close": "18:00", "closed": false }, ... }
+  isActive        Boolean     @default(true)
+  isBioDiamond    Boolean     @default(false)
+  status          SalonStatus @default(APPROVED) // For admin-created salons, default to APPROVED. For client-created, set to PENDING_REVIEW
+  rejectionReason String?     @db.Text // Reason for rejection if status is REJECTED
+  reviewedBy      String? // User ID of admin who reviewed
+  reviewedAt      DateTime? // When the salon was reviewed
+  userId          String?     @unique // Link salon to user (one salon per user)
+  user            User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([city])
+  @@index([isActive])
+  @@index([isBioDiamond])
+  @@index([userId])
+  @@index([status])
+}
+
+model Notification {
+  id           String           @id @default(cuid())
+  type         NotificationType
+  title        String
+  message      String
+  image        String?          @db.Text // Base64 encoded image for notifications
+  read         Boolean          @default(false)
+  userId       String? // Link to specific user (null = admin notification or broadcast to all)
+  user         User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  linkUrl      String? // Optional link URL for notifications
+  scheduledFor DateTime? // Optional scheduled date/time for sending
+  isScheduled  Boolean          @default(false) // Whether this notification is scheduled
+  metadata     Json? // Store additional data like customer ID, order ID, etc.
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([read])
+  @@index([createdAt])
+  @@index([userId])
+  @@index([scheduledFor])
+  @@index([isScheduled])
+}
+
+model ChatMessage {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message       String
+  adminResponse String?
+  readByAdmin   Boolean   @default(false)
+  readAt        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([readByAdmin])
+  @@index([createdAt])
+}
+
+enum BlogStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Blog {
+  id          String     @id @default(cuid())
+  title       String
+  slug        String     @unique
+  excerpt     String?
+  content     String     @db.Text
+  image       String?
+  author      String?
+  status      BlogStatus @default(DRAFT)
+  publishedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  comments Comment[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([publishedAt])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  blogId    String
+  blog      Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([blogId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+enum SocialMediaPlatform {
+  INSTAGRAM
+  FACEBOOK
+  TWITTER
+  LINKEDIN
+  TIKTOK
+}
+
+enum SocialMediaPostStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  PUBLISHED
+}
+
+enum SalonStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum ContentType {
+  POST
+  STORY
+  REELS
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+model SocialMediaPost {
+  id                 String                @id @default(cuid())
+  platform           SocialMediaPlatform   @default(INSTAGRAM)
+  contentType        ContentType           @default(POST)
+  caption            String                @db.Text
+  images             String[]              @default([])
+  scheduledDate      DateTime
+  status             SocialMediaPostStatus @default(DRAFT)
+  reviewComments     String?               @db.Text
+  reviewedBy         String? // User ID who reviewed
+  reviewedAt         DateTime?
+  createdBy          String? // User ID who created
+  assignedReviewerId String? // User ID assigned to review (set when status is PENDING_REVIEW)
+  hashtags           String[]              @default([])
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@index([platform])
+  @@index([status])
+  @@index([scheduledDate])
+  @@index([createdAt])
+  @@index([assignedReviewerId])
+}
+
+model Coupon {
+  id                          String       @id @default(cuid())
+  code                        String       @unique
+  description                 String?
+  discountType                DiscountType @default(PERCENTAGE)
+  discountValue               Decimal      @db.Decimal(10, 2)
+  minPurchaseAmount           Decimal?     @db.Decimal(10, 2)
+  maxDiscountAmount           Decimal?     @db.Decimal(10, 2)
+  minPurchaseIncludesDelivery Boolean      @default(false) // Whether minimum purchase includes delivery cost
+  usageLimit                  Int? // Total number of times coupon can be used
+  usedCount                   Int          @default(0) // Number of times coupon has been used
+  userUsageLimit              Int? // Limit per user (null = unlimited)
+  validFrom                   DateTime     @default(now())
+  validUntil                  DateTime?
+  isActive                    Boolean      @default(true)
+  includedProducts            String[]     @default([]) // Product IDs that are included
+  excludedProducts            String[]     @default([]) // Product IDs that are excluded
+  includedCategories          String[]     @default([]) // Category IDs that are included
+  excludedCategories          String[]     @default([]) // Category IDs that are excluded
+  createdAt                   DateTime     @default(now())
+  updatedAt                   DateTime     @updatedAt
+
+  @@index([code])
+  @@index([isActive])
+  @@index([validUntil])
+  @@index([createdAt])
+}
+
+model BannedEmail {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  reason    String? // Optional reason for the ban
+  bannedBy  String? // User ID of admin who banned this email
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([createdAt])
+}
+
+model Certification {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users               User[]
+  certificationCategories CertificationCategory[]
+
+  @@index([isActive])
+  @@index([name])
+}
+
+model CertificationCategory {
+  id             String       @id @default(cuid())
+  certificationId String
+  certification  Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  categoryId     String
+  category       Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@unique([certificationId, categoryId])
+  @@index([certificationId])
+  @@index([categoryId])
+}
+
+enum MegaMenuType {
+  SHOP
+  ABOUT
+}
+
+model MegaMenuCard {
+  id          String       @id @default(cuid())
+  menuType    MegaMenuType
+  position    Int          // 1 or 2 (first or second card)
+  imageUrl    String       @db.Text
+  linkUrl     String       @db.Text
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([menuType, position])
+  @@index([menuType])
+  @@index([isActive])
+}
+
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+  PENDING
+}
+
+model Page {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String?    @unique
+  description String?    @db.Text
+  content     String?    @db.Text
+  template    String     @default("Default")
+  status      PageStatus @default(DRAFT)
+  sections    Json?      // Store page sections as JSON: { "heroSlider": { "slides": [...] }, "categoryBanner": { "categories": [...] }, ... }
+  seoTitle    String?
+  seoDescription String?
+  seoUrl      String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([slug])
+  @@index([status])
+  @@index([createdAt])
+}

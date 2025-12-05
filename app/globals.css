@@ -1,0 +1,566 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* BIO Sculpture Brand Colors */
+  --brand-white: #FFFFFF;
+  --brand-black: #000000;
+  --brand-champagne: #857D71; /* Pantone 8003c */
+  --brand-sweet-bianca: #EED9DE; /* Pantone 705c */
+
+  /* Color Values */
+  --brand-champagne-rgb: 135, 125, 113;
+  --brand-champagne-cmyk: 37, 37, 42, 26;
+  --brand-sweet-bianca-rgb: 238, 217, 222;
+  --brand-sweet-bianca-cmyk: 2, 18, 6, 0;
+
+  /* Default Theme */
+  --background: var(--brand-white);
+  --foreground: var(--brand-black);
+}
+
+html {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  background-color: #FFFFFF;
+  font-family: var(--font-jost), Tahoma, Calibri, Arial, sans-serif;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Hide scrollbar for product lines slider */
+.product-lines-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.product-lines-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Dark mode styles for select elements */
+select {
+  background-color: white;
+  color: #111827;
+}
+
+.dark select {
+  background-color: #1f2937;
+  color: #f9fafb;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Fix Leaflet map z-index to prevent it from appearing above header */
+.leaflet-container {
+  z-index: 0 !important;
+  position: relative;
+}
+
+.leaflet-pane {
+  z-index: 1 !important;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 10 !important;
+}
+
+.leaflet-control {
+  z-index: 10 !important;
+}
+
+/* TipTap Editor Styles */
+.ProseMirror {
+  outline: none;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #adb5bd;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Blog Content Styles */
+.blog-content {
+  line-height: 1.75;
+  font-size: 1.125rem;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.blog-content * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.blog-content div {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.blog-content h1 {
+  font-size: 2.25em;
+  font-weight: 800;
+  margin-top: 0;
+  margin-bottom: 0.8888889em;
+  line-height: 1.1111111;
+  color: #111827;
+}
+
+.dark .blog-content h1 {
+  color: #f9fafb;
+}
+
+.blog-content h2 {
+  font-size: 1.75em;
+  font-weight: 700;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  line-height: 1.3333333;
+  color: #111827;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.5em;
+}
+
+.dark .blog-content h2 {
+  color: #f9fafb;
+  border-bottom-color: #4b5563;
+}
+
+.blog-content h3 {
+  font-size: 1.375em;
+  font-weight: 600;
+  margin-top: 1.6em;
+  margin-bottom: 0.6em;
+  line-height: 1.6;
+  color: #1f2937;
+}
+
+.dark .blog-content h3 {
+  color: #e5e7eb;
+}
+
+.blog-content h4 {
+  font-size: 1.125em;
+  font-weight: 600;
+  margin-top: 1.4em;
+  margin-bottom: 0.5em;
+  color: #374151;
+}
+
+.dark .blog-content h4 {
+  color: #d1d5db;
+}
+
+.blog-content p {
+  margin-top: 1.25em;
+  margin-bottom: 1.25em;
+  font-size: 1.125rem;
+}
+
+.blog-content ul,
+.blog-content ol {
+  margin-top: 1.25em;
+  margin-bottom: 1.25em;
+  padding-left: 1.625em;
+}
+
+.blog-content ul {
+  list-style-type: disc;
+}
+
+.blog-content ol {
+  list-style-type: decimal;
+}
+
+.blog-content li {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  padding-left: 0.25em;
+}
+
+.blog-content li::marker {
+  color: #6b7280;
+}
+
+.dark .blog-content li::marker {
+  color: #9ca3af;
+}
+
+.blog-content blockquote {
+  font-weight: 500;
+  font-style: italic;
+  color: #1f2937;
+  border-left: 0.25rem solid #3b82f6;
+  background-color: #f9fafb;
+  quotes: "\201C""\201D""\2018""\2019";
+  margin-top: 1.6em;
+  margin-bottom: 1.6em;
+  padding: 1em 1.5em;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.dark .blog-content blockquote {
+  color: #f9fafb;
+  border-left-color: #60a5fa;
+  background-color: #1f2937;
+}
+
+.blog-content code {
+  color: #1f2937;
+  font-weight: 600;
+  font-size: 0.875em;
+  background-color: #f3f4f6;
+  padding: 0.125em 0.375em;
+  border-radius: 0.25rem;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.dark .blog-content code {
+  color: #f9fafb;
+  background-color: #374151;
+}
+
+.blog-content pre {
+  background-color: #1f2937;
+  color: #f9fafb;
+  padding: 1.5em;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+  font-size: 0.875em;
+  line-height: 1.6;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dark .blog-content pre {
+  background-color: #111827;
+  color: #e5e7eb;
+}
+
+.blog-content pre code {
+  background-color: transparent;
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+}
+
+.dark .blog-content pre code {
+  background-color: transparent;
+  color: inherit;
+}
+
+.blog-content a {
+  color: #2563eb;
+  text-decoration: underline;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.dark .blog-content a {
+  color: #60a5fa;
+}
+
+.blog-content a:hover {
+  color: #1d4ed8;
+  text-decoration-thickness: 2px;
+}
+
+.dark .blog-content a:hover {
+  color: #93c5fd;
+}
+
+.blog-content img {
+  margin-top: 2em;
+  margin-bottom: 2em;
+  max-width: 100%;
+  width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  display: block;
+  object-fit: contain;
+}
+
+.dark .blog-content img {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+.blog-content strong {
+  font-weight: 600;
+  color: #111827;
+}
+
+.dark .blog-content strong {
+  color: #f9fafb;
+}
+
+.blog-content em {
+  font-style: italic;
+}
+
+.blog-content u {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+
+.blog-content s {
+  text-decoration: line-through;
+}
+
+.blog-content hr {
+  border-color: #e5e7eb;
+  border-top-width: 1px;
+  margin-top: 3em;
+  margin-bottom: 3em;
+  border-style: solid;
+}
+
+.dark .blog-content hr {
+  border-color: #4b5563;
+}
+
+.blog-content table {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.blog-content table thead,
+.blog-content table tbody,
+.blog-content table tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.blog-content table th,
+.blog-content table td {
+  padding: 0.75em;
+  border: 1px solid #e5e7eb;
+  text-align: left;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.dark .blog-content table th,
+.dark .blog-content table td {
+  border-color: #4b5563;
+}
+
+.blog-content table th {
+  background-color: #f9fafb;
+  font-weight: 600;
+}
+
+.dark .blog-content table th {
+  background-color: #1f2937;
+}
+
+/* Cart Drawer Animations */
+@keyframes fadeInSlideFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Image Container Fixes */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Fix for Next.js Image component containers */
+.relative img {
+  object-fit: inherit;
+}
+
+/* Slider Image Fixes */
+section img,
+div[class*="slider"] img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Hero Slider Image Container */
+.hero-slider-image-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Category Banner Image Fixes */
+.category-banner-image {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Ingredient Slider Image Container */
+.ingredient-slider-image-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ingredient Slider Animations */
+@keyframes slide-in-right {
+  0% {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-left {
+  0% {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fade-slide-in-right {
+  0% {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fade-slide-in-left {
+  0% {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.7s ease-out;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.7s ease-out;
+}
+
+.animate-fade-slide-in-right {
+  animation: fade-slide-in-right 0.7s ease-out;
+}
+
+.animate-fade-slide-in-left {
+  animation: fade-slide-in-left 0.7s ease-out;
+}
+
+/* Falling product images animation - smooth and seamless */
+@keyframes fall {
+  0% {
+    transform: translateX(-50%) translateY(0) rotate(0deg);
+    opacity: 1; /* Visible immediately */
+  }
+  95% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) translateY(calc(100vh + 400px)) rotate(360deg);
+    opacity: 0; /* Fade out at the end */
+  }
+}
+
+@theme inline {
+  @keyframes noise-animation {
+  0% {
+    transform: translate(0, 0);
+    }
+  10% {
+    transform: translate(-2%, -3%);
+    }
+  20% {
+    transform: translate(-4%, 2%);
+    }
+  30% {
+    transform: translate(2%, -4%);
+    }
+  40% {
+    transform: translate(-2%, 5%);
+    }
+  50% {
+    transform: translate(-4%, 2%);
+    }
+  60% {
+    transform: translate(3%, 0);
+    }
+  70% {
+    transform: translate(0, 3%);
+    }
+  80% {
+    transform: translate(-3%, 0);
+    }
+  90% {
+    transform: translate(2%, 2%);
+    }
+  100% {
+    transform: translate(1%, 0);
+    }
+  }
+}

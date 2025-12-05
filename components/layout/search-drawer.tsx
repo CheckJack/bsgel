@@ -1,0 +1,260 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { formatPrice } from "@/lib/utils";
+import { X, Search, Loader2 } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+
+interface SearchDrawerProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  price: string;
+  image: string | null;
+  description: string | null;
+  category: {
+    id: string;
+    name: string;
+  } | null;
+}
+
+export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Handle fade in/out effects with smooth transitions
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      const fadeInTimer = setTimeout(() => {
+        setIsVisible(true);
+        // Focus input when drawer opens
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
+      }, 10);
+      return () => clearTimeout(fadeInTimer);
+    } else {
+      setIsVisible(false);
+      const fadeOutTimer = setTimeout(() => {
+        setShouldRender(false);
+        setSearchQuery("");
+        setProducts([]);
+      }, 400);
+      return () => clearTimeout(fadeOutTimer);
+    }
+  }, [isOpen]);
+
+  // Debounced search
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setProducts([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    const debounceTimer = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/products?search=${encodeURIComponent(searchQuery)}`);
+        if (response.ok) {
+          const data = await response.json();
+          // Handle both array and paginated response formats
+          const productList = Array.isArray(data) ? data : (data.products || []);
+          setProducts(productList);
+        } else {
+          setProducts([]);
+        }
+      } catch (error) {
+        console.error("Failed to search products:", error);
+        setProducts([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchQuery]);
+
+  // Prevent body scroll when drawer is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
+
+  // Close on escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isOpen, onClose]);
+
+  const handleProductClick = (productId: string) => {
+    onClose();
+    router.push(`/products/${productId}`);
+  };
+
+  const handleViewAllResults = () => {
+    onClose();
+    router.push(`/products?search=${encodeURIComponent(searchQuery)}`);
+  };
+
+  if (!shouldRender) return null;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 bg-black/50 z-50 transition-opacity duration-[400ms] ${
+          isVisible ? "ease-out opacity-100" : "ease-in opacity-0"
+        }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Search Drawer */}
+      <div className="fixed top-0 left-0 right-0 z-50">
+        <div
+          className={`bg-white shadow-2xl transform transition-all duration-[400ms] ${
+            isOpen && isVisible
+              ? "ease-out translate-y-0 opacity-100"
+              : "ease-in -translate-y-full opacity-0"
+          }`}
+        >
+          <div className="container mx-auto px-4 py-6">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-brand-black m-0">Search Products</h2>
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                aria-label="Close search"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative mb-6">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Input
+                ref={inputRef}
+                type="text"
+                placeholder="Search for products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-4 py-3 text-lg"
+              />
+            </div>
+
+            {/* Results */}
+            <div className="max-h-[60vh] overflow-y-auto">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                  <span className="ml-2 text-gray-600">Searching...</span>
+                </div>
+              ) : searchQuery.trim() === "" ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Search className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p className="text-lg">Start typing to search for products</p>
+                </div>
+              ) : products.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <p className="text-lg mb-2">No products found</p>
+                  <p className="text-sm">Try a different search term</p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    {products.map((product, index) => (
+                      <div
+                        key={product.id}
+                        className="flex gap-4 p-4 border rounded-lg hover:shadow-md transition-all cursor-pointer"
+                        onClick={() => handleProductClick(product.id)}
+                        style={{
+                          animation: isVisible
+                            ? `fadeInUp 0.3s ease-out ${index * 0.03}s both`
+                            : undefined,
+                        }}
+                      >
+                        {product.image ? (
+                          <div className="relative w-24 h-24 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
+                            <Image
+                              src={product.image}
+                              alt={product.name}
+                              fill
+                              className="object-contain rounded"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-24 h-24 bg-gray-200 rounded flex-shrink-0 flex items-center justify-center">
+                            <span className="text-gray-400 text-xs">No Image</span>
+                          </div>
+                        )}
+
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-base hover:underline truncate mb-1">
+                            {product.name}
+                          </h3>
+                          {product.category && (
+                            <p className="text-sm text-gray-500 mb-2">
+                              {product.category.name}
+                            </p>
+                          )}
+                          {product.description && (
+                            <p className="text-sm text-gray-600 line-clamp-2 mb-2">
+                              {product.description}
+                            </p>
+                          )}
+                          <p className="text-lg font-bold text-brand-black">
+                            {formatPrice(product.price)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {products.length > 0 && (
+                    <div className="mt-6 pt-6 border-t">
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={handleViewAllResults}
+                      >
+                        View All Results ({products.length})
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
