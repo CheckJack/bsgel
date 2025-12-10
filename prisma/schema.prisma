@@ -42,6 +42,9 @@ model User {
   name            String?
   image           String?
   role            UserRole       @default(USER)
+  permissions     Json?          // Store permissions as JSON: { "addProduct": "allow", "updateProduct": "deny", ... }
+  isActive        Boolean        @default(true)
+  lastLoginAt     DateTime?
   certificationId String?
   certification   Certification? @relation(fields: [certificationId], references: [id], onDelete: SetNull)
   certificateUrl  String?
@@ -66,11 +69,17 @@ model Category {
   description String?
   image       String?
   icon        String?
+  parentId    String?  // For subcategories - references parent category
+  parent      Category? @relation("CategorySubcategories", fields: [parentId], references: [id], onDelete: Cascade)
+  subcategories Category[] @relation("CategorySubcategories")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   products                Product[]
+  productSubcategories    ProductSubcategory[]
   certificationCategories CertificationCategory[]
+
+  @@index([parentId])
 }
 
 model Product {
@@ -86,11 +95,26 @@ model Product {
   categoryId         String?
   category           Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   attributes         Json? // Store product attributes as JSON: { "size": ["S", "M", "L"], "color": ["Red", "Blue"] }
+  showcasingSections String[]  @default([]) // Showcasing sections: treatment-gels, color-gels, top-coats, hand-care, foot-care, reds, pinks, nudes, oranges
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  cartItems  CartItem[]
-  orderItems OrderItem[]
+  subcategories      ProductSubcategory[]
+  cartItems          CartItem[]
+  orderItems         OrderItem[]
+}
+
+model ProductSubcategory {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([productId, categoryId])
+  @@index([productId])
+  @@index([categoryId])
 }
 
 model Cart {

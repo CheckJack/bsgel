@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,12 @@ interface ImagePreview {
   file?: File;
 }
 
+interface Category {
+  id: string;
+  name: string;
+  parentId?: string | null;
+}
+
 export default function NewCategoryPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -20,11 +26,13 @@ export default function NewCategoryPage() {
     slug: "",
     description: "",
     icon: "",
+    parentId: "",
   });
   const [image, setImage] = useState<ImagePreview | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  const [parentCategories, setParentCategories] = useState<Category[]>([]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -55,6 +63,25 @@ export default function NewCategoryPage() {
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+  };
+
+  useEffect(() => {
+    fetchParentCategories();
+  }, []);
+
+  const fetchParentCategories = async () => {
+    try {
+      const res = await fetch("/api/categories?limit=10000");
+      if (res.ok) {
+        const data = await res.json();
+        const categoriesList = data.categories || data || [];
+        // Filter to only show main categories (no parentId) as potential parents
+        const mainCategories = categoriesList.filter((cat: any) => !cat.parentId);
+        setParentCategories(mainCategories);
+      }
+    } catch (error) {
+      console.error("Failed to fetch parent categories:", error);
+    }
   };
 
   const generateSlug = (name: string) => {
@@ -142,6 +169,7 @@ export default function NewCategoryPage() {
           description: formData.description || null,
           image: imageUrl,
           icon: formData.icon || null,
+          parentId: formData.parentId || null,
         }),
       });
 
@@ -217,6 +245,34 @@ export default function NewCategoryPage() {
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 The slug is auto-generated from the name. You can edit it manually if needed.
+              </p>
+            </div>
+
+            {/* Parent Category field (for creating subcategories) */}
+            <div>
+              <label
+                htmlFor="parentId"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Parent Category (Optional)
+              </label>
+              <select
+                id="parentId"
+                value={formData.parentId}
+                onChange={(e) =>
+                  setFormData({ ...formData, parentId: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">None (Main Category)</option>
+                {parentCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Select a parent category to create a subcategory. Leave empty to create a main category.
               </p>
             </div>
 

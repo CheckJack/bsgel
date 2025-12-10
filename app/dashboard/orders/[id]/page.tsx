@@ -6,7 +6,9 @@ import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
+import { toast } from "@/components/ui/toast";
 import Image from "next/image";
+import { RotateCcw, Download, Loader2, X } from "lucide-react";
 
 interface OrderItem {
   id: string;
@@ -34,6 +36,8 @@ export default function OrderDetailPage() {
   const { data: session } = useSession();
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
 
   useEffect(() => {
     if (params.id && session) {
@@ -43,20 +47,109 @@ export default function OrderDetailPage() {
 
   const fetchOrder = async () => {
     try {
+      setIsLoading(true);
       const res = await fetch(`/api/orders/${params.id}`);
       if (res.ok) {
         const data = await res.json();
         setOrder(data);
+      } else {
+        const error = await res.json();
+        toast(error.error || "Failed to load order", "error");
       }
     } catch (error) {
       console.error("Failed to fetch order:", error);
+      toast("Failed to load order. Please try again.", "error");
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleCancelOrder = async () => {
+    if (!order) return;
+    if (!confirm("Are you sure you want to cancel this order?")) {
+      return;
+    }
+
+    setIsCancelling(true);
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CANCELLED" }),
+      });
+
+      if (res.ok) {
+        toast("Order cancelled successfully", "success");
+        fetchOrder();
+      } else {
+        const error = await res.json();
+        toast(error.error || "Failed to cancel order", "error");
+      }
+    } catch (error) {
+      console.error("Failed to cancel order:", error);
+      toast("Failed to cancel order. Please try again.", "error");
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const handleReorder = async () => {
+    if (!order) return;
+
+    setIsReordering(true);
+    try {
+      const res = await fetch("/api/cart/add-items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: order.items.map((item) => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+          })),
+        }),
+      });
+
+      if (res.ok) {
+        toast("Items added to cart successfully", "success");
+        router.push("/cart");
+      } else {
+        const error = await res.json();
+        toast(error.error || "Failed to add items to cart", "error");
+      }
+    } catch (error) {
+      console.error("Failed to reorder:", error);
+      toast("Failed to add items to cart. Please try again.", "error");
+    } finally {
+      setIsReordering(false);
+    }
+  };
+
+  const formatAddress = (addressString: string | null) => {
+    if (!addressString) return null;
+    try {
+      const parsed = JSON.parse(addressString);
+      return (
+        <div className="space-y-1">
+          <p className="font-medium">{parsed.firstName} {parsed.lastName}</p>
+          <p>{parsed.addressLine1}</p>
+          {parsed.addressLine2 && <p>{parsed.addressLine2}</p>}
+          <p>{parsed.city}, {parsed.postalCode}</p>
+          <p>{parsed.district}</p>
+          <p>{parsed.country}</p>
+          {parsed.phone && <p className="mt-2">Phone: {parsed.phone}</p>}
+        </div>
+      );
+    } catch {
+      return <p>{addressString}</p>;
+    }
+  };
+
   if (isLoading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    );
   }
 
   if (!order) {
@@ -87,6 +180,9 @@ export default function OrderDetailPage() {
     }
   };
 
+  const canCancel = order.status === "PENDING" || order.status === "PROCESSING";
+  const canReorder = order.status === "DELIVERED";
+
   return (
     <div>
       <div className="mb-8 flex justify-between items-center">
@@ -101,34 +197,87 @@ export default function OrderDetailPage() {
         </Button>
       </div>
 
-      <div className="max-w-4xl">
-        <Card className="mb-6">
+      <div className="max-w-4xl space-y-6">
+        {/* Order Summary */}
+        <Card>
           <CardHeader>
             <div className="flex justify-between items-center flex-wrap gap-4">
               <div>
                 <CardTitle>Order #{order.id.slice(0, 8)}</CardTitle>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Placed on {new Date(order.createdAt).toLocaleString()}
+                  Placed on {new Date(order.createdAt).toLocaleString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </p>
               </div>
-              <span className={`px-4 py-2 rounded-full font-semibold ${getStatusColor(order.status)}`}>
-                {order.status}
-              </span>
+              <div className="flex items-center gap-4">
+                <span className={`px-4 py-2 rounded-full font-semibold text-sm ${getStatusColor(order.status)}`}>
+                  {order.status}
+                </span>
+                {canCancel && (
+                  <Button
+                    variant="outline"
+                    onClick={handleCancelOrder}
+                    disabled={isCancelling}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    {isCancelling ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Cancelling...
+                      </>
+                    ) : (
+                      <>
+                        <X className="h-4 w-4 mr-2" />
+                        Cancel Order
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {order.shippingAddress && (
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Shipping Address</p>
-                <p className="text-gray-900 dark:text-gray-100">{order.shippingAddress}</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Shipping Address</p>
+                <div className="text-gray-900 dark:text-gray-100">
+                  {formatAddress(order.shippingAddress)}
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
 
+        {/* Order Items */}
         <Card>
           <CardHeader>
-            <CardTitle>Order Items</CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle>Order Items</CardTitle>
+              {canReorder && (
+                <Button
+                  variant="outline"
+                  onClick={handleReorder}
+                  disabled={isReordering}
+                >
+                  {isReordering ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Reorder
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -169,4 +318,3 @@ export default function OrderDetailPage() {
     </div>
   );
 }
-

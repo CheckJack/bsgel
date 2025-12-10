@@ -10,6 +10,8 @@ const updateUserSchema = z.object({
   email: z.string().email().optional(),
   password: z.string().min(6).optional(),
   role: z.enum(["USER", "ADMIN"]).optional(),
+  permissions: z.record(z.enum(["allow", "deny"])).optional(),
+  isActive: z.boolean().optional(),
   certificationId: z.string().nullable().optional(),
 })
 
@@ -62,6 +64,9 @@ export async function GET(
       email: user.email,
       name: user.name,
       role: user.role,
+      permissions: user.permissions,
+      isActive: user.isActive,
+      lastLoginAt: user.lastLoginAt,
       certification: user.certification,
       certificateUrl: user.certificateUrl,
       createdAt: user.createdAt,
@@ -130,6 +135,12 @@ export async function PATCH(
     if (updateData.role !== undefined) {
       dataToUpdate.role = updateData.role
     }
+    if (updateData.permissions !== undefined) {
+      dataToUpdate.permissions = updateData.permissions
+    }
+    if (updateData.isActive !== undefined) {
+      dataToUpdate.isActive = updateData.isActive
+    }
     if (updateData.certificationId !== undefined) {
       if (updateData.certificationId === null || updateData.certificationId === "") {
         dataToUpdate.certification = { disconnect: true }
@@ -189,6 +200,9 @@ export async function PATCH(
       email: user.email,
       name: user.name,
       role: user.role,
+      permissions: user.permissions,
+      isActive: user.isActive,
+      lastLoginAt: user.lastLoginAt,
       certification: user.certification ? {
         id: user.certification.id,
         name: user.certification.name,

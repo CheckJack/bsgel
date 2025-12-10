@@ -72,8 +72,8 @@ export default function TopCoatsPage() {
   const fetchTopCoatProducts = async () => {
     setIsLoading(true);
     try {
-      // Search for products with "top coat" in the name
-      const res = await fetch(`/api/products?search=top coat`);
+      // Fetch products assigned to top-coats showcasing section
+      const res = await fetch(`/api/products?showcasingSection=top-coats`);
       if (res.ok) {
         const data = await res.json();
         const allProducts = Array.isArray(data) ? data : data.products || [];

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Eye, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { toast } from "@/components/ui/toast";
+import { Search, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
 interface Attribute {
   id: string;
@@ -12,6 +13,8 @@ interface Attribute {
   values: string[];
   createdAt: string;
   updatedAt: string;
+  usageCount?: number;
+  valueCount?: number;
 }
 
 interface Pagination {
@@ -21,12 +24,18 @@ interface Pagination {
   totalPages: number;
 }
 
+type SortField = "category" | "valueCount" | "usageCount" | "createdAt";
+type SortDirection = "asc" | "desc";
+
 export default function AdminAttributesPage() {
   const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [sortField, setSortField] = useState<SortField>("category");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
     limit: 10,
@@ -34,9 +43,19 @@ export default function AdminAttributesPage() {
     totalPages: 0,
   });
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      setCurrentPage(1); // Reset to first page on search
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   useEffect(() => {
     fetchAttributes();
-  }, [currentPage, entriesPerPage, searchQuery]);
+  }, [currentPage, entriesPerPage, debouncedSearchQuery, sortField, sortDirection]);
 
   const fetchAttributes = async () => {
     try {
@@ -44,9 +63,11 @@ export default function AdminAttributesPage() {
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: entriesPerPage.toString(),
+        sortField: sortField,
+        sortDirection: sortDirection,
       });
-      if (searchQuery.trim()) {
-        params.append("search", searchQuery.trim());
+      if (debouncedSearchQuery.trim()) {
+        params.append("search", debouncedSearchQuery.trim());
       }
 
       const res = await fetch(`/api/attributes?${params.toString()}`);
@@ -61,18 +82,20 @@ export default function AdminAttributesPage() {
         setPagination(data.pagination || pagination);
       } else {
         console.error("Failed to fetch attributes:", data.error || "Unknown error");
+        toast("Failed to fetch attributes", "error");
         setAttributes([]);
       }
     } catch (error) {
       console.error("Failed to fetch attributes:", error);
+      toast("Failed to fetch attributes", "error");
       setAttributes([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this attribute?")) {
+  const handleDelete = async (id: string, category: string) => {
+    if (!confirm(`Are you sure you want to delete the attribute "${category}"? This action cannot be undone.`)) {
       return;
     }
 
@@ -82,21 +105,52 @@ export default function AdminAttributesPage() {
       });
 
       if (res.ok) {
+        toast(`Attribute "${category}" deleted successfully`, "success");
         fetchAttributes();
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to delete attribute");
+        toast(data.error || "Failed to delete attribute", "error");
       }
     } catch (error) {
       console.error("Failed to delete attribute:", error);
-      alert("Failed to delete attribute");
+      toast("Failed to delete attribute. Please try again.", "error");
     }
   };
 
-  // Handle search with debounce
+  // Handle search change
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
-    setCurrentPage(1); // Reset to first page on search
+  };
+
+  // Handle sort
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+    setCurrentPage(1);
+  };
+
+  // Get sort icon
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-4 w-4 ml-1 text-gray-400" />;
+    }
+    return sortDirection === "asc" 
+      ? <ArrowUp className="h-4 w-4 ml-1 text-blue-600" />
+      : <ArrowDown className="h-4 w-4 ml-1 text-blue-600" />;
+  };
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   if (isLoading && attributes.length === 0) {
@@ -149,7 +203,7 @@ export default function AdminAttributesPage() {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <input
                     type="text"
-                    placeholder="Search here..."
+                    placeholder="Search by category or value..."
                     value={searchQuery}
                     onChange={(e) => handleSearchChange(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-500 dark:placeholder:text-gray-400"
@@ -176,14 +230,47 @@ export default function AdminAttributesPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Category
+                  <th 
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                    onClick={() => handleSort("category")}
+                  >
+                    <div className="flex items-center">
+                      Category
+                      {getSortIcon("category")}
+                    </div>
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Value
+                    Values
+                  </th>
+                  <th 
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                    onClick={() => handleSort("valueCount")}
+                  >
+                    <div className="flex items-center">
+                      Value Count
+                      {getSortIcon("valueCount")}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                    onClick={() => handleSort("usageCount")}
+                  >
+                    <div className="flex items-center">
+                      Usage
+                      {getSortIcon("usageCount")}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                    onClick={() => handleSort("createdAt")}
+                  >
+                    <div className="flex items-center">
+                      Created
+                      {getSortIcon("createdAt")}
+                    </div>
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Action
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -191,64 +278,110 @@ export default function AdminAttributesPage() {
                 {!Array.isArray(attributes) || attributes.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={3}
-                      className="px-6 py-12 text-center text-gray-500 dark:text-gray-400"
+                      colSpan={6}
+                      className="px-6 py-16 text-center"
                     >
-                      No attributes found
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="text-gray-400 dark:text-gray-500 text-4xl">📦</div>
+                        <div className="text-gray-500 dark:text-gray-400 font-medium">
+                          {searchQuery ? "No attributes found matching your search" : "No attributes found"}
+                        </div>
+                        {!searchQuery && (
+                          <Link href="/admin/attributes/new">
+                            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                              <Plus className="h-4 w-4 mr-2" />
+                              Create your first attribute
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ) : (
-                  attributes.map((attribute) => (
-                    <tr
-                      key={attribute.id}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      {/* Category Column */}
-                      <td className="px-6 py-4">
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {attribute.category}
-                        </span>
-                      </td>
+                  attributes.map((attribute) => {
+                    const displayValues = attribute.values.slice(0, 3);
+                    const remainingCount = attribute.values.length - 3;
+                    return (
+                      <tr
+                        key={attribute.id}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        {/* Category Column */}
+                        <td className="px-6 py-4">
+                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">
+                            {attribute.category}
+                          </span>
+                        </td>
 
-                      {/* Value Column */}
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-gray-900 dark:text-gray-100">
-                          {attribute.values.join(", ")}
-                        </span>
-                      </td>
+                        {/* Values Column */}
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-1.5">
+                            {displayValues.map((value, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800"
+                              >
+                                {value}
+                              </span>
+                            ))}
+                            {remainingCount > 0 && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600">
+                                +{remainingCount} more
+                              </span>
+                            )}
+                            {attribute.values.length === 0 && (
+                              <span className="text-xs text-gray-400 dark:text-gray-500 italic">No values</span>
+                            )}
+                          </div>
+                        </td>
 
-                      {/* Action Column */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => {
-                              // View action - could open a modal or navigate to detail page
-                              alert(`Viewing attribute: ${attribute.category}`);
-                            }}
-                            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
-                            title="View"
-                          >
-                            <Eye className="h-5 w-5" />
-                          </button>
-                          <Link href={`/admin/attributes/${attribute.id}`}>
+                        {/* Value Count Column */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-900 dark:text-gray-100 font-medium">
+                            {attribute.valueCount || attribute.values.length}
+                          </span>
+                        </td>
+
+                        {/* Usage Count Column */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-900 dark:text-gray-100 font-medium">
+                            {attribute.usageCount || 0}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                            {attribute.usageCount === 1 ? "product" : "products"}
+                          </span>
+                        </td>
+
+                        {/* Created Date Column */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-900 dark:text-gray-100">
+                            {formatDate(attribute.createdAt)}
+                          </span>
+                        </td>
+
+                        {/* Actions Column */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Link href={`/admin/attributes/${attribute.id}`}>
+                              <button
+                                className="p-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+                                title="Edit"
+                              >
+                                <Pencil className="h-5 w-5" />
+                              </button>
+                            </Link>
                             <button
-                              className="p-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors"
-                              title="Edit"
+                              onClick={() => handleDelete(attribute.id, attribute.category)}
+                              className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                              title="Delete"
                             >
-                              <Pencil className="h-5 w-5" />
+                              <Trash2 className="h-5 w-5" />
                             </button>
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(attribute.id)}
-                            className="p-2 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/30 rounded-lg transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-5 w-5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -256,10 +389,10 @@ export default function AdminAttributesPage() {
 
           {/* Pagination */}
           {pagination.totalPages > 0 && (
-            <div className="px-6 py-4 border-t border-gray-200">
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="text-sm text-gray-600">
-                  Showing {entriesPerPage} entries
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Showing {((currentPage - 1) * entriesPerPage) + 1} to {Math.min(currentPage * entriesPerPage, pagination.total)} of {pagination.total} entries
                 </div>
                 <div className="flex items-center gap-2 mx-auto sm:mx-0">
                   <button
@@ -267,7 +400,7 @@ export default function AdminAttributesPage() {
                       setCurrentPage((prev) => Math.max(1, prev - 1))
                     }
                     disabled={currentPage === 1}
-                    className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-gray-700 dark:text-gray-300"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
@@ -285,21 +418,21 @@ export default function AdminAttributesPage() {
                     .map((page, idx, arr) => (
                       <div key={page} className="flex items-center gap-1">
                         {idx > 0 && arr[idx - 1] !== page - 1 && (
-                          <span className="px-2 text-gray-400">...</span>
+                          <span className="px-2 text-gray-400 dark:text-gray-500">...</span>
                         )}
                         <button
                           onClick={() => setCurrentPage(page)}
                           className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                             currentPage === page
                               ? "bg-blue-600 text-white"
-                              : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+                              : "border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                           }`}
                         >
                           {page}
                         </button>
                         {idx < arr.length - 1 &&
                           arr[idx + 1] !== page + 1 && (
-                            <span className="px-2 text-gray-400">...</span>
+                            <span className="px-2 text-gray-400 dark:text-gray-500">...</span>
                           )}
                       </div>
                     ))}
@@ -311,7 +444,7 @@ export default function AdminAttributesPage() {
                       )
                     }
                     disabled={currentPage === pagination.totalPages}
-                    className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-gray-700 dark:text-gray-300"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </button>

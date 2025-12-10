@@ -31,6 +31,7 @@ import {
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
+import { useLanguage } from "@/contexts/language-context";
 
 interface AdminSidebarProps {
   isMobileOpen?: boolean;
@@ -53,162 +54,170 @@ interface NavSection {
   items: NavItem[];
 }
 
-const navSections: NavSection[] = [
-  {
-    title: "MAIN HOME",
-    items: [
-      {
-        title: "Dashboard",
-        href: "/admin",
-        icon: LayoutDashboard,
-        badge: null,
-      },
-    ],
-  },
-  {
-    title: "ALL PAGES",
-    items: [
-      {
-        title: "Ecommerce",
-        icon: Store,
-        badge: null,
-        children: [
-          {
-            title: "Products",
-            href: "/admin/products",
-            icon: Package,
-            badge: null,
-          },
-          {
-            title: "Categories",
-            href: "/admin/categories",
-            icon: FolderTree,
-            badge: null,
-          },
-          {
-            title: "Attributes",
-            href: "/admin/attributes",
-            icon: Tags,
-            badge: null,
-          },
-          {
-            title: "Orders",
-            href: "/admin/orders",
-            icon: ShoppingCart,
-            badge: null,
-          },
-        ],
-      },
-      {
-        title: "Messages",
-        href: "/admin/messages",
-        icon: MessageCircle,
-        badge: null,
-      },
-      {
-        title: "Marketing",
-        icon: TrendingUp,
-        badge: null,
-        children: [
-          {
-            title: "Blog",
-            href: "/admin/blogs",
-            icon: BookOpen,
-            badge: null,
-          },
-          {
-            title: "Coupons",
-            href: "/admin/coupons",
-            icon: Ticket,
-            badge: null,
-          },
-          {
-            title: "Analytics",
-            href: "/admin/analytics",
-            icon: BarChart3,
-            badge: null,
-          },
-          {
-            title: "Social Media",
-            href: "/admin/social-media",
-            icon: Share2,
-            badge: null,
-          },
-          {
-            title: "Notifications",
-            href: "/admin/notifications",
-            icon: Bell,
-            badge: null,
-          },
-          {
-            title: "Mega Menu Cards",
-            href: "/admin/mega-menu-cards",
-            icon: Grid3x3,
-            badge: null,
-          },
-        ],
-      },
-      {
-        title: "Pages",
-        href: "/admin/pages",
-        icon: FileText,
-        badge: null,
-      },
-      {
-        title: "Gallery",
-        href: "/admin/gallery",
-        icon: Images,
-        badge: null,
-      },
-      {
-        title: "Backend Users",
-        href: "/admin/users",
-        icon: Users,
-        badge: null,
-      },
-      {
-        title: "Salons",
-        href: "/admin/salons",
-        icon: MapPin,
-        badge: null,
-      },
-      {
-        title: "Customers",
-        href: "/admin/customers",
-        icon: ShoppingCart,
-        badge: null,
-      },
-      {
-        title: "Roles",
-        href: "/admin/roles",
-        icon: Shield,
-        badge: null,
-      },
-      {
-        title: "Certifications",
-        href: "/admin/certifications",
-        icon: Award,
-        badge: null,
-      },
-    ],
-  },
-  {
-    title: "SETTINGS",
-    items: [
-      {
-        title: "View Shop",
-        href: "/",
-        icon: Home,
-        badge: null,
-        external: true,
-      },
-    ],
-  },
-];
-
 export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, onToggleCollapse }: AdminSidebarProps) {
   const pathname = usePathname();
+  const { t } = useLanguage();
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
+
+  const navSections: NavSection[] = [
+    {
+      title: t("sidebar.mainHome"),
+      items: [
+        {
+          title: t("sidebar.dashboard"),
+          href: "/admin",
+          icon: LayoutDashboard,
+          badge: null,
+        },
+      ],
+    },
+    {
+      title: t("sidebar.allPages"),
+      items: [
+        {
+          title: t("sidebar.ecommerce"),
+          icon: Store,
+          badge: null,
+          children: [
+            {
+              title: t("sidebar.products"),
+              href: "/admin/products",
+              icon: Package,
+              badge: null,
+            },
+            {
+              title: t("sidebar.categories"),
+              href: "/admin/categories",
+              icon: FolderTree,
+              badge: null,
+            },
+            {
+              title: t("sidebar.attributes"),
+              href: "/admin/attributes",
+              icon: Tags,
+              badge: null,
+            },
+            {
+              title: t("sidebar.orders"),
+              href: "/admin/orders",
+              icon: ShoppingCart,
+              badge: null,
+            },
+          ],
+        },
+        {
+          title: t("sidebar.messages"),
+          href: "/admin/messages",
+          icon: MessageCircle,
+          badge: null,
+        },
+        {
+          title: t("marketing.title"),
+          icon: TrendingUp,
+          badge: null,
+          children: [
+            {
+              title: t("sidebar.blogs"),
+              href: "/admin/blogs",
+              icon: BookOpen,
+              badge: null,
+            },
+            {
+              title: t("sidebar.coupons"),
+              href: "/admin/coupons",
+              icon: Ticket,
+              badge: null,
+            },
+            {
+              title: t("sidebar.analytics"),
+              href: "/admin/analytics",
+              icon: BarChart3,
+              badge: null,
+            },
+            {
+              title: t("sidebar.socialMedia"),
+              href: "/admin/social-media",
+              icon: Share2,
+              badge: null,
+            },
+            {
+              title: t("sidebar.notifications"),
+              href: "/admin/notifications",
+              icon: Bell,
+              badge: null,
+            },
+            {
+              title: t("sidebar.megaMenuCards"),
+              href: "/admin/mega-menu-cards",
+              icon: Grid3x3,
+              badge: null,
+            },
+          ],
+        },
+        {
+          title: t("sidebar.pages"),
+          href: "/admin/pages",
+          icon: FileText,
+          badge: null,
+        },
+        {
+          title: t("sidebar.users"),
+          icon: Users,
+          badge: null,
+          children: [
+            {
+              title: t("sidebar.users"),
+              href: "/admin/users",
+              icon: Users,
+              badge: null,
+            },
+            {
+              title: t("sidebar.customers"),
+              href: "/admin/customers",
+              icon: ShoppingCart,
+              badge: null,
+            },
+            {
+              title: t("sidebar.roles"),
+              href: "/admin/roles",
+              icon: Shield,
+              badge: null,
+            },
+            {
+              title: t("sidebar.certifications"),
+              href: "/admin/certifications",
+              icon: Award,
+              badge: null,
+            },
+            {
+              title: t("sidebar.salons"),
+              href: "/admin/salons",
+              icon: MapPin,
+              badge: null,
+            },
+            {
+              title: t("sidebar.gallery"),
+              href: "/admin/gallery",
+              icon: Images,
+              badge: null,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      title: t("settings.title"),
+      items: [
+        {
+          title: t("settings.viewShop"),
+          href: "/",
+          icon: Home,
+          badge: null,
+          external: true,
+        },
+      ],
+    },
+  ];
 
   const isItemActive = (item: NavItem): boolean => {
     if (item.href) {
@@ -421,7 +430,7 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100"
         >
           <LogOut className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-          <span>Sign Out</span>
+          <span>{t("sidebar.logout")}</span>
         </button>
       </div>
     </div>

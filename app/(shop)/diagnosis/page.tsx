@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ProductCard } from "@/components/product/product-card";
 
 interface Question {
   id: string;
@@ -20,20 +19,6 @@ interface Diagnosis {
   description: string;
   recommendations: string[];
   productCategories: string[];
-}
-
-interface Product {
-  id: string;
-  name: string;
-  description: string | null;
-  price: string;
-  image: string | null;
-  images?: string[];
-  featured: boolean;
-  category: {
-    id: string;
-    name: string;
-  } | null;
 }
 
 const questions: Question[] = [
@@ -203,13 +188,9 @@ export default function NailDiagnosisPage() {
   const [hasStarted, setHasStarted] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
-  const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
-  const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
-  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
 
   const currentQuestion = questions[currentStep];
   const isLastQuestion = currentStep === questions.length - 1;
-  const showResults = diagnosis !== null;
 
   const handleAnswer = (value: string) => {
     if (currentQuestion.type === "single") {
@@ -393,170 +374,21 @@ export default function NailDiagnosisPage() {
       productCategories,
     };
 
-    setDiagnosis(diagnosisResult);
-    fetchRecommendedProducts(diagnosisResult.productCategories);
-  };
-
-  const fetchRecommendedProducts = async (categories: string[]) => {
-    setIsLoadingProducts(true);
-    try {
-      // Fetch all products and filter by category names or keywords
-      const res = await fetch("/api/products");
-      if (res.ok) {
-        const allProducts: Product[] = await res.json();
-        
-        // Filter products based on category names or product name/description keywords
-        const keywords = [
-          ...categories,
-          "strength",
-          "strengthening",
-          "cuticle",
-          "oil",
-          "moisturiz",
-          "hydrat",
-          "treatment",
-          "growth",
-          "base",
-          "care",
-        ];
-
-        const filtered = allProducts.filter((product) => {
-          const nameLower = product.name.toLowerCase();
-          const descLower = (product.description || "").toLowerCase();
-          const categoryName = (product.category?.name || "").toLowerCase();
-
-          return keywords.some((keyword) =>
-            nameLower.includes(keyword) ||
-            descLower.includes(keyword) ||
-            categoryName.includes(keyword)
-          );
-        });
-
-        // If no specific matches, show featured products or all products
-        const recommended = filtered.length > 0 
-          ? filtered.slice(0, 6)
-          : allProducts.filter(p => p.featured).slice(0, 6);
-
-        setRecommendedProducts(recommended);
-      }
-    } catch (error) {
-      console.error("Failed to fetch products:", error);
-    } finally {
-      setIsLoadingProducts(false);
-    }
+    // Store diagnosis in sessionStorage and navigate to results page
+    sessionStorage.setItem("diagnosis_result", JSON.stringify(diagnosisResult));
+    router.push("/diagnosis/results");
   };
 
   const restartDiagnosis = () => {
     setHasStarted(false);
     setCurrentStep(0);
     setAnswers({});
-    setDiagnosis(null);
-    setRecommendedProducts([]);
   };
 
   const handleStart = () => {
     setHasStarted(true);
   };
 
-  if (showResults) {
-    return (
-      <div className="w-full">
-        {/* Two Container Layout - Full Width */}
-        <div className="w-full grid grid-cols-1 lg:grid-cols-2 min-h-screen">
-          {/* Left Container - Picture (50% width, full height, touches top) */}
-          <div className="w-full h-[500px] lg:h-screen lg:sticky lg:top-0 bg-gray-100 overflow-hidden">
-            <img
-              src="/DSC_8219-v3.webp"
-              alt="Nail care illustration"
-              className="w-full h-full object-cover"
-            />
-          </div>
-
-          {/* Right Container - Diagnosis (50% width) */}
-          <div className="w-full h-auto lg:min-h-screen p-8 lg:p-12 flex items-start bg-white overflow-y-auto">
-            <div className="w-full max-w-2xl mx-auto">
-              <div className="mb-8">
-                <h1 className="text-4xl font-bold mb-4">Your Nail Diagnosis</h1>
-                <p className="text-lg text-gray-600 mb-6">
-                  Based on your responses, here's what we found:
-                </p>
-              </div>
-
-              <Card className="mb-8">
-                <CardHeader>
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <CardTitle className="text-2xl">{diagnosis.condition}</CardTitle>
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap ${
-                        diagnosis.severity === "severe"
-                          ? "bg-red-100 text-red-800"
-                          : diagnosis.severity === "moderate"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-green-100 text-green-800"
-                      }`}
-                    >
-                      {diagnosis.severity.charAt(0).toUpperCase() + diagnosis.severity.slice(1)}
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-700 mb-6">{diagnosis.description}</p>
-
-                  <div className="mb-6">
-                    <h3 className="font-semibold text-lg mb-3">Recommendations:</h3>
-                    <ul className="list-disc list-inside space-y-2 text-gray-700">
-                      {diagnosis.recommendations.map((rec, index) => (
-                        <li key={index}>{rec}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="mb-8">
-                <h2 className="text-3xl font-bold mb-6">Recommended Products</h2>
-                {isLoadingProducts ? (
-                  <div className="text-center py-12">Loading recommended products...</div>
-                ) : recommendedProducts.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-gray-600 mb-4">
-                      No specific products found. Check out our full product range!
-                    </p>
-                    <Button onClick={() => router.push("/products")}>
-                      View All Products
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {recommendedProducts.map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        id={product.id}
-                        name={product.name}
-                        price={product.price}
-                        image={product.image}
-                        images={product.images}
-                        featured={product.featured}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-4 justify-center mt-8">
-                <Button onClick={restartDiagnosis} variant="outline">
-                  Take Diagnosis Again
-                </Button>
-                <Button onClick={() => router.push("/products")}>
-                  View All Products
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (!hasStarted) {
     return (

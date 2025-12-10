@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Camera, Save } from "lucide-react";
+import { toast } from "@/components/ui/toast";
+import { Camera, Save, Loader2 } from "lucide-react";
 
 export default function SettingsPage() {
   const { data: session, status, update } = useSession();
@@ -188,6 +189,7 @@ export default function SettingsPage() {
           image: data.image,
         });
         setMessage({ type: "success", text: "Settings updated successfully!" });
+        toast("Settings updated successfully!", "success");
         // Clear password fields
         setFormData((prev) => ({
           ...prev,
@@ -208,7 +210,11 @@ export default function SettingsPage() {
   };
 
   if (status === "loading" || isLoading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    );
   }
 
   if (!session) {
@@ -479,7 +485,10 @@ export default function SettingsPage() {
           <div className="flex justify-end">
             <Button type="submit" disabled={isSaving} className="min-w-[120px]">
               {isSaving ? (
-                "Saving..."
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />

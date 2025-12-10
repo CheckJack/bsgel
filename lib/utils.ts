@@ -79,3 +79,78 @@ export function compressImage(
 // Re-export toast function from toast component
 export { toast } from "@/components/ui/toast"
 
+/**
+ * Standardized error handling for API calls
+ * Provides user-friendly error messages with context
+ */
+export function handleApiError(error: any, context: string): void {
+  // Dynamic import to avoid circular dependencies
+  const toastFn = require("@/components/ui/toast").toast;
+  
+  // Network errors
+  if (error instanceof TypeError && error.message === 'Failed to fetch') {
+    toastFn(`Network error: Unable to ${context}. Please check your internet connection and try again.`, "error");
+    return;
+  }
+  
+  // HTTP status code errors (from fetch response)
+  if (error?.response) {
+    const status = error.response.status;
+    const errorData = error.error || {};
+    
+    switch (status) {
+      case 401:
+        toastFn("Your session has expired. Please log in again.", "error");
+        return;
+      case 403:
+        toastFn("You don't have permission to perform this action.", "error");
+        return;
+      case 404:
+        toastFn(`The requested resource was not found. Unable to ${context}.`, "error");
+        return;
+      case 422:
+        const message = errorData.error || `Validation error: Unable to ${context}.`;
+        toastFn(message, "error");
+        return;
+      case 429:
+        toastFn("Too many requests. Please wait a moment and try again.", "warning");
+        return;
+      case 500:
+      case 502:
+      case 503:
+        toastFn(`Server error: Unable to ${context}. Please try again later.`, "error");
+        return;
+      default:
+        const errorMsg = errorData.error || `Failed to ${context}.`;
+        toastFn(errorMsg, "error");
+        return;
+    }
+  }
+  
+  // Error with message
+  if (error?.message) {
+    toastFn(`Failed to ${context}: ${error.message}`, "error");
+    return;
+  }
+  
+  // Generic fallback
+  toastFn(`Failed to ${context}. Please try again.`, "error");
+}
+
+/**
+ * Shows a loading toast that can be manually closed
+ * Returns the toast ID for later closing (currently not used but available for future)
+ */
+export function showLoadingToast(message: string = "Processing..."): string {
+  const toastFn = require("@/components/ui/toast").toast;
+  return toastFn(message, "info", 0); // 0 = don't auto-close
+}
+
+/**
+ * Closes a loading toast by ID (if needed in future)
+ * Currently toasts auto-close, but this is for future extensibility
+ */
+export function closeLoadingToast(toastId: string): void {
+  // Future implementation if needed
+}
+

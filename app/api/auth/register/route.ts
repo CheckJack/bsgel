@@ -9,6 +9,7 @@ const registerSchema = z.object({
   name: z.string().min(1, "Name is required"),
   userType: z.enum(["customer", "professional"]).optional(),
   role: z.enum(["USER", "ADMIN"]).optional(),
+  permissions: z.record(z.enum(["allow", "deny"])).optional(),
   // Base64 encoding increases size by ~33%, so 15MB allows for ~10MB original file
   // Allow null or undefined for certificate (when customer type or no certificate uploaded)
   certificate: z.string().max(15 * 1024 * 1024, "Certificate file is too large (max 10MB original file)").nullable().optional(),
@@ -18,7 +19,7 @@ const registerSchema = z.object({
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { email, password, name, userType, role, certificate, certificationId } = registerSchema.parse(body)
+    const { email, password, name, userType, role, permissions, certificate, certificationId } = registerSchema.parse(body)
 
     // Normalize email for checking
     const normalizedEmail = email.trim().toLowerCase()
@@ -76,6 +77,8 @@ export async function POST(req: Request) {
       password: hashedPassword,
       name: name.trim(),
       role: role || "USER", // Set role to ADMIN if provided, otherwise default to USER
+      permissions: permissions || null,
+      isActive: true,
       certificateUrl: certificate || null,
     }
 

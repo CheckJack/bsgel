@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "@/components/ui/toast";
 import { Plus, X } from "lucide-react";
 
 export default function EditAttributePage() {
@@ -33,11 +34,15 @@ export default function EditAttributePage() {
           values: data.values.length > 0 ? data.values : [""],
         });
       } else {
-        setError("Failed to load attribute");
+        const errorMsg = "Failed to load attribute";
+        setError(errorMsg);
+        toast(errorMsg, "error");
       }
     } catch (error) {
       console.error("Failed to fetch attribute:", error);
-      setError("Failed to load attribute");
+      const errorMsg = "Failed to load attribute";
+      setError(errorMsg);
+      toast(errorMsg, "error");
     } finally {
       setIsLoading(false);
     }
@@ -99,15 +104,20 @@ export default function EditAttributePage() {
       });
 
       if (res.ok) {
+        toast(`Attribute "${formData.category.trim()}" updated successfully`, "success");
         router.push("/admin/attributes");
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to update attribute");
+        const errorMsg = data.error || "Failed to update attribute";
+        setError(errorMsg);
+        toast(errorMsg, "error");
         setIsSaving(false);
       }
     } catch (error) {
       console.error("Failed to update attribute:", error);
-      setError("Failed to update attribute. Please try again.");
+      const errorMsg = "Failed to update attribute. Please try again.";
+      setError(errorMsg);
+      toast(errorMsg, "error");
       setIsSaving(false);
     }
   };

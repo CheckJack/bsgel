@@ -42,17 +42,25 @@ function ToastComponent({ toast, onClose }: ToastProps) {
     info: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200",
   };
 
+  const role = toast.type === "error" ? "alert" : "status";
+  const ariaLive = toast.type === "error" ? "assertive" : "polite";
+
   return (
     <div
+      role={role}
+      aria-live={ariaLive}
+      aria-atomic="true"
       className={`flex items-start gap-3 p-4 rounded-lg border shadow-lg min-w-[300px] max-w-[500px] ${styles[toast.type]}`}
     >
-      <div className="flex-shrink-0 mt-0.5">{icons[toast.type]}</div>
+      <div className="flex-shrink-0 mt-0.5" aria-hidden="true">{icons[toast.type]}</div>
       <div className="flex-1 text-sm font-medium">{toast.message}</div>
       <button
         onClick={() => onClose(toast.id)}
         className="flex-shrink-0 text-current opacity-70 hover:opacity-100 transition-opacity"
+        aria-label="Close notification"
+        type="button"
       >
-        <X className="h-4 w-4" />
+        <X className="h-4 w-4" aria-hidden="true" />
       </button>
     </div>
   );

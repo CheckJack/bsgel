@@ -138,7 +138,7 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
       {/* Search Drawer */}
       <div className="fixed top-0 left-0 right-0 z-50">
         <div
-          className={`bg-white shadow-2xl transform transition-all duration-[400ms] ${
+          className={`bg-black shadow-2xl transform transition-all duration-[400ms] ${
             isOpen && isVisible
               ? "ease-out translate-y-0 opacity-100"
               : "ease-in -translate-y-full opacity-0"
@@ -147,13 +147,13 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
           <div className="container mx-auto px-4 py-6">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-brand-black m-0">Search Products</h2>
+              <h2 className="text-2xl font-bold text-white m-0">Search Products</h2>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 hover:bg-gray-800 rounded-full transition-colors"
                 aria-label="Close search"
               >
-                <X className="h-6 w-6" />
+                <X className="h-6 w-6 text-white" />
               </button>
             </div>
 
@@ -166,7 +166,7 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                 placeholder="Search for products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-3 text-lg"
+                className="pl-10 pr-4 py-3 text-lg bg-white text-brand-black border-gray-300 focus:border-gray-400"
               />
             </div>
 
@@ -174,16 +174,16 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
             <div className="max-h-[60vh] overflow-y-auto">
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                  <span className="ml-2 text-gray-600">Searching...</span>
+                  <Loader2 className="h-6 w-6 animate-spin text-white" />
+                  <span className="ml-2 text-white">Searching...</span>
                 </div>
               ) : searchQuery.trim() === "" ? (
-                <div className="text-center py-12 text-gray-500">
-                  <Search className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <div className="text-center py-12 text-white">
+                  <Search className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                   <p className="text-lg">Start typing to search for products</p>
                 </div>
               ) : products.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
+                <div className="text-center py-12 text-white">
                   <p className="text-lg mb-2">No products found</p>
                   <p className="text-sm">Try a different search term</p>
                 </div>
@@ -193,7 +193,7 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                     {products.map((product, index) => (
                       <div
                         key={product.id}
-                        className="flex gap-4 p-4 border rounded-lg hover:shadow-md transition-all cursor-pointer"
+                        className="flex gap-4 p-4 border border-gray-700 rounded-lg hover:bg-gray-900 transition-all cursor-pointer"
                         onClick={() => handleProductClick(product.id)}
                         style={{
                           animation: isVisible
@@ -202,7 +202,7 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                         }}
                       >
                         {product.image ? (
-                          <div className="relative w-24 h-24 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
+                          <div className="relative w-24 h-24 flex-shrink-0 bg-gray-800 rounded overflow-hidden">
                             <Image
                               src={product.image}
                               alt={product.name}
@@ -211,26 +211,26 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                             />
                           </div>
                         ) : (
-                          <div className="w-24 h-24 bg-gray-200 rounded flex-shrink-0 flex items-center justify-center">
+                          <div className="w-24 h-24 bg-gray-800 rounded flex-shrink-0 flex items-center justify-center">
                             <span className="text-gray-400 text-xs">No Image</span>
                           </div>
                         )}
 
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-base hover:underline truncate mb-1">
+                          <h3 className="font-semibold text-base text-white hover:underline truncate mb-1">
                             {product.name}
                           </h3>
                           {product.category && (
-                            <p className="text-sm text-gray-500 mb-2">
+                            <p className="text-sm text-gray-400 mb-2">
                               {product.category.name}
                             </p>
                           )}
                           {product.description && (
-                            <p className="text-sm text-gray-600 line-clamp-2 mb-2">
+                            <p className="text-sm text-gray-300 line-clamp-2 mb-2">
                               {product.description}
                             </p>
                           )}
-                          <p className="text-lg font-bold text-brand-black">
+                          <p className="text-lg font-bold text-white">
                             {formatPrice(product.price)}
                           </p>
                         </div>
@@ -238,10 +238,10 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                     ))}
                   </div>
                   {products.length > 0 && (
-                    <div className="mt-6 pt-6 border-t">
+                    <div className="mt-6 pt-6 border-t border-gray-700">
                       <Button
                         variant="outline"
-                        className="w-full"
+                        className="w-full border-gray-700 text-white hover:bg-gray-800"
                         onClick={handleViewAllResults}
                       >
                         View All Results ({products.length})

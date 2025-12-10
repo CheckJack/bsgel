@@ -13,9 +13,99 @@ export async function GET(req: Request) {
     }
 
     const isAdmin = session.user.role === "ADMIN";
+    const { searchParams } = new URL(req.url);
+    
+    // Pagination
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "25");
+    
+    // Filtering
+    const filter = searchParams.get("filter") || "all"; // all, unread, replied, not_replied
+    const search = searchParams.get("search") || "";
+    
+    // Sorting
+    const sortField = searchParams.get("sortField") || "createdAt";
+    const sortDirection = searchParams.get("sortDirection") || "desc";
 
+    // Build base where clause
+    const baseWhere: any = isAdmin ? {} : { userId: session.user.id };
+
+    // Apply filters
+    if (filter === "unread") {
+      baseWhere.readByAdmin = false;
+    } else if (filter === "replied") {
+      baseWhere.adminResponse = { not: null };
+    } else if (filter === "not_replied") {
+      baseWhere.adminResponse = null;
+    }
+
+    // Apply search
+    let where = baseWhere;
+    if (search.trim()) {
+      const searchTerm = search.trim();
+      
+      // First, try to find matching users if search looks like email or name
+      let matchingUserIds: string[] = [];
+      try {
+        const matchingUsers = await db.user.findMany({
+          where: {
+            OR: [
+              { email: { contains: searchTerm, mode: "insensitive" as const } },
+              { name: { contains: searchTerm, mode: "insensitive" as const } },
+            ],
+          },
+          select: { id: true },
+        });
+        matchingUserIds = matchingUsers.map((u) => u.id);
+      } catch (error) {
+        console.error("Error searching users:", error);
+      }
+
+      // Build search conditions
+      const searchConditions: any[] = [
+        { message: { contains: searchTerm, mode: "insensitive" as const } },
+        { adminResponse: { contains: searchTerm, mode: "insensitive" as const } },
+      ];
+
+      // If we found matching users, add user ID search
+      if (matchingUserIds.length > 0) {
+        searchConditions.push({ userId: { in: matchingUserIds } });
+      }
+
+      // Combine base where with search OR
+      const hasBaseConditions = Object.keys(baseWhere).length > 0;
+      if (hasBaseConditions) {
+        where = {
+          AND: [
+            baseWhere,
+            {
+              OR: searchConditions,
+            },
+          ],
+        };
+      } else {
+        where = {
+          OR: searchConditions,
+        };
+      }
+    }
+
+    // Get total count for pagination
+    const total = await db.chatMessage.count({ where });
+
+    // Build orderBy
+    const orderBy: any = {};
+    if (sortField === "createdAt" || sortField === "readByAdmin" || sortField === "readAt") {
+      orderBy[sortField] = sortDirection;
+    } else if (sortField === "user") {
+      orderBy.user = { name: sortDirection };
+    } else {
+      orderBy.createdAt = "desc";
+    }
+
+    // Fetch messages
     const messages = await db.chatMessage.findMany({
-      where: isAdmin ? {} : { userId: session.user.id },
+      where,
       include: {
         user: {
           select: {
@@ -25,12 +115,20 @@ export async function GET(req: Request) {
           },
         },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy,
+      skip: (page - 1) * limit,
+      take: limit,
     });
 
-    return NextResponse.json(messages);
+    return NextResponse.json({
+      messages,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
     console.error("Failed to fetch messages:", error);
     console.error("Error details:", {

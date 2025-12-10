@@ -117,14 +117,47 @@ export async function GET(
       relatedProducts.push(...featuredProducts)
     }
 
-    // Limit to 4 products max
-    const finalRelatedProducts = relatedProducts.slice(0, 4)
+    // Limit to 4 products max and serialize Decimal fields
+    const finalRelatedProducts = relatedProducts.slice(0, 4).map((product: any) => {
+      let priceString = '0';
+      if (product.price !== null && product.price !== undefined) {
+        if (typeof product.price === 'object' && 'toString' in product.price) {
+          priceString = product.price.toString();
+        } else {
+          priceString = String(product.price);
+        }
+      }
+      
+      let salePriceString = null;
+      if (product.salePrice !== null && product.salePrice !== undefined) {
+        if (typeof product.salePrice === 'object' && 'toString' in product.salePrice) {
+          salePriceString = product.salePrice.toString();
+        } else {
+          salePriceString = String(product.salePrice);
+        }
+      }
+      
+      return {
+        ...product,
+        price: priceString,
+        salePrice: salePriceString,
+      };
+    })
 
     return NextResponse.json({ products: finalRelatedProducts })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to fetch related products:", error)
+    console.error("Error details:", {
+      message: error?.message,
+      code: error?.code,
+      stack: error?.stack,
+      params: params.id,
+    })
     return NextResponse.json(
-      { error: "Failed to fetch related products" },
+      { 
+        error: "Failed to fetch related products",
+        details: error?.message || "Unknown error"
+      },
       { status: 500 }
     )
   }

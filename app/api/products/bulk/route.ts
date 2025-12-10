@@ -66,8 +66,31 @@ export async function PATCH(req: Request) {
       // Or we can calculate it here if we have the original price
     }
 
+    // Handle subcategoryIds (if provided)
+    let needsSubcategoryUpdate = false
+    if (updates.subcategoryIds !== undefined && Array.isArray(updates.subcategoryIds)) {
+      needsSubcategoryUpdate = true
+      
+      // Validate that all subcategory IDs exist and are actually subcategories
+      if (updates.subcategoryIds.length > 0) {
+        const subcategories = await db.category.findMany({
+          where: {
+            id: { in: updates.subcategoryIds },
+            parentId: { not: null }, // Ensure they are subcategories
+          },
+        })
+        
+        if (subcategories.length !== updates.subcategoryIds.length) {
+          return NextResponse.json(
+            { error: "One or more subcategories not found or invalid" },
+            { status: 400 }
+          )
+        }
+      }
+    }
+
     // If no valid updates, return error
-    if (Object.keys(updateData).length === 0) {
+    if (Object.keys(updateData).length === 0 && !needsSubcategoryUpdate) {
       return NextResponse.json(
         { error: "No valid updates provided" },
         { status: 400 }
@@ -75,16 +98,55 @@ export async function PATCH(req: Request) {
     }
 
     // Perform bulk update
-    // Note: Prisma's updateMany doesn't support relations (category connect/disconnect)
-    // So we need to update each product individually if category is being updated
-    if (updateData.category) {
-      // Update each product individually to handle category relation
-      const updatePromises = productIds.map((id: string) =>
-        db.product.update({
-          where: { id },
-          data: updateData,
-        })
-      )
+    // Note: Prisma's updateMany doesn't support relations (category connect/disconnect, subcategories)
+    // So we need to update each product individually if category or subcategories are being updated
+    if (updateData.category || needsSubcategoryUpdate) {
+      // Update each product individually to handle category and subcategory relations
+      const updatePromises = productIds.map(async (id: string) => {
+        // Prepare product update data
+        const productUpdate: any = {}
+        
+        // Copy non-relation fields
+        if (updateData.featured !== undefined) productUpdate.featured = updateData.featured
+        if (updateData.price !== undefined) productUpdate.price = updateData.price
+        if (updateData.discountPercentage !== undefined) productUpdate.discountPercentage = updateData.discountPercentage
+        
+        // Update product with non-relation fields first
+        if (Object.keys(productUpdate).length > 0) {
+          await db.product.update({
+            where: { id },
+            data: productUpdate,
+          })
+        }
+
+        // Handle category relation
+        if (updateData.category) {
+          await db.product.update({
+            where: { id },
+            data: { category: updateData.category },
+          })
+        }
+
+        // Handle subcategories
+        if (needsSubcategoryUpdate) {
+          // Delete all existing subcategories for this product
+          await db.productSubcategory.deleteMany({
+            where: { productId: id },
+          })
+
+          // Create new subcategory associations
+          if (updates.subcategoryIds && updates.subcategoryIds.length > 0) {
+            await db.productSubcategory.createMany({
+              data: updates.subcategoryIds.map((subcategoryId: string) => ({
+                productId: id,
+                categoryId: subcategoryId,
+              })),
+              skipDuplicates: true,
+            })
+          }
+        }
+      })
+      
       await Promise.all(updatePromises)
       
       return NextResponse.json({

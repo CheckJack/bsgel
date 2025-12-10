@@ -32,10 +32,13 @@ export default function DashboardPage() {
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch("/api/orders");
+      const res = await fetch("/api/orders?limit=10");
       if (res.ok) {
         const data = await res.json();
-        setOrders(data);
+        setOrders(data.orders || data);
+      } else {
+        const error = await res.json();
+        console.error("Failed to fetch orders:", error);
       }
     } catch (error) {
       console.error("Failed to fetch orders:", error);

@@ -12,6 +12,8 @@ import { X, Upload } from "lucide-react";
 interface Category {
   id: string;
   name: string;
+  parentId?: string | null;
+  subcategories?: Category[];
 }
 
 interface ImagePreview {
@@ -29,7 +31,22 @@ export default function NewProductPage() {
     description: "",
     price: "",
     categoryId: "",
+    subcategoryIds: [] as string[],
+    showcasingSections: [] as string[],
   });
+
+  // Available showcasing sections
+  const showcasingSections = [
+    { value: "treatment-gels", label: "Treatment Gels" },
+    { value: "color-gels", label: "Color Gels" },
+    { value: "top-coats", label: "Top Coats" },
+    { value: "hand-care", label: "Hand Care" },
+    { value: "foot-care", label: "Foot Care" },
+    { value: "reds", label: "Reds" },
+    { value: "pinks", label: "Pinks" },
+    { value: "nudes", label: "Nudes" },
+    { value: "oranges", label: "Oranges" },
+  ];
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
@@ -44,11 +61,15 @@ export default function NewProductPage() {
 
   const fetchCategories = async () => {
     try {
-      const res = await fetch("/api/categories");
+      // Fetch all categories (no pagination limit)
+      const res = await fetch("/api/categories?limit=1000");
       if (res.ok) {
         const data = await res.json();
         // API returns { categories: [], pagination: {} }
-        setCategories(data.categories || data || []);
+        // The API already returns all categories (both main and subcategories) in a flat list
+        // We just need to use them directly
+        const allCategories = data.categories || data || [];
+        setCategories(allCategories);
       }
     } catch (error) {
       console.error("Failed to fetch categories:", error);
@@ -174,8 +195,10 @@ export default function NewProductPage() {
         image: imageUrls[0] || null,
         images: imageUrls.slice(1),
         categoryId: formData.categoryId || null,
+        subcategoryIds: formData.subcategoryIds || [],
         featured: false,
         attributes,
+        showcasingSections: formData.showcasingSections || [],
       };
 
       const res = await fetch("/api/products", {
@@ -271,17 +294,72 @@ export default function NewProductPage() {
                   className="flex h-10 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={formData.categoryId}
                   onChange={(e) =>
-                    setFormData({ ...formData, categoryId: e.target.value })
+                    setFormData({ ...formData, categoryId: e.target.value, subcategoryIds: [] })
                   }
                   required
                 >
                   <option value="">Choose category</option>
-                  {categories.map((category) => (
+                  {categories.filter((cat) => !cat.parentId).map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Subcategories */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Subcategories (Optional)
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Select one or more subcategories for this product
+                </p>
+                <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-3 bg-white dark:bg-gray-800">
+                  {categories.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">No categories available</p>
+                  ) : (
+                    (() => {
+                      // Filter to only show actual subcategories (categories with parentId)
+                      const subcategories = categories.filter((cat) => cat.parentId);
+                      return subcategories.length === 0 ? (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">No subcategories available. Create subcategories in the Categories section first.</p>
+                      ) : (
+                        subcategories.map((category) => (
+                          <label
+                            key={category.id}
+                            className="flex items-center gap-2 py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={formData.subcategoryIds.includes(category.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setFormData({
+                                    ...formData,
+                                    subcategoryIds: [...formData.subcategoryIds, category.id],
+                                  });
+                                } else {
+                                  setFormData({
+                                    ...formData,
+                                    subcategoryIds: formData.subcategoryIds.filter((id) => id !== category.id),
+                                  });
+                                }
+                              }}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                            />
+                            <span className="text-sm text-gray-900 dark:text-gray-100">{category.name}</span>
+                          </label>
+                        ))
+                      );
+                    })()
+                  )}
+                </div>
+                {formData.subcategoryIds.length > 0 && (
+                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    {formData.subcategoryIds.length} subcategor{formData.subcategoryIds.length === 1 ? "y" : "ies"} selected
+                  </p>
+                )}
               </div>
 
               {/* Description */}
@@ -332,6 +410,49 @@ export default function NewProductPage() {
                   }
                   required
                 />
+              </div>
+
+              {/* Showcasing Sections */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Showcasing Sections
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Select which showcasing pages this product should appear on
+                </p>
+                <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-3 bg-white dark:bg-gray-800">
+                  {showcasingSections.map((section) => (
+                    <label
+                      key={section.value}
+                      className="flex items-center gap-2 py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.showcasingSections.includes(section.value)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData({
+                              ...formData,
+                              showcasingSections: [...formData.showcasingSections, section.value],
+                            });
+                          } else {
+                            setFormData({
+                              ...formData,
+                              showcasingSections: formData.showcasingSections.filter((id) => id !== section.value),
+                            });
+                          }
+                        }}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                      />
+                      <span className="text-sm text-gray-900 dark:text-gray-100">{section.label}</span>
+                    </label>
+                  ))}
+                </div>
+                {formData.showcasingSections.length > 0 && (
+                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    {formData.showcasingSections.length} section{formData.showcasingSections.length === 1 ? "" : "s"} selected
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>

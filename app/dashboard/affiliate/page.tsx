@@ -5,7 +5,8 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, DollarSign, Link as LinkIcon, Copy, Check } from "lucide-react";
+import { toast } from "@/components/ui/toast";
+import { Users, DollarSign, Link as LinkIcon, Copy, Check, Loader2 } from "lucide-react";
 
 interface AffiliateStats {
   totalReferrals: number;
@@ -14,6 +15,7 @@ interface AffiliateStats {
   pendingEarnings: number;
   affiliateCode: string;
   affiliateLink: string;
+  commissionRate: number;
 }
 
 export default function AffiliatePage() {
@@ -42,24 +44,21 @@ export default function AffiliatePage() {
 
   const fetchAffiliateData = async () => {
     try {
-      // TODO: Replace with actual API endpoint when available
-      // const res = await fetch("/api/affiliate");
-      // if (res.ok) {
-      //   const data = await res.json();
-      //   setStats(data);
-      // }
-      
-      // Mock data for now
-      setStats({
-        totalReferrals: 12,
-        activeReferrals: 8,
-        totalEarnings: 450.00,
-        pendingEarnings: 125.50,
-        affiliateCode: session?.user?.email?.split("@")[0].toUpperCase() + "2024" || "USER2024",
-        affiliateLink: `${window.location.origin}/?ref=${session?.user?.email?.split("@")[0].toUpperCase() + "2024" || "USER2024"}`,
-      });
+      const res = await fetch("/api/affiliate");
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data);
+      } else {
+        const error = await res.json();
+        if (res.status === 403) {
+          router.push("/dashboard");
+          return;
+        }
+        toast(error.error || "Failed to load affiliate data", "error");
+      }
     } catch (error) {
       console.error("Failed to fetch affiliate data:", error);
+      toast("Failed to load affiliate data. Please try again.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -72,7 +71,11 @@ export default function AffiliatePage() {
   };
 
   if (status === "loading" || isLoading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    );
   }
 
   if (!session || !stats) {
@@ -156,7 +159,7 @@ export default function AffiliatePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">15%</div>
+            <div className="text-3xl font-bold">{stats.commissionRate}%</div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               Per successful referral
             </p>
@@ -233,7 +236,7 @@ export default function AffiliatePage() {
             <div>
               <h3 className="font-semibold mb-1">You Earn Commission</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                You earn 15% commission on all purchases made by your referrals. Earnings are paid monthly.
+                You earn {stats.commissionRate}% commission on all purchases made by your referrals. Earnings are paid monthly.
               </p>
             </div>
           </div>

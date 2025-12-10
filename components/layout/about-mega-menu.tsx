@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 interface AboutMegaMenuProps {
   isOpen: boolean;
   onClose: () => void;
+  onMouseEnter?: () => void;
 }
 
 interface MegaMenuCard {
@@ -29,23 +30,46 @@ interface AboutPage {
   children?: AboutPageChild[];
 }
 
-export function AboutMegaMenu({ isOpen, onClose }: AboutMegaMenuProps) {
+export function AboutMegaMenu({ isOpen, onClose, onMouseEnter }: AboutMegaMenuProps) {
   const [cards, setCards] = useState<MegaMenuCard[]>([]);
   const [isLoadingCards, setIsLoadingCards] = useState(true);
+  const [hasFetched, setHasFetched] = useState(false);
 
+  // Fetch data on mount to have it ready when menu opens
   useEffect(() => {
-    if (isOpen) {
+    if (!hasFetched) {
       fetchCards();
     }
-  }, [isOpen]);
+  }, [hasFetched]);
+
+  // Prefetch images once cards are loaded
+  useEffect(() => {
+    if (cards.length > 0) {
+      cards.forEach((card) => {
+        if (card.isActive && card.imageUrl) {
+          // Check if link already exists to avoid duplicates
+          const existingLink = document.querySelector(`link[rel="prefetch"][href="${card.imageUrl}"]`);
+          if (!existingLink) {
+            const link = document.createElement('link');
+            link.rel = 'prefetch';
+            link.as = 'image';
+            link.href = card.imageUrl;
+            document.head.appendChild(link);
+          }
+        }
+      });
+    }
+  }, [cards]);
 
   const fetchCards = async () => {
+    if (hasFetched) return;
     try {
       setIsLoadingCards(true);
       const res = await fetch("/api/mega-menu-cards?menuType=ABOUT");
       if (res.ok) {
         const data = await res.json();
         setCards(data.cards || []);
+        setHasFetched(true);
       }
     } catch (error) {
       console.error("Failed to fetch mega menu cards:", error);
@@ -92,6 +116,7 @@ export function AboutMegaMenu({ isOpen, onClose }: AboutMegaMenuProps) {
     <div
       data-mega-menu
       className="absolute top-full left-0 w-full bg-black/80 backdrop-blur-md z-50"
+      onMouseEnter={onMouseEnter}
       onMouseLeave={onClose}
     >
       <div className="container mx-auto px-4 py-10">
@@ -147,7 +172,8 @@ export function AboutMegaMenu({ isOpen, onClose }: AboutMegaMenuProps) {
                         fill
                         className="object-cover"
                         sizes="(max-width: 768px) 50vw, 25vw"
-                        unoptimized
+                        priority
+                        loading="eager"
                       />
                     </div>
                     <div className="absolute inset-0 flex items-end pb-4 px-4">
@@ -173,7 +199,8 @@ export function AboutMegaMenu({ isOpen, onClose }: AboutMegaMenuProps) {
                       fill
                       className="object-cover"
                       sizes="(max-width: 768px) 50vw, 25vw"
-                      unoptimized
+                      priority
+                      loading="eager"
                     />
                   </div>
                   <div className="absolute inset-0 flex items-end pb-4 px-4">
@@ -205,7 +232,7 @@ export function AboutMegaMenu({ isOpen, onClose }: AboutMegaMenuProps) {
                         fill
                         className="object-cover"
                         sizes="(max-width: 768px) 50vw, 25vw"
-                        unoptimized
+                        loading="eager"
                       />
                     </div>
                     <div className="absolute inset-0 flex items-end pb-4 px-4">
@@ -231,7 +258,7 @@ export function AboutMegaMenu({ isOpen, onClose }: AboutMegaMenuProps) {
                       fill
                       className="object-cover"
                       sizes="(max-width: 768px) 50vw, 25vw"
-                      unoptimized
+                      loading="eager"
                     />
                   </div>
                   <div className="absolute inset-0 flex items-end pb-4 px-4">

@@ -64,6 +64,33 @@ export async function POST(req: Request) {
       )
     }
 
+    // Check user-specific usage limit
+    if (coupon.userUsageLimit) {
+      // Count how many times this user has used this coupon
+      // We check notifications that have this coupon code in metadata for this user
+      // Since Prisma JSON queries are limited, we fetch all ORDER notifications and filter
+      const userNotifications = await db.notification.findMany({
+        where: {
+          type: "ORDER",
+        },
+      })
+
+      // Filter notifications that have this coupon code for this user
+      const userCouponCount = userNotifications.filter(
+        (notification) => {
+          const metadata = notification.metadata as any
+          return metadata?.userId === session.user.id && metadata?.couponCode === coupon.code
+        }
+      ).length
+
+      if (userCouponCount >= coupon.userUsageLimit) {
+        return NextResponse.json(
+          { error: `You have reached the maximum usage limit (${coupon.userUsageLimit}) for this coupon` },
+          { status: 400 }
+        )
+      }
+    }
+
     // Check product and category restrictions if cart items are provided
     if (cartItems && Array.isArray(cartItems) && cartItems.length > 0) {
       // Check if any products are included (if so, only those products are allowed)

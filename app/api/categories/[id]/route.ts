@@ -30,7 +30,7 @@ export async function PATCH(
 ) {
   try {
     const body = await req.json()
-    const { name, slug, description, image, icon } = body
+    const { name, slug, description, image, icon, parentId } = body
 
     // Validate required fields
     if (name !== undefined && !name) {
@@ -63,6 +63,57 @@ export async function PATCH(
       }
     }
 
+    // Validate parentId if provided
+    if (parentId !== undefined) {
+      if (parentId === null || parentId === "") {
+        // Setting to null is allowed (removing parent)
+        // But we need to check if this category has subcategories
+        const currentCategory = await db.category.findUnique({
+          where: { id: params.id },
+          include: {
+            _count: {
+              select: { subcategories: true },
+            },
+          },
+        })
+        
+        if (currentCategory && currentCategory._count.subcategories > 0) {
+          return NextResponse.json(
+            { error: "Cannot remove parent category. This category has subcategories. Please remove or reassign the subcategories first." },
+            { status: 400 }
+          )
+        }
+      } else {
+        // Verify parent category exists and is not a subcategory itself
+        const parentCategory = await db.category.findUnique({
+          where: { id: parentId },
+        })
+        
+        if (!parentCategory) {
+          return NextResponse.json(
+            { error: "Parent category not found" },
+            { status: 404 }
+          )
+        }
+        
+        // Prevent nested subcategories (subcategories can't have subcategories)
+        if ((parentCategory as any).parentId) {
+          return NextResponse.json(
+            { error: "Subcategories cannot have subcategories. Please select a main category as parent." },
+            { status: 400 }
+          )
+        }
+        
+        // Prevent setting itself as parent
+        if (parentId === params.id) {
+          return NextResponse.json(
+            { error: "A category cannot be its own parent." },
+            { status: 400 }
+          )
+        }
+      }
+    }
+
     // Build update data object
     const updateData: any = {}
     if (name !== undefined) updateData.name = name
@@ -70,6 +121,7 @@ export async function PATCH(
     if (description !== undefined) updateData.description = description || null
     if (image !== undefined) updateData.image = image || null
     if (icon !== undefined) updateData.icon = icon || null
+    if (parentId !== undefined) updateData.parentId = parentId || null
 
     const category = await db.category.update({
       where: { id: params.id },

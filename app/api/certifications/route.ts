@@ -18,6 +18,15 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const search = searchParams.get("search") || ""
     const isActive = searchParams.get("isActive")
+    const pageParam = searchParams.get("page")
+    const limitParam = searchParams.get("limit")
+    const sortField = searchParams.get("sortField") || "createdAt"
+    const sortDirection = searchParams.get("sortDirection") || "desc"
+
+    // Check if pagination is requested
+    const usePagination = pageParam !== null || limitParam !== null
+    const page = pageParam ? parseInt(pageParam) : 1
+    const limit = limitParam ? parseInt(limitParam) : usePagination ? 10 : 1000 // Large limit if no pagination
 
     const where: any = {}
 
@@ -28,9 +37,36 @@ export async function GET(req: Request) {
       ]
     }
 
-    if (isActive !== null && isActive !== undefined) {
+    if (isActive !== null && isActive !== undefined && isActive !== "all") {
       where.isActive = isActive === "true"
     }
+
+    // Build orderBy clause
+    const orderBy: any = {}
+    if (sortField === "name") {
+      orderBy.name = sortDirection
+    } else if (sortField === "userCount") {
+      // For userCount, we need to sort after fetching
+      orderBy.createdAt = "desc" // Default fallback
+    } else if (sortField === "createdAt") {
+      orderBy.createdAt = sortDirection
+    } else if (sortField === "updatedAt") {
+      orderBy.updatedAt = sortDirection
+    } else {
+      orderBy.createdAt = "desc"
+    }
+
+    // Get total count for pagination (only if pagination is used)
+    let total = 0
+    let totalPages = 0
+    if (usePagination) {
+      total = await db.certification.count({ where })
+      totalPages = Math.ceil(total / limit)
+    }
+
+    // Calculate pagination
+    const skip = usePagination ? (page - 1) * limit : 0
+    const take = usePagination ? limit : undefined
 
     const certifications = await db.certification.findMany({
       where,
@@ -52,9 +88,8 @@ export async function GET(req: Request) {
           },
         },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy,
+      ...(usePagination && { skip, take }),
     })
 
     const formatted = certifications.map((cert) => ({
@@ -72,7 +107,31 @@ export async function GET(req: Request) {
       updatedAt: cert.updatedAt,
     }))
 
-    return NextResponse.json(formatted)
+    // Sort by userCount if needed (client-side sorting for aggregated fields)
+    if (sortField === "userCount") {
+      formatted.sort((a, b) => {
+        if (sortDirection === "asc") {
+          return a.userCount - b.userCount
+        } else {
+          return b.userCount - a.userCount
+        }
+      })
+    }
+
+    // Return paginated format if pagination was requested, otherwise return array for backward compatibility
+    if (usePagination) {
+      return NextResponse.json({
+        certifications: formatted,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+      })
+    } else {
+      return NextResponse.json(formatted)
+    }
   } catch (error: any) {
     console.error("Failed to fetch certifications:", error)
     return NextResponse.json(

@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
-import { HeroSlider } from "@/components/layout/hero-slider";
-import { IngredientSlider } from "@/components/product/ingredient-slider";
+import Link from "next/link";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import TextGenerateEffect from "@/components/ui/text-generate-effect";
@@ -28,16 +27,6 @@ export default function NudesNeutralsBrownsPage() {
   const [isScrolling, setIsScrolling] = useState(false);
   const textSectionRef = useRef<HTMLElement>(null);
   const productsSectionRef = useRef<HTMLElement>(null);
-
-  const slides = [
-    {
-      type: "video" as const,
-      src: "/Lavender Base (2).mp4",
-      overlayImage: "/geminilogo.png",
-      title: "Nudes / Neutrals / Browns",
-      description: "Discover our elegant collection of Nude, Neutral, and Brown shades",
-    },
-  ];
 
   useEffect(() => {
     fetchProducts();
@@ -71,7 +60,8 @@ export default function NudesNeutralsBrownsPage() {
   const fetchProducts = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/products?search=gemini nude neutral brown`);
+      // Fetch products assigned to nudes showcasing section
+      const res = await fetch(`/api/products?showcasingSection=nudes`);
       if (res.ok) {
         const data = await res.json();
         const allProducts = Array.isArray(data) ? data : data.products || [];
@@ -85,85 +75,54 @@ export default function NudesNeutralsBrownsPage() {
     }
   };
 
-  const ingredients = [
-    {
-      id: "almond",
-      name: "Almond",
-      image: "/jojoba (13).png",
-      whyWeUseIt: "Used because it is a very gentle, well-tolerated emollient that absorbs easily into skin and nails. Softens cuticles, reduces dryness and flaking, and helps improve flexibility of the nail plate to reduce splitting.",
-      benefits: [],
-      backgroundColor: "#7b3615",
-      textColor: "#FFFFFF"
-    },
-    {
-      id: "jojoba",
-      name: "Jojoba",
-      image: "/Add a heading (13).png",
-      whyWeUseIt: "Its structure is a liquid wax ester, very similar to human sebum, so it is well tolerated and absorbs quickly without greasiness. It can carry small, oil-soluble molecules (like vitamin E) into the nail plate, improving how well conditioning ingredients are absorbed.",
-      benefits: [],
-      backgroundColor: "#ef7f28",
-      textColor: "#FFFFFF"
-    },
-    {
-      id: "avocado",
-      name: "Avocado",
-      image: "/dsd.png",
-      whyWeUseIt: "It is high in fatty acids (like oleic acid) and vitamins, especially vitamin E, which moisturise and condition dry nails and skin. Its molecules can move into the superficial nail layers and act as a \"plasticiser,\" helping nail layers slide instead of crack.",
-      benefits: [],
-      backgroundColor: "#aeb54d",
-      textColor: "#FFFFFF"
-    },
-    {
-      id: "kiwi",
-      name: "Kiwi",
-      image: "/jojoba (8).png",
-      whyWeUseIt: "Kiwi is naturally rich in vitamin C, vitamin E and antioxidants, which support skin and nail health and help protect against environmental damage. Enzymes and fruit acids from kiwi help loosen and remove dead surface cells in a mild way, preparing the nail and cuticle for better absorption of oils and treatments.",
-      benefits: [],
-      backgroundColor: "#815532",
-      textColor: "#FFFFFF"
-    },
-    {
-      id: "passion-fruit",
-      name: "Passion Fruit",
-      image: "/fawa.png",
-      whyWeUseIt: "The seed oil is rich in linoleic and oleic acids plus vitamins A and E, so it delivers nourishing, moisturising and soothing effects while staying very light in texture.",
-      benefits: [],
-      backgroundColor: "#eba725",
-      textColor: "#FFFFFF"
-    },
-    {
-      id: "ginseng-root",
-      name: "Ginseng Root",
-      image: "/jojoba (6).png",
-      whyWeUseIt: "Ginseng root extract helps stimulate local micro-circulation, so more oxygen and nutrients reach the nail matrix and surrounding skin, which can support better nail growth quality.",
-      benefits: [],
-      backgroundColor: "#c39f6e",
-      textColor: "#FFFFFF"
-    },
-    {
-      id: "jasmine",
-      name: "Jasmine",
-      image: "/jojoba (4).png",
-      whyWeUseIt: "Used mainly for its soothing, aromatic and conditioning properties in cuticle oils. Helps comfort sensitive cuticles, adds mild moisturising, and makes treatments feel more luxurious and spa‑like.​",
-      benefits: [],
-      backgroundColor: "#422e55",
-      textColor: "#FFFFFF"
-    },
-    {
-      id: "sunflower-seed",
-      name: "Sunflower Seed",
-      image: "/jojoba (3).png",
-      whyWeUseIt: "Used as a lightweight base oil that carries other actives and adds essential fatty acids. Moisturises without feeling greasy, supports the skin barrier around the nail, and helps protect against environmental dryness.",
-      benefits: [],
-      backgroundColor: "#351d0c",
-      textColor: "#FFFFFF",
-      imageSize: "70%"
-    }
-  ];
-
   return (
     <>
-      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-screen" showDarkOverlay={false} scrollControlled={true} />
+      {/* Custom Hero Section - Promotional Style */}
+      <section className="relative w-full aspect-[1366/768] overflow-hidden">
+        {/* Full Width Background Image */}
+        <div className="absolute inset-0 w-full h-full">
+          <Image
+            src="/vbhff.png"
+            alt="Gemini Nudes Neutrals Browns Collection"
+            fill
+            className="object-contain object-center"
+            priority
+            sizes="100vw"
+          />
+        </div>
+        
+        {/* Text Content Overlay - Left Aligned */}
+        <div className="relative z-10 w-full h-full flex items-center">
+          <div className="container mx-auto px-4 max-w-7xl">
+            <div className="max-w-2xl">
+              <div className="text-white space-y-1">
+                <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
+                  Discover our elegant collection
+                </p>
+                <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
+                  of Nude, Neutral, and Brown
+                </p>
+                <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
+                  shades in the Gemini collection.
+                </p>
+                <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
+                  From barely-there beiges to rich
+                </p>
+                <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
+                  chocolate tones, timeless elegance.
+                </p>
+              </div>
+              
+              {/* SHOP NOW Button */}
+              <Link href="#products" className="inline-block mt-8">
+                <button className="px-5 py-2 md:px-6 md:py-2.5 border-2 border-white text-white font-normal text-sm md:text-base hover:bg-white/10 transition-colors">
+                  SHOP NOW
+                </button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
       
       <section 
         ref={textSectionRef}
@@ -185,12 +144,8 @@ export default function NudesNeutralsBrownsPage() {
           </div>
         </div>
       </section>
-
-      <section className="relative w-full h-screen bg-brand-white">
-        <IngredientSlider ingredients={ingredients} />
-      </section>
       
-      <section ref={productsSectionRef} className="relative w-full min-h-screen bg-brand-white py-16">
+      <section ref={productsSectionRef} id="products" className="relative w-full min-h-screen bg-brand-white py-16">
         <div className="container mx-auto px-4 max-w-7xl">
           <h2 className="text-4xl md:text-5xl font-medium mb-12 text-center text-brand-black">
             Nude, Neutral & Brown Shades

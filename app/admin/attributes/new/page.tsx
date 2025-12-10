@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "@/components/ui/toast";
 
 export default function NewAttributePage() {
   const router = useRouter();
@@ -53,10 +54,13 @@ export default function NewAttributePage() {
 
         if (!updateRes.ok) {
           const data = await updateRes.json();
-          setError(data.error || "Failed to add attribute value");
+          const errorMsg = data.error || "Failed to add attribute value";
+          setError(errorMsg);
+          toast(errorMsg, "error");
           setIsLoading(false);
           return;
         }
+        toast(`Value added to "${existingAttribute.category}" successfully`, "success");
       } else {
         // Create new attribute
         const res = await fetch("/api/attributes", {
@@ -70,16 +74,21 @@ export default function NewAttributePage() {
 
         if (!res.ok) {
           const data = await res.json();
-          setError(data.error || "Failed to create attribute");
+          const errorMsg = data.error || "Failed to create attribute";
+          setError(errorMsg);
+          toast(errorMsg, "error");
           setIsLoading(false);
           return;
         }
+        toast(`Attribute "${formData.category.trim()}" created successfully`, "success");
       }
 
       router.push("/admin/attributes");
     } catch (error) {
       console.error("Failed to create attribute:", error);
-      setError("Failed to create attribute. Please try again.");
+      const errorMsg = "Failed to create attribute. Please try again.";
+      setError(errorMsg);
+      toast(errorMsg, "error");
       setIsLoading(false);
     }
   };

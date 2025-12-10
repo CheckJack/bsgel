@@ -82,6 +82,7 @@ export default function NewUserPage() {
           email: formData.email,
           password: formData.password,
           role: "ADMIN", // Set role to ADMIN for backend users
+          permissions: permissions, // Send permissions
         }),
       });
 

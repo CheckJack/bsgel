@@ -220,6 +220,87 @@ export async function PUT(
   }
 }
 
+export async function PATCH(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    const body = await req.json()
+    const { isActive } = body
+
+    // Check if certification exists
+    const existingCert = await db.certification.findUnique({
+      where: { id: params.id },
+    })
+
+    if (!existingCert) {
+      return NextResponse.json(
+        { error: "Certification not found" },
+        { status: 404 }
+      )
+    }
+
+    // Update only isActive status
+    const certification = await db.certification.update({
+      where: { id: params.id },
+      data: {
+        isActive: isActive !== undefined ? Boolean(isActive) : existingCert.isActive,
+      },
+      include: {
+        certificationCategories: {
+          include: {
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            users: true,
+          },
+        },
+      },
+    })
+
+    const formatted = {
+      id: certification.id,
+      name: certification.name,
+      description: certification.description,
+      isActive: certification.isActive,
+      categories: certification.certificationCategories.map((cc) => ({
+        id: cc.category.id,
+        name: cc.category.name,
+        slug: cc.category.slug,
+      })),
+      userCount: certification._count.users,
+      createdAt: certification.createdAt,
+      updatedAt: certification.updatedAt,
+    }
+
+    return NextResponse.json(formatted)
+  } catch (error: any) {
+    console.error("Failed to update certification status:", error)
+    return NextResponse.json(
+      { error: error?.message || "Failed to update certification status" },
+      { status: 500 }
+    )
+  }
+}
+
 export async function DELETE(
   req: Request,
   { params }: { params: { id: string } }

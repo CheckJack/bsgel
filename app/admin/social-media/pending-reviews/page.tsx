@@ -26,6 +26,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { SocialMediaPostModal } from "@/components/admin/social-media-post-modal";
 import { SocialMediaPreviewModal } from "@/components/admin/social-media-preview-modal";
+import { RejectionModal } from "@/components/admin/rejection-modal";
+import { SocialMediaErrorBoundary } from "@/components/admin/social-media-error-boundary";
+import { toast } from "@/components/ui/toast";
+import { Loader2 } from "lucide-react";
 
 type ContentType = "POST" | "STORY" | "REELS";
 
@@ -56,6 +60,8 @@ export default function PendingReviewsPage() {
   const [adminUsers, setAdminUsers] = useState<Array<{ id: string; name: string | null; email: string }>>([]);
   const [isLoadingAdmins, setIsLoadingAdmins] = useState(false);
   const [reviewers, setReviewers] = useState<Record<string, { name: string | null; email: string }>>({});
+  const [isRejectionModalOpen, setIsRejectionModalOpen] = useState(false);
+  const [rejectingPostId, setRejectingPostId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPosts();
@@ -68,7 +74,7 @@ export default function PendingReviewsPage() {
       const res = await fetch("/api/users?role=ADMIN");
       if (res.ok) {
         const users = await res.json();
-        const usersMap = users.map((user: any) => ({
+        const usersMap = users.map((user: { id: string; name: string | null; email: string }) => ({
           id: user.id,
           name: user.name,
           email: user.email,
@@ -81,9 +87,12 @@ export default function PendingReviewsPage() {
           reviewerMap[user.id] = { name: user.name, email: user.email };
         });
         setReviewers(reviewerMap);
+      } else {
+        toast("Failed to load admin users", "error");
       }
     } catch (error) {
       console.error("Failed to fetch admin users:", error);
+      toast("Failed to load admin users", "error");
     } finally {
       setIsLoadingAdmins(false);
     }
@@ -102,9 +111,13 @@ export default function PendingReviewsPage() {
       if (res.ok) {
         const data = await res.json();
         setPosts(data);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        toast(errorData.error || "Failed to fetch posts", "error");
       }
     } catch (error) {
       console.error("Failed to fetch posts:", error);
+      toast("Failed to fetch posts. Please try again.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -143,10 +156,15 @@ export default function PendingReviewsPage() {
       });
 
       if (res.ok) {
+        toast("Post deleted successfully", "success");
         fetchPosts();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        toast(errorData.error || "Failed to delete post", "error");
       }
     } catch (error) {
       console.error("Failed to delete post:", error);
+      toast("Failed to delete post. Please try again.", "error");
     }
   };
 
@@ -156,7 +174,7 @@ export default function PendingReviewsPage() {
     comments?: string
   ) => {
     try {
-      const payload: any = { status: newStatus };
+      const payload: { status: SocialMediaPost["status"]; reviewComments?: string } = { status: newStatus };
       if (comments) {
         payload.reviewComments = comments;
       }
@@ -168,11 +186,35 @@ export default function PendingReviewsPage() {
       });
 
       if (res.ok) {
+        const statusMessages: Record<SocialMediaPost["status"], string> = {
+          APPROVED: "Post approved successfully",
+          REJECTED: "Post rejected",
+          DRAFT: "Post moved to draft",
+          PENDING_REVIEW: "Post submitted for review",
+          PUBLISHED: "Post published",
+        };
+        toast(statusMessages[newStatus] || "Post updated successfully", "success");
         fetchPosts();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        toast(errorData.error || "Failed to update post", "error");
       }
     } catch (error) {
       console.error("Failed to update status:", error);
+      toast("Failed to update post. Please try again.", "error");
     }
+  };
+
+  const handleRejectClick = (postId: string) => {
+    setRejectingPostId(postId);
+    setIsRejectionModalOpen(true);
+  };
+
+  const handleRejectConfirm = async (reason: string) => {
+    if (!rejectingPostId) return;
+    await handleStatusChange(rejectingPostId, "REJECTED", reason);
+    setIsRejectionModalOpen(false);
+    setRejectingPostId(null);
   };
 
   const getPlatformIcon = (platform: SocialMediaPost["platform"]) => {
@@ -211,14 +253,16 @@ export default function PendingReviewsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-white"></div>
+      <div className="flex items-center justify-center min-h-[400px]" role="status" aria-label="Loading posts">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" aria-hidden="true" />
+        <span className="sr-only">Loading posts...</span>
       </div>
     );
   }
 
   return (
-    <div>
+    <SocialMediaErrorBoundary>
+      <div>
       <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/admin/social-media">
@@ -404,13 +448,9 @@ export default function PendingReviewsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => {
-                            const comments = prompt("Rejection reason:");
-                            if (comments) {
-                              handleStatusChange(post.id, "REJECTED", comments);
-                            }
-                          }}
+                          onClick={() => handleRejectClick(post.id)}
                           className="border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          aria-label={`Reject post ${post.id}`}
                         >
                           <XCircle className="h-4 w-4 mr-1" />
                           Reject
@@ -455,7 +495,19 @@ export default function PendingReviewsPage() {
         post={previewPost}
         onStatusChange={handleStatusChange}
       />
+
+      {/* Rejection Modal */}
+      <RejectionModal
+        isOpen={isRejectionModalOpen}
+        onClose={() => {
+          setIsRejectionModalOpen(false);
+          setRejectingPostId(null);
+        }}
+        onConfirm={handleRejectConfirm}
+        postCaption={rejectingPostId ? posts.find((p) => p.id === rejectingPostId)?.caption : undefined}
+      />
     </div>
+    </SocialMediaErrorBoundary>
   );
 }
 

@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { formatPrice } from "@/lib/utils";
 import { toast } from "@/components/ui/toast";
 import { Search, Lightbulb, ChevronLeft, ChevronRight, X, Download, Copy, Filter } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Product {
   id: string;
@@ -28,9 +30,14 @@ interface Product {
 interface Category {
   id: string;
   name: string;
+  parentId?: string | null;
 }
 
 export default function AdminProductsPage() {
+  const { t } = useLanguage();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,8 +48,10 @@ export default function AdminProductsPage() {
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [showBulkEditModal, setShowBulkEditModal] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Category[]>([]);
   const [bulkEditData, setBulkEditData] = useState({
     categoryId: "",
+    subcategoryIds: [] as string[],
     featured: "",
     price: "",
     discountPercentage: "",
@@ -57,12 +66,45 @@ export default function AdminProductsPage() {
     fetchCategories();
   }, []);
 
+  useEffect(() => {
+    // Filter subcategories (categories with parentId that is not null)
+    const subs = categories.filter((cat) => cat.parentId !== null && cat.parentId !== undefined && cat.parentId !== "");
+    setSubcategories(subs);
+    // Debug: log to see what we're getting
+    if (subs.length === 0 && categories.length > 0) {
+      console.log("No subcategories found. Categories:", categories.map(c => ({ id: c.id, name: c.name, parentId: c.parentId })));
+    }
+  }, [categories]);
+
+  // Sync search query with URL params from AdminHeader
+  useEffect(() => {
+    const urlSearchQuery = searchParams.get("search") || "";
+    setSearchQuery(urlSearchQuery);
+  }, [searchParams]);
+
   const fetchCategories = async () => {
     try {
-      const res = await fetch("/api/categories");
+      // Fetch all categories - use a high limit to get all at once
+      const res = await fetch("/api/categories?limit=10000");
       if (res.ok) {
         const data = await res.json();
-        setCategories(data.categories || []);
+        const categoriesList = data.categories || data || [];
+        
+        // Ensure parentId is included in the type
+        const typedCategories: Category[] = categoriesList.map((cat: any) => ({
+          id: cat.id,
+          name: cat.name,
+          parentId: cat.parentId || null,
+        }));
+        
+        setCategories(typedCategories);
+        
+        // Debug: check if parentId is being returned
+        const withParentId = typedCategories.filter((cat) => cat.parentId);
+        console.log(`Fetched ${typedCategories.length} categories, ${withParentId.length} have parentId`);
+        if (withParentId.length > 0) {
+          console.log("Subcategories found:", withParentId.map(c => c.name));
+        }
       }
     } catch (error) {
       console.error("Failed to fetch categories:", error);
@@ -108,7 +150,7 @@ export default function AdminProductsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this product?")) {
+    if (!confirm(t("products.deleteConfirm"))) {
       return;
     }
 
@@ -118,7 +160,7 @@ export default function AdminProductsPage() {
       });
 
       if (res.ok) {
-        toast("Product deleted successfully", "success");
+        toast(t("products.deleteSuccess"), "success");
         fetchProducts();
         // Remove from selection if selected
         setSelectedProducts((prev) => {
@@ -128,11 +170,11 @@ export default function AdminProductsPage() {
         });
       } else {
         const error = await res.json();
-        toast(error.error || "Failed to delete product", "error");
+        toast(error.error || t("products.deleteError"), "error");
       }
     } catch (error) {
       console.error("Failed to delete product:", error);
-      toast("Failed to delete product", "error");
+      toast(t("products.deleteError"), "error");
     }
   };
 
@@ -145,15 +187,15 @@ export default function AdminProductsPage() {
 
       if (res.ok) {
         const data = await res.json();
-        toast(`Product duplicated successfully: ${data.name}`, "success");
+        toast(t("products.duplicateSuccess"), "success");
         fetchProducts();
       } else {
         const error = await res.json();
-        toast(error.error || "Failed to duplicate product", "error");
+        toast(error.error || t("products.duplicateError"), "error");
       }
     } catch (error) {
       console.error("Failed to duplicate product:", error);
-      toast("Failed to duplicate product", "error");
+      toast(t("products.duplicateError"), "error");
     } finally {
       setIsDuplicating(null);
     }
@@ -201,6 +243,10 @@ export default function AdminProductsPage() {
       updates.categoryId = bulkEditData.categoryId === "none" ? null : bulkEditData.categoryId;
     }
 
+    // Subcategories: send if explicitly set (including empty array to clear)
+    // We'll always include it since the user can select/deselect subcategories
+    updates.subcategoryIds = bulkEditData.subcategoryIds || [];
+
     if (bulkEditData.featured !== "") {
       updates.featured = bulkEditData.featured === "true";
     }
@@ -208,7 +254,7 @@ export default function AdminProductsPage() {
     if (bulkEditData.price !== "") {
       const price = parseFloat(bulkEditData.price);
       if (isNaN(price) || price < 0) {
-        toast("Invalid price value", "error");
+        toast(t("products.invalidPrice"), "error");
         return;
       }
       updates.price = price;
@@ -217,14 +263,14 @@ export default function AdminProductsPage() {
     if (bulkEditData.discountPercentage !== "") {
       const discount = parseInt(bulkEditData.discountPercentage);
       if (isNaN(discount) || discount < 0 || discount > 100) {
-        toast("Discount percentage must be between 0 and 100", "error");
+        toast(t("products.invalidDiscount"), "error");
         return;
       }
       updates.discountPercentage = discount;
     }
 
     if (Object.keys(updates).length === 0) {
-      toast("Please select at least one field to update", "warning");
+      toast(t("products.selectAtLeastOneField"), "warning");
       return;
     }
 
@@ -243,18 +289,18 @@ export default function AdminProductsPage() {
 
       if (res.ok) {
         const data = await res.json();
-        toast(`Successfully updated ${data.count} product(s)`, "success");
+        toast(t("products.bulkEditSuccessWithCount", { count: data.count }), "success");
         setShowBulkEditModal(false);
         setSelectedProducts(new Set());
-        setBulkEditData({ categoryId: "", featured: "", price: "", discountPercentage: "" });
+        setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", price: "", discountPercentage: "" });
         fetchProducts();
       } else {
         const error = await res.json();
-        toast(error.error || "Failed to update products", "error");
+        toast(error.error || t("products.bulkEditError"), "error");
       }
     } catch (error) {
       console.error("Failed to bulk edit products:", error);
-      toast("Failed to update products", "error");
+      toast(t("products.bulkEditError"), "error");
     } finally {
       setIsBulkEditing(false);
     }
@@ -262,11 +308,11 @@ export default function AdminProductsPage() {
 
   const handleBulkDelete = async () => {
     if (selectedProducts.size === 0) {
-      toast("Please select at least one product", "warning");
+      toast(t("products.selectAtLeastOne"), "warning");
       return;
     }
 
-    const confirmMessage = `Are you sure you want to delete ${selectedProducts.size} product(s)? This action cannot be undone.`;
+    const confirmMessage = t("products.bulkDeleteConfirm", { count: selectedProducts.size });
     if (!confirm(confirmMessage)) {
       return;
     }
@@ -285,16 +331,16 @@ export default function AdminProductsPage() {
 
       if (res.ok) {
         const data = await res.json();
-        toast(`Successfully deleted ${data.count} product(s)`, "success");
+        toast(t("products.bulkDeleteSuccessWithCount", { count: data.count }), "success");
         setSelectedProducts(new Set());
         fetchProducts();
       } else {
         const error = await res.json();
-        toast(error.error || "Failed to delete products", "error");
+        toast(error.error || t("products.bulkDeleteError"), "error");
       }
     } catch (error) {
       console.error("Failed to bulk delete products:", error);
-      toast("Failed to delete products", "error");
+      toast(t("products.bulkDeleteError"), "error");
     } finally {
       setIsBulkDeleting(false);
     }
@@ -332,7 +378,7 @@ export default function AdminProductsPage() {
       link.click();
       document.body.removeChild(link);
 
-      toast(`Exported ${filteredProducts.length} products to CSV`, "success");
+      toast(t("products.exportSuccessWithCount", { count: filteredProducts.length }), "success");
     } catch (error) {
       console.error("Failed to export products:", error);
       toast("Failed to export products", "error");
@@ -389,10 +435,10 @@ export default function AdminProductsPage() {
     <div className="p-6 min-h-screen">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Product List</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("products.title")}</h1>
         <div className="text-sm text-gray-600 dark:text-gray-400">
-          Dashboard <span className="mx-2">&gt;</span> Ecommerce{" "}
-          <span className="mx-2">&gt;</span> Product List
+          {t("sidebar.dashboard")} <span className="mx-2">&gt;</span> {t("sidebar.ecommerce")}{" "}
+          <span className="mx-2">&gt;</span> {t("products.title")}
         </div>
       </div>
 
@@ -402,7 +448,7 @@ export default function AdminProductsPage() {
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="text-sm text-gray-700 dark:text-gray-300">
-                <span className="font-medium">{selectedProducts.size}</span> product(s) selected
+                <span className="font-medium">{selectedProducts.size}</span> {t("products.title").toLowerCase()}(s) {t("table.selected", { count: selectedProducts.size })}
               </div>
               <div className="flex gap-2">
                 <Button
@@ -410,21 +456,21 @@ export default function AdminProductsPage() {
                   className="bg-blue-600 hover:bg-blue-700"
                   disabled={isBulkDeleting}
                 >
-                  Bulk Edit
+                  {t("products.bulkEdit")}
                 </Button>
                 <Button
                   onClick={handleBulkDelete}
                   className="bg-red-600 hover:bg-red-700 text-white"
                   disabled={isBulkDeleting}
                 >
-                  {isBulkDeleting ? "Deleting..." : "Bulk Delete"}
+                  {isBulkDeleting ? t("common.loading") : t("products.bulkDelete")}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => setSelectedProducts(new Set())}
                   disabled={isBulkDeleting}
                 >
-                  Clear Selection
+                  {t("products.deselectAll")}
                 </Button>
               </div>
             </div>
@@ -441,12 +487,12 @@ export default function AdminProductsPage() {
               {/* Tip Message */}
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <Lightbulb className="h-4 w-4 text-yellow-500" />
-                <span>Tip search by Product ID</span>
+                <span>{t("products.tipSearch")}</span>
               </div>
 
               {/* Entries Dropdown */}
               <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600 dark:text-gray-400">Showing</label>
+                <label className="text-sm text-gray-600 dark:text-gray-400">{t("table.showing")}</label>
                 <select
                   value={entriesPerPage}
                   onChange={(e) => {
@@ -455,10 +501,10 @@ export default function AdminProductsPage() {
                   }}
                   className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value={10}>10 entries</option>
-                  <option value={25}>25 entries</option>
-                  <option value={50}>50 entries</option>
-                  <option value={100}>100 entries</option>
+                  <option value={10}>10 {t("table.entriesPerPage")}</option>
+                  <option value={25}>25 {t("table.entriesPerPage")}</option>
+                  <option value={50}>50 {t("table.entriesPerPage")}</option>
+                  <option value={100}>100 {t("table.entriesPerPage")}</option>
                 </select>
               </div>
             </div>
@@ -474,7 +520,7 @@ export default function AdminProductsPage() {
                     onChange={(e) => setCategoryFilter(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">All Categories</option>
+                    <option value="">{t("products.allCategories")}</option>
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>
                         {category.name}
@@ -490,9 +536,21 @@ export default function AdminProductsPage() {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <input
                     type="text"
-                    placeholder="Search here..."
+                    placeholder={t("common.search")}
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSearchQuery(value);
+                      // Update URL to sync with AdminHeader
+                      const params = new URLSearchParams(searchParams.toString());
+                      if (value.trim()) {
+                        params.set("search", value);
+                      } else {
+                        params.delete("search");
+                      }
+                      const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+                      router.replace(newUrl, { scroll: false });
+                    }}
                     className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-500 dark:placeholder:text-gray-400"
                   />
                 </div>
@@ -506,13 +564,13 @@ export default function AdminProductsPage() {
                 className="flex-shrink-0"
               >
                 <Download className="h-4 w-4 mr-2" />
-                {isExporting ? "Exporting..." : "Export"}
+                {isExporting ? t("common.loading") : t("products.export")}
               </Button>
 
               {/* Add New Button */}
               <Link href="/admin/products/new" className="flex-shrink-0">
                 <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
-                  + Add new
+                  + {t("products.addProduct")}
                 </Button>
               </Link>
             </div>
@@ -539,22 +597,22 @@ export default function AdminProductsPage() {
                     />
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Product
+                    {t("products.product")}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Product ID
+                    {t("products.productId")}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Price
+                    {t("products.price")}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Sale
+                    {t("products.sale")}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Start date
+                    {t("products.startDate")}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Actions
+                    {t("common.actions")}
                   </th>
                 </tr>
               </thead>
@@ -565,7 +623,7 @@ export default function AdminProductsPage() {
                       colSpan={7}
                       className="px-6 py-12 text-center text-gray-500 dark:text-gray-400"
                     >
-                      No products found
+                      {t("products.noProducts")}
                     </td>
                   </tr>
                 ) : (
@@ -676,7 +734,7 @@ export default function AdminProductsPage() {
                               className="text-xs"
                               onClick={() => handleDuplicate(product.id)}
                               disabled={isDuplicating === product.id}
-                              title="Duplicate product"
+                              title={t("products.duplicateProduct")}
                             >
                               <Copy className="h-3 w-3" />
                             </Button>
@@ -686,7 +744,7 @@ export default function AdminProductsPage() {
                               className="text-xs"
                               onClick={() => handleDelete(product.id)}
                             >
-                              Delete
+                              {t("common.delete")}
                             </Button>
                           </div>
                         </td>
@@ -703,7 +761,7 @@ export default function AdminProductsPage() {
             <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="text-sm text-gray-600 dark:text-gray-400">
-                  Showing {startIndex + 1} to {Math.min(endIndex, filteredProducts.length)} of {filteredProducts.length} entries
+                  {t("table.showing")} {startIndex + 1} {t("table.to")} {Math.min(endIndex, filteredProducts.length)} {t("table.of")} {filteredProducts.length} {t("table.entriesPerPage")}
                 </div>
                 <div className="flex items-center gap-2 mx-auto sm:mx-0">
                   <button
@@ -766,12 +824,12 @@ export default function AdminProductsPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                  Bulk Edit Products
+                  {t("products.bulkEditProducts")}
                 </h2>
                 <button
                   onClick={() => {
                     setShowBulkEditModal(false);
-                    setBulkEditData({ categoryId: "", featured: "", price: "", discountPercentage: "" });
+                    setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", price: "", discountPercentage: "" });
                   }}
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 >
@@ -780,14 +838,14 @@ export default function AdminProductsPage() {
               </div>
 
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                Update {selectedProducts.size} selected product(s). Leave fields empty to skip updating them.
+                {t("products.updateSelectedProducts", { count: selectedProducts.size })}
               </p>
 
               <div className="space-y-4">
                 {/* Category Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Category
+                    {t("products.category")}
                   </label>
                   <select
                     value={bulkEditData.categoryId}
@@ -796,9 +854,9 @@ export default function AdminProductsPage() {
                     }
                     className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">-- No change --</option>
-                    <option value="none">Remove category</option>
-                    {categories.map((category) => (
+                    <option value="">{t("products.noChange")}</option>
+                    <option value="none">{t("products.removeCategory")}</option>
+                    {categories.filter((cat) => !cat.parentId).map((category) => (
                       <option key={category.id} value={category.id}>
                         {category.name}
                       </option>
@@ -806,10 +864,44 @@ export default function AdminProductsPage() {
                   </select>
                 </div>
 
+                {/* Subcategories Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {t("products.subcategories") || "Subcategories"}
+                  </label>
+                  {subcategories.length > 0 ? (
+                    <>
+                      <select
+                        multiple
+                        value={bulkEditData.subcategoryIds}
+                        onChange={(e) => {
+                          const selected = Array.from(e.target.selectedOptions, (option) => option.value);
+                          setBulkEditData({ ...bulkEditData, subcategoryIds: selected });
+                        }}
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+                        size={5}
+                      >
+                        {subcategories.map((subcategory) => (
+                          <option key={subcategory.id} value={subcategory.id}>
+                            {subcategory.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {t("products.holdCtrlToSelectMultiple") || "Hold Ctrl/Cmd to select multiple"}
+                      </p>
+                    </>
+                  ) : (
+                    <div className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 min-h-[100px] flex items-center justify-center">
+                      <p className="text-center">No subcategories available. Create subcategories in the Categories section first.</p>
+                    </div>
+                  )}
+                </div>
+
                 {/* Featured Status */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Featured Status
+                    {t("products.featuredStatus")}
                   </label>
                   <select
                     value={bulkEditData.featured}
@@ -818,16 +910,16 @@ export default function AdminProductsPage() {
                     }
                     className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">-- No change --</option>
-                    <option value="true">Featured</option>
-                    <option value="false">Not Featured</option>
+                    <option value="">{t("products.noChange")}</option>
+                    <option value="true">{t("products.featured")}</option>
+                    <option value="false">{t("products.notFeatured")}</option>
                   </select>
                 </div>
 
                 {/* Price */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Price
+                    {t("products.price")}
                   </label>
                   <Input
                     type="number"
@@ -837,7 +929,7 @@ export default function AdminProductsPage() {
                     onChange={(e) =>
                       setBulkEditData({ ...bulkEditData, price: e.target.value })
                     }
-                    placeholder="Leave empty to skip"
+                    placeholder={t("products.leaveEmptyToSkip")}
                     className="w-full"
                   />
                 </div>
@@ -845,7 +937,7 @@ export default function AdminProductsPage() {
                 {/* Discount Percentage */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Discount Percentage (0-100)
+                    {t("products.discountPercentage")}
                   </label>
                   <Input
                     type="number"
@@ -855,7 +947,7 @@ export default function AdminProductsPage() {
                     onChange={(e) =>
                       setBulkEditData({ ...bulkEditData, discountPercentage: e.target.value })
                     }
-                    placeholder="Leave empty to skip"
+                    placeholder={t("products.leaveEmptyToSkip")}
                     className="w-full"
                   />
                 </div>
@@ -867,18 +959,18 @@ export default function AdminProductsPage() {
                   disabled={isBulkEditing}
                   className="flex-1 bg-blue-600 hover:bg-blue-700"
                 >
-                  {isBulkEditing ? "Updating..." : "Update Products"}
+                  {isBulkEditing ? t("common.loading") : t("products.updateProducts")}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => {
                     setShowBulkEditModal(false);
-                    setBulkEditData({ categoryId: "", featured: "", price: "", discountPercentage: "" });
+                    setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", price: "", discountPercentage: "" });
                   }}
                   disabled={isBulkEditing}
                   className="flex-1"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
               </div>
             </CardContent>

@@ -1,171 +1,321 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { KPICard } from "@/components/admin/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from "recharts";
-import { FileText, DollarSign, Users, TrendingUp, TrendingDown, Download, Eye, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import {
+  DollarSign,
+  Users,
+  ShoppingCart,
+  TrendingUp,
+  TrendingDown,
+  Download,
+  Package,
+  Calendar,
+  RefreshCw,
+} from "lucide-react";
 import Link from "next/link";
+import { toast, handleApiError } from "@/lib/utils";
 
-// Sample data for KPI cards
-const totalAmountData = [30, 45, 35, 50, 40, 55, 45, 60, 50, 65, 55, 70];
-const totalRevenueData = [35, 40, 30, 45, 35, 50, 30, 45, 40, 50, 35, 40];
-const totalCustomerData = [40, 45, 50, 45, 55, 60, 55, 65, 60, 70, 65, 75];
+interface AnalyticsData {
+  kpis: {
+    totalRevenue: number;
+    totalOrders: number;
+    totalCustomers: number;
+    averageOrderValue: number;
+    pendingOrders: number;
+    revenueTrend: number;
+    ordersTrend: number;
+    customersTrend: number;
+  };
+  revenueTimeSeries: { date: string; revenue: number }[];
+  ordersTimeSeries: { date: string; orders: number }[];
+  customersTimeSeries: { date: string; customers: number }[];
+  orderStatusBreakdown: Record<string, number>;
+  revenueByStatus: Record<string, number>;
+  revenueByCategory: { name: string; revenue: number }[];
+  topProducts: { name: string; revenue: number; quantity: number; category: string | null }[];
+  customerMetrics: {
+    repeatCustomers: number;
+    repeatCustomerRate: number;
+    newCustomers: number;
+  };
+  couponMetrics: {
+    totalCoupons: number;
+    activeCoupons: number;
+    totalCouponUsage: number;
+    totalDiscountGiven: number;
+  };
+  dateRange: {
+    start: string;
+    end: string;
+  };
+}
 
-// Seller statistic data
-const sellerStatisticData = [
-  { month: "Jan", revenue: 57, profit: 40 },
-  { month: "Feb", revenue: 78, profit: 55 },
-  { month: "Mar", revenue: 61, profit: 43 },
-  { month: "Apr", revenue: 75, profit: 52 },
-  { month: "May", revenue: 35, profit: 25 },
-  { month: "Jun", revenue: 70, profit: 49 },
-  { month: "Jul", revenue: 88, profit: 62 },
-  { month: "Aug", revenue: 110, profit: 77 },
-  { month: "Sep", revenue: 82, profit: 57 },
-  { month: "Oct", revenue: 134, profit: 94 },
-  { month: "Nov", revenue: 44, profit: 31 },
-];
-
-// Total sale data
-const totalSaleData = [
-  { month: "Jan", revenue: 57, profit: 40 },
-  { month: "Feb", revenue: 78, profit: 55 },
-  { month: "Mar", revenue: 61, profit: 43 },
-  { month: "Apr", revenue: 75, profit: 52 },
-  { month: "May", revenue: 35, profit: 25 },
-  { month: "Jun", revenue: 70, profit: 49 },
-  { month: "Jul", revenue: 88, profit: 62 },
-  { month: "Aug", revenue: 110, profit: 77 },
-  { month: "Sep", revenue: 82, profit: 57 },
-  { month: "Oct", revenue: 134, profit: 94 },
-];
-
-// Sale/Purchase return data
-const salePurchaseData = [
-  { time: "12:00", sale: 45, purchase: 30, return: 25 },
-  { time: "13:00", sale: 52, purchase: 35, return: 28 },
-  { time: "14:00", sale: 68, purchase: 48, return: 35 },
-  { time: "15:00", sale: 75, purchase: 55, return: 40 },
-  { time: "16:00", sale: 62, purchase: 42, return: 32 },
-  { time: "17:00", sale: 55, purchase: 38, return: 28 },
-];
-
-// Transfer history data
-const transferHistoryData = [
-  { id: "11081197", name: "Kathryn Murphy", date: "Mar 20, 2023", total: "€2,700" },
-  { id: "38766940", name: "Floyd Miles", date: "Mar 20, 2023", total: "€2,700" },
-  { id: "43397744", name: "Brooklyn Simmons", date: "Mar 20, 2023", total: "€2,700" },
-  { id: "66277431", name: "Wade Warren", date: "Mar 20, 2023", total: "€2,700" },
-  { id: "58276066", name: "Devon Lane", date: "Mar 20, 2023", total: "€2,700" },
-  { id: "93242854", name: "Jenny Wilson", date: "Mar 20, 2023", total: "€2,700" },
-  { id: "11081197", name: "Jane Cooper", date: "Mar 20, 2023", total: "€2,700" },
-  { id: "55700223", name: "Albert Flores", date: "Mar 20, 2023", total: "€2,700" },
-  { id: "34034474", name: "Robert Fox", date: "Mar 20, 2023", total: "€2,700" },
-  { id: "34034474", name: "Theresa Webb", date: "Mar 20, 2023", total: "€2,700" },
-];
+const COLORS = ["#3b82f6", "#f97316", "#10b981", "#ef4444", "#8b5cf6", "#ec4899"];
 
 export default function AnalyticsPage() {
+  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [period, setPeriod] = useState("30");
+
+  const fetchAnalytics = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/analytics?period=${period}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw { response, error: errorData.error };
+      }
+      const analyticsData = await response.json();
+      setData(analyticsData);
+    } catch (err) {
+      handleApiError(err, "load analytics data");
+      console.error("Failed to fetch analytics:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [period]);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "EUR",
+    }).format(value);
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  const exportToCSV = () => {
+    if (!data) {
+      toast("No data available to export", "warning");
+      return;
+    }
+
+    try {
+      const csvRows = [];
+      csvRows.push("Metric,Value");
+      csvRows.push(`Total Revenue,${data.kpis.totalRevenue}`);
+      csvRows.push(`Total Orders,${data.kpis.totalOrders}`);
+      csvRows.push(`Total Customers,${data.kpis.totalCustomers}`);
+      csvRows.push(`Average Order Value,${data.kpis.averageOrderValue}`);
+      csvRows.push(`Pending Orders,${data.kpis.pendingOrders}`);
+      csvRows.push("");
+      csvRows.push("Date,Revenue");
+      data.revenueTimeSeries.forEach((item) => {
+        csvRows.push(`${item.date},${item.revenue}`);
+      });
+
+      const csvContent = csvRows.join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `analytics-${new Date().toISOString().split("T")[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast("Analytics data exported successfully", "success");
+    } catch (error) {
+      handleApiError(error, "export analytics data");
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-gray-400" />
+          <p className="text-gray-600 dark:text-gray-400">Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-gray-600 dark:text-gray-400 mb-4">Unable to load analytics data</p>
+          <button
+            onClick={fetchAnalytics}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Prepare chart data
+  const revenueChartData = data.revenueTimeSeries.map((item) => ({
+    date: formatDate(item.date),
+    revenue: item.revenue,
+  }));
+
+  const ordersChartData = data.ordersTimeSeries.map((item) => ({
+    date: formatDate(item.date),
+    orders: item.orders,
+  }));
+
+  const orderStatusData = Object.entries(data.orderStatusBreakdown).map(([status, count]) => ({
+    name: status,
+    value: count,
+  }));
+
+  const revenueByCategoryData = data.revenueByCategory.slice(0, 6);
+
+  // Calculate KPI graph data (last 12 data points for mini charts)
+  const revenueGraphData = data.revenueTimeSeries
+    .slice(-12)
+    .map((item) => item.revenue);
+  const ordersGraphData = data.ordersTimeSeries
+    .slice(-12)
+    .map((item) => item.orders);
+  const customersGraphData = data.customersTimeSeries
+    .slice(-12)
+    .map((item) => item.customers);
+
   return (
     <div>
-      {/* Header with Title and Breadcrumbs */}
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100">Report</h1>
-        <div className="text-sm text-gray-600 dark:text-gray-400">
-          <Link href="/admin" className="hover:text-gray-900 dark:hover:text-gray-100">Dashboard</Link>
-          <span className="mx-2">/</span>
-          <span className="text-gray-900 dark:text-gray-100 font-medium">Report</span>
+      {/* Header */}
+      <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100">Analytics</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            {new Date(data.dateRange.start).toLocaleDateString()} -{" "}
+            {new Date(data.dateRange.end).toLocaleDateString()}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            className="text-sm border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+          >
+            <option value="7">Last 7 days</option>
+            <option value="30">Last 30 days</option>
+            <option value="90">Last 90 days</option>
+            <option value="365">Last year</option>
+          </select>
+          <button
+            onClick={exportToCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
+          </button>
+          <button
+            onClick={fetchAnalytics}
+            className="p-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
         </div>
       </div>
 
-      {/* Three KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <KPICard
-          title="Total Amount"
-          value="34,945"
-          trend={1.56}
-          icon={<FileText className="h-7 w-7" />}
-          iconColor="#3b82f6"
-          graphColor="#3b82f6"
-          graphData={totalAmountData}
-          chartType="bar"
-        />
+      {/* Breadcrumbs */}
+      <div className="mb-6 text-sm text-gray-600 dark:text-gray-400">
+        <Link href="/admin" className="hover:text-gray-900 dark:hover:text-gray-100">
+          Dashboard
+        </Link>
+        <span className="mx-2">/</span>
+        <span className="text-gray-900 dark:text-gray-100 font-medium">Analytics</span>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <KPICard
           title="Total Revenue"
-          value="€37,802"
-          trend={-1.56}
+          value={formatCurrency(data.kpis.totalRevenue)}
+          trend={data.kpis.revenueTrend}
           icon={<DollarSign className="h-7 w-7" />}
           iconColor="#f97316"
           graphColor="#f97316"
-          graphData={totalRevenueData}
-          chartType="bar"
+          graphData={revenueGraphData}
+          chartType="line"
         />
         <KPICard
-          title="Total Customer"
-          value="34,945"
-          trend={0}
+          title="Total Orders"
+          value={data.kpis.totalOrders.toLocaleString()}
+          trend={data.kpis.ordersTrend}
+          icon={<ShoppingCart className="h-7 w-7" />}
+          iconColor="#3b82f6"
+          graphColor="#3b82f6"
+          graphData={ordersGraphData}
+          chartType="line"
+        />
+        <KPICard
+          title="Total Customers"
+          value={data.kpis.totalCustomers.toLocaleString()}
+          trend={data.kpis.customersTrend}
           icon={<Users className="h-7 w-7" />}
           iconColor="#10b981"
           graphColor="#10b981"
-          graphData={totalCustomerData}
-          chartType="bar"
+          graphData={customersGraphData}
+          chartType="line"
+        />
+        <KPICard
+          title="Avg Order Value"
+          value={formatCurrency(data.kpis.averageOrderValue)}
+          trend={0}
+          icon={<Package className="h-7 w-7" />}
+          iconColor="#8b5cf6"
+          graphColor="#8b5cf6"
+          graphData={revenueGraphData.map((r, i) => 
+            ordersGraphData[i] ? r / ordersGraphData[i] : 0
+          )}
+          chartType="line"
         />
       </div>
 
-      {/* Seller Statistic and Total Sale Panels */}
+      {/* Revenue and Orders Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Seller Statistic */}
+        {/* Revenue Over Time */}
         <Card className="bg-white dark:bg-gray-800">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">Seller statistic</CardTitle>
-              <div className="flex items-center gap-2">
-                <select className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                  <option>Last 30 days</option>
-                </select>
-                <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-                  <Download className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                </button>
-              </div>
+              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Revenue Over Time
+              </CardTitle>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-600"></div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Revenue</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  <span className="text-sm font-semibold text-green-600 dark:text-green-400">0.56%</span>
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">€37,802</p>
-            </div>
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-300"></div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Profit</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  <span className="text-sm font-semibold text-green-600 dark:text-green-400">0.56%</span>
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">€28,305</p>
-            </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={sellerStatisticData}>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={revenueChartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
                 <XAxis
-                  dataKey="month"
+                  dataKey="date"
                   tick={{ fill: "#666", fontSize: 12 }}
                   axisLine={{ stroke: "#e0e0e0" }}
                 />
                 <YAxis
                   tick={{ fill: "#666", fontSize: 12 }}
                   axisLine={{ stroke: "#e0e0e0" }}
+                  tickFormatter={(value) => `€${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip
                   contentStyle={{
@@ -173,61 +323,35 @@ export default function AnalyticsPage() {
                     border: "1px solid #e0e0e0",
                     borderRadius: "8px",
                   }}
+                  formatter={(value: number) => formatCurrency(value)}
                 />
-                <Bar dataKey="revenue" stackId="a" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="profit" stackId="a" fill="#60a5fa" radius={[4, 4, 0, 0]} />
-              </BarChart>
+                <Line
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="#f97316"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                />
+              </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Total Sale */}
+        {/* Orders Over Time */}
         <Card className="bg-white dark:bg-gray-800">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">Total sale</CardTitle>
-              <div className="flex items-center gap-2">
-                <select className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                  <option>Last 30 days</option>
-                </select>
-                <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-                  <Download className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                </button>
-              </div>
+              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Orders Over Time
+              </CardTitle>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-600"></div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Revenue</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  <span className="text-sm font-semibold text-green-600 dark:text-green-400">0.56%</span>
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">€37,802</p>
-            </div>
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-300"></div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Profit</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  <span className="text-sm font-semibold text-green-600 dark:text-green-400">0.56%</span>
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">€28,305</p>
-            </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={totalSaleData}>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={ordersChartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
                 <XAxis
-                  dataKey="month"
+                  dataKey="date"
                   tick={{ fill: "#666", fontSize: 12 }}
                   axisLine={{ stroke: "#e0e0e0" }}
                 />
@@ -242,68 +366,84 @@ export default function AnalyticsPage() {
                     borderRadius: "8px",
                   }}
                 />
-                <Bar dataKey="revenue" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="profit" fill="#60a5fa" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="orders" fill="#3b82f6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
 
-      {/* Sale / Purchase return */}
-      <Card className="mb-6 bg-white dark:bg-gray-800">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">Sale / Purchase return</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-3xl font-bold text-gray-900">€84.86B</span>
-              <div className="flex items-center gap-1">
-                <TrendingDown className="h-4 w-4 text-red-600" />
-                <span className="text-sm font-semibold text-red-600">1.02%</span>
-              </div>
-            </div>
-          </div>
-          <div className="mb-4">
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={salePurchaseData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
-                <XAxis
-                  dataKey="time"
-                  tick={{ fill: "#666", fontSize: 12 }}
-                  axisLine={{ stroke: "#e0e0e0" }}
-                />
-                <YAxis
-                  tick={{ fill: "#666", fontSize: 12 }}
-                  axisLine={{ stroke: "#e0e0e0" }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "white",
-                    border: "1px solid #e0e0e0",
-                    borderRadius: "8px",
-                  }}
-                />
-                <Legend />
-                <Line type="monotone" dataKey="sale" stroke="#f97316" strokeWidth={2} />
-                <Line type="monotone" dataKey="purchase" stroke="#3b82f6" strokeWidth={2} />
-                <Line type="monotone" dataKey="return" stroke="#ef4444" strokeWidth={2} />
-              </LineChart>
+      {/* Order Status and Revenue by Category */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Order Status Breakdown */}
+        <Card className="bg-white dark:bg-gray-800">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Order Status Breakdown
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={orderStatusData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {orderStatusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
             </ResponsiveContainer>
-          </div>
-          <div>
-            <ResponsiveContainer width="100%" height={150}>
-              <BarChart data={salePurchaseData}>
+            <div className="mt-4 space-y-2">
+              {Object.entries(data.orderStatusBreakdown).map(([status, count], index) => (
+                <div key={status} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                    <span className="text-sm text-gray-600 dark:text-gray-400">{status}</span>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {count} ({formatCurrency(data.revenueByStatus[status] || 0)})
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Revenue by Category */}
+        <Card className="bg-white dark:bg-gray-800">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Revenue by Category
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={revenueByCategoryData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
                 <XAxis
-                  dataKey="time"
+                  type="number"
                   tick={{ fill: "#666", fontSize: 12 }}
                   axisLine={{ stroke: "#e0e0e0" }}
+                  tickFormatter={(value) => `€${(value / 1000).toFixed(0)}k`}
                 />
                 <YAxis
+                  dataKey="name"
+                  type="category"
                   tick={{ fill: "#666", fontSize: 12 }}
                   axisLine={{ stroke: "#e0e0e0" }}
+                  width={100}
                 />
                 <Tooltip
                   contentStyle={{
@@ -311,74 +451,144 @@ export default function AnalyticsPage() {
                     border: "1px solid #e0e0e0",
                     borderRadius: "8px",
                   }}
+                  formatter={(value: number) => formatCurrency(value)}
                 />
-                <Bar dataKey="sale" fill="#d1d5db" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="revenue" fill="#10b981" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
-      {/* Transfer History */}
-      <Card>
+      {/* Top Products */}
+      <Card className="mb-6 bg-white dark:bg-gray-800">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold">Transfer History</CardTitle>
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Top Products by Revenue
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Transfer Id</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Name</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Date</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Total</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Action</th>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Product
+                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Category
+                  </th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Quantity Sold
+                  </th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Revenue
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {transferHistoryData.map((transfer, index) => (
-                  <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4 text-sm text-gray-900">{transfer.id}</td>
-                    <td className="py-3 px-4 text-sm text-gray-900">{transfer.name}</td>
-                    <td className="py-3 px-4 text-sm text-gray-600">{transfer.date}</td>
-                    <td className="py-3 px-4 text-sm text-gray-900 font-medium">{transfer.total}</td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        <button className="p-1 hover:bg-blue-50 rounded text-blue-600">
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button className="p-1 hover:bg-green-50 rounded text-green-600">
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button className="p-1 hover:bg-red-50 rounded text-red-600">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
+                {data.topProducts.map((product, index) => (
+                  <tr
+                    key={index}
+                    className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                  >
+                    <td className="py-3 px-4 text-sm text-gray-900 dark:text-gray-100">
+                      {product.name}
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
+                      {product.category || "Uncategorized"}
+                    </td>
+                    <td className="py-3 px-4 text-sm text-right text-gray-900 dark:text-gray-100">
+                      {product.quantity}
+                    </td>
+                    <td className="py-3 px-4 text-sm text-right font-semibold text-gray-900 dark:text-gray-100">
+                      {formatCurrency(product.revenue)}
                     </td>
                   </tr>
                 ))}
+                {data.topProducts.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-gray-500">
+                      No products sold in this period
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
-          {/* Pagination */}
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
-            <p className="text-sm text-gray-600">Showing 10 to 16 in 30 records</p>
-            <div className="flex items-center gap-2">
-              <button className="p-2 hover:bg-gray-100 rounded border border-gray-300">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100">1</button>
-              <button className="px-3 py-1 text-sm border border-blue-600 bg-blue-600 text-white rounded">2</button>
-              <button className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100">3</button>
-              <button className="p-2 hover:bg-gray-100 rounded border border-gray-300">
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
         </CardContent>
       </Card>
+
+      {/* Customer and Coupon Metrics */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Customer Metrics */}
+        <Card className="bg-white dark:bg-gray-800">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Customer Metrics
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <span className="text-sm text-gray-600 dark:text-gray-400">New Customers</span>
+                <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {data.customerMetrics.newCustomers}
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Repeat Customers</span>
+                <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {data.customerMetrics.repeatCustomers}
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Repeat Rate</span>
+                <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {data.customerMetrics.repeatCustomerRate.toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Coupon Metrics */}
+        <Card className="bg-white dark:bg-gray-800">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Coupon Metrics
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Total Coupons</span>
+                <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {data.couponMetrics.totalCoupons}
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Active Coupons</span>
+                <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {data.couponMetrics.activeCoupons}
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Total Usage</span>
+                <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {data.couponMetrics.totalCouponUsage}
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Discount Given</span>
+                <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {formatCurrency(data.couponMetrics.totalDiscountGiven)}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
-

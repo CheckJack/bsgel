@@ -5,7 +5,8 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileDown, FileText, Image as ImageIcon, Video, File } from "lucide-react";
+import { toast } from "@/components/ui/toast";
+import { FileDown, FileText, Image as ImageIcon, Video, File, Loader2 } from "lucide-react";
 
 interface Resource {
   id: string;
@@ -69,11 +70,14 @@ export default function ResourcesPage() {
           }));
         setResources(transformedResources);
       } else {
-        console.error("Failed to fetch resources:", res.statusText);
+        const error = await res.json();
+        console.error("Failed to fetch resources:", error);
+        toast(error.error || "Failed to load resources", "error");
         setResources([]);
       }
     } catch (error) {
       console.error("Failed to fetch resources:", error);
+      toast("Failed to load resources. Please try again.", "error");
       setResources([]);
     } finally {
       setIsLoading(false);
@@ -105,7 +109,11 @@ export default function ResourcesPage() {
     : resources.filter((r) => r.type === filter);
 
   if (status === "loading" || isLoading) {
-    return <div className="text-center py-8">Loading resources...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    );
   }
 
   if (!session) {

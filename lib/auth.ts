@@ -16,23 +16,29 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const user = await db.user.findUnique({
-          where: {
-            email: credentials.email,
-          },
-          include: {
-            certification: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        })
+        // Normalize email to lowercase (same as registration)
+        const normalizedEmail = credentials.email.trim().toLowerCase()
 
-        if (!user) {
+        // Use raw query to avoid schema mismatch issues
+        const users = await db.$queryRaw<Array<{
+          id: string
+          email: string
+          password: string
+          role: string
+          name: string | null
+          certificationId: string | null
+        }>>`
+          SELECT u.id, u.email, u.password, u.role, u.name, u."certificationId"
+          FROM "User" u
+          WHERE LOWER(u.email) = ${normalizedEmail}
+          LIMIT 1
+        `
+
+        if (!users || users.length === 0) {
           return null
         }
+
+        const user = users[0]
 
         const isPasswordValid = await compare(credentials.password, user.password)
 
@@ -40,13 +46,24 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
+        // Get certification if exists
+        let certificationName = null
+        if (user.certificationId) {
+          const certs = await db.$queryRaw<Array<{ id: string; name: string }>>`
+            SELECT id, name FROM "Certification" WHERE id = ${user.certificationId} LIMIT 1
+          `
+          if (certs && certs.length > 0) {
+            certificationName = certs[0].name
+          }
+        }
+
         return {
           id: user.id,
           email: user.email,
           name: user.name,
           role: user.role,
-          certification: user.certification?.name || null,
-          certificationId: user.certification?.id || null,
+          certification: certificationName,
+          certificationId: user.certificationId,
         }
       },
     }),

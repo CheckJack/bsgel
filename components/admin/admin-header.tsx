@@ -6,6 +6,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Search, Bell, MessageCircle, Maximize2, Minimize2, Settings, Moon, Sun, Menu, X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { AccountSettingsMenu } from "./account-settings-menu";
+import { useLanguage } from "@/contexts/language-context";
 
 interface AdminHeaderProps {
   onMenuClick?: () => void;
@@ -23,29 +24,42 @@ interface Notification {
   read: boolean;
 }
 
+interface ChatMessage {
+  id: string;
+  message: string;
+  adminResponse: string | null;
+  readByAdmin: boolean;
+  readAt: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+  };
+}
+
 export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }: AdminHeaderProps) {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { language, setLanguage, t } = useLanguage();
   const [mounted, setMounted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [language, setLanguage] = useState<"en" | "pt">("en");
+  const [showMessages, setShowMessages] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const notificationRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
-    // Load language preference from localStorage
-    const savedLanguage = localStorage.getItem("language") as "en" | "pt" | null;
-    if (savedLanguage && (savedLanguage === "en" || savedLanguage === "pt")) {
-      setLanguage(savedLanguage);
-    }
     // Initialize search query from URL params
     const query = searchParams.get("search") || "";
     setSearchQuery(query);
@@ -54,7 +68,6 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
   const toggleLanguage = () => {
     const newLanguage = language === "en" ? "pt" : "en";
     setLanguage(newLanguage);
-    localStorage.setItem("language", newLanguage);
   };
 
   useEffect(() => {
@@ -113,22 +126,65 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch messages
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        // Fetch recent messages for the dropdown
+        const recentResponse = await fetch("/api/chat?limit=10&sortField=createdAt&sortDirection=desc");
+        const recentData = await recentResponse.json();
+        
+        // Fetch unread count
+        const unreadResponse = await fetch("/api/chat?filter=unread&limit=100");
+        const unreadData = await unreadResponse.json();
+        
+        if (recentResponse.ok) {
+          const messagesData = recentData.messages || [];
+          setMessages(messagesData);
+        } else {
+          console.error("Failed to fetch recent messages:", recentData);
+          setMessages([]);
+        }
+
+        if (unreadResponse.ok) {
+          const unreadMessages = unreadData.messages || [];
+          setUnreadMessagesCount(unreadMessages.length);
+        } else {
+          console.error("Failed to fetch unread count:", unreadData);
+          setUnreadMessagesCount(0);
+        }
+      } catch (error) {
+        console.error("Failed to fetch messages:", error);
+        setMessages([]);
+        setUnreadMessagesCount(0);
+      }
+    };
+
+    fetchMessages();
+    // Poll for new messages every 30 seconds
+    const interval = setInterval(fetchMessages, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
         setShowNotifications(false);
       }
+      if (messagesRef.current && !messagesRef.current.contains(event.target as Node)) {
+        setShowMessages(false);
+      }
     };
 
-    if (showNotifications) {
+    if (showNotifications || showMessages) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showNotifications]);
+  }, [showNotifications, showMessages]);
 
   const toggleFullscreen = async () => {
     try {
@@ -194,7 +250,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <input
             type="text"
-            placeholder="Search here..."
+            placeholder={t("common.search")}
             value={searchQuery}
             onChange={handleSearchChange}
             className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 text-sm dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -208,8 +264,8 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
         <button
           onClick={toggleLanguage}
           className="w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          aria-label={`Switch to ${language === "en" ? "Portuguese" : "English"}`}
-          title={`Current: ${language === "en" ? "English" : "Portuguese"}. Click to switch.`}
+          aria-label={language === "en" ? t("header.switchToPortuguese") : t("header.switchToEnglish")}
+          title={t("header.currentLanguage", { language: language === "en" ? t("header.english") : t("header.portuguese") })}
         >
           <span className="text-xl">{language === "en" ? "🇬🇧" : "🇵🇹"}</span>
         </button>
@@ -248,7 +304,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  Notifications
+                  {t("header.notifications")}
                 </h3>
                 <button
                   onClick={() => setShowNotifications(false)}
@@ -264,7 +320,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
                 {notifications.length === 0 ? (
                   <div className="p-8 text-center text-gray-500 dark:text-gray-400">
                     <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No notifications</p>
+                    <p>{t("header.noNotifications")}</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -368,7 +424,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
                     }}
                     className="w-full text-sm text-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium py-2"
                   >
-                    Mark all as read
+                    {t("header.markAllAsRead")}
                   </button>
                 </div>
               )}
@@ -377,12 +433,142 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
         </div>
 
         {/* Messages */}
-        <button className="relative w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-          <MessageCircle className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center font-semibold">
-            1
-          </span>
-        </button>
+        <div className="relative" ref={messagesRef}>
+          <button
+            onClick={() => setShowMessages(!showMessages)}
+            className="relative w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            aria-label="Messages"
+          >
+            <MessageCircle className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+            {unreadMessagesCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center font-semibold">
+                {unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
+              </span>
+            )}
+          </button>
+
+          {/* Messages Dropdown */}
+          {showMessages && (
+            <div className="absolute right-0 mt-2 w-96 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 max-h-96 overflow-hidden flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  {t("header.messages")}
+                  {unreadMessagesCount > 0 && (
+                    <span className="ml-2 text-sm font-normal text-blue-600 dark:text-blue-400">
+                      ({unreadMessagesCount} {t("header.unread")})
+                    </span>
+                  )}
+                </h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => router.push("/admin/messages")}
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+                  >
+                    {t("common.viewAll")}
+                  </button>
+                  <button
+                    onClick={() => setShowMessages(false)}
+                    className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+                    aria-label="Close messages"
+                  >
+                    <X className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Messages List */}
+              <div className="overflow-y-auto flex-1">
+                {messages.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+                    <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>{t("header.noMessages")}</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {messages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer ${
+                          !message.readByAdmin ? "bg-blue-50 dark:bg-blue-900/20" : ""
+                        }`}
+                        onClick={async () => {
+                          // Mark as read if unread
+                          if (!message.readByAdmin) {
+                            try {
+                              await fetch(`/api/chat/${message.id}`, {
+                                method: "PUT",
+                              });
+                              setMessages((prev) =>
+                                prev.map((m) =>
+                                  m.id === message.id ? { ...m, readByAdmin: true } : m
+                                )
+                              );
+                              setUnreadMessagesCount((prev) => Math.max(0, prev - 1));
+                            } catch (error) {
+                              console.error("Failed to mark message as read:", error);
+                            }
+                          }
+                          router.push("/admin/messages");
+                          setShowMessages(false);
+                        }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                            {message.user.name
+                              ? message.user.name.charAt(0).toUpperCase()
+                              : message.user.email.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                {message.user.name || message.user.email}
+                              </p>
+                              {!message.readByAdmin && (
+                                <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-1.5" />
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                              {message.message}
+                            </p>
+                            {message.adminResponse && (
+                              <p className="text-xs text-gray-500 dark:text-gray-500 mt-1 italic">
+                                {t("header.replied")}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                              {new Date(message.createdAt).toLocaleString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              {messages.length > 0 && (
+                <div className="p-3 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={() => {
+                      router.push("/admin/messages");
+                      setShowMessages(false);
+                    }}
+                    className="w-full text-sm text-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium py-2"
+                  >
+                    {t("common.viewAll")} {t("header.messages").toLowerCase()}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Full Screen */}
         <button 
@@ -432,7 +618,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
         <button
           onClick={() => setShowAccountSettings(true)}
           className="w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          aria-label="Account settings"
+          aria-label={t("header.accountSettings")}
         >
           <Settings className="h-5 w-5 text-gray-600 dark:text-gray-300" />
         </button>

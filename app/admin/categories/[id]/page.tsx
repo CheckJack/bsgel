@@ -12,6 +12,12 @@ interface ImagePreview {
   file?: File;
 }
 
+interface Category {
+  id: string;
+  name: string;
+  parentId?: string | null;
+}
+
 export default function EditCategoryPage() {
   const params = useParams();
   const router = useRouter();
@@ -21,16 +27,37 @@ export default function EditCategoryPage() {
     slug: "",
     description: "",
     icon: "",
+    parentId: "",
   });
   const [image, setImage] = useState<ImagePreview | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [error, setError] = useState("");
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  const [parentCategories, setParentCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     fetchCategory();
+    fetchParentCategories();
   }, [params.id]);
+
+  const fetchParentCategories = async () => {
+    try {
+      const res = await fetch("/api/categories?limit=10000");
+      if (res.ok) {
+        const data = await res.json();
+        const categoriesList = data.categories || data || [];
+        // Filter to only show main categories (no parentId) as potential parents
+        // Also exclude the current category to prevent self-reference
+        const mainCategories = categoriesList.filter(
+          (cat: any) => !cat.parentId && cat.id !== params.id
+        );
+        setParentCategories(mainCategories);
+      }
+    } catch (error) {
+      console.error("Failed to fetch parent categories:", error);
+    }
+  };
 
   const fetchCategory = async () => {
     try {
@@ -43,6 +70,7 @@ export default function EditCategoryPage() {
           slug: category.slug || "",
           description: category.description || "",
           icon: category.icon || "",
+          parentId: category.parentId || "",
         });
 
         // Load existing image
@@ -171,6 +199,7 @@ export default function EditCategoryPage() {
           description: formData.description || null,
           image: imageUrl,
           icon: formData.icon || null,
+          parentId: formData.parentId || null,
         }),
       });
 
@@ -298,6 +327,34 @@ export default function EditCategoryPage() {
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 Enter an emoji to represent this category (optional).
+              </p>
+            </div>
+
+            {/* Parent Category field (for creating/editing subcategories) */}
+            <div>
+              <label
+                htmlFor="parentId"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Parent Category (Optional)
+              </label>
+              <select
+                id="parentId"
+                value={formData.parentId}
+                onChange={(e) =>
+                  setFormData({ ...formData, parentId: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">None (Main Category)</option>
+                {parentCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Select a parent category to make this a subcategory. Leave empty to make it a main category.
               </p>
             </div>
 

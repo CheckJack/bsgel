@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/ui/pagination";
 import {
   Plus,
   Calendar,
@@ -18,10 +19,16 @@ import {
   ArrowLeft,
   CheckCircle2,
   XCircle,
+  Loader2,
+  Square,
+  CheckSquare,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { SocialMediaPostModal } from "@/components/admin/social-media-post-modal";
+import { RejectionModal } from "@/components/admin/rejection-modal";
+import { SocialMediaErrorBoundary } from "@/components/admin/social-media-error-boundary";
+import { toast, handleApiError, showLoadingToast } from "@/lib/utils";
 
 type ContentType = "POST" | "STORY" | "REELS";
 
@@ -42,6 +49,7 @@ interface SocialMediaPost {
 
 export default function SocialMediaListPage() {
   const [posts, setPosts] = useState<SocialMediaPost[]>([]);
+  const [allPosts, setAllPosts] = useState<SocialMediaPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<SocialMediaPost | null>(null);
@@ -53,6 +61,12 @@ export default function SocialMediaListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [adminUsers, setAdminUsers] = useState<Array<{ id: string; name: string | null; email: string }>>([]);
   const [isLoadingAdmins, setIsLoadingAdmins] = useState(false);
+  const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [isRejectionModalOpen, setIsRejectionModalOpen] = useState(false);
+  const [rejectingPostId, setRejectingPostId] = useState<string | null>(null);
+  const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
 
   useEffect(() => {
     fetchPosts();
@@ -64,14 +78,18 @@ export default function SocialMediaListPage() {
       const res = await fetch("/api/users?role=ADMIN");
       if (res.ok) {
         const users = await res.json();
-        setAdminUsers(users.map((user: any) => ({
+        setAdminUsers(users.map((user: { id: string; name: string | null; email: string }) => ({
           id: user.id,
           name: user.name,
           email: user.email,
         })));
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        throw { response: res, error: errorData.error };
       }
     } catch (error) {
       console.error("Failed to fetch admin users:", error);
+      handleApiError(error, "load admin users");
     } finally {
       setIsLoadingAdmins(false);
     }
@@ -92,10 +110,16 @@ export default function SocialMediaListPage() {
       const res = await fetch(`/api/social-media?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setPosts(data);
+        setAllPosts(data);
+        setCurrentPage(1); // Reset to first page when filters change
+        setSelectedPosts(new Set()); // Clear selections
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        throw { response: res, error: errorData.error };
       }
     } catch (error) {
       console.error("Failed to fetch posts:", error);
+      handleApiError(error, "load social media posts");
     } finally {
       setIsLoading(false);
     }
@@ -125,10 +149,102 @@ export default function SocialMediaListPage() {
       });
 
       if (res.ok) {
+        toast("Post deleted successfully", "success");
         fetchPosts();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        throw { response: res, error: errorData.error };
       }
     } catch (error) {
       console.error("Failed to delete post:", error);
+      handleApiError(error, "delete post");
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedPosts.size === 0) return;
+    if (!confirm(`Are you sure you want to delete ${selectedPosts.size} post(s)?`)) return;
+
+    setIsBulkActionLoading(true);
+    const loadingToastId = showLoadingToast(`Deleting ${selectedPosts.size} post(s)...`);
+    
+    try {
+      const deletePromises = Array.from(selectedPosts).map((id) =>
+        fetch(`/api/social-media/${id}`, { method: "DELETE" })
+      );
+      const results = await Promise.allSettled(deletePromises);
+      const successCount = results.filter((r) => r.status === "fulfilled" && r.value.ok).length;
+      const failCount = results.length - successCount;
+
+      if (successCount > 0) {
+        toast(`Successfully deleted ${successCount} post(s)`, "success");
+      }
+      if (failCount > 0) {
+        toast(`Failed to delete ${failCount} post(s)`, "error");
+      }
+
+      setSelectedPosts(new Set());
+      fetchPosts();
+    } catch (error) {
+      console.error("Failed to delete posts:", error);
+      handleApiError(error, "delete posts");
+    } finally {
+      setIsBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkStatusChange = async (newStatus: SocialMediaPost["status"]) => {
+    if (selectedPosts.size === 0) return;
+
+    setIsBulkActionLoading(true);
+    const loadingToastId = showLoadingToast(`Updating ${selectedPosts.size} post(s) to ${newStatus}...`);
+    
+    try {
+      const updatePromises = Array.from(selectedPosts).map((id) =>
+        fetch(`/api/social-media/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus }),
+        })
+      );
+      const results = await Promise.allSettled(updatePromises);
+      const successCount = results.filter((r) => r.status === "fulfilled" && r.value.ok).length;
+      const failCount = results.length - successCount;
+
+      if (successCount > 0) {
+        toast(`Successfully updated ${successCount} post(s)`, "success");
+      }
+      if (failCount > 0) {
+        toast(`Failed to update ${failCount} post(s)`, "error");
+      }
+
+      setSelectedPosts(new Set());
+      fetchPosts();
+    } catch (error) {
+      console.error("Failed to update posts:", error);
+      handleApiError(error, "update posts");
+    } finally {
+      setIsBulkActionLoading(false);
+    }
+  };
+
+  const togglePostSelection = (postId: string) => {
+    setSelectedPosts((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedPosts.size === filteredPosts.length) {
+      setSelectedPosts(new Set());
+    } else {
+      setSelectedPosts(new Set(filteredPosts.map((p) => p.id)));
     }
   };
 
@@ -138,7 +254,7 @@ export default function SocialMediaListPage() {
     comments?: string
   ) => {
     try {
-      const payload: any = { status: newStatus };
+      const payload: { status: SocialMediaPost["status"]; reviewComments?: string } = { status: newStatus };
       if (comments) {
         payload.reviewComments = comments;
       }
@@ -150,11 +266,35 @@ export default function SocialMediaListPage() {
       });
 
       if (res.ok) {
+        const statusMessages: Record<SocialMediaPost["status"], string> = {
+          APPROVED: "Post approved successfully",
+          REJECTED: "Post rejected",
+          DRAFT: "Post moved to draft",
+          PENDING_REVIEW: "Post submitted for review",
+          PUBLISHED: "Post published",
+        };
+        toast(statusMessages[newStatus] || "Post updated successfully", "success");
         fetchPosts();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        throw { response: res, error: errorData.error };
       }
     } catch (error) {
       console.error("Failed to update status:", error);
+      handleApiError(error, "update post status");
     }
+  };
+
+  const handleRejectClick = (postId: string) => {
+    setRejectingPostId(postId);
+    setIsRejectionModalOpen(true);
+  };
+
+  const handleRejectConfirm = async (reason: string) => {
+    if (!rejectingPostId) return;
+    await handleStatusChange(rejectingPostId, "REJECTED", reason);
+    setIsRejectionModalOpen(false);
+    setRejectingPostId(null);
   };
 
   const getStatusBadge = (status: SocialMediaPost["status"]) => {
@@ -199,7 +339,7 @@ export default function SocialMediaListPage() {
     return icons[platform];
   };
 
-  const filteredPosts = posts.filter((post) => {
+  const filteredPosts = allPosts.filter((post) => {
     if (searchQuery) {
       return (
         post.caption.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -210,6 +350,18 @@ export default function SocialMediaListPage() {
     }
     return true;
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredPosts.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedPosts = filteredPosts.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -224,14 +376,16 @@ export default function SocialMediaListPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-white"></div>
+      <div className="flex items-center justify-center min-h-[400px]" role="status" aria-label="Loading posts">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" aria-hidden="true" />
+        <span className="sr-only">Loading posts...</span>
       </div>
     );
   }
 
   return (
-    <div>
+    <SocialMediaErrorBoundary>
+      <div>
       <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/admin/social-media">
@@ -262,24 +416,89 @@ export default function SocialMediaListPage() {
         </div>
       </div>
 
+      {/* Bulk Actions */}
+      {selectedPosts.size > 0 && (
+        <Card className="mb-6 border-blue-200 dark:border-blue-800">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {selectedPosts.size} post(s) selected
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleBulkStatusChange("APPROVED")}
+                    disabled={isBulkActionLoading}
+                    aria-label="Approve selected posts"
+                  >
+                    {isBulkActionLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                    )}
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleBulkStatusChange("DRAFT")}
+                    disabled={isBulkActionLoading}
+                    aria-label="Move selected posts to draft"
+                  >
+                    Move to Draft
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleBulkDelete}
+                    disabled={isBulkActionLoading}
+                    className="border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    aria-label="Delete selected posts"
+                  >
+                    {isBulkActionLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
+                    Delete
+                  </Button>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedPosts(new Set())}
+                aria-label="Clear selection"
+              >
+                Clear
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Filters */}
       <Card className="mb-6">
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="flex flex-wrap gap-4 items-center flex-1">
               <div className="flex items-center gap-2">
-                <Search className="h-4 w-4 text-gray-500" />
+                <Search className="h-4 w-4 text-gray-500" aria-hidden="true" />
                 <Input
                   placeholder="Search posts..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-64"
+                  aria-label="Search posts by caption or hashtags"
                 />
               </div>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="h-10 px-3 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                aria-label="Filter by status"
               >
                 <option value="all">All Status</option>
                 <option value="DRAFT">Draft</option>
@@ -292,6 +511,7 @@ export default function SocialMediaListPage() {
                 value={filterPlatform}
                 onChange={(e) => setFilterPlatform(e.target.value)}
                 className="h-10 px-3 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                aria-label="Filter by platform"
               >
                 <option value="all">All Platforms</option>
                 <option value="INSTAGRAM">Instagram</option>
@@ -305,7 +525,28 @@ export default function SocialMediaListPage() {
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 className="h-10 px-3 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                aria-label="Filter by month"
               />
+              <div className="flex items-center gap-2">
+                <label htmlFor="page-size" className="text-sm text-gray-600 dark:text-gray-400">
+                  Per page:
+                </label>
+                <select
+                  id="page-size"
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="h-10 px-3 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  aria-label="Posts per page"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -313,19 +554,54 @@ export default function SocialMediaListPage() {
 
       {/* List View */}
       <div className="space-y-4">
-        {filteredPosts.length === 0 ? (
+        {paginatedPosts.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">
               <p className="text-gray-500 dark:text-gray-400">
-                No posts found. Create your first post!
+                {filteredPosts.length === 0
+                  ? "No posts found. Create your first post!"
+                  : "No posts on this page."}
               </p>
             </CardContent>
           </Card>
         ) : (
-          filteredPosts.map((post) => (
+          <>
+            {paginatedPosts.length > 0 && (
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={toggleSelectAll}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                    aria-label={selectedPosts.size === paginatedPosts.length ? "Deselect all" : "Select all"}
+                  >
+                    {selectedPosts.size === paginatedPosts.length &&
+                    paginatedPosts.every((p) => selectedPosts.has(p.id)) ? (
+                      <CheckSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    ) : (
+                      <Square className="h-5 w-5 text-gray-400" />
+                    )}
+                  </button>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    Showing {startIndex + 1}-{Math.min(endIndex, filteredPosts.length)} of {filteredPosts.length} posts
+                  </span>
+                </div>
+              </div>
+            )}
+            {paginatedPosts.map((post) => (
             <Card key={post.id}>
               <CardContent className="p-6">
                 <div className="flex gap-4">
+                  <button
+                    onClick={() => togglePostSelection(post.id)}
+                    className="flex-shrink-0 mt-1 p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                    aria-label={selectedPosts.has(post.id) ? "Deselect post" : "Select post"}
+                  >
+                    {selectedPosts.has(post.id) ? (
+                      <CheckSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    ) : (
+                      <Square className="h-5 w-5 text-gray-400" />
+                    )}
+                  </button>
                   {post.images.length > 0 && (
                     <div className="relative w-32 h-32 flex-shrink-0 rounded-lg overflow-hidden">
                       <Image
@@ -350,6 +626,7 @@ export default function SocialMediaListPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleOpenModal(post)}
+                          aria-label={`Edit post ${post.id}`}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -357,6 +634,7 @@ export default function SocialMediaListPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDelete(post.id)}
+                          aria-label={`Delete post ${post.id}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -393,6 +671,7 @@ export default function SocialMediaListPage() {
                           onClick={() =>
                             handleStatusChange(post.id, "APPROVED")
                           }
+                          aria-label={`Approve post ${post.id}`}
                         >
                           <CheckCircle2 className="h-4 w-4 mr-1" />
                           Approve
@@ -400,12 +679,8 @@ export default function SocialMediaListPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => {
-                            const comments = prompt("Rejection reason:");
-                            if (comments) {
-                              handleStatusChange(post.id, "REJECTED", comments);
-                            }
-                          }}
+                          onClick={() => handleRejectClick(post.id)}
+                          aria-label={`Reject post ${post.id}`}
                         >
                           <XCircle className="h-4 w-4 mr-1" />
                           Reject
@@ -421,11 +696,23 @@ export default function SocialMediaListPage() {
                 </div>
               </CardContent>
             </Card>
-          ))
+          ))}
+          </>
         )}
       </div>
 
-      {/* Modal */}
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-6">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+      )}
+
+      {/* Modals */}
       <SocialMediaPostModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
@@ -434,7 +721,18 @@ export default function SocialMediaListPage() {
         adminUsers={adminUsers}
         isLoadingAdmins={isLoadingAdmins}
       />
+
+      <RejectionModal
+        isOpen={isRejectionModalOpen}
+        onClose={() => {
+          setIsRejectionModalOpen(false);
+          setRejectingPostId(null);
+        }}
+        onConfirm={handleRejectConfirm}
+        postCaption={rejectingPostId ? paginatedPosts.find((p) => p.id === rejectingPostId)?.caption : undefined}
+      />
     </div>
+    </SocialMediaErrorBoundary>
   );
 }
 

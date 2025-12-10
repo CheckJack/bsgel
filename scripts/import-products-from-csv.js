@@ -150,10 +150,25 @@ async function getOrCreateCategory(prisma, categorySlug) {
     return null;
   }
   
-  // Try to find existing category
-  let category = await prisma.category.findUnique({
-    where: { slug: categoryInfo.slug },
-  });
+  // Try to find existing category - only select fields that exist
+  let category;
+  try {
+    category = await prisma.category.findUnique({
+      where: { slug: categoryInfo.slug },
+      select: { id: true, name: true, slug: true },
+    });
+  } catch (error) {
+    // If schema doesn't match, try without select
+    if (error.code === 'P2021' || error.message?.includes('does not exist')) {
+      // Use raw query as fallback
+      const result = await prisma.$queryRaw`
+        SELECT id, name, slug FROM "Category" WHERE slug = ${categoryInfo.slug} LIMIT 1
+      `;
+      category = result[0] || null;
+    } else {
+      throw error;
+    }
+  }
   
   // Create category if it doesn't exist
   if (!category) {
@@ -245,12 +260,26 @@ async function importProducts() {
           const categorySlug = determineCategory(name);
           const categoryId = await getOrCreateCategory(prisma, categorySlug);
           
-          // Check if product already exists (by name)
-          const existing = await prisma.product.findFirst({
-            where: {
-              name: name,
-            },
-          });
+          // Check if product already exists (by name) - only select fields that exist
+          let existing;
+          try {
+            existing = await prisma.product.findFirst({
+              where: {
+                name: name,
+              },
+              select: { id: true, name: true },
+            });
+          } catch (error) {
+            // If schema doesn't match, use raw query
+            if (error.code === 'P2021' || error.message?.includes('salePrice') || error.message?.includes('does not exist')) {
+              const result = await prisma.$queryRaw`
+                SELECT id, name FROM "Product" WHERE name = ${name} LIMIT 1
+              `;
+              existing = result[0] || null;
+            } else {
+              throw error;
+            }
+          }
           
           if (existing) {
             console.log(`⏭️  Skipping "${name}" - already exists`);
@@ -258,18 +287,32 @@ async function importProducts() {
             continue;
           }
           
-          // Create product
-          await prisma.product.create({
-            data: {
-              name: name.substring(0, 255), // Ensure name doesn't exceed DB limits
-              description: description,
-              price: price,
-              image: primaryImage,
-              images: additionalImages,
-              featured: false,
-              categoryId: categoryId,
-            },
-          });
+          // Create product - handle schema mismatches
+          try {
+            await prisma.product.create({
+              data: {
+                name: name.substring(0, 255), // Ensure name doesn't exceed DB limits
+                description: description,
+                price: price,
+                image: primaryImage,
+                images: additionalImages,
+                featured: false,
+                categoryId: categoryId,
+              },
+            });
+          } catch (error) {
+            // If schema doesn't match (missing salePrice or other fields), use raw SQL
+            if (error.code === 'P2021' || error.message?.includes('salePrice') || error.message?.includes('does not exist')) {
+              // Use raw SQL to insert only fields that exist
+              const imageArray = additionalImages.length > 0 ? `{${additionalImages.map(img => `"${img.replace(/"/g, '\\"')}"`).join(',')}}` : '{}';
+              await prisma.$executeRaw`
+                INSERT INTO "Product" (id, name, description, price, image, images, featured, "categoryId", "createdAt", "updatedAt")
+                VALUES (gen_random_uuid()::text, ${name.substring(0, 255)}, ${description}, ${price}, ${primaryImage}, ${imageArray}::text[], false, ${categoryId}, NOW(), NOW())
+              `;
+            } else {
+              throw error;
+            }
+          }
           
           successCount++;
           

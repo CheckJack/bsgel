@@ -37,7 +37,9 @@ export async function GET() {
         product: {
           id: item.product.id,
           name: item.product.name,
-          price: item.product.price.toString(),
+          price: typeof item.product.price === 'object' && item.product.price !== null 
+            ? item.product.price.toString() 
+            : String(item.product.price || '0'),
           image: item.product.image,
           description: item.product.description,
           categoryId: item.product.categoryId,
@@ -50,10 +52,18 @@ export async function GET() {
         quantity: item.quantity,
       })),
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to fetch cart:", error)
+    console.error("Error details:", {
+      message: error?.message,
+      code: error?.code,
+      stack: error?.stack,
+    })
     return NextResponse.json(
-      { error: "Failed to fetch cart" },
+      { 
+        error: "Failed to fetch cart",
+        details: error?.message || "Unknown error"
+      },
       { status: 500 }
     )
   }

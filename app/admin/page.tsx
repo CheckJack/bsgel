@@ -8,8 +8,10 @@ import { NewComments } from "@/components/admin/new-comments";
 import { OrdersEarnings } from "@/components/admin/orders-earnings";
 import { TopProductsCountries } from "@/components/admin/top-products-countries";
 import { CheckCircle2, DollarSign, FileText, Users } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
 
 export default function AdminDashboardPage() {
+  const { t } = useLanguage();
   const [stats, setStats] = useState({
     totalProducts: 0,
     totalOrders: 0,
@@ -32,20 +34,24 @@ export default function AdminDashboardPage() {
       ]);
 
       if (productsRes.ok && ordersRes.ok) {
-        const products = await productsRes.json();
-        const orders = await ordersRes.json();
+        const productsData = await productsRes.json();
+        const ordersData = await ordersRes.json();
+        
+        // Handle different response formats
+        const products = Array.isArray(productsData) ? productsData : (productsData.products || []);
+        const orders = Array.isArray(ordersData) ? ordersData : (ordersData.orders || []);
 
-        const totalRevenue = orders.reduce(
-          (sum: number, order: any) => sum + parseFloat(order.total),
+        const totalRevenue = Array.isArray(orders) ? orders.reduce(
+          (sum: number, order: any) => sum + parseFloat(order.total?.toString() || '0'),
           0
-        );
-        const pendingOrders = orders.filter(
+        ) : 0;
+        const pendingOrders = Array.isArray(orders) ? orders.filter(
           (order: any) => order.status === "PENDING" || order.status === "PROCESSING"
-        ).length;
+        ).length : 0;
 
         setStats({
-          totalProducts: products.length,
-          totalOrders: orders.length,
+          totalProducts: Array.isArray(products) ? products.length : 0,
+          totalOrders: Array.isArray(orders) ? orders.length : 0,
           totalRevenue,
           pendingOrders,
         });
@@ -81,14 +87,14 @@ export default function AdminDashboardPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">Welcome to your admin panel</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("dashboard.title")}</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">{t("dashboard.welcome")}</p>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <KPICard
-          title="Total Sales"
+          title={t("dashboard.totalSales")}
           value="34,945"
           trend={1.56}
           icon={<CheckCircle2 className="h-7 w-7" />}
@@ -97,7 +103,7 @@ export default function AdminDashboardPage() {
           graphData={salesData}
         />
         <KPICard
-          title="Total Income"
+          title={t("dashboard.totalIncome")}
           value="€37,802"
           trend={-1.56}
           icon={<DollarSign className="h-7 w-7" />}
@@ -106,7 +112,7 @@ export default function AdminDashboardPage() {
           graphData={incomeData}
         />
         <KPICard
-          title="Orders Paid"
+          title={t("dashboard.ordersPaid")}
           value="34,945"
           trend={0}
           icon={<FileText className="h-7 w-7" />}
@@ -115,7 +121,7 @@ export default function AdminDashboardPage() {
           graphData={ordersData}
         />
         <KPICard
-          title="Total Visitor"
+          title={t("dashboard.totalVisitor")}
           value="34,945"
           trend={1.56}
           icon={<Users className="h-7 w-7" />}
@@ -128,7 +134,7 @@ export default function AdminDashboardPage() {
       {/* Recent Order Chart - Full Width */}
       <div className="mb-6">
         <ChartCard 
-          title="Recent Order"
+          title={t("dashboard.recentOrder")}
           onRefresh={handleRefresh}
           exportData={chartData}
           exportFileName="recent_orders"

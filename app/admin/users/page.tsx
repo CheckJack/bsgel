@@ -2,23 +2,38 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { formatPrice } from "@/lib/utils";
-import { Search, ChevronLeft, ChevronRight, Pencil, Trash2, Eye, EyeOff, X } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
+import { Search, ChevronLeft, ChevronRight, Pencil, Trash2, Eye, EyeOff, X, Eye as ViewIcon, CheckCircle2, XCircle, Check } from "lucide-react";
+
+interface Permission {
+  addProduct?: "allow" | "deny";
+  updateProduct?: "allow" | "deny";
+  deleteProduct?: "allow" | "deny";
+  applyDiscount?: "allow" | "deny";
+  createCoupon?: "allow" | "deny";
+}
 
 interface User {
   id: string;
   email: string;
   name: string | null;
   role: string;
+  permissions?: Permission | null;
+  isActive?: boolean;
+  lastLoginAt?: string | null;
   createdAt: string;
   totalSpent: number;
   orderCount: number;
 }
 
 export default function AdminUsersPage() {
+  const { t } = useLanguage();
+  const { data: session } = useSession();
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -27,6 +42,7 @@ export default function AdminUsersPage() {
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [editFormData, setEditFormData] = useState({
@@ -34,12 +50,21 @@ export default function AdminUsersPage() {
     email: "",
     password: "",
     confirmPassword: "",
+    isActive: true,
+  });
+  const [editPermissions, setEditPermissions] = useState<Permission>({
+    addProduct: "allow",
+    updateProduct: "deny",
+    deleteProduct: "allow",
+    applyDiscount: "deny",
+    createCoupon: "deny",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     fetchUsers();
@@ -82,6 +107,8 @@ export default function AdminUsersPage() {
   const startIndex = (currentPage - 1) * entriesPerPage;
   const endIndex = startIndex + entriesPerPage;
   const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+  const paginationStart = filteredUsers.length > 0 ? startIndex + 1 : 0;
+  const paginationEnd = Math.min(endIndex, filteredUsers.length);
 
   // Generate avatar initials
   const getInitials = (name: string | null, email: string) => {
@@ -119,27 +146,65 @@ export default function AdminUsersPage() {
       email: user.email,
       password: "",
       confirmPassword: "",
+      isActive: user.isActive ?? true,
+    });
+    setEditPermissions((user.permissions as Permission) || {
+      addProduct: "allow",
+      updateProduct: "deny",
+      deleteProduct: "allow",
+      applyDiscount: "deny",
+      createCoupon: "deny",
     });
     setShowEditModal(true);
     setError("");
+    setSuccessMessage("");
+  };
+
+  const handleViewDetails = (user: User) => {
+    setSelectedUser(user);
+    setShowDetailsModal(true);
+  };
+
+  const handlePermissionChange = (
+    permission: keyof Permission,
+    value: "allow" | "deny"
+  ) => {
+    setEditPermissions((prev) => ({
+      ...prev,
+      [permission]: value,
+    }));
   };
 
   const handleUpdateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccessMessage("");
 
     if (!editFormData.name || !editFormData.email) {
-      setError("Please fill in all required fields");
+      setError(t("form.fillAllFields"));
       return;
     }
 
-    if (editFormData.password && editFormData.password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (editFormData.password && editFormData.password.length < 8) {
+      setError(t("form.passwordTooShort"));
       return;
+    }
+
+    // Enhanced password validation
+    if (editFormData.password) {
+      const hasUpperCase = /[A-Z]/.test(editFormData.password);
+      const hasLowerCase = /[a-z]/.test(editFormData.password);
+      const hasNumber = /[0-9]/.test(editFormData.password);
+      const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(editFormData.password);
+
+      if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
+        setError(t("users.passwordRequirements"));
+        return;
+      }
     }
 
     if (editFormData.password !== editFormData.confirmPassword) {
-      setError("Passwords do not match");
+        setError(t("form.passwordMismatch"));
       return;
     }
 
@@ -150,6 +215,8 @@ export default function AdminUsersPage() {
         name: editFormData.name,
         email: editFormData.email,
         role: "ADMIN", // Keep as ADMIN
+        permissions: editPermissions,
+        isActive: editFormData.isActive,
       };
 
       if (editFormData.password) {
@@ -163,15 +230,19 @@ export default function AdminUsersPage() {
       });
 
       if (res.ok) {
-        setShowEditModal(false);
-        setSelectedUser(null);
-        await fetchUsers();
+        setSuccessMessage(t("users.updateSuccess"));
+        setTimeout(() => {
+          setShowEditModal(false);
+          setSelectedUser(null);
+          setSuccessMessage("");
+          fetchUsers();
+        }, 1000);
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to update user");
+        setError(data.error || t("users.updateError"));
       }
     } catch (error) {
-      setError("An error occurred. Please try again.");
+        setError(t("form.errorOccurred"));
     } finally {
       setIsSubmitting(false);
     }
@@ -188,6 +259,7 @@ export default function AdminUsersPage() {
 
     setIsDeleting(true);
     setError("");
+    setSuccessMessage("");
 
     try {
       const res = await fetch(`/api/users/${userToDelete.id}`, {
@@ -195,15 +267,19 @@ export default function AdminUsersPage() {
       });
 
       if (res.ok) {
-        setShowDeleteModal(false);
-        setUserToDelete(null);
-        await fetchUsers();
+        setSuccessMessage(t("users.deleteSuccess"));
+        setTimeout(() => {
+          setShowDeleteModal(false);
+          setUserToDelete(null);
+          setSuccessMessage("");
+          fetchUsers();
+        }, 1000);
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to delete user");
+        setError(data.error || t("users.deleteError"));
       }
     } catch (error) {
-      setError("An error occurred. Please try again.");
+        setError(t("form.errorOccurred"));
     } finally {
       setIsDeleting(false);
     }
@@ -221,10 +297,10 @@ export default function AdminUsersPage() {
     <div className="p-6 min-h-screen">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Backend Users</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("users.backendUsers")}</h1>
         <div className="text-sm text-gray-600 dark:text-gray-400">
-          Dashboard <span className="mx-2">&gt;</span> Users{" "}
-          <span className="mx-2">&gt;</span> Backend Users
+          {t("sidebar.dashboard")} <span className="mx-2">&gt;</span> {t("sidebar.users")}{" "}
+          <span className="mx-2">&gt;</span> {t("users.backendUsers")}
         </div>
       </div>
 
@@ -235,13 +311,13 @@ export default function AdminUsersPage() {
             {/* Search Bar */}
             <div className="flex-1 max-w-md">
               <div className="relative">
-                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
-                <input
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                <Input
                   type="text"
-                  placeholder="Search here..."
+                  placeholder={t("common.search")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-4 pr-10 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                  className="w-full pl-10 pr-4"
                 />
               </div>
             </div>
@@ -250,7 +326,7 @@ export default function AdminUsersPage() {
             <div className="flex-shrink-0">
               <Link href="/admin/users/new">
                 <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
-                  + Add new
+                  + {t("users.newUser")}
                 </Button>
               </Link>
             </div>
@@ -266,19 +342,22 @@ export default function AdminUsersPage() {
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    User
+                    {t("users.userName")}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Role
+                    {t("common.status")}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Email
+                    {t("common.email")}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Created
+                    {t("users.permissions")}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Actions
+                    {t("users.createdAt")}
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    {t("common.actions")}
                   </th>
                 </tr>
               </thead>
@@ -286,81 +365,114 @@ export default function AdminUsersPage() {
                 {paginatedUsers.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-6 py-12 text-center text-gray-500 dark:text-gray-400"
                     >
-                      No backend users found
+                      <div className="flex flex-col items-center gap-2">
+                        <p className="text-base font-medium">{t("users.noUsers")}</p>
+                        <p className="text-sm">{t("common.tryAdjustingSearch")}</p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
-                  paginatedUsers.map((user) => (
-                    <tr
-                      key={user.id}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      {/* User Column */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div
-                            className={`relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 ${getAvatarColor(
-                              user.id
-                            )} flex items-center justify-center text-white font-semibold text-sm`}
-                          >
-                            {getInitials(user.name, user.email)}
+                  paginatedUsers.map((user) => {
+                    const isCurrentUser = session?.user?.id === user.id;
+                    const permissions = (user.permissions as Permission) || {};
+                    const permissionCount = Object.values(permissions).filter(p => p === "allow").length;
+                    const totalPermissions = Object.keys(permissions).length || 5;
+                    
+                    return (
+                      <tr
+                        key={user.id}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        {/* User Column */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className={`relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 ${getAvatarColor(
+                                user.id
+                              )} flex items-center justify-center text-white font-semibold text-sm`}
+                            >
+                              {getInitials(user.name, user.email)}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                {user.name || user.email.split("@")[0]}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                {t("users.backendWorker")}
+                              </p>
+                            </div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                              {user.name || user.email.split("@")[0]}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                              Backend Worker
-                            </p>
+                        </td>
+
+                        {/* Status Column */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            user.isActive !== false
+                              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                              : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                          }`}>
+                            {user.isActive !== false ? t("users.active") : t("users.inactive")}
+                          </span>
+                        </td>
+
+                        {/* Email Column */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-900 dark:text-gray-100">
+                            {user.email}
+                          </span>
+                        </td>
+
+                        {/* Permissions Column */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-900 dark:text-gray-100">
+                            {t("users.permissionCount", { count: permissionCount, total: totalPermissions })}
+                          </span>
+                        </td>
+
+                        {/* Created Column */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-900 dark:text-gray-100">
+                            {new Date(user.createdAt).toLocaleDateString()}
+                          </span>
+                        </td>
+
+                        {/* Actions Column */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleViewDetails(user)}
+                              className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                              title={t("users.viewDetails")}
+                            >
+                              <ViewIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleEdit(user)}
+                              className="p-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+                              title={t("common.edit")}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick(user)}
+                              disabled={isCurrentUser}
+                              className={`p-2 rounded-lg transition-colors ${
+                                isCurrentUser
+                                  ? "text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50"
+                                  : "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
+                              }`}
+                              title={isCurrentUser ? t("form.cannotDeleteOwnAccount") : t("common.delete")}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
                           </div>
-                        </div>
-                      </td>
-
-                      {/* Role Column */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                          Admin
-                        </span>
-                      </td>
-
-                      {/* Email Column */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900 dark:text-gray-100">
-                          {user.email}
-                        </span>
-                      </td>
-
-                      {/* Created Column */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900 dark:text-gray-100">
-                          {new Date(user.createdAt).toLocaleDateString()}
-                        </span>
-                      </td>
-
-                      {/* Actions Column */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleEdit(user)}
-                            className="p-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors"
-                            title="Edit"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick(user)}
-                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -371,7 +483,7 @@ export default function AdminUsersPage() {
             <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="text-sm text-gray-600 dark:text-gray-400">
-                  Showing {entriesPerPage} entries
+                  {t("table.showing")} {paginationStart}-{paginationEnd} {t("table.of")} {filteredUsers.length} {t("table.entries")}
                 </div>
                 <div className="flex items-center gap-2 mx-auto sm:mx-0">
                   <button
@@ -434,18 +546,27 @@ export default function AdminUsersPage() {
             <CardContent className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  Edit Backend User
+                  {t("users.editUser")}
                 </h2>
                 <button
                   onClick={() => {
                     setShowEditModal(false);
                     setSelectedUser(null);
                     setError("");
+                    setSuccessMessage("");
                     setEditFormData({
                       name: "",
                       email: "",
                       password: "",
                       confirmPassword: "",
+                      isActive: true,
+                    });
+                    setEditPermissions({
+                      addProduct: "allow",
+                      updateProduct: "deny",
+                      deleteProduct: "allow",
+                      applyDiscount: "deny",
+                      createCoupon: "deny",
                     });
                   }}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
@@ -460,18 +581,24 @@ export default function AdminUsersPage() {
                 </div>
               )}
 
+              {successMessage && (
+                <div className="mb-4 p-3 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-md">
+                  {successMessage}
+                </div>
+              )}
+
               <form onSubmit={handleUpdateUser} className="space-y-4">
                 <div>
                   <label
                     htmlFor="edit-name"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                   >
-                    Name *
+                    {t("users.name")} *
                   </label>
                   <Input
                     id="edit-name"
                     type="text"
-                    placeholder="User name"
+                    placeholder={t("users.userName")}
                     value={editFormData.name}
                     onChange={(e) =>
                       setEditFormData({ ...editFormData, name: e.target.value })
@@ -486,12 +613,12 @@ export default function AdminUsersPage() {
                     htmlFor="edit-email"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                   >
-                    Email *
+                    {t("users.email")} *
                   </label>
                   <Input
                     id="edit-email"
                     type="email"
-                    placeholder="user@example.com"
+                    placeholder={t("users.emailPlaceholder")}
                     value={editFormData.email}
                     onChange={(e) =>
                       setEditFormData({ ...editFormData, email: e.target.value })
@@ -506,13 +633,13 @@ export default function AdminUsersPage() {
                     htmlFor="edit-password"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                   >
-                    New Password (leave blank to keep current)
+                    {t("users.newPassword")} ({t("users.leaveBlankToKeep")})
                   </label>
                   <div className="relative">
                     <Input
                       id="edit-password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Enter new password"
+                      placeholder={t("users.enterNewPassword")}
                       value={editFormData.password}
                       onChange={(e) =>
                         setEditFormData({ ...editFormData, password: e.target.value })
@@ -539,13 +666,13 @@ export default function AdminUsersPage() {
                       htmlFor="edit-confirmPassword"
                       className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                     >
-                      Confirm New Password
+                      {t("users.confirmNewPassword")}
                     </label>
                     <div className="relative">
                       <Input
                         id="edit-confirmPassword"
                         type={showConfirmPassword ? "text" : "password"}
-                        placeholder="Confirm new password"
+                        placeholder={t("users.confirmPassword")}
                         value={editFormData.confirmPassword}
                         onChange={(e) =>
                           setEditFormData({
@@ -572,6 +699,81 @@ export default function AdminUsersPage() {
                   </div>
                 )}
 
+                {/* Status Toggle */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {t("common.status")}
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditFormData({ ...editFormData, isActive: true })}
+                      className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                        editFormData.isActive
+                          ? "bg-green-600 text-white"
+                          : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      }`}
+                    >
+                      {editFormData.isActive && <Check className="h-4 w-4" />}
+                      {t("users.active")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditFormData({ ...editFormData, isActive: false })}
+                      className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                        !editFormData.isActive
+                          ? "bg-red-600 text-white"
+                          : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      }`}
+                    >
+                      {!editFormData.isActive && <Check className="h-4 w-4" />}
+                      {t("users.inactive")}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Permissions Section */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                    {t("users.permissions")}
+                  </label>
+                  <div className="space-y-3">
+                    {(["addProduct", "updateProduct", "deleteProduct", "applyDiscount", "createCoupon"] as const).map((permission) => (
+                      <div key={permission}>
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                          {t(`users.${permission}`)}
+                        </label>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handlePermissionChange(permission, "allow")}
+                            className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                              editPermissions[permission] === "allow"
+                                ? "bg-green-600 text-white"
+                                : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            }`}
+                          >
+                            {editPermissions[permission] === "allow" && <Check className="h-3 w-3" />}
+                            {t("users.allow")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handlePermissionChange(permission, "deny")}
+                            className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                              editPermissions[permission] === "deny"
+                                ? "bg-red-600 text-white"
+                                : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            }`}
+                          >
+                            {editPermissions[permission] === "deny" && <Check className="h-3 w-3" />}
+                            {t("users.deny")}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="flex gap-3 pt-4">
                   <Button
                     type="button"
@@ -579,23 +781,39 @@ export default function AdminUsersPage() {
                       setShowEditModal(false);
                       setSelectedUser(null);
                       setError("");
+                      setSuccessMessage("");
                       setEditFormData({
                         name: "",
                         email: "",
                         password: "",
                         confirmPassword: "",
+                        isActive: true,
+                      });
+                      setEditPermissions({
+                        addProduct: "allow",
+                        updateProduct: "deny",
+                        deleteProduct: "allow",
+                        applyDiscount: "deny",
+                        createCoupon: "deny",
                       });
                     }}
                     className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </Button>
                   <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isSubmitting ? "Updating..." : "Update User"}
+                    {isSubmitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        {t("common.loading")}
+                      </>
+                    ) : (
+                      t("users.updateUser")
+                    )}
                   </Button>
                 </div>
               </form>
@@ -611,7 +829,7 @@ export default function AdminUsersPage() {
             <CardContent className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  Delete Backend User
+                  {t("users.deleteUser")}
                 </h2>
                 <button
                   onClick={() => {
@@ -631,9 +849,15 @@ export default function AdminUsersPage() {
                 </div>
               )}
 
+              {successMessage && (
+                <div className="mb-4 p-3 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-md">
+                  {successMessage}
+                </div>
+              )}
+
               <div className="mb-6">
                 <p className="text-gray-700 dark:text-gray-300 mb-4">
-                  Are you sure you want to delete this backend user? This action cannot be undone.
+                  {t("users.deleteConfirm")}
                 </p>
                 <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
                   <p className="font-semibold text-gray-900 dark:text-gray-100">
@@ -656,15 +880,182 @@ export default function AdminUsersPage() {
                   className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
                   disabled={isDeleting}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   type="button"
                   onClick={handleDeleteUser}
                   disabled={isDeleting}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isDeleting ? "Deleting..." : "Delete User"}
+                  {isDeleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      {t("common.loading")}
+                    </>
+                  ) : (
+                    t("users.deleteUser")
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* User Details Modal */}
+      {showDetailsModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <Card className="bg-white dark:bg-gray-800 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {t("users.userDetails")}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    setSelectedUser(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* User Info */}
+                <div className="flex items-center gap-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                  <div
+                    className={`relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 ${getAvatarColor(
+                      selectedUser.id
+                    )} flex items-center justify-center text-white font-semibold text-lg`}
+                  >
+                    {getInitials(selectedUser.name, selectedUser.email)}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {selectedUser.name || selectedUser.email.split("@")[0]}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {selectedUser.email}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {t("common.status")}
+                  </label>
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                    selectedUser.isActive !== false
+                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                      : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                  }`}>
+                    {selectedUser.isActive !== false ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                        {t("users.active")}
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-4 w-4 mr-1" />
+                        {t("users.inactive")}
+                      </>
+                    )}
+                  </span>
+                </div>
+
+                {/* Permissions */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {t("users.permissions")}
+                  </label>
+                  <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg space-y-2">
+                    {(["addProduct", "updateProduct", "deleteProduct", "applyDiscount", "createCoupon"] as const).map((permission) => {
+                      const permValue = (selectedUser.permissions as Permission)?.[permission] || "deny";
+                      return (
+                        <div key={permission} className="flex items-center justify-between">
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            {t(`users.${permission}`)}
+                          </span>
+                          <span className={`text-xs font-medium px-2 py-1 rounded ${
+                            permValue === "allow"
+                              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                              : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                          }`}>
+                            {permValue === "allow" ? t("users.allowed") : t("users.denied")}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Dates */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("users.createdAt")}
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100">
+                      {new Date(selectedUser.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                  {selectedUser.lastLoginAt && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {t("users.lastLogin")}
+                      </label>
+                      <p className="text-sm text-gray-900 dark:text-gray-100">
+                        {new Date(selectedUser.lastLoginAt).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("users.orderCount")}
+                    </label>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {selectedUser.orderCount}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {t("users.totalSpent")}
+                    </label>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {formatPrice(selectedUser.totalSpent)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    handleEdit(selectedUser);
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {t("users.editUser")}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    setSelectedUser(null);
+                  }}
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
+                >
+                  {t("common.close")}
                 </Button>
               </div>
             </CardContent>

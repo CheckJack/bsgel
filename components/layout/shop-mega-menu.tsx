@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 interface ShopMegaMenuProps {
   isOpen: boolean;
   onClose: () => void;
+  onMouseEnter?: () => void;
 }
 
 interface MegaMenuCard {
@@ -29,23 +30,46 @@ interface BrandPage {
   children?: BrandPageChild[];
 }
 
-export function ShopMegaMenu({ isOpen, onClose }: ShopMegaMenuProps) {
+export function ShopMegaMenu({ isOpen, onClose, onMouseEnter }: ShopMegaMenuProps) {
   const [cards, setCards] = useState<MegaMenuCard[]>([]);
   const [isLoadingCards, setIsLoadingCards] = useState(true);
+  const [hasFetched, setHasFetched] = useState(false);
 
+  // Fetch data on mount to have it ready when menu opens
   useEffect(() => {
-    if (isOpen) {
+    if (!hasFetched) {
       fetchCards();
     }
-  }, [isOpen]);
+  }, [hasFetched]);
+
+  // Prefetch images once cards are loaded
+  useEffect(() => {
+    if (cards.length > 0) {
+      cards.forEach((card) => {
+        if (card.isActive && card.imageUrl) {
+          // Check if link already exists to avoid duplicates
+          const existingLink = document.querySelector(`link[rel="prefetch"][href="${card.imageUrl}"]`);
+          if (!existingLink) {
+            const link = document.createElement('link');
+            link.rel = 'prefetch';
+            link.as = 'image';
+            link.href = card.imageUrl;
+            document.head.appendChild(link);
+          }
+        }
+      });
+    }
+  }, [cards]);
 
   const fetchCards = async () => {
+    if (hasFetched) return;
     try {
       setIsLoadingCards(true);
       const res = await fetch("/api/mega-menu-cards?menuType=SHOP");
       if (res.ok) {
         const data = await res.json();
         setCards(data.cards || []);
+        setHasFetched(true);
       }
     } catch (error) {
       console.error("Failed to fetch mega menu cards:", error);
@@ -74,8 +98,7 @@ export function ShopMegaMenu({ isOpen, onClose }: ShopMegaMenuProps) {
         { name: "Reds", href: "/gemini/reds" },
         { name: "Pinks", href: "/gemini/pinks" },
         { name: "Nudes / Neutrals / Browns", href: "/gemini/nudes-neutrals-browns" },
-        { name: "Oranges & Corals / Yellows", href: "/gemini/oranges-corals-yellows" },
-        { name: "Blacks / Dark tones", href: "/gemini/blacks-dark-tones" }
+        { name: "Oranges & Corals / Yellows", href: "/gemini/oranges-corals-yellows" }
       ]
     },
     { 
@@ -89,10 +112,8 @@ export function ShopMegaMenu({ isOpen, onClose }: ShopMegaMenuProps) {
       name: "SPA", 
       href: "/spa",
       children: [
-        { name: "End Care", href: "/spa/end-care" },
         { name: "Hand Care", href: "/spa/hand-care" },
-        { name: "Foot Care", href: "/spa/foot-care" },
-        { name: "Spa Ritual Products", href: "/spa/spa-ritual-products" }
+        { name: "Foot Care", href: "/spa/foot-care" }
       ]
     },
     { 
@@ -122,6 +143,7 @@ export function ShopMegaMenu({ isOpen, onClose }: ShopMegaMenuProps) {
     <div
       data-mega-menu
       className="absolute top-full left-0 w-full bg-black/80 backdrop-blur-md z-50"
+      onMouseEnter={onMouseEnter}
       onMouseLeave={onClose}
     >
       <div className="container mx-auto px-4 py-10">
@@ -220,7 +242,8 @@ export function ShopMegaMenu({ isOpen, onClose }: ShopMegaMenuProps) {
                         fill
                         className="object-cover"
                         sizes="(max-width: 768px) 50vw, 25vw"
-                        unoptimized
+                        priority
+                        loading="eager"
                       />
                     </div>
                     <div className="absolute inset-0 flex items-end pb-4 px-4">
@@ -246,7 +269,8 @@ export function ShopMegaMenu({ isOpen, onClose }: ShopMegaMenuProps) {
                       fill
                       className="object-cover"
                       sizes="(max-width: 768px) 50vw, 25vw"
-                      unoptimized
+                      priority
+                      loading="eager"
                     />
                   </div>
                   <div className="absolute inset-0 flex items-end pb-4 px-4">
@@ -278,7 +302,7 @@ export function ShopMegaMenu({ isOpen, onClose }: ShopMegaMenuProps) {
                         fill
                         className="object-cover"
                         sizes="(max-width: 768px) 50vw, 25vw"
-                        unoptimized
+                        loading="eager"
                       />
                     </div>
                     <div className="absolute inset-0 flex items-end pb-4 px-4">
@@ -304,7 +328,7 @@ export function ShopMegaMenu({ isOpen, onClose }: ShopMegaMenuProps) {
                       fill
                       className="object-cover"
                       sizes="(max-width: 768px) 50vw, 25vw"
-                      unoptimized
+                      loading="eager"
                     />
                   </div>
                   <div className="absolute inset-0 flex items-end pb-4 px-4">

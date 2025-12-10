@@ -11,6 +11,7 @@ import {
   BookOpen,
   MapPin,
   MessageCircle,
+  Bell,
   LogOut,
   X,
   ChevronDown,
@@ -64,6 +65,12 @@ const navSections: NavSection[] = [
         title: "Messages",
         href: "/dashboard/messages",
         icon: MessageCircle,
+        badge: null,
+      },
+      {
+        title: "Notifications",
+        href: "/dashboard/notifications",
+        icon: Bell,
         badge: null,
       },
       {

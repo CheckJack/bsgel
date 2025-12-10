@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     const status = searchParams.get("status")
     const platform = searchParams.get("platform")
 
-    const where: any = {}
+    const where: Record<string, unknown> = {}
 
     if (month) {
       const [year, monthNum] = month.split("-")
@@ -63,13 +63,25 @@ export async function POST(req: Request) {
       contentType,
       caption,
       images,
+      videos,
       scheduledDate,
       status,
       hashtags,
       assignedReviewerId,
     } = body
 
-    const postData: any = {
+    const postData: {
+      platform: string;
+      contentType: string;
+      caption: string;
+      images: string[];
+      videos?: string[];
+      scheduledDate: Date;
+      status: string;
+      hashtags: string[];
+      createdBy: string;
+      assignedReviewerId?: string;
+    } = {
       platform: platform || "INSTAGRAM",
       contentType: contentType || "POST",
       caption: caption || "",
@@ -78,6 +90,11 @@ export async function POST(req: Request) {
       status: status || "DRAFT",
       hashtags: hashtags || [],
       createdBy: session.user.id,
+    }
+
+    // Add videos if provided
+    if (videos && Array.isArray(videos) && videos.length > 0) {
+      postData.videos = videos
     }
 
     // Only set assignedReviewerId if status is PENDING_REVIEW

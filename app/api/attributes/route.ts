@@ -7,29 +7,101 @@ export async function GET(request: Request) {
     const search = searchParams.get("search") || ""
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "10")
+    const sortField = searchParams.get("sortField") || "category"
+    const sortDirection = searchParams.get("sortDirection") || "asc"
 
-    // Build where clause for search
+    // Build where clause for search (search in both category and values)
     const where = search
       ? {
-          category: { contains: search, mode: "insensitive" as const },
+          OR: [
+            { category: { contains: search, mode: "insensitive" as const } },
+            { values: { has: search } },
+          ],
         }
       : {}
 
     // Get total count for pagination
     const total = await db.attribute.count({ where })
 
-    // Fetch attributes
-    const attributes = await db.attribute.findMany({
+    // Fetch all attributes (we'll sort and paginate after calculating usage)
+    const allAttributes = await db.attribute.findMany({
       where,
-      orderBy: {
-        category: "asc",
-      },
-      skip: (page - 1) * limit,
-      take: limit,
     })
 
+    // Fetch all products to calculate usage statistics
+    const allProducts = await db.product.findMany({
+      select: {
+        id: true,
+        attributes: true,
+      },
+    })
+
+    // Calculate usage count for each attribute
+    const attributesWithUsage = allAttributes.map((attribute) => {
+      let usageCount = 0
+      
+      // Count products that use this attribute category
+      allProducts.forEach((product) => {
+        if (product.attributes && typeof product.attributes === "object") {
+          const attrs = product.attributes as Record<string, any>
+          if (attrs[attribute.category]) {
+            // Check if any of the attribute values are used
+            const productValues = Array.isArray(attrs[attribute.category])
+              ? attrs[attribute.category]
+              : [attrs[attribute.category]]
+            
+            // If any value from this attribute is used in the product
+            if (productValues.some((val: any) => 
+              attribute.values.some((attrVal) => 
+                String(val).toLowerCase() === String(attrVal).toLowerCase()
+              )
+            )) {
+              usageCount++
+            }
+          }
+        }
+      })
+
+      return {
+        ...attribute,
+        usageCount,
+        valueCount: attribute.values.length,
+      }
+    })
+
+    // Sort attributes
+    let sortedAttributes = [...attributesWithUsage]
+    if (sortField === "category") {
+      sortedAttributes.sort((a, b) => {
+        const comparison = a.category.localeCompare(b.category)
+        return sortDirection === "asc" ? comparison : -comparison
+      })
+    } else if (sortField === "valueCount") {
+      sortedAttributes.sort((a, b) => {
+        const comparison = a.valueCount - b.valueCount
+        return sortDirection === "asc" ? comparison : -comparison
+      })
+    } else if (sortField === "usageCount") {
+      sortedAttributes.sort((a, b) => {
+        const comparison = a.usageCount - b.usageCount
+        return sortDirection === "asc" ? comparison : -comparison
+      })
+    } else if (sortField === "createdAt") {
+      sortedAttributes.sort((a, b) => {
+        const aDate = new Date(a.createdAt).getTime()
+        const bDate = new Date(b.createdAt).getTime()
+        const comparison = aDate - bDate
+        return sortDirection === "asc" ? comparison : -comparison
+      })
+    }
+
+    // Apply pagination
+    const startIndex = (page - 1) * limit
+    const endIndex = startIndex + limit
+    const paginatedAttributes = sortedAttributes.slice(startIndex, endIndex)
+
     return NextResponse.json({
-      attributes,
+      attributes: paginatedAttributes,
       pagination: {
         page,
         limit,

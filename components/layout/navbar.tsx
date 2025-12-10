@@ -146,7 +146,10 @@ export function Navbar() {
               <div 
                 ref={shopMegaMenuRef}
                 className="relative"
-                onMouseEnter={() => setShopMegaMenuOpen(true)}
+                onMouseEnter={() => {
+                  setAboutMegaMenuOpen(false);
+                  setShopMegaMenuOpen(true);
+                }}
               >
                 <Link 
                   href="/products" 
@@ -159,7 +162,10 @@ export function Navbar() {
             <div 
               ref={aboutMegaMenuRef}
               className="relative"
-              onMouseEnter={() => setAboutMegaMenuOpen(true)}
+              onMouseEnter={() => {
+                setShopMegaMenuOpen(false);
+                setAboutMegaMenuOpen(true);
+              }}
             >
               <Link href="/about" className="text-brand-white hover:text-brand-sweet-bianca transition-colors text-sm lg:text-base whitespace-nowrap">
                 About
@@ -279,11 +285,19 @@ export function Navbar() {
       </div>
       <ShopMegaMenu 
         isOpen={shopMegaMenuOpen} 
-        onClose={() => setShopMegaMenuOpen(false)} 
+        onClose={() => setShopMegaMenuOpen(false)}
+        onMouseEnter={() => {
+          setAboutMegaMenuOpen(false);
+          setShopMegaMenuOpen(true);
+        }}
       />
       <AboutMegaMenu 
         isOpen={aboutMegaMenuOpen} 
-        onClose={() => setAboutMegaMenuOpen(false)} 
+        onClose={() => setAboutMegaMenuOpen(false)}
+        onMouseEnter={() => {
+          setShopMegaMenuOpen(false);
+          setAboutMegaMenuOpen(true);
+        }}
       />
       <CartDrawer isOpen={cartDrawerOpen} onClose={() => setCartDrawerOpen(false)} />
       <SearchDrawer isOpen={searchDrawerOpen} onClose={() => setSearchDrawerOpen(false)} />

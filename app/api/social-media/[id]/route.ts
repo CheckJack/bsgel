@@ -48,6 +48,7 @@ export async function PUT(
       contentType,
       caption,
       images,
+      videos,
       scheduledDate,
       status,
       reviewComments,
@@ -55,12 +56,26 @@ export async function PUT(
       assignedReviewerId,
     } = body
 
-    const updateData: any = {}
+    const updateData: {
+      platform?: string;
+      contentType?: string;
+      caption?: string;
+      images?: string[];
+      videos?: string[];
+      scheduledDate?: Date;
+      status?: string;
+      hashtags?: string[];
+      assignedReviewerId?: string | null;
+      reviewedBy?: string;
+      reviewedAt?: Date;
+      reviewComments?: string;
+    } = {}
 
     if (platform !== undefined) updateData.platform = platform
     if (contentType !== undefined) updateData.contentType = contentType
     if (caption !== undefined) updateData.caption = caption
     if (images !== undefined) updateData.images = images
+    if (videos !== undefined) updateData.videos = videos
     if (scheduledDate !== undefined) updateData.scheduledDate = new Date(scheduledDate)
     if (hashtags !== undefined) updateData.hashtags = hashtags
 

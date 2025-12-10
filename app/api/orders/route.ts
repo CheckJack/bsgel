@@ -15,37 +15,85 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url)
     const userId = searchParams.get("userId")
+    const status = searchParams.get("status")
+    const search = searchParams.get("search")
+    const sortBy = searchParams.get("sortBy") || "date"
+    const sortOrder = searchParams.get("sortOrder") || "desc"
+    const page = parseInt(searchParams.get("page") || "1")
+    const limit = parseInt(searchParams.get("limit") || "50")
+    const skip = (page - 1) * limit
+
     const isAdmin = session.user.role === "ADMIN"
 
-    // Admins can view all orders or filter by userId
+    // Build where clause
     const where: any = isAdmin && !userId ? {} : { userId: session.user.id }
 
     if (isAdmin && userId) {
       where.userId = userId
     }
 
-    const orders = await db.order.findMany({
-      where,
-      include: {
-        items: {
-          include: {
-            product: true,
+    // Filter by status
+    if (status && status !== "all") {
+      where.status = status
+    }
+
+    // Search by order ID or product name
+    if (search) {
+      where.OR = [
+        { id: { contains: search, mode: "insensitive" } },
+        {
+          items: {
+            some: {
+              product: {
+                name: { contains: search, mode: "insensitive" },
+              },
+            },
           },
         },
-        user: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
+      ]
+    }
+
+    // Build orderBy clause
+    let orderBy: any = { createdAt: sortOrder === "asc" ? "asc" : "desc" }
+    if (sortBy === "total") {
+      orderBy = { total: sortOrder === "asc" ? "asc" : "desc" }
+    } else if (sortBy === "status") {
+      orderBy = { status: sortOrder === "asc" ? "asc" : "desc" }
+    }
+
+    const [orders, total] = await Promise.all([
+      db.order.findMany({
+        where,
+        include: {
+          items: {
+            include: {
+              product: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: "desc",
+        orderBy,
+        skip,
+        take: limit,
+      }),
+      db.order.count({ where }),
+    ])
+
+    return NextResponse.json({
+      orders,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
     })
-
-    return NextResponse.json(orders)
   } catch (error) {
     console.error("Failed to fetch orders:", error)
     return NextResponse.json(

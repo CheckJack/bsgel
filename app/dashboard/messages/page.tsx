@@ -55,6 +55,9 @@ export default function CustomerMessagesPage() {
           const updated = data.find((m: ChatMessage) => m.id === selectedMessage.id);
           if (updated) setSelectedMessage(updated);
         }
+      } else {
+        const error = await res.json();
+        console.error("Failed to fetch messages:", error);
       }
     } catch (error) {
       console.error("Failed to fetch messages:", error);
@@ -81,9 +84,13 @@ export default function CustomerMessagesPage() {
         setSelectedMessage(newMessage);
         setNewMessageText("");
         setShowNewMessageForm(false);
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to send message. Please try again.");
       }
     } catch (error) {
       console.error("Failed to send message:", error);
+      alert("Failed to send message. Please try again.");
     } finally {
       setIsSending(false);
     }
@@ -109,9 +116,13 @@ export default function CustomerMessagesPage() {
         setMessages([newMessage, ...messages]);
         setSelectedMessage(newMessage);
         setReplyText("");
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to send reply. Please try again.");
       }
     } catch (error) {
       console.error("Failed to send reply:", error);
+      alert("Failed to send reply. Please try again.");
     } finally {
       setIsSending(false);
     }

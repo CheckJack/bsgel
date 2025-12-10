@@ -58,11 +58,57 @@ export async function PATCH(
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user?.id || session.user.role !== "ADMIN") {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { status } = await req.json()
+    const body = await req.json()
+    const { status, trackingNumber, carrier, estimatedDelivery } = body
+
+    // Get the order first to check ownership and current status
+    const existingOrder = await db.order.findUnique({
+      where: { id: params.id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+      },
+    })
+
+    if (!existingOrder) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 })
+    }
+
+    // Users can only cancel their own orders (if status is PENDING or PROCESSING)
+    // Admins can update any order
+    if (session.user.role !== "ADMIN") {
+      if (existingOrder.userId !== session.user.id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+      // Users can only cancel orders
+      if (status && status !== "CANCELLED") {
+        return NextResponse.json(
+          { error: "You can only cancel orders" },
+          { status: 403 }
+        )
+      }
+      // Only allow cancellation if order is PENDING or PROCESSING
+      if (status === "CANCELLED") {
+        if (
+          existingOrder.status !== "PENDING" &&
+          existingOrder.status !== "PROCESSING"
+        ) {
+          return NextResponse.json(
+            { error: "This order cannot be cancelled" },
+            { status: 400 }
+          )
+        }
+      }
+    }
 
     // Get the order first to check the previous status
     const existingOrder = await db.order.findUnique({
@@ -82,9 +128,15 @@ export async function PATCH(
       return NextResponse.json({ error: "Order not found" }, { status: 404 })
     }
 
+    // Build update data
+    const updateData: any = {}
+    if (status) updateData.status = status
+    // Note: trackingNumber, carrier, estimatedDelivery would need to be added to schema
+    // For now, we'll store them in metadata or add to schema later
+
     const order = await db.order.update({
       where: { id: params.id },
-      data: { status },
+      data: updateData,
       include: {
         items: {
           include: {
