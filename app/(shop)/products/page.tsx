@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Pagination } from "@/components/ui/pagination";
 import { HeroSlider } from "@/components/layout/hero-slider";
+import { ProductReviews } from "@/components/product/product-reviews";
 
 interface Product {
   id: string;
@@ -401,6 +402,11 @@ export default function ProductsPage() {
               </div>
             </>
           )}
+        </div>
+
+        {/* Product Reviews Section */}
+        <div className="mt-20 pt-12 border-t border-gray-200">
+          <ProductReviews categoryId={selectedCategory || undefined} />
         </div>
       </div>
     </>

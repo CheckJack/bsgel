@@ -73,10 +73,14 @@ export default function AdminOrdersPage() {
       const res = await fetch("/api/orders");
       if (res.ok) {
         const data = await res.json();
-        setOrders(data);
+        // Handle different response formats
+        const ordersArray = Array.isArray(data) ? data : (data.orders || []);
+        setOrders(ordersArray);
       }
     } catch (error) {
       console.error("Failed to fetch orders:", error);
+      // Set empty array on error to prevent crashes
+      setOrders([]);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -118,15 +122,21 @@ export default function AdminOrdersPage() {
 
   // Calculate summary statistics
   const summaryStats = useMemo(() => {
-    const totalRevenue = orders.reduce((sum, order) => sum + parseFloat(order.total), 0);
-    const pendingCount = orders.filter((o) => o.status === "PENDING").length;
-    const processingCount = orders.filter((o) => o.status === "PROCESSING").length;
-    const shippedCount = orders.filter((o) => o.status === "SHIPPED").length;
-    const deliveredCount = orders.filter((o) => o.status === "DELIVERED").length;
-    const cancelledCount = orders.filter((o) => o.status === "CANCELLED").length;
+    // Ensure orders is always an array
+    const ordersArray = Array.isArray(orders) ? orders : [];
+    
+    const totalRevenue = ordersArray.reduce((sum, order) => {
+      const orderTotal = parseFloat(order?.total?.toString() || '0');
+      return sum + (isNaN(orderTotal) ? 0 : orderTotal);
+    }, 0);
+    const pendingCount = ordersArray.filter((o) => o?.status === "PENDING").length;
+    const processingCount = ordersArray.filter((o) => o?.status === "PROCESSING").length;
+    const shippedCount = ordersArray.filter((o) => o?.status === "SHIPPED").length;
+    const deliveredCount = ordersArray.filter((o) => o?.status === "DELIVERED").length;
+    const cancelledCount = ordersArray.filter((o) => o?.status === "CANCELLED").length;
 
     return {
-      totalOrders: orders.length,
+      totalOrders: ordersArray.length,
       totalRevenue,
       pendingCount,
       processingCount,
@@ -138,7 +148,9 @@ export default function AdminOrdersPage() {
 
   // Filter and sort orders
   const filteredAndSortedOrders = useMemo(() => {
-    let filtered = [...orders];
+    // Ensure orders is always an array
+    const ordersArray = Array.isArray(orders) ? orders : [];
+    let filtered = [...ordersArray];
 
     // Apply search filter
     if (searchQuery) {

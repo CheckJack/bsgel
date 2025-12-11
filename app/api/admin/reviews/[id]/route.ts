@@ -41,10 +41,14 @@ export async function PUT(
     }
 
     // Update review status
+    const newStatus = action === "approve" ? "APPROVED" : "REJECTED";
+    
+    console.log(`[Admin Reviews] Updating review ${params.id} to status: ${newStatus}`);
+    
     const updatedReview = await db.productReview.update({
       where: { id: params.id },
       data: {
-        status: action === "approve" ? "APPROVED" : "REJECTED",
+        status: newStatus,
         reviewedBy: session.user.id,
         reviewedAt: new Date(),
         ...(companyResponse && { companyResponse }),
@@ -66,7 +70,30 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json(updatedReview);
+    console.log(`[Admin Reviews] Review updated successfully. Status: ${updatedReview.status}, ProductId: ${updatedReview.productId}`);
+
+    // Verify the update worked
+    const verifyReview = await db.productReview.findUnique({
+      where: { id: params.id },
+      select: { id: true, status: true, productId: true },
+    });
+
+    if (verifyReview?.status !== newStatus) {
+      console.error(`[Admin Reviews] Review status update failed. Expected ${newStatus}, got ${verifyReview?.status}`);
+      return NextResponse.json(
+        { error: "Failed to update review status. Please try again." },
+        { status: 500 }
+      );
+    }
+
+    console.log(`[Admin Reviews] Verification passed. Review ${params.id} is now ${verifyReview.status}`);
+
+    return NextResponse.json({
+      ...updatedReview,
+      message: action === "approve" 
+        ? "Review approved successfully" 
+        : "Review rejected successfully",
+    });
   } catch (error: any) {
     console.error("Failed to update review:", error);
     return NextResponse.json(

@@ -16,6 +16,8 @@ interface Product {
   image: string | null;
   images?: string[];
   featured: boolean;
+  rating?: number;
+  reviewCount?: number;
   category: {
     id: string;
     name: string;
@@ -214,6 +216,8 @@ export default function TreatmentBaseGelsPage() {
                     image={product.image}
                     images={product.images}
                     featured={product.featured}
+                    rating={product.rating}
+                    reviewCount={product.reviewCount}
                   />
                 ))}
               </div>
@@ -232,7 +236,7 @@ export default function TreatmentBaseGelsPage() {
       </section>
 
       {/* Product Reviews Section */}
-      <ProductReviews />
+      <ProductReviews showcasingSection="treatment-base-gels" />
 
       {/* Full Width Video Background Section */}
       <section className="relative w-full h-screen overflow-hidden">

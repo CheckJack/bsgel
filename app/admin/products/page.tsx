@@ -44,6 +44,7 @@ export default function AdminProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [isRestoringState, setIsRestoringState] = useState(true);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [showBulkEditModal, setShowBulkEditModal] = useState(false);
@@ -97,6 +98,30 @@ export default function AdminProductsPage() {
   const [isDuplicating, setIsDuplicating] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
+  // Initialize state from URL params on mount
+  useEffect(() => {
+    const urlSearch = searchParams.get("search") || "";
+    const urlCategory = searchParams.get("category") || "";
+    const urlPage = searchParams.get("page");
+    const urlEntries = searchParams.get("entries");
+    
+    setSearchQuery(urlSearch);
+    setCategoryFilter(urlCategory);
+    if (urlPage) {
+      const pageNum = parseInt(urlPage, 10);
+      if (!isNaN(pageNum) && pageNum > 0) {
+        setCurrentPage(pageNum);
+      }
+    }
+    if (urlEntries) {
+      const entriesNum = parseInt(urlEntries, 10);
+      if (!isNaN(entriesNum) && [10, 25, 50, 100].includes(entriesNum)) {
+        setEntriesPerPage(entriesNum);
+      }
+    }
+    setIsRestoringState(false);
+  }, []); // Only run on mount
+
   useEffect(() => {
     fetchProducts();
     fetchCategories();
@@ -112,11 +137,13 @@ export default function AdminProductsPage() {
     }
   }, [categories]);
 
-  // Sync search query with URL params from AdminHeader
+  // Sync search query with URL params from AdminHeader (but not on initial mount)
   useEffect(() => {
-    const urlSearchQuery = searchParams.get("search") || "";
-    setSearchQuery(urlSearchQuery);
-  }, [searchParams]);
+    if (!isRestoringState) {
+      const urlSearchQuery = searchParams.get("search") || "";
+      setSearchQuery(urlSearchQuery);
+    }
+  }, [searchParams, isRestoringState]);
 
   const fetchCategories = async () => {
     try {
@@ -147,6 +174,29 @@ export default function AdminProductsPage() {
     }
   };
 
+  // Update URL params when filters/pagination change
+  useEffect(() => {
+    if (isRestoringState) return; // Don't update URL during initial state restoration
+    
+    const params = new URLSearchParams();
+    if (searchQuery.trim()) {
+      params.set("search", searchQuery);
+    }
+    if (categoryFilter) {
+      params.set("category", categoryFilter);
+    }
+    if (currentPage > 1) {
+      params.set("page", currentPage.toString());
+    }
+    if (entriesPerPage !== 10) {
+      params.set("entries", entriesPerPage.toString());
+    }
+    
+    const queryString = params.toString();
+    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
+    router.replace(newUrl, { scroll: false });
+  }, [searchQuery, categoryFilter, currentPage, entriesPerPage, isRestoringState, pathname, router]);
+
   useEffect(() => {
     // Filter products based on search query and category
     let filtered = products;
@@ -166,7 +216,6 @@ export default function AdminProductsPage() {
     }
 
     setFilteredProducts(filtered);
-    setCurrentPage(1); // Reset to first page on filter
   }, [searchQuery, categoryFilter, products]);
 
   const fetchProducts = async () => {
@@ -558,7 +607,10 @@ export default function AdminProductsPage() {
                   <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <select
                     value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    onChange={(e) => {
+                      setCategoryFilter(e.target.value);
+                      setCurrentPage(1); // Reset to first page when filter changes
+                    }}
                     className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">{t("products.allCategories")}</option>
@@ -582,15 +634,7 @@ export default function AdminProductsPage() {
                     onChange={(e) => {
                       const value = e.target.value;
                       setSearchQuery(value);
-                      // Update URL to sync with AdminHeader
-                      const params = new URLSearchParams(searchParams.toString());
-                      if (value.trim()) {
-                        params.set("search", value);
-                      } else {
-                        params.delete("search");
-                      }
-                      const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-                      router.replace(newUrl, { scroll: false });
+                      setCurrentPage(1); // Reset to first page when search changes
                     }}
                     className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-500 dark:placeholder:text-gray-400"
                   />
@@ -647,9 +691,6 @@ export default function AdminProductsPage() {
                     {t("products.price")}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    {t("products.sale")}
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     {t("products.startDate")}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
@@ -661,7 +702,7 @@ export default function AdminProductsPage() {
                 {paginatedProducts.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={6}
                       className="px-6 py-12 text-center text-gray-500 dark:text-gray-400"
                     >
                       {t("products.noProducts")}
@@ -669,7 +710,6 @@ export default function AdminProductsPage() {
                   </tr>
                 ) : (
                   paginatedProducts.map((product) => {
-                    const salePercentage = getSalePercentage(product);
                     return (
                       <tr
                         key={product.id}
@@ -744,17 +784,6 @@ export default function AdminProductsPage() {
                           </div>
                         </td>
 
-                        {/* Sale */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {salePercentage !== null ? (
-                            <span className="text-sm font-medium text-red-600 dark:text-red-400">
-                              -{salePercentage}%
-                            </span>
-                          ) : (
-                            <span className="text-sm text-gray-400 dark:text-gray-500">—</span>
-                          )}
-                        </td>
-
                         {/* Start Date */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm text-gray-900 dark:text-gray-100">
@@ -765,7 +794,12 @@ export default function AdminProductsPage() {
                         {/* Actions */}
                         <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-2">
-                            <Link href={`/admin/products/${product.id}`}>
+                            <Link href={`/admin/products/${product.id}?${new URLSearchParams({
+                              ...(searchQuery && { search: searchQuery }),
+                              ...(categoryFilter && { category: categoryFilter }),
+                              ...(currentPage > 1 && { page: currentPage.toString() }),
+                              ...(entriesPerPage !== 10 && { entries: entriesPerPage.toString() }),
+                            }).toString()}`}>
                               <Button
                                 variant="outline"
                                 size="sm"

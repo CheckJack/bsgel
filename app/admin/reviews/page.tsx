@@ -29,7 +29,7 @@ interface Review {
 export default function AdminReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("PENDING");
+  const [statusFilter, setStatusFilter] = useState("ALL");
 
   useEffect(() => {
     fetchReviews();
@@ -42,9 +42,14 @@ export default function AdminReviewsPage() {
       if (res.ok) {
         const data = await res.json();
         setReviews(data.reviews || []);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Failed to fetch reviews:", errorData.error || "Unknown error");
+        setReviews([]);
       }
     } catch (error) {
       console.error("Failed to fetch reviews:", error);
+      setReviews([]);
     } finally {
       setIsLoading(false);
     }
@@ -58,11 +63,15 @@ export default function AdminReviewsPage() {
         body: JSON.stringify({ action: "approve" }),
       });
       if (res.ok) {
+        alert("Review approved successfully!");
         fetchReviews();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to approve review");
       }
     } catch (error) {
       console.error("Failed to approve review:", error);
-      alert("Failed to approve review");
+      alert("Failed to approve review. Please try again.");
     }
   };
 
@@ -75,11 +84,15 @@ export default function AdminReviewsPage() {
         body: JSON.stringify({ action: "reject" }),
       });
       if (res.ok) {
+        alert("Review rejected successfully!");
         fetchReviews();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to reject review");
       }
     } catch (error) {
       console.error("Failed to reject review:", error);
-      alert("Failed to reject review");
+      alert("Failed to reject review. Please try again.");
     }
   };
 
@@ -90,11 +103,15 @@ export default function AdminReviewsPage() {
         method: "DELETE",
       });
       if (res.ok) {
+        alert("Review deleted successfully!");
         fetchReviews();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete review");
       }
     } catch (error) {
       console.error("Failed to delete review:", error);
-      alert("Failed to delete review");
+      alert("Failed to delete review. Please try again.");
     }
   };
 
@@ -103,6 +120,12 @@ export default function AdminReviewsPage() {
       <h1 className="text-3xl font-bold mb-6">Product Reviews</h1>
 
       <div className="flex gap-2 mb-6">
+        <Button
+          variant={statusFilter === "ALL" ? "default" : "outline"}
+          onClick={() => setStatusFilter("ALL")}
+        >
+          All
+        </Button>
         <Button
           variant={statusFilter === "PENDING" ? "default" : "outline"}
           onClick={() => setStatusFilter("PENDING")}
@@ -120,12 +143,6 @@ export default function AdminReviewsPage() {
           onClick={() => setStatusFilter("REJECTED")}
         >
           Rejected
-        </Button>
-        <Button
-          variant={statusFilter === "ALL" ? "default" : "outline"}
-          onClick={() => setStatusFilter("ALL")}
-        >
-          All
         </Button>
       </div>
 

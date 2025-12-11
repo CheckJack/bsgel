@@ -57,8 +57,8 @@ export function ProductCard({
   images = [], 
   featured,
   description,
-  rating = 4.5,
-  reviewCount = 995
+  rating,
+  reviewCount
 }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -161,10 +161,14 @@ export function ProductCard({
 
         {/* Rating, Review Count, and Price */}
         <div className="flex items-center justify-between gap-2 mb-4">
-          <div className="flex items-center gap-2">
-            <StarRating rating={rating} />
-            <span className="text-sm text-gray-600">{reviewCount} reviews</span>
-          </div>
+          {(rating !== undefined && rating > 0) || (reviewCount !== undefined && reviewCount > 0) ? (
+            <div className="flex items-center gap-2">
+              {rating !== undefined && rating > 0 && <StarRating rating={rating} />}
+              {reviewCount !== undefined && reviewCount > 0 && (
+                <span className="text-sm text-gray-600">{reviewCount} {reviewCount === 1 ? 'review' : 'reviews'}</span>
+              )}
+            </div>
+          ) : null}
           <span className="text-[18px] font-semibold text-black">
             {price ? formatPrice(price) : "Price on request"}
           </span>

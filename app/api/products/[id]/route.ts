@@ -132,6 +132,29 @@ export async function GET(
       return NextResponse.json({ error: "Product not found" }, { status: 404 })
     }
 
+    // Calculate review stats for this product
+    let reviewCount = 0;
+    let rating = 0;
+    try {
+      const reviewStats = await db.productReview.aggregate({
+        where: {
+          productId: params.id,
+          status: 'APPROVED',
+        },
+        _count: {
+          id: true,
+        },
+        _avg: {
+          rating: true,
+        },
+      });
+      reviewCount = reviewStats._count.id || 0;
+      rating = reviewStats._avg.rating || 0;
+    } catch (error) {
+      console.warn("Failed to fetch review stats:", error);
+      // Continue with defaults (0)
+    }
+
     // Serialize Decimal fields to strings for JSON response
     // Handle Decimal type conversion safely
     let priceString = '0';
@@ -156,6 +179,8 @@ export async function GET(
       ...product,
       price: priceString,
       salePrice: salePriceString,
+      rating: rating,
+      reviewCount: reviewCount,
     }
 
     return NextResponse.json(serializedProduct)

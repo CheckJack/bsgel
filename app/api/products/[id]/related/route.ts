@@ -67,6 +67,40 @@ export async function GET(
           },
         })
 
+        // Add review stats to frequently bought products
+        if (frequentlyBoughtProducts.length > 0) {
+          const productIds = frequentlyBoughtProducts.map(p => p.id);
+          const reviewStats = await db.productReview.groupBy({
+            by: ['productId'],
+            where: {
+              productId: { in: productIds },
+              status: 'APPROVED',
+            },
+            _count: {
+              id: true,
+            },
+            _avg: {
+              rating: true,
+            },
+          });
+
+          const statsMap = new Map(
+            reviewStats.map(stat => [
+              stat.productId,
+              {
+                reviewCount: stat._count.id,
+                rating: stat._avg.rating || 0,
+              }
+            ])
+          );
+
+          frequentlyBoughtProducts.forEach((p: any) => {
+            const stats = statsMap.get(p.id);
+            p.reviewCount = stats?.reviewCount || 0;
+            p.rating = stats?.rating || 0;
+          });
+        }
+
         // Add to related products, maintaining order by frequency
         for (const productId of frequentlyBoughtProductIds) {
           const product = frequentlyBoughtProducts.find((p) => p.id === productId)
@@ -93,6 +127,40 @@ export async function GET(
           createdAt: "desc", // Show newest first
         },
       })
+
+      // Add review stats to category products
+      if (categoryProducts.length > 0) {
+        const productIdsForStats = categoryProducts.map(p => p.id);
+        const reviewStats = await db.productReview.groupBy({
+          by: ['productId'],
+          where: {
+            productId: { in: productIdsForStats },
+            status: 'APPROVED',
+          },
+          _count: {
+            id: true,
+          },
+          _avg: {
+            rating: true,
+          },
+        });
+
+        const statsMap = new Map(
+          reviewStats.map(stat => [
+            stat.productId,
+            {
+              reviewCount: stat._count.id,
+              rating: stat._avg.rating || 0,
+            }
+          ])
+        );
+
+        categoryProducts.forEach((p: any) => {
+          const stats = statsMap.get(p.id);
+          p.reviewCount = stats?.reviewCount || 0;
+          p.rating = stats?.rating || 0;
+        });
+      }
 
       relatedProducts.push(...categoryProducts)
       categoryProducts.forEach((p) => productIds.add(p.id))

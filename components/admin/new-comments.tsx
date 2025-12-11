@@ -13,6 +13,10 @@ interface Comment {
   comment: string;
   avatar: string;
   createdAt: string;
+  type?: "product_review" | "blog_comment";
+  productName?: string;
+  blogTitle?: string;
+  status?: "pending" | "approved";
 }
 
 function StarRating({ rating }: { rating: number }) {
@@ -53,42 +57,96 @@ export function NewComments() {
   const fetchComments = async () => {
     try {
       setIsLoading(true);
-      // Fetch all blogs first
-      const blogsRes = await fetch("/api/blogs");
-      if (blogsRes.ok) {
-        const blogs = await blogsRes.json();
+      const allComments: any[] = [];
+      
+      // Fetch pending product reviews first
+      try {
+        const pendingRes = await fetch("/api/admin/reviews?status=PENDING&limit=5", {
+          cache: 'no-store',
+        });
         
-        // Fetch comments for all blogs
-        const allComments: any[] = [];
-        for (const blog of blogs.slice(0, 10)) { // Limit to first 10 blogs to avoid too many requests
-          try {
-            const commentsRes = await fetch(`/api/blogs/${blog.id}/comments`);
-            if (commentsRes.ok) {
-              const blogComments = await commentsRes.json();
-              allComments.push(...blogComments);
-            }
-          } catch (error) {
-            console.error(`Failed to fetch comments for blog ${blog.id}:`, error);
+        console.log("Pending reviews API response status:", pendingRes.status);
+        
+        if (pendingRes.ok) {
+          const pendingData = await pendingRes.json();
+          console.log("Pending reviews data:", pendingData);
+          
+          if (pendingData.reviews && pendingData.reviews.length > 0) {
+            const pendingReviews = pendingData.reviews.map((review: any) => ({
+              id: review.id,
+              name: review.user?.name || review.user?.email || "Anonymous",
+              rating: review.rating || 0,
+              comment: review.content || review.title || "",
+              avatar: review.user?.image || "/api/placeholder/40/40",
+              createdAt: review.createdAt,
+              type: "product_review",
+              productName: review.product?.name,
+              status: "pending",
+            }));
+            allComments.push(...pendingReviews);
+            console.log("Added pending reviews:", pendingReviews.length);
           }
+        } else {
+          const errorData = await pendingRes.json().catch(() => ({}));
+          console.error("Failed to fetch pending reviews:", {
+            status: pendingRes.status,
+            error: errorData
+          });
         }
-        
-        // Sort by creation date (newest first) and take latest 4
-        const sortedComments = allComments
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-          .slice(0, 4)
-          .map((comment: any) => ({
-            id: comment.id,
-            name: comment.user?.name || comment.user?.email || "Anonymous",
-            rating: 3.5, // Blog comments don't have ratings, use default
-            comment: comment.content,
-            avatar: comment.user?.image || "/api/placeholder/40/40",
-            createdAt: comment.createdAt,
-          }));
-        
-        setComments(sortedComments);
+      } catch (error) {
+        console.error("Error fetching pending reviews:", error);
       }
+
+      // If no pending reviews, show recently approved reviews
+      if (allComments.length === 0) {
+        try {
+          const approvedRes = await fetch("/api/admin/reviews?status=APPROVED&limit=4", {
+            cache: 'no-store',
+          });
+          
+          console.log("Approved reviews API response status:", approvedRes.status);
+          
+          if (approvedRes.ok) {
+            const approvedData = await approvedRes.json();
+            console.log("Approved reviews data:", approvedData);
+            
+            if (approvedData.reviews && approvedData.reviews.length > 0) {
+              const approvedReviews = approvedData.reviews.map((review: any) => ({
+                id: review.id,
+                name: review.user?.name || review.user?.email || "Anonymous",
+                rating: review.rating || 0,
+                comment: review.content || review.title || "",
+                avatar: review.user?.image || "/api/placeholder/40/40",
+                createdAt: review.createdAt,
+                type: "product_review",
+                productName: review.product?.name,
+                status: "approved",
+              }));
+              allComments.push(...approvedReviews);
+              console.log("Added approved reviews:", approvedReviews.length);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching approved reviews:", error);
+        }
+      }
+
+      // Note: Blog comments API only returns APPROVED comments
+      // To show pending blog comments, we would need an admin endpoint
+      // For now, we'll focus on product reviews which are more important
+      
+      console.log("Total comments before sorting:", allComments.length);
+      
+      // Sort by creation date (newest first) and take latest 4
+      const sortedComments = allComments
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 4);
+      
+      console.log("Final comments to display:", sortedComments.length);
+      setComments(sortedComments);
     } catch (error) {
       console.error("Failed to fetch comments:", error);
+      setComments([]);
     } finally {
       setIsLoading(false);
     }
@@ -235,7 +293,10 @@ export function NewComments() {
           </div>
         ) : comments.length === 0 ? (
           <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-            No comments found
+            <p>No reviews found</p>
+            <p className="text-xs mt-2">
+              {comments.length === 0 && "Check the browser console (F12) for debugging information"}
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -245,9 +306,35 @@ export function NewComments() {
                   {comment.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1">
-                  <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-1">
-                    {comment.name}
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                      {comment.name}
+                    </div>
+                    {comment.type === "product_review" && (
+                      <span className={`text-xs px-2 py-0.5 rounded ${
+                        comment.status === "pending" 
+                          ? "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200"
+                          : "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
+                      }`}>
+                        {comment.status === "pending" ? "Pending Review" : "Product Review"}
+                      </span>
+                    )}
+                    {comment.type === "blog_comment" && (
+                      <span className="text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-2 py-0.5 rounded">
+                        Blog Comment
+                      </span>
+                    )}
                   </div>
+                  {comment.productName && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                      Product: {comment.productName}
+                    </p>
+                  )}
+                  {comment.blogTitle && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                      Blog: {comment.blogTitle}
+                    </p>
+                  )}
                   <div className="mb-2">
                     <StarRating rating={comment.rating} />
                   </div>

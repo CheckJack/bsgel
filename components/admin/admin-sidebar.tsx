@@ -30,7 +30,8 @@ import {
   Coins,
   Gift,
   Settings as SettingsIcon,
-  ClipboardList
+  ClipboardList,
+  Star
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -111,6 +112,12 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
               title: t("sidebar.orders"),
               href: "/admin/orders",
               icon: ShoppingCart,
+              badge: null,
+            },
+            {
+              title: "Product Reviews",
+              href: "/admin/reviews",
+              icon: Star,
               badge: null,
             },
           ],

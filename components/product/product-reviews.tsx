@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Star, CheckCircle2, Globe, ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight, Send } from "lucide-react";
+import { Star, CheckCircle2, Globe, ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight, Send, RefreshCw } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -15,15 +17,21 @@ interface Review {
   title?: string;
   content: string;
   productName: string;
+  productImage?: string | null;
+  productId?: string;
   date: string;
   verifiedBuyer: boolean;
   companyResponse?: string;
   helpfulCount: number;
   notHelpfulCount: number;
+  status?: string; // PENDING, APPROVED, REJECTED
+  isOwnReview?: boolean; // Whether this is the current user's review
 }
 
 interface ReviewsProps {
   productId?: string;
+  categoryId?: string;
+  showcasingSection?: string;
   overallRating?: number;
   totalReviews?: number;
   reviews?: Review[];
@@ -100,6 +108,8 @@ const RatingBreakdown = ({
 
 export function ProductReviews({ 
   productId, 
+  categoryId,
+  showcasingSection,
   overallRating: initialOverallRating, 
   totalReviews: initialTotalReviews, 
   reviews: initialReviews 
@@ -124,7 +134,7 @@ export function ProductReviews({
   const reviewsPerPage = 5;
 
   useEffect(() => {
-    if (productId) {
+    if (productId || categoryId || showcasingSection) {
       fetchReviews();
     } else if (initialReviews) {
       // Use provided reviews if available
@@ -132,28 +142,63 @@ export function ProductReviews({
       setOverallRating(initialOverallRating || 0);
       setTotalReviews(initialTotalReviews || 0);
     }
-  }, [productId]);
+  }, [productId, categoryId, showcasingSection]);
 
   useEffect(() => {
-    if (productId) {
+    if (productId || categoryId || showcasingSection) {
       fetchReviews();
     }
   }, [sortBy, currentPage]);
 
   const fetchReviews = async () => {
-    if (!productId) return;
+    if (!productId && !categoryId && !showcasingSection) return;
     
     setIsLoading(true);
     try {
-      const res = await fetch(
-        `/api/products/${productId}/reviews?page=${currentPage}&limit=${reviewsPerPage}&sortBy=${sortBy}`
-      );
+      // Add cache-busting parameter to ensure fresh data
+      const cacheBuster = new Date().getTime();
+      
+      let url = '';
+      if (productId) {
+        // Use product-specific endpoint
+        url = `/api/products/${productId}/reviews?page=${currentPage}&limit=${reviewsPerPage}&sortBy=${sortBy}&_t=${cacheBuster}`;
+      } else {
+        // Use category/showcasingSection endpoint
+        const params = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: reviewsPerPage.toString(),
+          sortBy,
+          _t: cacheBuster.toString(),
+        });
+        if (categoryId) {
+          params.set('categoryId', categoryId);
+        }
+        if (showcasingSection) {
+          params.set('showcasingSection', showcasingSection);
+        }
+        url = `/api/reviews?${params.toString()}`;
+      }
+      
+      const res = await fetch(url, {
+        cache: 'no-store', // Prevent caching
+      });
+      
       if (res.ok) {
         const data = await res.json();
+        const filterType = productId ? `Product ${productId}` : (categoryId ? `Category ${categoryId}` : `Section ${showcasingSection}`);
+        console.log(`[ProductReviews] ${filterType}: Fetched ${data.reviews?.length || 0} approved reviews`);
+        console.log(`[ProductReviews] Total reviews count: ${data.stats?.totalReviews || 0}`);
         setReviews(data.reviews || []);
         setOverallRating(data.stats?.overallRating || 0);
         setTotalReviews(data.stats?.totalReviews || 0);
         setBreakdown(data.stats?.breakdown || []);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Failed to fetch reviews:", errorData);
+        setReviews([]);
+        setOverallRating(0);
+        setTotalReviews(0);
+        setBreakdown([]);
       }
     } catch (error) {
       console.error("Failed to fetch reviews:", error);
@@ -237,59 +282,67 @@ export function ProductReviews({
     }
   };
 
-  // Always render if productId is provided, otherwise only render if there are reviews
-  if (!productId && (!initialReviews || initialReviews.length === 0) && reviews.length === 0) {
-    return null;
-  }
-
+  // Always render the review section - show empty state if no reviews on category pages
   return (
     <section className="relative w-full bg-white py-16">
       <div className="container mx-auto px-4 max-w-7xl">
-        {/* Centered Top Section */}
-        {productId && (
-          <div className="flex flex-col items-center mb-8">
-            {/* Trustpilot Banner */}
-            {overallRating > 0 && (
-              <div className="flex items-center gap-2 mb-8">
-                <span className="text-xl font-semibold text-gray-800">Excelente</span>
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star key={star} className="w-5 h-5 fill-pink-500 text-pink-500" />
-                  ))}
-                </div>
-                <span className="text-sm text-gray-600">Trustpilot</span>
+        {/* Centered Top Section - Show for both product and category pages */}
+        <div className="flex flex-col items-center mb-8">
+          {/* Trustpilot Banner */}
+          {overallRating > 0 && (
+            <div className="flex items-center gap-2 mb-8">
+              <span className="text-xl font-semibold text-gray-800">Excelente</span>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star key={star} className="w-5 h-5 fill-pink-500 text-pink-500" />
+                ))}
               </div>
-            )}
+              <span className="text-sm text-gray-600">Trustpilot</span>
+            </div>
+          )}
 
-            {/* Overall Rating Section */}
-            {overallRating > 0 && totalReviews > 0 ? (
-              <div className="flex flex-col md:flex-row gap-8 items-center justify-center w-full">
-                <div className="flex flex-col gap-2 items-center">
-                  <div className="flex items-center gap-4">
-                    <div className="text-5xl font-bold text-gray-900">{overallRating.toFixed(1)}</div>
-                    <StarRating rating={overallRating} size="lg" />
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    Com base em {totalReviews.toLocaleString()} avaliações
-                  </div>
+          {/* Overall Rating Section */}
+          {totalReviews > 0 ? (
+            <div className="flex flex-col md:flex-row gap-8 items-center justify-center w-full">
+              <div className="flex flex-col gap-2 items-center">
+                <div className="flex items-center gap-4">
+                  <div className="text-5xl font-bold text-gray-900">{overallRating > 0 ? overallRating.toFixed(1) : '0.0'}</div>
+                  <StarRating rating={overallRating || 0} size="lg" />
                 </div>
-                
-                {breakdown.length > 0 && (
-                  <div className="w-full min-w-[280px] max-w-md mx-auto md:mx-0">
-                    <RatingBreakdown 
-                      totalReviews={totalReviews} 
-                      breakdown={breakdown} 
-                    />
-                  </div>
-                )}
+                <div className="text-sm text-gray-600">
+                  Com base em {totalReviews.toLocaleString()} {totalReviews === 1 ? 'avaliação' : 'avaliações'}
+                  {!productId && (categoryId || showcasingSection) && (
+                    <span className="block text-xs text-gray-500 mt-1">
+                      {categoryId ? 'nesta categoria' : `nesta seção`}
+                    </span>
+                  )}
+                </div>
               </div>
-            ) : (
-              <div className="text-center py-4">
-                <p className="text-gray-600">No reviews yet. Be the first to review this product!</p>
-              </div>
-            )}
-          </div>
-        )}
+              
+              {breakdown.length > 0 && (
+                <div className="w-full min-w-[280px] max-w-md mx-auto md:mx-0">
+                  <RatingBreakdown 
+                    totalReviews={totalReviews} 
+                    breakdown={breakdown} 
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-gray-600">
+                {productId 
+                  ? "No reviews yet. Be the first to review this product!" 
+                  : "No reviews yet for products in this category."}
+              </p>
+              {productId && (
+                <p className="text-xs text-gray-400 mt-2">
+                  Product ID: {productId} - Check browser console for debugging info
+                </p>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Tabs */}
         <div className="flex gap-8 border-b border-gray-200 mb-6">
@@ -315,37 +368,28 @@ export function ProductReviews({
           </button>
         </div>
 
-        {/* Sort By */}
-        {productId && (
-          <div className="flex justify-end mb-6">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-            >
-              <option value="most-recent">Mais recentes</option>
-              <option value="highest-rated">Melhor avaliados</option>
-              <option value="lowest-rated">Pior avaliados</option>
-            </select>
-          </div>
-        )}
-
-        {/* Write a Review Section */}
+        {/* Write a Review Section - Made More Prominent */}
         {productId && (
           <div className="mb-8">
             {!showReviewForm ? (
-              <Button
-                onClick={() => {
-                  if (!session) {
-                    router.push("/login");
-                    return;
-                  }
-                  setShowReviewForm(true);
-                }}
-                className="bg-brand-champagne hover:bg-brand-champagne/90 text-white"
-              >
-                Write a Review
-              </Button>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">Share Your Experience</h3>
+                  <p className="text-sm text-gray-600">Help others by writing a review about this product</p>
+                </div>
+                <Button
+                  onClick={() => {
+                    if (!session) {
+                      router.push("/login");
+                      return;
+                    }
+                    setShowReviewForm(true);
+                  }}
+                  className="bg-brand-champagne hover:bg-brand-champagne/90 text-white px-6 py-2 text-base font-medium whitespace-nowrap"
+                >
+                  Write a Review
+                </Button>
+              </div>
             ) : (
               <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
                 <h3 className="text-lg font-semibold mb-4">Write a Review</h3>
@@ -441,6 +485,31 @@ export function ProductReviews({
           </div>
         )}
 
+        {/* Sort By and Refresh */}
+        {productId && (
+          <div className="flex justify-end items-center gap-4 mb-6">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchReviews()}
+              disabled={isLoading}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            >
+              <option value="most-recent">Mais recentes</option>
+              <option value="highest-rated">Melhor avaliados</option>
+              <option value="lowest-rated">Pior avaliados</option>
+            </select>
+          </div>
+        )}
+
         {/* Reviews List */}
         {isLoading ? (
           <div className="text-center py-8 text-gray-500">Carregando avaliações...</div>
@@ -452,32 +521,77 @@ export function ProductReviews({
           <div className="space-y-8">
             {paginatedReviews.map((review) => (
             <div key={review.id} className="border-b border-gray-200 pb-8 last:border-b-0">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-start gap-3">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-gray-900">{review.reviewerName}</span>
-                      {review.verifiedBuyer && (
-                        <div className="flex items-center gap-1">
-                          <CheckCircle2 className="w-4 h-4 text-brand-champagne" />
-                          <span className="text-xs text-gray-600">Comprador Verificado</span>
-                        </div>
-                      )}
+              <div className="flex items-start gap-4 mb-3">
+                {/* Product Thumbnail */}
+                {review.productImage && (
+                  <Link 
+                    href={review.productId ? `/products/${review.productId}` : '#'}
+                    className="flex-shrink-0"
+                  >
+                    <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 hover:border-gray-300 transition-colors">
+                      <Image
+                        src={review.productImage}
+                        alt={review.productName}
+                        fill
+                        className="object-cover"
+                      />
                     </div>
-                    <StarRating rating={review.rating} size="sm" />
+                  </Link>
+                )}
+                
+                <div className="flex-1">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-start gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="font-semibold text-gray-900">{review.reviewerName}</span>
+                          {review.status === "PENDING" && (
+                            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-medium">
+                              Pending Approval
+                            </span>
+                          )}
+                          {review.verifiedBuyer && (
+                            <div className="flex items-center gap-1">
+                              <CheckCircle2 className="w-4 h-4 text-brand-champagne" />
+                              <span className="text-xs text-gray-600">Comprador Verificado</span>
+                            </div>
+                          )}
+                        </div>
+                        <StarRating rating={review.rating} size="sm" />
+                      </div>
+                    </div>
+                    <span className="text-sm text-gray-500">{formatDate(review.date)}</span>
                   </div>
+
+                  {review.title && (
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">{review.title}</h4>
+                  )}
+
+                  <div className="text-gray-700 mb-3 whitespace-pre-line">{review.content}</div>
+
+                  {review.status === "PENDING" && (
+                    <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                      ⏳ Your review is pending approval and will be visible to others once approved by an admin.
+                    </div>
+                  )}
+
+                  {review.productId && (
+                    <div className="text-sm text-gray-600 mb-3">
+                      Produto Avaliado:{" "}
+                      <Link 
+                        href={`/products/${review.productId}`}
+                        className="font-medium text-brand-champagne hover:underline"
+                      >
+                        {review.productName}
+                      </Link>
+                    </div>
+                  )}
+                  {!review.productId && (
+                    <div className="text-sm text-gray-600 mb-3">
+                      Produto Avaliado: <span className="font-medium">{review.productName}</span>
+                    </div>
+                  )}
                 </div>
-                <span className="text-sm text-gray-500">{formatDate(review.date)}</span>
-              </div>
-
-              {review.title && (
-                <h4 className="text-lg font-medium text-gray-900 mb-2">{review.title}</h4>
-              )}
-
-              <div className="text-gray-700 mb-3 whitespace-pre-line">{review.content}</div>
-
-              <div className="text-sm text-gray-600 mb-3">
-                Produto Avaliado: <span className="font-medium">{review.productName}</span>
               </div>
 
               {review.companyResponse && (

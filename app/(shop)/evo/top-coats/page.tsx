@@ -16,6 +16,8 @@ interface Product {
   image: string | null;
   images?: string[];
   featured: boolean;
+  rating?: number;
+  reviewCount?: number;
   category: {
     id: string;
     name: string;
@@ -214,6 +216,8 @@ export default function EvoTopCoatsPage() {
                     image={product.image}
                     images={product.images}
                     featured={product.featured}
+                    rating={product.rating}
+                    reviewCount={product.reviewCount}
                   />
                 ))}
               </div>

@@ -18,6 +18,8 @@ interface Product {
   image: string | null;
   images?: string[];
   featured: boolean;
+  rating?: number;
+  reviewCount?: number;
   category: {
     id: string;
     name: string;
@@ -29,6 +31,7 @@ export default function BioGelPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [categoryId, setCategoryId] = useState<string | undefined>();
   const [isScrolling, setIsScrolling] = useState(false);
   const [showDiagnosisModal, setShowDiagnosisModal] = useState(false);
   const textSectionRef = useRef<HTMLElement>(null);
@@ -132,6 +135,7 @@ export default function BioGelPage() {
         );
 
         if (bioGelCategory) {
+          setCategoryId(bioGelCategory.id);
           // If category exists, fetch all products in that category with pagination
           const res = await fetch(`/api/products?categoryId=${bioGelCategory.id}&page=${currentPage}&limit=10`);
           if (res.ok) {
@@ -304,6 +308,8 @@ export default function BioGelPage() {
                     image={product.image}
                     images={product.images}
                     featured={product.featured}
+                    rating={product.rating}
+                    reviewCount={product.reviewCount}
                   />
                 ))}
               </div>
@@ -322,7 +328,7 @@ export default function BioGelPage() {
       </section>
 
       {/* Product Reviews Section */}
-      <ProductReviews />
+      <ProductReviews categoryId={categoryId} />
 
       {/* Full Width Video Background Section */}
       <section className="relative w-full h-screen overflow-hidden">

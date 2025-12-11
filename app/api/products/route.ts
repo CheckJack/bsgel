@@ -99,6 +99,42 @@ export async function GET(req: Request) {
           take: limit,
         }),
       });
+
+      // Calculate review stats for each product
+      if (products.length > 0) {
+        const productIds = products.map(p => p.id);
+        const reviewStats = await db.productReview.groupBy({
+          by: ['productId'],
+          where: {
+            productId: { in: productIds },
+            status: 'APPROVED',
+          },
+          _count: {
+            id: true,
+          },
+          _avg: {
+            rating: true,
+          },
+        });
+
+        // Create a map of productId -> stats
+        const statsMap = new Map(
+          reviewStats.map(stat => [
+            stat.productId,
+            {
+              reviewCount: stat._count.id,
+              rating: stat._avg.rating || 0,
+            }
+          ])
+        );
+
+        // Add review stats to each product
+        products = products.map(product => ({
+          ...product,
+          reviewCount: statsMap.get(product.id)?.reviewCount || 0,
+          rating: statsMap.get(product.id)?.rating || 0,
+        }));
+      }
     } catch (error: any) {
       // If schema hasn't been migrated yet, use simpler query without subcategory
       try {
@@ -195,6 +231,49 @@ export async function GET(req: Request) {
             name: row.category_name,
           } : null,
         }));
+
+        // Calculate review stats for raw SQL products
+        if (products.length > 0) {
+          const productIds = products.map((p: any) => p.id);
+          try {
+            const reviewStats = await db.productReview.groupBy({
+              by: ['productId'],
+              where: {
+                productId: { in: productIds },
+                status: 'APPROVED',
+              },
+              _count: {
+                id: true,
+              },
+              _avg: {
+                rating: true,
+              },
+            });
+
+            const statsMap = new Map(
+              reviewStats.map(stat => [
+                stat.productId,
+                {
+                  reviewCount: stat._count.id,
+                  rating: stat._avg.rating || 0,
+                }
+              ])
+            );
+
+            products = products.map((product: any) => ({
+              ...product,
+              reviewCount: statsMap.get(product.id)?.reviewCount || 0,
+              rating: statsMap.get(product.id)?.rating || 0,
+            }));
+          } catch (error) {
+            // If review stats fail, just set defaults
+            products = products.map((product: any) => ({
+              ...product,
+              reviewCount: 0,
+              rating: 0,
+            }));
+          }
+        }
       }
     }
 

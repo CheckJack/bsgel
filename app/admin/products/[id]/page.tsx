@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ export default function EditProductPage() {
   const params = useParams();
   const router = useRouter();
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
   const [categories, setCategories] = useState<Category[]>([]);
   const [formData, setFormData] = useState({
     name: "",
@@ -282,7 +283,20 @@ export default function EditProductPage() {
       });
 
       if (res.ok) {
-        router.push("/admin/products");
+        // Preserve query parameters (filters, pagination, etc.) when redirecting back
+        const queryParams = new URLSearchParams();
+        const search = searchParams.get("search");
+        const category = searchParams.get("category");
+        const page = searchParams.get("page");
+        const entries = searchParams.get("entries");
+        
+        if (search) queryParams.set("search", search);
+        if (category) queryParams.set("category", category);
+        if (page) queryParams.set("page", page);
+        if (entries) queryParams.set("entries", entries);
+        
+        const queryString = queryParams.toString();
+        router.push(queryString ? `/admin/products?${queryString}` : "/admin/products");
       } else {
         // Try to parse JSON, but handle cases where response might not be JSON
         let errorMessage = "Failed to update product";

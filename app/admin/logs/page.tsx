@@ -14,6 +14,7 @@ import {
   Download,
 } from "lucide-react";
 import { AdminLogActionType } from "@prisma/client";
+import { Pagination } from "@/components/ui/pagination";
 
 interface AdminLog {
   id: string;
@@ -275,7 +276,7 @@ export default function AdminLogsPage() {
   // Pagination
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 50,
+    limit: 20, // Reduced to show pagination more easily
     total: 0,
     totalPages: 0,
   });
@@ -598,40 +599,27 @@ export default function AdminLogsPage() {
             </div>
 
             {/* Pagination */}
-            {pagination.totalPages > 1 && (
-              <div className="bg-gray-50 dark:bg-gray-900 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <div className="text-sm text-gray-700 dark:text-gray-300">
-                  Showing {logs.length} of {pagination.total} logs
+            {pagination.total > 0 && (
+              <div className="bg-gray-50 dark:bg-gray-900 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="text-sm text-gray-700 dark:text-gray-300">
+                    Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} logs
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() =>
-                      setPagination((prev) => ({
-                        ...prev,
-                        page: Math.max(1, prev.page - 1),
-                      }))
-                    }
-                    disabled={pagination.page === 1}
-                    className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    Previous
-                  </button>
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    Page {pagination.page} of {pagination.totalPages}
-                  </span>
-                  <button
-                    onClick={() =>
-                      setPagination((prev) => ({
-                        ...prev,
-                        page: Math.min(prev.totalPages, prev.page + 1),
-                      }))
-                    }
-                    disabled={pagination.page === pagination.totalPages}
-                    className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    Next
-                  </button>
-                </div>
+                {pagination.totalPages > 1 && (
+                  <div className="flex justify-center">
+                    <Pagination
+                      currentPage={pagination.page}
+                      totalPages={pagination.totalPages}
+                      onPageChange={(page) =>
+                        setPagination((prev) => ({
+                          ...prev,
+                          page,
+                        }))
+                      }
+                    />
+                  </div>
+                )}
               </div>
             )}
           </>

@@ -205,12 +205,18 @@ export default function ProductDetailPage() {
               </h1>
 
               {/* Rating and Review Count */}
-              <div className="flex items-center gap-3 mb-6">
-                <StarRating rating={product.rating || 4.5} />
-                <span className="text-sm text-gray-600">
-                  {product.reviewCount || 995} reviews
-                </span>
-              </div>
+              {(product.rating && product.rating > 0) || (product.reviewCount && product.reviewCount > 0) ? (
+                <div className="flex items-center gap-3 mb-6">
+                  {product.rating && product.rating > 0 && (
+                    <StarRating rating={product.rating} />
+                  )}
+                  {product.reviewCount && product.reviewCount > 0 && (
+                    <span className="text-sm text-gray-600">
+                      {product.reviewCount} {product.reviewCount === 1 ? 'review' : 'reviews'}
+                    </span>
+                  )}
+                </div>
+              ) : null}
 
               {/* Product Name/Type */}
               <h2 className="text-xl font-medium text-brand-black mb-4">
