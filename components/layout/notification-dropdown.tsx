@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, X } from "lucide-react";
+import { Bell, X, Trash2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -23,6 +23,7 @@ export function NotificationDropdown() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [deletingAll, setDeletingAll] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
 
   // Fetch notifications
@@ -138,6 +139,30 @@ export function NotificationDropdown() {
     }
   };
 
+  const deleteAllNotifications = async () => {
+    if (!confirm("Are you sure you want to delete all notifications? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeletingAll(true);
+    try {
+      const res = await fetch("/api/notifications", {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        setNotifications([]);
+        setUnreadCount(0);
+      } else {
+        console.error("Failed to delete notifications");
+      }
+    } catch (error) {
+      console.error("Failed to delete notifications:", error);
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
   // Don't show if user is not logged in
   if (!session?.user) {
     return null;
@@ -160,39 +185,39 @@ export function NotificationDropdown() {
 
       {/* Notification Dropdown */}
       {showNotifications && (
-        <div className="absolute right-0 top-full mt-3 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-[100] max-h-96 overflow-hidden flex flex-col">
+        <div className="absolute right-0 top-full mt-3 w-80 bg-black/80 backdrop-blur-md rounded-lg shadow-2xl border border-gray-700/50 z-[100] max-h-96 overflow-hidden flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+          <div className="flex items-center justify-between p-4 border-b border-gray-700/50">
+            <h3 className="text-lg font-semibold text-white">Notifications</h3>
             <button
               onClick={() => setShowNotifications(false)}
-              className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-full hover:bg-gray-800/50 flex items-center justify-center transition-colors"
               aria-label="Close notifications"
             >
-              <X className="h-4 w-4 text-gray-600" />
+              <X className="h-4 w-4 text-gray-400" />
             </button>
           </div>
 
           {/* Notifications List */}
-          <div className="overflow-y-auto flex-1">
+          <div className="overflow-y-auto flex-1 notification-scroll pr-2">
             {notifications.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
+              <div className="p-8 text-center text-gray-400">
                 <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No notifications</p>
+                <p className="text-white">No notifications</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-200">
+              <div className="divide-y divide-gray-700/50">
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
-                      !notification.read ? "bg-blue-50" : ""
+                    className={`p-4 hover:bg-gray-800/50 transition-colors cursor-pointer ${
+                      !notification.read ? "bg-gray-800/30" : ""
                     }`}
                     onClick={() => handleNotificationClick(notification)}
                   >
                     <div className="flex items-start gap-3">
                       {notification.image ? (
-                        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200">
+                        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-gray-700/50">
                           <img
                             src={notification.image}
                             alt={notification.title}
@@ -203,30 +228,30 @@ export function NotificationDropdown() {
                         <div
                           className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
                             !notification.read
-                              ? "bg-orange-500"
-                              : "bg-gray-300"
+                              ? "bg-brand-sweet-bianca"
+                              : "bg-gray-500"
                           }`}
                         />
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-semibold text-gray-900">
+                          <p className="text-sm font-semibold text-white">
                             {notification.title}
                           </p>
                           {!notification.image && (
                             <div
                               className={`w-2 h-2 rounded-full mt-1 flex-shrink-0 ${
                                 !notification.read
-                                  ? "bg-orange-500"
-                                  : "bg-gray-300"
+                                  ? "bg-brand-sweet-bianca"
+                                  : "bg-gray-500"
                               }`}
                             />
                           )}
                         </div>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-gray-300 mt-1">
                           {notification.message}
                         </p>
-                        <p className="text-xs text-gray-500 mt-2">
+                        <p className="text-xs text-gray-400 mt-2">
                           {notification.time}
                         </p>
                       </div>
@@ -239,13 +264,23 @@ export function NotificationDropdown() {
 
           {/* Footer */}
           {notifications.length > 0 && (
-            <div className="p-3 border-t border-gray-200">
-              <button
-                onClick={markAllAsRead}
-                className="w-full text-sm text-center text-blue-600 hover:text-blue-700 font-medium py-2"
-              >
-                Mark all as read
-              </button>
+            <div className="p-3 border-t border-gray-700/50">
+              <div className="flex gap-2">
+                <button
+                  onClick={markAllAsRead}
+                  className="flex-1 text-sm text-center text-brand-sweet-bianca hover:text-brand-sweet-bianca/80 font-medium py-2 border-r border-gray-700/50 transition-colors"
+                >
+                  Mark all as read
+                </button>
+                <button
+                  onClick={deleteAllNotifications}
+                  disabled={deletingAll}
+                  className="flex-1 text-sm text-center text-red-400 hover:text-red-300 font-medium py-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  {deletingAll ? "Deleting..." : "Delete all"}
+                </button>
+              </div>
             </div>
           )}
         </div>

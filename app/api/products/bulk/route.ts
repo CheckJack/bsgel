@@ -59,6 +59,11 @@ export async function PATCH(req: Request) {
       updateData.discountPercentage = parseInt(updates.discountPercentage)
     }
 
+    // Handle showcasingSections (if provided)
+    if (updates.showcasingSections !== undefined) {
+      updateData.showcasingSections = Array.isArray(updates.showcasingSections) ? updates.showcasingSections : []
+    }
+
     // Handle salePrice calculation if discountPercentage is provided
     if (updates.discountPercentage !== undefined && updates.discountPercentage !== null && updates.discountPercentage !== "") {
       // We'll need to fetch products first to calculate salePrice
@@ -110,6 +115,7 @@ export async function PATCH(req: Request) {
         if (updateData.featured !== undefined) productUpdate.featured = updateData.featured
         if (updateData.price !== undefined) productUpdate.price = updateData.price
         if (updateData.discountPercentage !== undefined) productUpdate.discountPercentage = updateData.discountPercentage
+        if (updateData.showcasingSections !== undefined) productUpdate.showcasingSections = updateData.showcasingSections
         
         // Update product with non-relation fields first
         if (Object.keys(productUpdate).length > 0) {

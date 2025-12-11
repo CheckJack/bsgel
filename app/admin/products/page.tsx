@@ -55,7 +55,43 @@ export default function AdminProductsPage() {
     featured: "",
     price: "",
     discountPercentage: "",
+    showcasingSections: [] as string[],
   });
+
+  // Available showcasing sections
+  const showcasingSections = [
+    { value: "treatment-gels", label: "Treatment Gels" },
+    { value: "treatment-base-gels", label: "Treatment Base Gels" },
+    { value: "color-gels", label: "Color Gels (Bio Gel)" },
+    { value: "evo-color-gels", label: "Color Gels (Evo)" },
+    { value: "top-coats", label: "Top Coats" },
+    { value: "hand-care", label: "Hand Care" },
+    { value: "foot-care", label: "Foot Care" },
+    { value: "reds", label: "Reds" },
+    { value: "pinks", label: "Pinks" },
+    { value: "nudes", label: "Nudes" },
+    { value: "oranges", label: "Oranges" },
+  ];
+
+  // Format category/subcategory names: replace dots, hyphens, underscores with spaces and format properly
+  const formatName = (name: string) => {
+    if (!name) return name;
+    // Replace dots, hyphens, and underscores with spaces, then clean up and capitalize
+    return name
+      .replace(/\./g, ' ')        // Replace dots with spaces
+      .replace(/_/g, ' ')         // Replace underscores with spaces  
+      .replace(/-/g, ' ')         // Replace hyphens with spaces
+      .replace(/\s+/g, ' ')       // Replace multiple spaces with single space
+      .trim()                     // Remove leading/trailing spaces
+      .split(' ')                 // Split into words
+      .map(word => {
+        if (!word) return '';
+        // Capitalize first letter, lowercase the rest
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .filter(word => word.length > 0) // Remove empty words
+      .join(' ');                 // Join back with spaces
+  };
   const [isBulkEditing, setIsBulkEditing] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState<string | null>(null);
@@ -269,6 +305,11 @@ export default function AdminProductsPage() {
       updates.discountPercentage = discount;
     }
 
+    // Showcasing sections: send if explicitly set (including empty array to clear)
+    if (bulkEditData.showcasingSections !== undefined) {
+      updates.showcasingSections = bulkEditData.showcasingSections;
+    }
+
     if (Object.keys(updates).length === 0) {
       toast(t("products.selectAtLeastOneField"), "warning");
       return;
@@ -292,7 +333,7 @@ export default function AdminProductsPage() {
         toast(t("products.bulkEditSuccessWithCount", { count: data.count }), "success");
         setShowBulkEditModal(false);
         setSelectedProducts(new Set());
-        setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", price: "", discountPercentage: "" });
+        setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", price: "", discountPercentage: "", showcasingSections: [] });
         fetchProducts();
       } else {
         const error = await res.json();
@@ -523,7 +564,7 @@ export default function AdminProductsPage() {
                     <option value="">{t("products.allCategories")}</option>
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>
-                        {category.name}
+                        {formatName(category.name)}
                       </option>
                     ))}
                   </select>
@@ -632,7 +673,8 @@ export default function AdminProductsPage() {
                     return (
                       <tr
                         key={product.id}
-                        className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                        onClick={() => handleSelectProduct(product.id)}
+                        className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer ${
                           selectedProducts.has(product.id) ? "bg-blue-50 dark:bg-blue-900/20" : ""
                         }`}
                       >
@@ -641,7 +683,11 @@ export default function AdminProductsPage() {
                           <input
                             type="checkbox"
                             checked={selectedProducts.has(product.id)}
-                            onChange={() => handleSelectProduct(product.id)}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              handleSelectProduct(product.id);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
                             className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                           />
                         </td>
@@ -717,7 +763,7 @@ export default function AdminProductsPage() {
                         </td>
 
                         {/* Actions */}
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-2">
                             <Link href={`/admin/products/${product.id}`}>
                               <Button
@@ -819,8 +865,8 @@ export default function AdminProductsPage() {
 
       {/* Bulk Edit Modal */}
       {showBulkEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <Card className="w-full max-w-md bg-white dark:bg-gray-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <Card className="w-full max-w-6xl bg-white dark:bg-gray-800">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
@@ -829,7 +875,7 @@ export default function AdminProductsPage() {
                 <button
                   onClick={() => {
                     setShowBulkEditModal(false);
-                    setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", price: "", discountPercentage: "" });
+                    setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", price: "", discountPercentage: "", showcasingSections: [] });
                   }}
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 >
@@ -841,115 +887,164 @@ export default function AdminProductsPage() {
                 {t("products.updateSelectedProducts", { count: selectedProducts.size })}
               </p>
 
-              <div className="space-y-4">
-                {/* Category Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {t("products.category")}
-                  </label>
-                  <select
-                    value={bulkEditData.categoryId}
-                    onChange={(e) =>
-                      setBulkEditData({ ...bulkEditData, categoryId: e.target.value })
-                    }
-                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">{t("products.noChange")}</option>
-                    <option value="none">{t("products.removeCategory")}</option>
-                    {categories.filter((cat) => !cat.parentId).map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
+              <div className="flex gap-6">
+                {/* Left Container */}
+                <div className="flex-1 space-y-4">
+                  {/* Category Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {t("products.category")}
+                    </label>
+                    <select
+                      value={bulkEditData.categoryId}
+                      onChange={(e) =>
+                        setBulkEditData({ ...bulkEditData, categoryId: e.target.value })
+                      }
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">{t("products.noChange")}</option>
+                      <option value="none">{t("products.removeCategory")}</option>
+                      {categories.filter((cat) => !cat.parentId).map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {formatName(category.name)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Subcategories Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {t("products.subcategories") || "Subcategories"}
+                    </label>
+                    {subcategories.length > 0 ? (
+                      <>
+                        <select
+                          multiple
+                          value={bulkEditData.subcategoryIds}
+                          onChange={(e) => {
+                            const selected = Array.from(e.target.selectedOptions, (option) => option.value);
+                            setBulkEditData({ ...bulkEditData, subcategoryIds: selected });
+                          }}
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+                          size={5}
+                        >
+                          {subcategories.map((subcategory) => (
+                            <option key={subcategory.id} value={subcategory.id}>
+                              {formatName(subcategory.name)}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {t("products.holdCtrlToSelectMultiple") || "Hold Ctrl/Cmd to select multiple"}
+                        </p>
+                      </>
+                    ) : (
+                      <div className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 min-h-[100px] flex items-center justify-center">
+                        <p className="text-center">No subcategories available. Create subcategories in the Categories section first.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Featured Status */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {t("products.featuredStatus")}
+                    </label>
+                    <select
+                      value={bulkEditData.featured}
+                      onChange={(e) =>
+                        setBulkEditData({ ...bulkEditData, featured: e.target.value })
+                      }
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">{t("products.noChange")}</option>
+                      <option value="true">{t("products.featured")}</option>
+                      <option value="false">{t("products.notFeatured")}</option>
+                    </select>
+                  </div>
                 </div>
 
-                {/* Subcategories Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {t("products.subcategories") || "Subcategories"}
-                  </label>
-                  {subcategories.length > 0 ? (
-                    <>
-                      <select
-                        multiple
-                        value={bulkEditData.subcategoryIds}
-                        onChange={(e) => {
-                          const selected = Array.from(e.target.selectedOptions, (option) => option.value);
-                          setBulkEditData({ ...bulkEditData, subcategoryIds: selected });
-                        }}
-                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
-                        size={5}
-                      >
-                        {subcategories.map((subcategory) => (
-                          <option key={subcategory.id} value={subcategory.id}>
-                            {subcategory.name}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {t("products.holdCtrlToSelectMultiple") || "Hold Ctrl/Cmd to select multiple"}
-                      </p>
-                    </>
-                  ) : (
-                    <div className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 min-h-[100px] flex items-center justify-center">
-                      <p className="text-center">No subcategories available. Create subcategories in the Categories section first.</p>
+                {/* Right Container */}
+                <div className="flex-1 space-y-4">
+                  {/* Price */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {t("products.price")}
+                    </label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={bulkEditData.price}
+                      onChange={(e) =>
+                        setBulkEditData({ ...bulkEditData, price: e.target.value })
+                      }
+                      placeholder={t("products.leaveEmptyToSkip")}
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* Discount Percentage */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {t("products.discountPercentage")}
+                    </label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={bulkEditData.discountPercentage}
+                      onChange={(e) =>
+                        setBulkEditData({ ...bulkEditData, discountPercentage: e.target.value })
+                      }
+                      placeholder={t("products.leaveEmptyToSkip")}
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* Showcasing Sections */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Showcasing Sections
+                    </label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                      Select showcasing sections for these products
+                    </p>
+                    <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-3 bg-white dark:bg-gray-800">
+                      {showcasingSections.map((section) => (
+                        <label
+                          key={section.value}
+                          className="flex items-center gap-2 py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={bulkEditData.showcasingSections.includes(section.value)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setBulkEditData({
+                                  ...bulkEditData,
+                                  showcasingSections: [...bulkEditData.showcasingSections, section.value],
+                                });
+                              } else {
+                                setBulkEditData({
+                                  ...bulkEditData,
+                                  showcasingSections: bulkEditData.showcasingSections.filter((id) => id !== section.value),
+                                });
+                              }
+                            }}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                          />
+                          <span className="text-sm text-gray-900 dark:text-gray-100">{section.label}</span>
+                        </label>
+                      ))}
                     </div>
-                  )}
-                </div>
-
-                {/* Featured Status */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {t("products.featuredStatus")}
-                  </label>
-                  <select
-                    value={bulkEditData.featured}
-                    onChange={(e) =>
-                      setBulkEditData({ ...bulkEditData, featured: e.target.value })
-                    }
-                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">{t("products.noChange")}</option>
-                    <option value="true">{t("products.featured")}</option>
-                    <option value="false">{t("products.notFeatured")}</option>
-                  </select>
-                </div>
-
-                {/* Price */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {t("products.price")}
-                  </label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={bulkEditData.price}
-                    onChange={(e) =>
-                      setBulkEditData({ ...bulkEditData, price: e.target.value })
-                    }
-                    placeholder={t("products.leaveEmptyToSkip")}
-                    className="w-full"
-                  />
-                </div>
-
-                {/* Discount Percentage */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {t("products.discountPercentage")}
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={bulkEditData.discountPercentage}
-                    onChange={(e) =>
-                      setBulkEditData({ ...bulkEditData, discountPercentage: e.target.value })
-                    }
-                    placeholder={t("products.leaveEmptyToSkip")}
-                    className="w-full"
-                  />
+                    {bulkEditData.showcasingSections.length > 0 && (
+                      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        {bulkEditData.showcasingSections.length} section{bulkEditData.showcasingSections.length === 1 ? "" : "s"} selected
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -965,7 +1060,7 @@ export default function AdminProductsPage() {
                   variant="outline"
                   onClick={() => {
                     setShowBulkEditModal(false);
-                    setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", price: "", discountPercentage: "" });
+                    setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", price: "", discountPercentage: "", showcasingSections: [] });
                   }}
                   disabled={isBulkEditing}
                   className="flex-1"

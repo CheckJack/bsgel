@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { logAdminAction, extractRequestInfo, createChangeDetails } from "@/lib/admin-logger"
 
 export async function GET(
   req: Request,
@@ -29,6 +32,24 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Check authentication
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Unauthorized - Admin access required" },
+        { status: 401 }
+      );
+    }
+
+    // Get category before update for logging
+    const categoryBefore = await db.category.findUnique({
+      where: { id: params.id },
+    });
+
+    if (!categoryBefore) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 });
+    }
+
     const body = await req.json()
     const { name, slug, description, image, icon, parentId } = body
 
@@ -128,6 +149,23 @@ export async function PATCH(
       data: updateData,
     })
 
+    // Log admin action
+    const { ipAddress, userAgent } = extractRequestInfo(req);
+    await logAdminAction({
+      userId: session.user.id!,
+      actionType: "UPDATE" as any,
+      resourceType: "Category",
+      resourceId: params.id,
+      description: `Updated category "${category.name}"`,
+      details: createChangeDetails(categoryBefore, category),
+      ipAddress,
+      userAgent,
+      metadata: {
+        url: req.url,
+        method: "PATCH",
+      },
+    });
+
     return NextResponse.json(category)
   } catch (error: any) {
     console.error("Failed to update category:", error)
@@ -152,6 +190,15 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Check authentication
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Unauthorized - Admin access required" },
+        { status: 401 }
+      );
+    }
+
     // Check if category has products
     const category = await db.category.findUnique({
       where: { id: params.id },
@@ -179,6 +226,25 @@ export async function DELETE(
     await db.category.delete({
       where: { id: params.id },
     })
+
+    // Log admin action
+    const { ipAddress, userAgent } = extractRequestInfo(req);
+    await logAdminAction({
+      userId: session.user.id!,
+      actionType: "DELETE" as any,
+      resourceType: "Category",
+      resourceId: params.id,
+      description: `Deleted category "${category.name}"`,
+      details: {
+        before: category,
+      },
+      ipAddress,
+      userAgent,
+      metadata: {
+        url: req.url,
+        method: "DELETE",
+      },
+    });
 
     return NextResponse.json({ message: "Category deleted successfully" })
   } catch (error: any) {

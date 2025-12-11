@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { Prisma } from "@prisma/client"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { logAdminAction, extractRequestInfo, createChangeDetails } from "@/lib/admin-logger"
 
 export async function GET(
   req: Request,
@@ -181,6 +184,32 @@ export async function PATCH(
   let updateData: any = {}
   
   try {
+    // Check authentication for admin actions
+    const session = await getServerSession(authOptions);
+    const isAdmin = session?.user?.role === "ADMIN";
+    
+    // Always get product before update for logging (if admin)
+    let productBefore = null;
+    if (isAdmin && session?.user?.id) {
+      try {
+        productBefore = await db.product.findUnique({
+          where: { id: params.id },
+          include: {
+            category: true,
+            subcategories: {
+              include: {
+                category: true,
+              },
+            },
+          },
+        });
+        console.log("📋 Product before update fetched:", productBefore ? "YES" : "NO");
+      } catch (error: any) {
+        console.error("Error fetching product before update:", error);
+        productBefore = null;
+      }
+    }
+
     const body = await req.json()
     const { name, description, price, image, images, categoryId, subcategoryIds, featured, attributes, showcasingSections } = body
 
@@ -289,6 +318,46 @@ export async function PATCH(
       salePrice: salePriceString,
     }
 
+    // Log admin action - ALWAYS log if admin (even if productBefore fetch failed)
+    if (isAdmin && session?.user?.id) {
+      console.log("🔵 LOGGING CHECK:", {
+        isAdmin,
+        hasSession: !!session,
+        userId: session.user.id,
+        hasProductBefore: !!productBefore,
+        productId: product.id,
+        productName: product.name,
+      });
+
+      try {
+        const { ipAddress, userAgent } = extractRequestInfo(req);
+        const logResult = await logAdminAction({
+          userId: session.user.id!,
+          actionType: "UPDATE" as any,
+          resourceType: "Product",
+          resourceId: params.id,
+          description: `Updated product "${product.name}"`,
+          details: productBefore ? createChangeDetails(productBefore, product) : { after: product },
+          ipAddress,
+          userAgent,
+          metadata: {
+            url: req.url,
+            method: "PATCH",
+          },
+        });
+
+        if (!logResult) {
+          console.error("⚠️ Failed to log product update - check console for details");
+        } else {
+          console.log("✅ Successfully logged product update");
+        }
+      } catch (logError: any) {
+        console.error("❌ Exception during logging:", logError);
+      }
+    } else {
+      console.log("⚠️ NOT LOGGING - isAdmin:", isAdmin, "hasSession:", !!session, "userId:", session?.user?.id);
+    }
+
     return NextResponse.json(serializedProduct)
   } catch (error: any) {
     console.error("Failed to update product:", error)
@@ -314,9 +383,49 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Check authentication
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Unauthorized - Admin access required" },
+        { status: 401 }
+      );
+    }
+
+    // Get product before deletion for logging
+    const product = await db.product.findUnique({
+      where: { id: params.id },
+      include: {
+        category: true,
+      },
+    });
+
+    if (!product) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
     await db.product.delete({
       where: { id: params.id },
     })
+
+    // Log admin action
+    const { ipAddress, userAgent } = extractRequestInfo(req);
+    await logAdminAction({
+      userId: session.user.id!,
+      actionType: "DELETE" as any,
+      resourceType: "Product",
+      resourceId: params.id,
+      description: `Deleted product "${product.name}"`,
+      details: {
+        before: product,
+      },
+      ipAddress,
+      userAgent,
+      metadata: {
+        url: req.url,
+        method: "DELETE",
+      },
+    });
 
     return NextResponse.json({ message: "Product deleted" })
   } catch (error) {

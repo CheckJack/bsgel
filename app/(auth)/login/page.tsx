@@ -23,6 +23,16 @@ export default function LoginPage() {
       setIsRegisterMode(true);
     }
     
+    // Capture referral code from URL if present
+    const refCode = searchParams?.get("ref");
+    if (refCode) {
+      localStorage.setItem("referralCode", refCode);
+      const expiryDate = new Date();
+      expiryDate.setTime(expiryDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+      document.cookie = `referralCode=${refCode}; path=/; expires=${expiryDate.toUTCString()}; SameSite=Lax`;
+      console.log("Referral code captured from login page:", refCode);
+    }
+    
     // Show success message if user just registered
     if (searchParams?.get("registered") === "true") {
       setError("");
@@ -124,6 +134,37 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
+      // Get referral code from localStorage or cookie
+      const getReferralCode = (): string | null => {
+        try {
+          // Try localStorage first
+          const fromStorage = localStorage.getItem("referralCode");
+          if (fromStorage && fromStorage.trim().length >= 3) {
+            return fromStorage.trim().toUpperCase();
+          }
+        } catch (error) {
+          console.warn("Failed to read referral code from localStorage:", error);
+        }
+
+        try {
+          // Try cookie
+          const cookies = document.cookie.split("; ");
+          const referralCookie = cookies.find(row => row.startsWith("referralCode="));
+          if (referralCookie) {
+            const code = referralCookie.split("=")[1];
+            if (code && code.trim().length >= 3) {
+              return code.trim().toUpperCase();
+            }
+          }
+        } catch (error) {
+          console.warn("Failed to read referral code from cookie:", error);
+        }
+
+        return null;
+      };
+
+      const referralCode = getReferralCode();
+
       let certificateUrl: string | null = null;
       if (formData.userType === "professional" && certificateFile) {
         const reader = new FileReader();
@@ -144,6 +185,7 @@ export default function LoginPage() {
         password: string;
         userType: string;
         certificate?: string;
+        referralCode?: string | null;
       } = {
         name: formData.name.trim(),
         email: formData.email.trim(),
@@ -153,6 +195,10 @@ export default function LoginPage() {
 
       if (certificateUrl) {
         payload.certificate = certificateUrl;
+      }
+
+      if (referralCode) {
+        payload.referralCode = referralCode;
       }
 
       const res = await fetch("/api/auth/register", {
@@ -174,6 +220,12 @@ export default function LoginPage() {
           setError(data.error || data.message || "Registration failed");
         }
       } else {
+        // Clear referral code after successful registration
+        if (referralCode) {
+          localStorage.removeItem("referralCode");
+          document.cookie = "referralCode=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+        }
+
         // Switch to login mode and show success
         setIsRegisterMode(false);
         setError("");

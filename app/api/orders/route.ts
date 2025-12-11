@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { canUserPurchaseProduct } from "@/lib/certifications"
 import { formatPrice } from "@/lib/utils"
+import { getReferralByUserId, activateReferral } from "@/lib/affiliate"
+import { calculatePoints, awardPoints } from "@/lib/points"
 
 export async function GET(req: Request) {
   try {
@@ -199,12 +201,26 @@ export async function POST(req: Request) {
     // Calculate total after discount
     const total = Math.max(0, subtotal - discountAmount)
 
+    // Check for affiliate referral
+    const referral = await getReferralByUserId(session.user.id)
+    let affiliateReferralId: string | null = null
+
+    if (referral) {
+      affiliateReferralId = referral.id
+    }
+
     // Increment coupon usage count if coupon was applied
     if (appliedCouponCode) {
       try {
         await db.coupon.updateMany({
           where: { code: appliedCouponCode },
           data: { usedCount: { increment: 1 } },
+        })
+        
+        // Update redemption status to USED if this is a reward redemption coupon
+        await db.pointsRedemption.updateMany({
+          where: { couponCode: appliedCouponCode.toUpperCase().trim() },
+          data: { status: "USED" },
         })
       } catch (error) {
         console.error("Failed to update coupon usage count:", error)
@@ -219,6 +235,7 @@ export async function POST(req: Request) {
         total,
         shippingAddress: shippingAddress || null,
         paymentIntentId: paymentIntentId || null,
+        affiliateReferralId,
         items: {
           create: cart.items.map((item) => ({
             productId: item.productId,
@@ -235,6 +252,79 @@ export async function POST(req: Request) {
         },
       },
     })
+
+    // Handle affiliate referral points (if not using webhook)
+    // Note: This is a fallback - webhook handles Stripe orders, but this ensures it works for non-Stripe orders
+    if (referral && !paymentIntentId) {
+      // Only process if order wasn't created via Stripe (webhook handles Stripe orders)
+      try {
+        const currentReferral = await db.affiliateReferral.findUnique({
+          where: { id: referral.id },
+        })
+
+        if (currentReferral && currentReferral.status === "PENDING") {
+          // Activate referral and link first order
+          await activateReferral(referral.id, order.id)
+          
+          // Award points for first order
+          const firstOrderPoints = await calculatePoints("REFERRAL_FIRST_ORDER", Number(total))
+          if (firstOrderPoints > 0) {
+            const affiliate = await db.affiliate.findUnique({ 
+              where: { id: referral.affiliateId } 
+            })
+            if (affiliate) {
+              await awardPoints(
+                affiliate.userId,
+                firstOrderPoints,
+                "AFFILIATE_PURCHASE",
+                order.id,
+                `Referral first order: ${total}€`
+              )
+            }
+          }
+        } else if (currentReferral && currentReferral.status === "ACTIVE") {
+          // Repeat order - award points for repeat order
+          const repeatOrderPoints = await calculatePoints("REFERRAL_REPEAT_ORDER", Number(total))
+          if (repeatOrderPoints > 0) {
+            const affiliate = await db.affiliate.findUnique({ 
+              where: { id: referral.affiliateId } 
+            })
+            if (affiliate) {
+              await awardPoints(
+                affiliate.userId,
+                repeatOrderPoints,
+                "AFFILIATE_PURCHASE",
+                order.id,
+                `Referral repeat order: ${total}€`
+              )
+            }
+          }
+        }
+      } catch (referralError) {
+        console.error("Failed to process referral points:", referralError)
+        // Don't fail order creation if referral processing fails
+      }
+    }
+
+    // Award points to order owner for own purchase (if not using webhook)
+    if (!paymentIntentId) {
+      // Only if not using Stripe (webhook handles Stripe orders)
+      try {
+        const ownPurchasePoints = await calculatePoints("OWN_PURCHASE", Number(total))
+        if (ownPurchasePoints > 0) {
+          await awardPoints(
+            session.user.id,
+            ownPurchasePoints,
+            "AFFILIATE_PURCHASE",
+            order.id,
+            `Purchase points: ${total}€`
+          )
+        }
+      } catch (pointsError) {
+        console.error("Failed to award purchase points:", pointsError)
+        // Don't fail order creation if points fail
+      }
+    }
 
     // Clear cart
     await db.cartItem.deleteMany({

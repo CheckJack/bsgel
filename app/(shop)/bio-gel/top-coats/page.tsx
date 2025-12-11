@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useLayoutEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { HeroSlider } from "@/components/layout/hero-slider";
 import { IngredientSlider } from "@/components/product/ingredient-slider";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import TextGenerateEffect from "@/components/ui/text-generate-effect";
+import { Pagination } from "@/components/ui/pagination";
 
 interface Product {
   id: string;
@@ -25,9 +26,12 @@ interface Product {
 export default function TopCoatsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [isScrolling, setIsScrolling] = useState(false);
   const textSectionRef = useRef<HTMLElement>(null);
   const productsSectionRef = useRef<HTMLElement>(null);
+  const isInitialMount = useRef(true);
 
   const slides = [
     {
@@ -41,7 +45,18 @@ export default function TopCoatsPage() {
 
   useEffect(() => {
     fetchTopCoatProducts();
+  }, [currentPage]);
+
+  // Prevent automatic scroll to #products on page load
+  useLayoutEffect(() => {
+    // Scroll to top immediately to prevent browser's automatic hash scroll
+    if (window.location.hash === '#products') {
+      window.scrollTo(0, 0);
+      // Remove hash from URL without triggering scroll
+      window.history.replaceState(null, '', window.location.pathname);
+    }
   }, []);
+
 
   // Scroll detection for text highlighting
   useEffect(() => {
@@ -72,12 +87,18 @@ export default function TopCoatsPage() {
   const fetchTopCoatProducts = async () => {
     setIsLoading(true);
     try {
-      // Fetch products assigned to top-coats showcasing section
-      const res = await fetch(`/api/products?showcasingSection=top-coats`);
+      // Fetch products assigned to top-coats showcasing section with pagination
+      const res = await fetch(`/api/products?showcasingSection=top-coats&page=${currentPage}&limit=10`);
       if (res.ok) {
         const data = await res.json();
-        const allProducts = Array.isArray(data) ? data : data.products || [];
-        setProducts(allProducts);
+        if (data.pagination) {
+          setProducts(data.products || []);
+          setTotalPages(data.pagination.totalPages || 1);
+        } else {
+          // Fallback for backward compatibility
+          setProducts(Array.isArray(data) ? data : data.products || []);
+          setTotalPages(1);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch products:", error);
@@ -212,19 +233,30 @@ export default function TopCoatsPage() {
               <p className="text-gray-600">No Top Coat products found.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  id={product.id}
-                  name={product.name}
-                  price={product.price}
-                  image={product.image}
-                  images={product.images}
-                  featured={product.featured}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {products.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    id={product.id}
+                    name={product.name}
+                    price={product.price}
+                    image={product.image}
+                    images={product.images}
+                    featured={product.featured}
+                  />
+                ))}
+              </div>
+              {totalPages > 1 && (
+                <div className="mt-12">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>

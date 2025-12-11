@@ -7,38 +7,13 @@ import Image from "next/image";
 import { SettingsModal } from "./settings-modal";
 
 interface Comment {
+  id: string;
   name: string;
   rating: number;
   comment: string;
   avatar: string;
+  createdAt: string;
 }
-
-const comments: Comment[] = [
-  {
-    name: "Kathryn Murphy",
-    rating: 3.5,
-    comment: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras nec dolor vel est interdum",
-    avatar: "/api/placeholder/40/40",
-  },
-  {
-    name: "Leslie Alexander",
-    rating: 3.5,
-    comment: "Cras nec viverra justo, a mattis lacus. Vestibulum eleifend, leo sit amet aliquam laoreet, turpis leo vulputate orci",
-    avatar: "/api/placeholder/40/40",
-  },
-  {
-    name: "Devon Lane",
-    rating: 3.5,
-    comment: "Morbi eget commodo diam. Praesent dignissim purus ac turpis porta",
-    avatar: "/api/placeholder/40/40",
-  },
-  {
-    name: "Eleanor Pena",
-    rating: 3.5,
-    comment: "Phasellus et eros ullamcorper, efficitur eros eget, pharetra ante. Sed blandit risus vitae dolor feugiat, eu vulputate elit rhoncus",
-    avatar: "/api/placeholder/40/40",
-  },
-];
 
 function StarRating({ rating }: { rating: number }) {
   const fullStars = Math.floor(rating);
@@ -71,7 +46,57 @@ export function NewComments() {
   const [isOpen, setIsOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const fetchComments = async () => {
+    try {
+      setIsLoading(true);
+      // Fetch all blogs first
+      const blogsRes = await fetch("/api/blogs");
+      if (blogsRes.ok) {
+        const blogs = await blogsRes.json();
+        
+        // Fetch comments for all blogs
+        const allComments: any[] = [];
+        for (const blog of blogs.slice(0, 10)) { // Limit to first 10 blogs to avoid too many requests
+          try {
+            const commentsRes = await fetch(`/api/blogs/${blog.id}/comments`);
+            if (commentsRes.ok) {
+              const blogComments = await commentsRes.json();
+              allComments.push(...blogComments);
+            }
+          } catch (error) {
+            console.error(`Failed to fetch comments for blog ${blog.id}:`, error);
+          }
+        }
+        
+        // Sort by creation date (newest first) and take latest 4
+        const sortedComments = allComments
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 4)
+          .map((comment: any) => ({
+            id: comment.id,
+            name: comment.user?.name || comment.user?.email || "Anonymous",
+            rating: 3.5, // Blog comments don't have ratings, use default
+            comment: comment.content,
+            avatar: comment.user?.image || "/api/placeholder/40/40",
+            createdAt: comment.createdAt,
+          }));
+        
+        setComments(sortedComments);
+      }
+    } catch (error) {
+      console.error("Failed to fetch comments:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchComments();
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -147,10 +172,7 @@ export function NewComments() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    // Simulate refresh delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    // In a real app, you would fetch fresh comments here
-    alert("Comments refreshed!");
+    await fetchComments();
     setIsRefreshing(false);
     setIsOpen(false);
   };
@@ -207,26 +229,41 @@ export function NewComments() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {comments.map((comment, index) => (
-            <div key={index} className="flex gap-3 pb-4 border-b dark:border-gray-700 last:border-0 last:pb-0">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex-shrink-0 flex items-center justify-center text-white font-semibold">
-                {comment.name.charAt(0)}
-              </div>
-              <div className="flex-1">
-                <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-1">
-                  {comment.name}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
+          </div>
+        ) : comments.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            No comments found
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {comments.map((comment) => (
+              <div key={comment.id} className="flex gap-3 pb-4 border-b dark:border-gray-700 last:border-0 last:pb-0">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex-shrink-0 flex items-center justify-center text-white font-semibold">
+                  {comment.name.charAt(0).toUpperCase()}
                 </div>
-                <div className="mb-2">
-                  <StarRating rating={comment.rating} />
+                <div className="flex-1">
+                  <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-1">
+                    {comment.name}
+                  </div>
+                  <div className="mb-2">
+                    <StarRating rating={comment.rating} />
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                    {comment.comment}
+                  </p>
+                  {comment.createdAt && (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                      {new Date(comment.createdAt).toLocaleDateString()}
+                    </p>
+                  )}
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  {comment.comment}
-                </p>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </CardContent>
       <SettingsModal
         isOpen={isSettingsOpen}

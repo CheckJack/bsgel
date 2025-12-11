@@ -44,6 +44,58 @@ body {
   scrollbar-width: none;
 }
 
+/* Custom scrollbar styling for search results */
+.search-results-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.search-results-scroll::-webkit-scrollbar-track {
+  background: rgba(55, 65, 81, 0.3); /* gray-800 with transparency */
+  border-radius: 4px;
+}
+
+.search-results-scroll::-webkit-scrollbar-thumb {
+  background: rgba(238, 217, 222, 0.6); /* sweet-bianca with transparency */
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.search-results-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(238, 217, 222, 0.8); /* sweet-bianca with more opacity on hover */
+}
+
+/* Firefox scrollbar styling */
+.search-results-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(238, 217, 222, 0.6) rgba(55, 65, 81, 0.3);
+}
+
+/* Custom scrollbar styling for notifications */
+.notification-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.notification-scroll::-webkit-scrollbar-track {
+  background: rgba(55, 65, 81, 0.3); /* gray-800 with transparency */
+  border-radius: 4px;
+}
+
+.notification-scroll::-webkit-scrollbar-thumb {
+  background: rgba(238, 217, 222, 0.6); /* sweet-bianca with transparency */
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.notification-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(238, 217, 222, 0.8); /* sweet-bianca with more opacity on hover */
+}
+
+/* Firefox scrollbar styling for notifications */
+.notification-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(238, 217, 222, 0.6) rgba(55, 65, 81, 0.3);
+}
+
 /* Dark mode styles for select elements */
 select {
   background-color: white;

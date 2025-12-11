@@ -14,6 +14,7 @@ interface MegaMenuCard {
   position: number; // 1 or 2
   imageUrl: string;
   linkUrl: string;
+  mediaType: "IMAGE" | "VIDEO";
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -38,6 +39,7 @@ export default function MegaMenuCardsPage() {
       linkUrl: string;
       imageFile: File | null;
       previewUrl: string | null;
+      mediaType: "IMAGE" | "VIDEO";
     };
   }>({});
 
@@ -81,6 +83,7 @@ export default function MegaMenuCardsPage() {
               linkUrl: card?.linkUrl || "",
               imageFile: null,
               previewUrl: null,
+              mediaType: card?.mediaType || "IMAGE",
             };
           });
         });
@@ -98,16 +101,30 @@ export default function MegaMenuCardsPage() {
     return cards.find((card) => card.menuType === menuType && card.position === position);
   };
 
-  const validateImage = (file: File): string | null => {
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  const validateMedia = (file: File): string | null => {
+    const maxImageSize = 5 * 1024 * 1024; // 5MB
+    const maxVideoSize = 50 * 1024 * 1024; // 50MB
+    const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
     
-    if (!allowedTypes.includes(file.type)) {
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+    
+    if (!isImage && !isVideo) {
+      return "File must be an image or video";
+    }
+    
+    if (isImage && !allowedImageTypes.includes(file.type)) {
       return "Only JPEG, PNG, and WebP images are allowed";
     }
     
+    if (isVideo && !allowedVideoTypes.includes(file.type)) {
+      return "Only MP4, WebM, OGG, and QuickTime videos are allowed";
+    }
+    
+    const maxSize = isImage ? maxImageSize : maxVideoSize;
     if (file.size > maxSize) {
-      return "Image must be less than 5MB";
+      return `${isImage ? 'Image' : 'Video'} must be less than ${maxSize / (1024 * 1024)}MB`;
     }
     
     return null;
@@ -117,29 +134,49 @@ export default function MegaMenuCardsPage() {
     const key = `${menuType}_${position}`;
     
     if (file) {
-      const validationError = validateImage(file);
+      const validationError = validateMedia(file);
       if (validationError) {
         setError(validationError);
         toast(validationError, "error");
         return;
       }
       setError(null);
+      
+      // Determine media type from file
+      const isVideo = file.type.startsWith('video/');
+      const mediaType = isVideo ? "VIDEO" : "IMAGE";
+      
+      // Clean up previous preview URL if it exists
+      const prevPreviewUrl = formData[key]?.previewUrl;
+      if (prevPreviewUrl && prevPreviewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(prevPreviewUrl);
+      }
+      
+      setFormData((prev) => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          imageFile: file,
+          previewUrl: file ? URL.createObjectURL(file) : prev[key]?.previewUrl || null,
+          mediaType: mediaType,
+        },
+      }));
+    } else {
+      // Clean up previous preview URL if it exists
+      const prevPreviewUrl = formData[key]?.previewUrl;
+      if (prevPreviewUrl && prevPreviewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(prevPreviewUrl);
+      }
+      
+      setFormData((prev) => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          imageFile: null,
+          previewUrl: null,
+        },
+      }));
     }
-    
-    // Clean up previous preview URL if it exists
-    const prevPreviewUrl = formData[key]?.previewUrl;
-    if (prevPreviewUrl && prevPreviewUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(prevPreviewUrl);
-    }
-    
-    setFormData((prev) => ({
-      ...prev,
-      [key]: {
-        ...prev[key],
-        imageFile: file,
-        previewUrl: file ? URL.createObjectURL(file) : prev[key]?.previewUrl || null,
-      },
-    }));
   };
 
   const handleLinkChange = (menuType: MenuType, position: number, linkUrl: string) => {
@@ -210,8 +247,10 @@ export default function MegaMenuCardsPage() {
       
       if (data.imageFile) {
         formDataToSend.append("file", data.imageFile);
+        formDataToSend.append("mediaType", data.mediaType || "IMAGE");
       } else if (existingImageUrl) {
         formDataToSend.append("existingImageUrl", existingImageUrl);
+        formDataToSend.append("mediaType", data.mediaType || existingCard?.mediaType || "IMAGE");
       }
 
       const res = await fetch("/api/mega-menu-cards", {
@@ -247,6 +286,7 @@ export default function MegaMenuCardsPage() {
             imageFile: null,
             previewUrl: null,
             imageUrl: result.card.imageUrl,
+            mediaType: result.card.mediaType || "IMAGE",
           },
         }));
 
@@ -353,6 +393,7 @@ export default function MegaMenuCardsPage() {
             linkUrl: "",
             imageFile: null,
             previewUrl: null,
+            mediaType: "IMAGE",
           },
         }));
         
@@ -400,20 +441,28 @@ export default function MegaMenuCardsPage() {
       linkUrl: card?.linkUrl || "",
       imageFile: null,
       previewUrl: null,
+      mediaType: card?.mediaType || "IMAGE",
     };
 
     const isEditing = editingCard === key;
-    const displayImage = data.previewUrl || data.imageUrl;
+    const displayMedia = data.previewUrl || data.imageUrl;
+    const mediaType = data.mediaType || card?.mediaType || "IMAGE";
+    const isVideo = mediaType === "VIDEO";
     const savingKey = `${menuType}_${position}`;
     const isSavingCard = isSaving[savingKey] || false;
     const isDeletingCard = isDeleting[savingKey] || false;
     const isTogglingCard = isToggling[savingKey] || false;
     const hasUnsavedChanges = isEditing && (
       data.imageFile !== null ||
-      data.linkUrl !== (card?.linkUrl || "")
+      data.linkUrl !== (card?.linkUrl || "") ||
+      data.mediaType !== (card?.mediaType || "IMAGE")
     );
 
     const handleUploadClick = () => {
+      // Reset the file input value to ensure onChange fires even if the same file is selected
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       fileInputRef.current?.click();
       setEditingCard(key);
     };
@@ -422,6 +471,11 @@ export default function MegaMenuCardsPage() {
       // Clean up preview URL if it's a blob URL
       if (data.previewUrl && data.previewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(data.previewUrl);
+      }
+      
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
       
       setEditingCard(null);
@@ -434,6 +488,7 @@ export default function MegaMenuCardsPage() {
             linkUrl: card.linkUrl,
             imageFile: null,
             previewUrl: null,
+            mediaType: card.mediaType || "IMAGE",
           },
         }));
       } else {
@@ -445,6 +500,7 @@ export default function MegaMenuCardsPage() {
             linkUrl: "",
             imageFile: null,
             previewUrl: null,
+            mediaType: "IMAGE",
           },
         }));
       }
@@ -483,61 +539,75 @@ export default function MegaMenuCardsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Current/Preview Image */}
-          {displayImage ? (
+          {/* Current/Preview Media */}
+          {displayMedia ? (
             <div className="relative w-full aspect-[4/5] rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700">
-              <Image
-                src={displayImage}
-                alt={`${menuType} Menu Card ${position}`}
-                fill
-                className="object-cover"
-                unoptimized
-              />
+              {isVideo ? (
+                <video
+                  src={displayMedia}
+                  className="w-full h-full object-cover"
+                  controls={false}
+                  muted
+                  loop
+                  playsInline
+                />
+              ) : (
+                <Image
+                  src={displayMedia}
+                  alt={`${menuType} Menu Card ${position}`}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              )}
               {data.previewUrl && (
                 <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
                   Preview
                 </div>
               )}
+              <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                {isVideo ? "Video" : "Image"}
+              </div>
             </div>
           ) : (
             <div className="relative w-full aspect-[4/5] rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
               <div className="text-center text-gray-400 dark:text-gray-500">
                 <Upload className="h-8 w-8 mx-auto mb-2" />
-                <p className="text-sm">No image</p>
+                <p className="text-sm">No media</p>
               </div>
             </div>
           )}
 
-          {/* Image Upload */}
+          {/* Media Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Image
+              Media (Image or Video)
             </label>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/ogg,video/quicktime"
                   onChange={(e) => {
                     const file = e.target.files?.[0] || null;
                     handleImageChange(menuType, position, file);
                     setEditingCard(key);
                   }}
                   className="hidden"
-                  aria-label="Upload image file"
+                  aria-label="Upload media file"
                 />
                 <Button
                   type="button"
                   variant="outline"
                   className="flex-1"
                   onClick={handleUploadClick}
-                  aria-label="Upload or change image"
+                  aria-label="Upload or change media"
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  {data.imageFile ? "Change Image" : displayImage ? "Replace Image" : "Upload Image"}
+                  {data.imageFile ? "Change Media" : displayMedia ? "Replace Media" : "Upload Media"}
                 </Button>
-                {displayImage && (
+                {displayMedia && (
                   <Button
                     type="button"
                     variant="outline"
@@ -548,14 +618,15 @@ export default function MegaMenuCardsPage() {
                       handleImageChange(menuType, position, null);
                       setEditingCard(key);
                     }}
-                    aria-label="Remove image"
+                    aria-label="Remove media"
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 )}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Recommended: 4:5 aspect ratio (e.g., 800x1000px). Max 5MB. JPEG, PNG, or WebP.
+                Images: 4:5 aspect ratio (e.g., 800x1000px). Max 5MB. JPEG, PNG, or WebP.<br />
+                Videos: Max 50MB. MP4, WebM, OGG, or QuickTime.
               </p>
             </div>
           </div>

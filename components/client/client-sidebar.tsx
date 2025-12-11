@@ -16,6 +16,8 @@ import {
   X,
   ChevronDown,
   Menu,
+  Award,
+  Tag,
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -62,6 +64,12 @@ const navSections: NavSection[] = [
         badge: null,
       },
       {
+        title: "My Coupons",
+        href: "/dashboard/coupons",
+        icon: Tag,
+        badge: null,
+      },
+      {
         title: "Messages",
         href: "/dashboard/messages",
         icon: MessageCircle,
@@ -97,10 +105,35 @@ const navSections: NavSection[] = [
     title: "PROGRAMS",
     items: [
       {
+        title: "Rewards",
+        href: "/dashboard/rewards",
+        icon: Award,
+        badge: null,
+      },
+      {
         title: "Affiliate Program",
-        href: "/dashboard/affiliate",
         icon: Users,
         badge: null,
+        children: [
+          {
+            title: "Overview",
+            href: "/dashboard/affiliate",
+            icon: Users,
+            badge: null,
+          },
+          {
+            title: "My Referrals",
+            href: "/dashboard/affiliates/referrals",
+            icon: Users,
+            badge: null,
+          },
+          {
+            title: "Analytics",
+            href: "/dashboard/affiliate/analytics",
+            icon: Users,
+            badge: null,
+          },
+        ],
       },
       {
         title: "Blog",
@@ -128,20 +161,28 @@ export function ClientSidebar({ isMobileOpen, onMobileClose }: ClientSidebarProp
     return navSections.map(section => ({
       ...section,
       items: section.items.filter(item => {
-        // Always show: Dashboard, Order History, Messages, My Salon, Settings, Blog
+        // Always show: Dashboard, Order History, My Coupons, Messages, My Salon, Settings, Blog, Rewards, Affiliate Program
         if (item.href === "/dashboard" || 
             item.href === "/dashboard/orders" || 
+            item.href === "/dashboard/coupons" ||
             item.href === "/dashboard/messages" ||
             item.href === "/dashboard/salon" ||
             item.href === "/dashboard/settings" || 
-            item.href === "/dashboard/blog") {
+            item.href === "/dashboard/blog" ||
+            item.href === "/dashboard/rewards" ||
+            item.href === "/dashboard/affiliate" ||
+            item.title === "Affiliate Program" || // Show affiliate program dropdown
+            (item.children && item.children.some(child => 
+              child.href === "/dashboard/affiliate" || 
+              child.href === "/dashboard/affiliates/referrals"
+            ))) {
           return true;
         }
-        // Only show restricted items if certification is confirmed
-        if (item.href === "/dashboard/resources" || 
-            item.href === "/dashboard/affiliate") {
+        // Resources requires certification
+        if (item.href === "/dashboard/resources") {
           return hasConfirmedCertification;
         }
+        // Default: show all other items
         return true;
       })
     })).filter(section => section.items.length > 0);
@@ -289,7 +330,9 @@ export function ClientSidebar({ isMobileOpen, onMobileClose }: ClientSidebarProp
                         <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-gray-700 pl-2">
                           {item.children!.map((child) => {
                             const ChildIcon = child.icon;
-                            const isChildActive = pathname === child.href || (child.href !== "/dashboard" && pathname?.startsWith(child.href + "/"));
+                            // For child items (siblings), only check exact matches to prevent
+                            // /dashboard/affiliate/analytics from matching /dashboard/affiliate
+                            const isChildActive = pathname === child.href;
                             
                             return (
                               <Link
@@ -355,7 +398,11 @@ export function ClientSidebar({ isMobileOpen, onMobileClose }: ClientSidebarProp
       {/* Footer Actions */}
       <div className="border-t border-gray-200 dark:border-gray-700 p-4">
         <button
-          onClick={() => signOut({ callbackUrl: "/" })}
+          onClick={() => {
+            if (window.confirm("Are you sure you want to sign out?")) {
+              signOut({ callbackUrl: "/" });
+            }
+          }}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100"
         >
           <LogOut className="h-5 w-5 text-gray-500 dark:text-gray-400" />

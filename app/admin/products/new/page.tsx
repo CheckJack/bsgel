@@ -38,7 +38,9 @@ export default function NewProductPage() {
   // Available showcasing sections
   const showcasingSections = [
     { value: "treatment-gels", label: "Treatment Gels" },
-    { value: "color-gels", label: "Color Gels" },
+    { value: "treatment-base-gels", label: "Treatment Base Gels" },
+    { value: "color-gels", label: "Color Gels (Bio Gel)" },
+    { value: "evo-color-gels", label: "Color Gels (Evo)" },
     { value: "top-coats", label: "Top Coats" },
     { value: "hand-care", label: "Hand Care" },
     { value: "foot-care", label: "Foot Care" },
@@ -216,7 +218,11 @@ export default function NewProductPage() {
         }
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to create product");
+        const errorMessage = data.details 
+          ? `${data.error || "Failed to create product"}: ${data.details}`
+          : (data.error || "Failed to create product");
+        console.error("Product creation error:", data);
+        setError(errorMessage);
       }
     } catch (error) {
       console.error("Failed to process images:", error);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { logAdminAction, extractRequestInfo } from "@/lib/admin-logger";
 
 export async function GET(request: Request) {
   try {
@@ -59,6 +60,25 @@ export async function POST(req: Request) {
       data: {
         name: name.trim(),
         permissions: permissions || {},
+      },
+    });
+
+    // Log admin action
+    const { ipAddress, userAgent } = extractRequestInfo(req);
+    await logAdminAction({
+      userId: session.user.id!,
+      actionType: "CREATE" as any,
+      resourceType: "Role",
+      resourceId: role.id,
+      description: `Created role "${role.name}"`,
+      details: {
+        after: role,
+      },
+      ipAddress,
+      userAgent,
+      metadata: {
+        url: req.url,
+        method: "POST",
       },
     });
 

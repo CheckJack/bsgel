@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { logAdminAction, extractRequestInfo, createChangeDetails } from "@/lib/admin-logger";
 
 export async function GET(
   request: Request,
@@ -45,6 +46,9 @@ export async function PATCH(
       return NextResponse.json({ error: "Page not found" }, { status: 404 });
     }
 
+    // Store page before update for logging
+    const pageBefore = { ...existingPage };
+
     // Build update data
     const updateData: any = {};
     if (name !== undefined) updateData.name = name.trim();
@@ -63,6 +67,23 @@ export async function PATCH(
     const updatedPage = await db.page.update({
       where: { id: params.id },
       data: updateData,
+    });
+
+    // Log admin action
+    const { ipAddress, userAgent } = extractRequestInfo(request);
+    await logAdminAction({
+      userId: session.user.id!,
+      actionType: "UPDATE" as any,
+      resourceType: "Page",
+      resourceId: params.id,
+      description: `Updated page "${updatedPage.name}"`,
+      details: createChangeDetails(pageBefore, updatedPage),
+      ipAddress,
+      userAgent,
+      metadata: {
+        url: request.url,
+        method: "PATCH",
+      },
     });
 
     return NextResponse.json(updatedPage);
@@ -97,6 +118,25 @@ export async function DELETE(
 
     await db.page.delete({
       where: { id: params.id },
+    });
+
+    // Log admin action
+    const { ipAddress, userAgent } = extractRequestInfo(request);
+    await logAdminAction({
+      userId: session.user.id!,
+      actionType: "DELETE" as any,
+      resourceType: "Page",
+      resourceId: params.id,
+      description: `Deleted page "${page.name}"`,
+      details: {
+        before: page,
+      },
+      ipAddress,
+      userAgent,
+      metadata: {
+        url: request.url,
+        method: "DELETE",
+      },
     });
 
     return NextResponse.json({ message: "Page deleted successfully" });

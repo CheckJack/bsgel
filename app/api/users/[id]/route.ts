@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { logAdminAction, extractRequestInfo, createChangeDetails } from "@/lib/admin-logger"
 import { hash } from "bcryptjs"
 import { z } from "zod"
 
@@ -104,10 +105,29 @@ export async function PATCH(
     // Check if user exists
     const existingUser = await db.user.findUnique({
       where: { id: params.id },
+      include: {
+        certification: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     })
 
     if (!existingUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    // Store user before update for logging (without sensitive data)
+    const userBefore = {
+      name: existingUser.name,
+      email: existingUser.email,
+      role: existingUser.role,
+      permissions: existingUser.permissions,
+      isActive: existingUser.isActive,
+      certificationId: existingUser.certificationId,
+      certification: existingUser.certification,
     }
 
     // If email is being updated, check if new email already exists
@@ -261,10 +281,37 @@ export async function DELETE(
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
+    // Store user info for logging (without sensitive data)
+    const userInfo = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    }
+
     // Delete user (cascade will handle related records like cart, orders, etc.)
     await db.user.delete({
       where: { id: params.id },
     })
+
+    // Log admin action
+    const { ipAddress, userAgent } = extractRequestInfo(req);
+    await logAdminAction({
+      userId: session.user.id!,
+      actionType: "DELETE" as any,
+      resourceType: "User",
+      resourceId: params.id,
+      description: `Deleted user "${userInfo.email}"`,
+      details: {
+        before: userInfo,
+      },
+      ipAddress,
+      userAgent,
+      metadata: {
+        url: req.url,
+        method: "DELETE",
+      },
+    });
 
     return NextResponse.json({ message: "User deleted successfully" })
   } catch (error) {

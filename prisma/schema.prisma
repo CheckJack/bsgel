@@ -35,6 +35,12 @@ enum NotificationType {
   SALON_APPROVED
 }
 
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
   id              String         @id @default(cuid())
   email           String         @unique
@@ -42,38 +48,45 @@ model User {
   name            String?
   image           String?
   role            UserRole       @default(USER)
-  permissions     Json?          // Store permissions as JSON: { "addProduct": "allow", "updateProduct": "deny", ... }
+  permissions     Json? // Store permissions as JSON: { "addProduct": "allow", "updateProduct": "deny", ... }
   isActive        Boolean        @default(true)
   lastLoginAt     DateTime?
   certificationId String?
   certification   Certification? @relation(fields: [certificationId], references: [id], onDelete: SetNull)
   certificateUrl  String?
   shippingAddress String?
+  pointsBalance   Int            @default(0) // Cached points balance for performance
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  cart          Cart?
-  orders        Order[]
-  chatMessages  ChatMessage[]
-  salon         Salon?
-  comments      Comment[]
-  notifications Notification[]
+  cart               Cart?
+  orders             Order[]
+  chatMessages       ChatMessage[]
+  salon              Salon?
+  comments           Comment[]
+  productReviews     ProductReview[]
+  notifications      Notification[]
+  affiliate          Affiliate?
+  pointsTransactions PointsTransaction[]
+  pointsRedemptions  PointsRedemption[]
+  affiliateReferral  AffiliateReferral?  @relation("ReferredUser")
+  adminLogs          AdminLog[]          @relation("AdminLogs")
 
   @@index([certificationId])
 }
 
 model Category {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  description String?
-  image       String?
-  icon        String?
-  parentId    String?  // For subcategories - references parent category
-  parent      Category? @relation("CategorySubcategories", fields: [parentId], references: [id], onDelete: Cascade)
+  id            String     @id @default(cuid())
+  name          String
+  slug          String     @unique
+  description   String?
+  image         String?
+  icon          String?
+  parentId      String? // For subcategories - references parent category
+  parent        Category?  @relation("CategorySubcategories", fields: [parentId], references: [id], onDelete: Cascade)
   subcategories Category[] @relation("CategorySubcategories")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
   products                Product[]
   productSubcategories    ProductSubcategory[]
@@ -95,22 +108,23 @@ model Product {
   categoryId         String?
   category           Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   attributes         Json? // Store product attributes as JSON: { "size": ["S", "M", "L"], "color": ["Red", "Blue"] }
-  showcasingSections String[]  @default([]) // Showcasing sections: treatment-gels, color-gels, top-coats, hand-care, foot-care, reds, pinks, nudes, oranges
+  showcasingSections String[]  @default([]) // Showcasing sections: treatment-gels, color-gels, evo-color-gels, top-coats, hand-care, foot-care, reds, pinks, nudes, oranges
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  subcategories      ProductSubcategory[]
-  cartItems          CartItem[]
-  orderItems         OrderItem[]
+  subcategories ProductSubcategory[]
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  reviews       ProductReview[]
 }
 
 model ProductSubcategory {
-  id          String   @id @default(cuid())
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  categoryId  String
-  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
 
   @@unique([productId, categoryId])
   @@index([productId])
@@ -141,17 +155,21 @@ model CartItem {
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  userId          String
-  user            User        @relation(fields: [userId], references: [id])
-  total           Decimal     @db.Decimal(10, 2)
-  status          OrderStatus @default(PENDING)
-  paymentIntentId String?     @unique
-  shippingAddress String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id                  String             @id @default(cuid())
+  userId              String
+  user                User               @relation(fields: [userId], references: [id])
+  total               Decimal            @db.Decimal(10, 2)
+  status              OrderStatus        @default(PENDING)
+  paymentIntentId     String?            @unique
+  shippingAddress     String?
+  affiliateReferralId String? // If purchased via referral link
+  affiliateReferral   AffiliateReferral? @relation(fields: [affiliateReferralId], references: [id], onDelete: SetNull)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
   items OrderItem[]
+
+  @@index([affiliateReferralId])
 }
 
 model OrderItem {
@@ -306,18 +324,48 @@ model Blog {
 }
 
 model Comment {
-  id        String   @id @default(cuid())
-  blogId    String
-  blog      Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  content   String   @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String       @id @default(cuid())
+  blogId     String
+  blog       Blog         @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content    String       @db.Text
+  status     ReviewStatus @default(PENDING)
+  reviewedBy String?
+  reviewedAt DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
   @@index([blogId])
   @@index([userId])
   @@index([createdAt])
+  @@index([status])
+}
+
+model ProductReview {
+  id              String       @id @default(cuid())
+  productId       String
+  product         Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating          Int          // 1-5
+  title           String?
+  content         String       @db.Text
+  verifiedBuyer   Boolean      @default(false)
+  helpfulCount    Int          @default(0)
+  notHelpfulCount Int          @default(0)
+  status          ReviewStatus @default(PENDING)
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  companyResponse String?      @db.Text
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([productId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([rating])
 }
 
 enum SocialMediaPlatform {
@@ -351,6 +399,45 @@ enum ContentType {
 enum DiscountType {
   PERCENTAGE
   FIXED
+}
+
+enum CouponSource {
+  MANUAL
+  REDEMPTION
+}
+
+enum ReferralStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+}
+
+enum PointsTransactionType {
+  AFFILIATE_REFERRAL
+  AFFILIATE_PURCHASE
+  REDEMPTION
+  MANUAL_ADJUSTMENT
+}
+
+enum PointsConfigurationActionType {
+  REFERRAL_SIGNUP
+  REFERRAL_FIRST_ORDER
+  REFERRAL_REPEAT_ORDER
+  OWN_PURCHASE
+}
+
+enum RedemptionStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  USED
+}
+
+enum AffiliateTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
 }
 
 model SocialMediaPost {
@@ -396,13 +483,17 @@ model Coupon {
   excludedProducts            String[]     @default([]) // Product IDs that are excluded
   includedCategories          String[]     @default([]) // Category IDs that are included
   excludedCategories          String[]     @default([]) // Category IDs that are excluded
+  source                      CouponSource @default(MANUAL) // Track if coupon was manually created or from points redemption
   createdAt                   DateTime     @default(now())
   updatedAt                   DateTime     @updatedAt
+
+  redemption PointsRedemption?
 
   @@index([code])
   @@index([isActive])
   @@index([validUntil])
   @@index([createdAt])
+  @@index([source])
 }
 
 model BannedEmail {
@@ -456,6 +547,7 @@ model MegaMenuCard {
   position  Int // 1 or 2 (first or second card)
   imageUrl  String       @db.Text
   linkUrl   String       @db.Text
+  mediaType MediaType    @default(IMAGE)
   isActive  Boolean      @default(true)
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -463,6 +555,11 @@ model MegaMenuCard {
   @@unique([menuType, position])
   @@index([menuType])
   @@index([isActive])
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
 }
 
 enum PageStatus {
@@ -489,4 +586,184 @@ model Page {
   @@index([slug])
   @@index([status])
   @@index([createdAt])
+}
+
+model Affiliate {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  affiliateCode        String    @unique
+  isActive             Boolean   @default(true)
+  approvedAt           DateTime?
+  approvedBy           String? // User ID of admin who approved
+  totalPointsEarned    Int       @default(0)
+  currentPointsBalance Int       @default(0) // Cached balance
+  totalReferrals       Int       @default(0)
+  activeReferrals      Int       @default(0)
+  tier                 AffiliateTier @default(BRONZE)
+  tierUpdatedAt        DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  referrals AffiliateReferral[]
+  linkClicks AffiliateLinkClick[]
+
+  @@index([affiliateCode])
+  @@index([isActive])
+  @@index([userId])
+}
+
+model AffiliateReferral {
+  id             String         @id @default(cuid())
+  affiliateId    String
+  affiliate      Affiliate      @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  referredUserId String         @unique // One referral per user - the user who was referred
+  referredUser   User           @relation("ReferredUser", fields: [referredUserId], references: [id], onDelete: Cascade)
+  status         ReferralStatus @default(PENDING)
+  firstOrderId   String? // When they first purchase
+  referralDate   DateTime       @default(now())
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  orders Order[]
+
+  @@index([affiliateId])
+  @@index([referredUserId])
+  @@index([status])
+  @@index([referralDate])
+}
+
+model AffiliateLinkClick {
+  id          String   @id @default(cuid())
+  affiliateId String
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  clickedAt   DateTime @default(now())
+  ipAddress   String?
+  userAgent   String?
+  converted   Boolean  @default(false) // Did it lead to registration?
+  convertedAt DateTime? // When did conversion happen
+  convertedUserId String? // User ID if converted
+
+  @@index([affiliateId])
+  @@index([clickedAt])
+  @@index([converted])
+}
+
+model PointsTransaction {
+  id            String                @id @default(cuid())
+  userId        String
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount        Int // Positive for earned, negative for spent
+  type          PointsTransactionType
+  referenceId   String? // orderId, referralId, redemptionId
+  description   String?
+  balanceBefore Int
+  balanceAfter  Int
+  createdAt     DateTime              @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([referenceId])
+}
+
+model Reward {
+  id                String       @id @default(cuid())
+  name              String
+  description       String?      @db.Text
+  pointsCost        Int
+  discountType      DiscountType @default(PERCENTAGE)
+  discountValue     Decimal      @db.Decimal(10, 2)
+  minPurchaseAmount Decimal?     @db.Decimal(10, 2)
+  maxDiscountAmount Decimal?     @db.Decimal(10, 2)
+  isActive          Boolean      @default(true)
+  stock             Int? // Optional limit on redemptions (null = unlimited)
+  redeemedCount     Int          @default(0) // Track how many times redeemed
+  validFrom         DateTime     @default(now())
+  validUntil        DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  redemptions PointsRedemption[]
+
+  @@index([isActive])
+  @@index([pointsCost])
+  @@index([validUntil])
+}
+
+model PointsRedemption {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rewardId    String
+  reward      Reward           @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  pointsSpent Int
+  couponCode  String           @unique
+  couponId    String           @unique // Reference to generated Coupon
+  coupon      Coupon           @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  status      RedemptionStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([rewardId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model PointsConfiguration {
+  id                      String                        @id @default(cuid())
+  actionType              PointsConfigurationActionType
+  pointsAmount            Int? // Fixed amount (null if tiered)
+  tieredConfig            Json? // Tiered config: { "tiers": [{ "minOrderValue": 0, "maxOrderValue": 50, "points": 10 }, ...] }
+  minOrderValue           Decimal?                      @db.Decimal(10, 2) // Optional threshold
+  maxPointsPerTransaction Int? // Optional cap
+  isActive                Boolean                       @default(true)
+  validFrom               DateTime                      @default(now())
+  validUntil              DateTime?
+  createdAt               DateTime                      @default(now())
+  updatedAt               DateTime                      @updatedAt
+
+  @@index([actionType])
+  @@index([isActive])
+  @@index([validFrom])
+  @@index([validUntil])
+}
+
+enum AdminLogActionType {
+  CREATE
+  UPDATE
+  DELETE
+  VIEW
+  EXPORT
+  IMPORT
+  APPROVE
+  REJECT
+  ACTIVATE
+  DEACTIVATE
+  LOGIN
+  LOGOUT
+  BULK_OPERATION
+  OTHER
+}
+
+model AdminLog {
+  id           String             @id @default(cuid())
+  userId       String
+  user         User               @relation("AdminLogs", fields: [userId], references: [id], onDelete: Cascade)
+  actionType   AdminLogActionType
+  resourceType String // e.g., "Product", "Category", "User", "Order", etc.
+  resourceId   String? // ID of the resource that was acted upon
+  description  String // Human-readable description of the action
+  details      Json? // Detailed information about the action (before/after values, changes, etc.)
+  ipAddress    String?
+  userAgent    String?
+  metadata     Json? // Additional metadata (URL, request method, etc.)
+  createdAt    DateTime           @default(now())
+
+  @@index([userId])
+  @@index([actionType])
+  @@index([resourceType])
+  @@index([createdAt])
+  @@index([userId, createdAt])
 }

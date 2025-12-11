@@ -77,12 +77,11 @@ export default function AdminDashboardPage() {
     );
   }
 
-  // Sample graph data for KPI cards
-  const salesData = [30, 45, 35, 50, 40, 55, 45, 60, 50, 65, 55, 70];
-  const incomeData = [35, 40, 30, 45, 35, 50, 30, 45, 40, 50, 35, 40];
-  // Flat line graph for Orders Paid - shows a flat horizontal line
-  const ordersData = [35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35];
-  const visitorData = [40, 45, 50, 45, 55, 60, 55, 65, 60, 70, 65, 75];
+  // Generate graph data from stats (placeholder for now - could be enhanced with historical data)
+  const salesData = Array(12).fill(Math.floor(stats.totalOrders / 12) || 0);
+  const incomeData = Array(12).fill(Math.floor(stats.totalRevenue / 12) || 0);
+  const ordersData = Array(12).fill(Math.floor(stats.totalOrders / 12) || 0);
+  const visitorData = Array(12).fill(Math.floor(stats.totalProducts / 12) || 0);
 
   return (
     <div>
@@ -95,7 +94,7 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <KPICard
           title={t("dashboard.totalSales")}
-          value="34,945"
+          value={stats.totalOrders.toLocaleString()}
           trend={1.56}
           icon={<CheckCircle2 className="h-7 w-7" />}
           iconColor="#10b981"
@@ -104,7 +103,7 @@ export default function AdminDashboardPage() {
         />
         <KPICard
           title={t("dashboard.totalIncome")}
-          value="€37,802"
+          value={`€${stats.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           trend={-1.56}
           icon={<DollarSign className="h-7 w-7" />}
           iconColor="#f97316"
@@ -113,7 +112,7 @@ export default function AdminDashboardPage() {
         />
         <KPICard
           title={t("dashboard.ordersPaid")}
-          value="34,945"
+          value={stats.totalOrders.toLocaleString()}
           trend={0}
           icon={<FileText className="h-7 w-7" />}
           iconColor="#94a3b8"
@@ -121,8 +120,8 @@ export default function AdminDashboardPage() {
           graphData={ordersData}
         />
         <KPICard
-          title={t("dashboard.totalVisitor")}
-          value="34,945"
+          title={t("dashboard.totalProducts")}
+          value={stats.totalProducts.toLocaleString()}
           trend={1.56}
           icon={<Users className="h-7 w-7" />}
           iconColor="#3b82f6"

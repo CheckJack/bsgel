@@ -44,7 +44,12 @@ export async function GET(req: NextRequest) {
       ],
     });
 
-    return NextResponse.json({ cards });
+    const response = NextResponse.json({ cards });
+    
+    // Add caching headers for better performance
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+    
+    return response;
   } catch (error: any) {
     console.error("Failed to fetch mega menu cards:", error);
     
@@ -79,6 +84,7 @@ export async function POST(req: NextRequest) {
     const isActive = formData.get("isActive") === "true";
     const file = formData.get("file") as File | null;
     const existingImageUrl = formData.get("existingImageUrl") as string | null;
+    const mediaType = formData.get("mediaType") as string | null;
 
     console.log("Mega Menu Card Update Request:", {
       menuType,
@@ -88,6 +94,7 @@ export async function POST(req: NextRequest) {
       isActive,
       hasFile: !!file,
       existingImageUrl,
+      mediaType,
     });
 
     if (!menuType || isNaN(position) || !linkUrl) {
@@ -115,10 +122,23 @@ export async function POST(req: NextRequest) {
     }
 
     let imageUrl = existingImageUrl || "";
+    let finalMediaType: "IMAGE" | "VIDEO" = "IMAGE";
 
-    // Upload new image if provided
+    // Upload new file if provided
     if (file) {
       await ensureUploadDir();
+
+      // Determine media type from file
+      const fileType = file.type;
+      const isVideo = fileType.startsWith("video/");
+      const isImage = fileType.startsWith("image/");
+      
+      if (!isVideo && !isImage) {
+        return NextResponse.json(
+          { error: "File must be an image or video" },
+          { status: 400 }
+        );
+      }
 
       // Generate unique filename
       const timestamp = Date.now();
@@ -132,6 +152,16 @@ export async function POST(req: NextRequest) {
       await writeFile(filepath, buffer);
 
       imageUrl = `/uploads/mega-menu-cards/${filename}`;
+      finalMediaType = isVideo ? "VIDEO" : "IMAGE";
+    } else if (mediaType) {
+      // Use provided mediaType if no new file
+      finalMediaType = mediaType === "VIDEO" ? "VIDEO" : "IMAGE";
+    } else if (existingImageUrl) {
+      // Try to infer from existing URL extension
+      const urlLower = existingImageUrl.toLowerCase();
+      if (urlLower.match(/\.(mp4|webm|ogg|mov|avi)$/)) {
+        finalMediaType = "VIDEO";
+      }
     }
 
     if (!imageUrl) {
@@ -147,6 +177,7 @@ export async function POST(req: NextRequest) {
       position,
       imageUrl,
       linkUrl,
+      mediaType: finalMediaType,
       isActive,
     });
 
@@ -169,6 +200,7 @@ export async function POST(req: NextRequest) {
           data: {
             imageUrl,
             linkUrl,
+            mediaType: finalMediaType,
             isActive,
           },
         });
@@ -181,6 +213,7 @@ export async function POST(req: NextRequest) {
             position: position,
             imageUrl,
             linkUrl,
+            mediaType: finalMediaType,
             isActive,
           },
         });
@@ -199,6 +232,7 @@ export async function POST(req: NextRequest) {
         update: {
           imageUrl,
           linkUrl,
+          mediaType: finalMediaType,
           isActive,
         },
         create: {
@@ -206,6 +240,7 @@ export async function POST(req: NextRequest) {
           position: position,
           imageUrl,
           linkUrl,
+          mediaType: finalMediaType,
           isActive,
         },
       });

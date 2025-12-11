@@ -29,10 +29,29 @@ export function ChatWidget() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Get viewed message IDs from localStorage
+  const getViewedMessageIds = useCallback(() => {
+    if (typeof window === 'undefined' || !session?.user?.id) return new Set<string>();
+    const key = `chat_viewed_ids_${session.user.id}`;
+    const stored = localStorage.getItem(key);
+    return stored ? new Set<string>(JSON.parse(stored)) : new Set<string>();
+  }, [session?.user?.id]);
+  
+  // Mark messages as viewed by storing their IDs
+  const markMessagesAsViewed = useCallback((messageIds: string[]) => {
+    if (typeof window === 'undefined' || !session?.user?.id || messageIds.length === 0) return;
+    const key = `chat_viewed_ids_${session.user.id}`;
+    const viewed = getViewedMessageIds();
+    messageIds.forEach(id => viewed.add(id));
+    localStorage.setItem(key, JSON.stringify(Array.from(viewed)));
+  }, [session?.user?.id, getViewedMessageIds]);
 
-  // Check if we should hide the widget on admin pages
-  const shouldHide = pathname?.startsWith("/admin") || pathname?.startsWith("/dashboard");
+  // Check if we should hide the widget on admin pages or if user is an admin
+  const isAdmin = session?.user?.role === "ADMIN";
+  const shouldHide = pathname?.startsWith("/admin") || isAdmin || false;
 
   const fetchMessages = useCallback(async () => {
     if (!session) return;
@@ -43,7 +62,12 @@ export function ChatWidget() {
       const res = await fetch("/api/chat");
       if (res.ok) {
         const data = await res.json();
-        setMessages(data);
+        // Handle both paginated and non-paginated responses
+        const messagesList = Array.isArray(data) ? data : (data.messages || []);
+        setMessages(messagesList);
+        
+        // Don't update unread count when chat is open (user is viewing messages)
+        // Unread count is only updated when chat is closed via fetchUnreadCount
       } else {
         const errorData = await res.json().catch(() => ({ error: "Failed to fetch messages" }));
         const errorMessage = errorData.error || `Failed to fetch messages (${res.status})`;
@@ -59,11 +83,46 @@ export function ChatWidget() {
     }
   }, [session]);
 
+  // Fetch unread count periodically when widget is closed and user is logged in
+  const fetchUnreadCount = useCallback(async () => {
+    // NEVER fetch unread count if chat is open - user is viewing messages
+    if (!session || isOpen || shouldHide) return;
+    
+    try {
+      const res = await fetch("/api/chat");
+      if (res.ok) {
+        const data = await res.json();
+        const messagesList = Array.isArray(data) ? data : (data.messages || []);
+        const viewedIds = getViewedMessageIds();
+        
+        // Only count messages with admin responses that haven't been viewed
+        const unread = messagesList.filter((msg: ChatMessage) => {
+          return msg.adminResponse && !viewedIds.has(msg.id);
+        }).length;
+        
+        setUnreadCount(unread);
+      }
+    } catch (error) {
+      // Silently fail for unread count fetch
+      console.error("Failed to fetch unread count:", error);
+    }
+  }, [session, isOpen, shouldHide, getViewedMessageIds]);
+
   useEffect(() => {
     if (isOpen && session && !shouldHide) {
       fetchMessages();
     }
   }, [isOpen, session, shouldHide, fetchMessages]);
+  
+  // Mark all messages as viewed when they are loaded and chat is open
+  useEffect(() => {
+    if (isOpen && messages.length > 0 && !shouldHide) {
+      const messageIds = messages.map(msg => msg.id);
+      markMessagesAsViewed(messageIds);
+      // Clear unread count since user is viewing messages
+      setUnreadCount(0);
+    }
+  }, [isOpen, messages, shouldHide, markMessagesAsViewed]);
 
   useEffect(() => {
     if (isOpen && !shouldHide) {
@@ -72,12 +131,51 @@ export function ChatWidget() {
     }
   }, [messages, isOpen, shouldHide]);
 
+  // Clear unread count when chat is opened and keep it at 0 while open
+  useEffect(() => {
+    if (isOpen && !shouldHide) {
+      // Clear immediately when chat opens
+      setUnreadCount(0);
+    }
+  }, [isOpen, shouldHide]);
+  
+  // Ensure unread count stays at 0 while chat is open (prevent any recalculation)
+  useEffect(() => {
+    if (isOpen && !shouldHide && unreadCount > 0) {
+      setUnreadCount(0);
+    }
+  }, [isOpen, shouldHide, unreadCount]);
+
+  // Fetch unread count periodically when widget is closed
+  useEffect(() => {
+    if (session && !isOpen && !shouldHide) {
+      // Fetch immediately
+      fetchUnreadCount();
+      // Then fetch every 30 seconds
+      const interval = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [session, isOpen, shouldHide, fetchUnreadCount]);
+
   const handleOpen = () => {
     if (status === "unauthenticated") {
       router.push("/login");
       return;
     }
+    // Clear unread count immediately when opening
+    setUnreadCount(0);
     setIsOpen(true);
+  };
+  
+  const handleClose = () => {
+    setIsOpen(false);
+    // After closing, fetch unread count to see if there are new messages
+    if (session && !shouldHide) {
+      // Small delay to ensure state is updated
+      setTimeout(() => {
+        fetchUnreadCount();
+      }, 100);
+    }
   };
 
   const handleSend = async (e: React.FormEvent) => {
@@ -139,15 +237,35 @@ export function ChatWidget() {
       {/* Floating Button */}
       <button
         onClick={handleOpen}
-        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-black text-white shadow-lg transition-all hover:bg-gray-900 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+        className="z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-black text-white shadow-lg transition-all hover:bg-gray-900 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 relative"
+        style={{ 
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          left: 'auto',
+          top: 'auto',
+          margin: 0,
+          padding: 0
+        }}
         aria-label="Open chat"
       >
-        <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6" />
+        <MessageCircle className="h-6 w-6" />
+        {/* Only show badge when chat is closed and there are unread messages */}
+        {!isOpen && unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow-lg animate-pulse">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
       </button>
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-0 right-0 sm:bottom-6 sm:right-6 z-50 flex h-screen w-screen sm:h-[600px] sm:w-[400px] sm:rounded-lg flex-col bg-white shadow-2xl dark:bg-gray-800">
+        <div 
+          className="fixed z-[9999] flex flex-col bg-white shadow-2xl dark:bg-gray-800 bottom-0 right-0 h-screen w-screen sm:bottom-6 sm:right-6 sm:h-[600px] sm:w-[400px] sm:rounded-lg"
+          style={{
+            left: 'auto'
+          }}
+        >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-black text-white p-3 sm:p-4 rounded-t-lg sm:rounded-t-lg">
             <div className="flex-1 min-w-0 pr-2">
@@ -155,7 +273,7 @@ export function ChatWidget() {
               <p className="text-xs text-gray-300 hidden sm:block">We&apos;ll respond as soon as possible</p>
             </div>
             <button
-              onClick={() => setIsOpen(false)}
+              onClick={handleClose}
               className="p-1 hover:bg-gray-900 rounded transition-colors flex-shrink-0"
               aria-label="Close chat"
             >

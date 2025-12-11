@@ -12,6 +12,7 @@ import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/contexts/cart-context";
 import { useRouter } from "next/navigation";
 import { ProductCard } from "@/components/product/product-card";
+import { ProductReviews } from "@/components/product/product-reviews";
 
 interface Product {
   id: string;
@@ -320,6 +321,11 @@ export default function ProductDetailPage() {
               </Card>
             </div>
           </div>
+        </div>
+
+        {/* Product Reviews Section */}
+        <div className="mt-20 pt-12 border-t border-gray-200">
+          <ProductReviews productId={product.id} />
         </div>
 
         {/* Related Products Section */}

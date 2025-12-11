@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import TextGenerateEffect from "@/components/ui/text-generate-effect";
+import { Pagination } from "@/components/ui/pagination";
 
 interface Product {
   id: string;
@@ -24,13 +25,23 @@ interface Product {
 export default function FootCarePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [isScrolling, setIsScrolling] = useState(false);
   const textSectionRef = useRef<HTMLElement>(null);
   const productsSectionRef = useRef<HTMLElement>(null);
+  const isInitialMount = useRef(true);
+  const [shouldShowId, setShouldShowId] = useState(false);
 
   useEffect(() => {
     fetchFootCareProducts();
-  }, []);
+    // Add id after component mounts to prevent browser auto-scroll
+    const timer = setTimeout(() => {
+      setShouldShowId(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [currentPage]);
+
 
   // Scroll detection for text highlighting
   useEffect(() => {
@@ -61,12 +72,18 @@ export default function FootCarePage() {
   const fetchFootCareProducts = async () => {
     setIsLoading(true);
     try {
-      // Fetch products assigned to foot-care showcasing section
-      const res = await fetch(`/api/products?showcasingSection=foot-care`);
+      // Fetch products assigned to foot-care showcasing section with pagination
+      const res = await fetch(`/api/products?showcasingSection=foot-care&page=${currentPage}&limit=10`);
       if (res.ok) {
         const data = await res.json();
-        const allProducts = Array.isArray(data) ? data : data.products || [];
-        setProducts(allProducts);
+        if (data.pagination) {
+          setProducts(data.products || []);
+          setTotalPages(data.pagination.totalPages || 1);
+        } else {
+          // Fallback for backward compatibility
+          setProducts(Array.isArray(data) ? data : data.products || []);
+          setTotalPages(1);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch products:", error);
@@ -78,6 +95,19 @@ export default function FootCarePage() {
 
   return (
     <>
+      {/* Prevent automatic scroll to #products - runs immediately before React */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            (function() {
+              if (window.location.hash === '#products') {
+                window.history.replaceState(null, '', window.location.pathname);
+                window.scrollTo(0, 0);
+              }
+            })();
+          `,
+        }}
+      />
       {/* Custom Hero Section - Promotional Style */}
       <section className="relative w-full aspect-[1366/768] overflow-hidden">
         {/* Full Width Background Image */}
@@ -115,7 +145,17 @@ export default function FootCarePage() {
               </div>
               
               {/* SHOP NOW Button */}
-              <Link href="#products" className="inline-block mt-8">
+              <Link 
+                href="#products" 
+                className="inline-block mt-8"
+                onClick={(e) => {
+                  e.preventDefault();
+                  productsSectionRef.current?.scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'start'
+                  });
+                }}
+              >
                 <button className="px-5 py-2 md:px-6 md:py-2.5 border-2 border-white text-white font-normal text-sm md:text-base hover:bg-white/10 transition-colors">
                   SHOP NOW
                 </button>
@@ -148,7 +188,7 @@ export default function FootCarePage() {
       </section>
       
       {/* Foot Care Products Grid Section */}
-      <section ref={productsSectionRef} id="products" className="relative w-full min-h-screen bg-brand-white py-16">
+      <section {...(shouldShowId && { id: "products" })} ref={productsSectionRef} className="relative w-full min-h-screen bg-brand-white pt-24 pb-16">
         <div className="container mx-auto px-4 max-w-7xl">
           <h2 className="text-4xl md:text-5xl font-medium mb-12 text-center text-brand-black">
             Foot Care Products
@@ -163,19 +203,30 @@ export default function FootCarePage() {
               <p className="text-gray-600">No Foot Care products found.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  id={product.id}
-                  name={product.name}
-                  price={product.price}
-                  image={product.image}
-                  images={product.images}
-                  featured={product.featured}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {products.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    id={product.id}
+                    name={product.name}
+                    price={product.price}
+                    image={product.image}
+                    images={product.images}
+                    featured={product.featured}
+                  />
+                ))}
+              </div>
+              {totalPages > 1 && (
+                <div className="mt-12">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>

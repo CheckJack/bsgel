@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { logAdminAction, extractRequestInfo } from "@/lib/admin-logger";
 
 export async function GET(request: Request) {
   try {
@@ -89,6 +90,25 @@ export async function POST(req: Request) {
         seoTitle: seoTitle || null,
         seoDescription: seoDescription || null,
         seoUrl: seoUrl || null,
+      },
+    });
+
+    // Log admin action
+    const { ipAddress, userAgent } = extractRequestInfo(req);
+    await logAdminAction({
+      userId: session.user.id!,
+      actionType: "CREATE" as any,
+      resourceType: "Page",
+      resourceId: page.id,
+      description: `Created page "${page.name}"`,
+      details: {
+        after: page,
+      },
+      ipAddress,
+      userAgent,
+      metadata: {
+        url: req.url,
+        method: "POST",
       },
     });
 

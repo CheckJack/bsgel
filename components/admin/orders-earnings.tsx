@@ -6,24 +6,20 @@ import { MoreVertical, TrendingUp, Download, RefreshCw, Settings } from "lucide-
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { SettingsModal } from "./settings-modal";
 
-const ordersData = [
-  { product: "Prodotti per il tuo cane...", price: "€27.00", date: "20 Nov 2023" },
-  { product: "Wholesome Pride...", price: "€27.00", date: "20 Nov 2023" },
-  { product: "Beneful Baked Delights...", price: "€27.00", date: "20 Nov 2023" },
-  { product: "Taste of the Wild...", price: "€27.00", date: "20 Nov 2023" },
-  { product: "Canagan - Britain's...", price: "€27.00", date: "20 Nov 2023" },
-];
+interface OrderData {
+  product: string;
+  price: string;
+  date: string;
+  image?: string;
+}
 
-const earningsData = [
-  { month: "Jan", revenue: 4500, profit: 3200 },
-  { month: "Feb", revenue: 6200, profit: 4800 },
-  { month: "Mar", revenue: 3800, profit: 2800 },
-  { month: "Apr", revenue: 5100, profit: 3900 },
-  { month: "May", revenue: 7500, profit: 5800 },
-  { month: "Jun", revenue: 6800, profit: 5200 },
-  { month: "Jul", revenue: 3200, profit: 2400 },
-  { month: "Aug", revenue: 5500, profit: 4200 },
-];
+interface EarningsData {
+  month: string;
+  revenue: number;
+  profit: number;
+}
+
+const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export function OrdersEarnings() {
   const [ordersMenuOpen, setOrdersMenuOpen] = useState(false);
@@ -31,8 +27,90 @@ export function OrdersEarnings() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOrdersSettingsOpen, setIsOrdersSettingsOpen] = useState(false);
   const [isEarningsSettingsOpen, setIsEarningsSettingsOpen] = useState(false);
+  const [ordersData, setOrdersData] = useState<OrderData[]>([]);
+  const [earningsData, setEarningsData] = useState<EarningsData[]>([]);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [totalProfit, setTotalProfit] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   const ordersMenuRef = useRef<HTMLDivElement>(null);
   const earningsMenuRef = useRef<HTMLDivElement>(null);
+
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetch("/api/orders?limit=1000");
+      if (res.ok) {
+        const response = await res.json();
+        const orders = response.orders || [];
+        
+        // Get recent orders (last 5)
+        const recentOrders = orders
+          .slice(0, 5)
+          .map((order: any) => {
+            const firstItem = order.items?.[0];
+            const productName = firstItem?.product?.name || "Unknown Product";
+            const productImage = firstItem?.product?.image || firstItem?.product?.images?.[0] || null;
+            const orderDate = new Date(order.createdAt);
+            return {
+              product: productName.length > 30 ? productName.substring(0, 30) + "..." : productName,
+              price: `€${parseFloat(order.total.toString()).toFixed(2)}`,
+              date: orderDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+              image: productImage,
+            };
+          });
+        setOrdersData(recentOrders);
+        
+        // Calculate earnings by month
+        const earningsByMonth: { [key: string]: { revenue: number; profit: number } } = {};
+        
+        // Initialize last 8 months
+        const now = new Date();
+        for (let i = 7; i >= 0; i--) {
+          const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          earningsByMonth[monthKey] = { revenue: 0, profit: 0 };
+        }
+        
+        // Calculate revenue and profit by month
+        orders.forEach((order: any) => {
+          const orderDate = new Date(order.createdAt);
+          const monthKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`;
+          if (earningsByMonth.hasOwnProperty(monthKey)) {
+            const revenue = parseFloat(order.total.toString());
+            earningsByMonth[monthKey].revenue += revenue;
+            // Estimate profit as 75% of revenue (you can adjust this)
+            earningsByMonth[monthKey].profit += revenue * 0.75;
+          }
+        });
+        
+        // Convert to chart data
+        const chartData: EarningsData[] = Object.keys(earningsByMonth)
+          .sort()
+          .map((key) => {
+            const date = new Date(key + '-01');
+            return {
+              month: monthNames[date.getMonth()],
+              revenue: Math.round(earningsByMonth[key].revenue),
+              profit: Math.round(earningsByMonth[key].profit),
+            };
+          });
+        setEarningsData(chartData);
+        
+        // Calculate totals
+        const totalRev = orders.reduce((sum: number, order: any) => sum + parseFloat(order.total.toString()), 0);
+        setTotalRevenue(totalRev);
+        setTotalProfit(totalRev * 0.75); // Estimate profit
+      }
+    } catch (error) {
+      console.error("Failed to fetch orders data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -128,10 +206,7 @@ export function OrdersEarnings() {
 
   const handleRefresh = async (type: string) => {
     setIsRefreshing(true);
-    // Simulate refresh delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    // In a real app, you would fetch fresh data here
-    alert(`${type === "orders" ? "Orders" : "Earnings"} data refreshed!`);
+    await fetchData();
     setIsRefreshing(false);
     setOrdersMenuOpen(false);
     setEarningsMenuOpen(false);
@@ -206,18 +281,46 @@ export function OrdersEarnings() {
                 </tr>
               </thead>
               <tbody>
-                {ordersData.map((order, index) => (
-                  <tr key={index} className="border-b dark:border-gray-700 last:border-0">
-                    <td className="py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded bg-gray-200 dark:bg-gray-700 flex-shrink-0"></div>
-                        <span className="text-gray-700 dark:text-gray-300">{order.product}</span>
-                      </div>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={3} className="py-8 text-center text-gray-500 dark:text-gray-400">
+                      Loading orders...
                     </td>
-                    <td className="py-3 text-gray-700 dark:text-gray-300">{order.price}</td>
-                    <td className="py-3 text-gray-700 dark:text-gray-300">{order.date}</td>
                   </tr>
-                ))}
+                ) : ordersData.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="py-8 text-center text-gray-500 dark:text-gray-400">
+                      No orders found
+                    </td>
+                  </tr>
+                ) : (
+                  ordersData.map((order, index) => (
+                    <tr key={index} className="border-b dark:border-gray-700 last:border-0">
+                      <td className="py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded bg-gray-200 dark:bg-gray-700 flex-shrink-0 overflow-hidden">
+                            {order.image ? (
+                              <img 
+                                src={order.image} 
+                                alt={order.product}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  // Fallback to placeholder if image fails to load
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-[8px] text-gray-400">No Img</div>
+                            )}
+                          </div>
+                          <span className="text-gray-700 dark:text-gray-300">{order.product}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 text-gray-700 dark:text-gray-300">{order.price}</td>
+                      <td className="py-3 text-gray-700 dark:text-gray-300">{order.date}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -273,7 +376,9 @@ export function OrdersEarnings() {
                   <div className="w-3 h-3 rounded-full bg-blue-600"></div>
                   <span className="text-sm text-gray-600 dark:text-gray-400">Revenue</span>
                 </div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">€37,802</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  €{totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
                 <div className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
                   <TrendingUp className="h-4 w-4" />
                   <span>0.56%</span>
@@ -284,7 +389,9 @@ export function OrdersEarnings() {
                   <div className="w-3 h-3 rounded-full bg-blue-400"></div>
                   <span className="text-sm text-gray-600 dark:text-gray-400">Profit</span>
                 </div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">€28,305</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  €{totalProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
                 <div className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
                   <TrendingUp className="h-4 w-4" />
                   <span>0.56%</span>
@@ -292,7 +399,12 @@ export function OrdersEarnings() {
               </div>
             </div>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={earningsData}>
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
+                </div>
+              ) : (
+                <BarChart data={earningsData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
                 <XAxis
                   dataKey="month"
@@ -316,6 +428,7 @@ export function OrdersEarnings() {
                 <Bar dataKey="revenue" fill="#2563eb" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="profit" fill="#60a5fa" radius={[4, 4, 0, 0]} />
               </BarChart>
+              )}
             </ResponsiveContainer>
           </div>
         </CardContent>

@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bell, Check, CheckCheck, Loader2, ExternalLink } from "lucide-react";
+import { Bell, Check, CheckCheck, Loader2, ExternalLink, Trash2 } from "lucide-react";
 import { toast } from "@/components/ui/toast";
 import Link from "next/link";
 
@@ -27,6 +27,7 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [markingAsRead, setMarkingAsRead] = useState<string | null>(null);
+  const [deletingAll, setDeletingAll] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -99,6 +100,32 @@ export default function NotificationsPage() {
     } catch (error) {
       console.error("Failed to mark all as read:", error);
       toast("Failed to mark all as read. Please try again.", "error");
+    }
+  };
+
+  const deleteAllNotifications = async () => {
+    if (!confirm("Are you sure you want to delete all notifications? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeletingAll(true);
+    try {
+      const res = await fetch("/api/notifications", {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        setNotifications([]);
+        toast("All notifications deleted successfully", "success");
+      } else {
+        const error = await res.json();
+        toast(error.error || "Failed to delete notifications", "error");
+      }
+    } catch (error) {
+      console.error("Failed to delete notifications:", error);
+      toast("Failed to delete notifications. Please try again.", "error");
+    } finally {
+      setDeletingAll(false);
     }
   };
 
@@ -178,12 +205,33 @@ export default function NotificationsPage() {
               : "All caught up"}
           </p>
         </div>
-        {unreadCount > 0 && (
-          <Button variant="outline" onClick={markAllAsRead}>
-            <CheckCheck className="h-4 w-4 mr-2" />
-            Mark All as Read
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {unreadCount > 0 && (
+            <Button variant="outline" onClick={markAllAsRead}>
+              <CheckCheck className="h-4 w-4 mr-2" />
+              Mark All as Read
+            </Button>
+          )}
+          {notifications.length > 0 && (
+            <Button 
+              variant="destructive" 
+              onClick={deleteAllNotifications}
+              disabled={deletingAll}
+            >
+              {deletingAll ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete All
+                </>
+              )}
+            </Button>
+          )}
+        </div>
       </div>
 
       {notifications.length === 0 ? (

@@ -138,7 +138,7 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
       {/* Search Drawer */}
       <div className="fixed top-0 left-0 right-0 z-50">
         <div
-          className={`bg-black shadow-2xl transform transition-all duration-[400ms] ${
+          className={`bg-black/80 backdrop-blur-md shadow-2xl transform transition-all duration-[400ms] ${
             isOpen && isVisible
               ? "ease-out translate-y-0 opacity-100"
               : "ease-in -translate-y-full opacity-0"
@@ -159,19 +159,19 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
 
             {/* Search Input */}
             <div className="relative mb-6">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 z-10" />
               <Input
                 ref={inputRef}
                 type="text"
                 placeholder="Search for products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-3 text-lg bg-white text-brand-black border-gray-300 focus:border-gray-400"
+                className="pl-10 pr-4 py-3 text-lg bg-white/10 backdrop-blur-sm text-white border-gray-600/50 focus:border-brand-sweet-bianca/60 focus-visible:ring-brand-sweet-bianca/40 placeholder:text-gray-400"
               />
             </div>
 
             {/* Results */}
-            <div className="max-h-[60vh] overflow-y-auto">
+            <div className="max-h-[60vh] overflow-y-auto search-results-scroll pr-3">
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-6 w-6 animate-spin text-white" />
@@ -189,7 +189,7 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                 </div>
               ) : (
                 <>
-                  <div className="space-y-4">
+                  <div className="space-y-4 pr-1">
                     {products.map((product, index) => (
                       <div
                         key={product.id}
@@ -201,22 +201,24 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                             : undefined,
                         }}
                       >
-                        {product.image ? (
-                          <div className="relative w-24 h-24 flex-shrink-0 bg-gray-800 rounded overflow-hidden">
-                            <Image
-                              src={product.image}
-                              alt={product.name}
-                              fill
-                              className="object-contain rounded"
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-24 h-24 bg-gray-800 rounded flex-shrink-0 flex items-center justify-center">
-                            <span className="text-gray-400 text-xs">No Image</span>
-                          </div>
-                        )}
+                        <div className="flex-shrink-0 w-24 self-stretch">
+                          {product.image ? (
+                            <div className="relative w-full h-full bg-gray-800 rounded overflow-hidden">
+                              <Image
+                                src={product.image}
+                                alt={product.name}
+                                fill
+                                className="object-contain rounded"
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-full h-full bg-gray-800 rounded flex items-center justify-center">
+                              <span className="text-gray-400 text-xs">No Image</span>
+                            </div>
+                          )}
+                        </div>
 
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 flex flex-col">
                           <h3 className="font-semibold text-base text-white hover:underline truncate mb-1">
                             {product.name}
                           </h3>
@@ -226,7 +228,7 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                             </p>
                           )}
                           {product.description && (
-                            <p className="text-sm text-gray-300 line-clamp-2 mb-2">
+                            <p className="text-sm text-gray-300 line-clamp-2 mb-2 flex-1">
                               {product.description}
                             </p>
                           )}

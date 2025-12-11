@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ClientSidebar } from "@/components/client/client-sidebar";
 import { ClientHeader } from "@/components/client/client-header";
+import { ToastContainer } from "@/components/ui/toast";
 
 export default function DashboardLayout({
   children,
@@ -30,10 +31,9 @@ export default function DashboardLayout({
       const certification = session.user?.certification as string | undefined;
       const isPendingCertification = certification === "PROFESSIONAL_NON_CERTIFIED";
       
-      // Routes that require confirmed certification
+      // Routes that require confirmed certification (only resources now)
       const restrictedRoutes = [
         "/dashboard/resources",
-        "/dashboard/affiliate",
       ];
       
       const isRestrictedRoute = restrictedRoutes.some(route => pathname?.startsWith(route));
@@ -89,6 +89,7 @@ export default function DashboardLayout({
           </div>
         </main>
       </div>
+      <ToastContainer />
     </div>
   );
 }

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { logAdminAction, extractRequestInfo } from "@/lib/admin-logger"
 
 export async function GET(req: Request) {
   try {
@@ -271,19 +274,52 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    // Check authentication
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Unauthorized - Admin access required" },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json()
     const { name, description, price, image, images, categoryId, subcategoryIds, featured, attributes, showcasingSections } = body
 
+    // Validate required fields
+    if (!name || typeof name !== "string" || name.trim().length === 0) {
+      return NextResponse.json(
+        { error: "Product name is required" },
+        { status: 400 }
+      );
+    }
+
+    if (price === undefined || price === null || isNaN(parseFloat(price))) {
+      return NextResponse.json(
+        { error: "Valid price is required" },
+        { status: 400 }
+      );
+    }
+
+    // Convert price to number (Prisma accepts string or number for Decimal)
+    const priceValue = typeof price === "string" ? parseFloat(price) : price;
+    if (isNaN(priceValue) || priceValue < 0) {
+      return NextResponse.json(
+        { error: "Price must be a valid positive number" },
+        { status: 400 }
+      );
+    }
+
     const productData: any = {
-      name,
-      description,
-      price,
-      image,
-      images: images || [],
+      name: name.trim(),
+      description: description?.trim() || null,
+      price: priceValue, // Prisma will handle Decimal conversion
+      image: image || null,
+      images: Array.isArray(images) ? images : [],
       categoryId: categoryId || null,
-      featured: featured || false,
+      featured: featured === true,
       attributes: attributes || null,
-      showcasingSections: showcasingSections || [],
+      showcasingSections: Array.isArray(showcasingSections) ? showcasingSections : [],
     };
     
     // Handle multiple subcategories
@@ -309,6 +345,13 @@ export async function POST(req: Request) {
         },
       });
     } catch (error: any) {
+      console.error("Prisma error creating product:", {
+        error: error.message,
+        code: error.code,
+        meta: error.meta,
+        productData: { ...productData, price: priceValue },
+      });
+      
       // If subcategories relation doesn't exist, create without it
       if (error?.message?.includes("subcategories") || error?.code === "P2009" || error?.code === "P2014") {
         const { subcategories: _, ...dataWithoutSubcategories } = productData;
@@ -319,15 +362,64 @@ export async function POST(req: Request) {
           },
         });
       } else {
+        // Re-throw to be caught by outer catch block which will return detailed error
         throw error;
       }
     }
 
+    // Log admin action - ALWAYS log for admin users
+    if (session?.user?.id) {
+      console.log("🔵 LOGGING PRODUCT CREATION:", {
+        userId: session.user.id,
+        productId: product.id,
+        productName: product.name,
+      });
+
+      try {
+        const { ipAddress, userAgent } = extractRequestInfo(req);
+        const logResult = await logAdminAction({
+          userId: session.user.id!,
+          actionType: "CREATE" as any,
+          resourceType: "Product",
+          resourceId: product.id,
+          description: `Created product "${product.name}"`,
+          details: {
+            after: product,
+          },
+          ipAddress,
+          userAgent,
+          metadata: {
+            url: req.url,
+            method: "POST",
+          },
+        });
+
+        if (!logResult) {
+          console.error("⚠️ Failed to log product creation - check console for details");
+        } else {
+          console.log("✅ Successfully logged product creation");
+        }
+      } catch (logError: any) {
+        console.error("❌ Exception during logging:", logError);
+      }
+    } else {
+      console.log("⚠️ NOT LOGGING PRODUCT CREATION - No session or userId");
+    }
+
     return NextResponse.json(product, { status: 201 })
-  } catch (error) {
-    console.error("Failed to create product:", error)
+  } catch (error: any) {
+    console.error("Failed to create product:", {
+      error: error?.message || error,
+      stack: error?.stack,
+      code: error?.code,
+      meta: error?.meta,
+    });
+    
     return NextResponse.json(
-      { error: "Failed to create product" },
+      { 
+        error: "Failed to create product",
+        details: error?.message || "Unknown error",
+      },
       { status: 500 }
     )
   }

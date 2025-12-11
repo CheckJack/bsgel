@@ -49,10 +49,12 @@ export default function CustomerMessagesPage() {
       const res = await fetch("/api/chat");
       if (res.ok) {
         const data = await res.json();
-        setMessages(data);
+        // Handle both paginated and non-paginated responses
+        const messagesList = Array.isArray(data) ? data : (data.messages || []);
+        setMessages(messagesList);
         // Update selected message if it's still in the list
         if (selectedMessage) {
-          const updated = data.find((m: ChatMessage) => m.id === selectedMessage.id);
+          const updated = messagesList.find((m: ChatMessage) => m.id === selectedMessage.id);
           if (updated) setSelectedMessage(updated);
         }
       } else {
@@ -80,7 +82,7 @@ export default function CustomerMessagesPage() {
 
       if (res.ok) {
         const newMessage = await res.json();
-        setMessages([newMessage, ...messages]);
+        setMessages([newMessage, ...(Array.isArray(messages) ? messages : [])]);
         setSelectedMessage(newMessage);
         setNewMessageText("");
         setShowNewMessageForm(false);
@@ -113,7 +115,7 @@ export default function CustomerMessagesPage() {
 
       if (res.ok) {
         const newMessage = await res.json();
-        setMessages([newMessage, ...messages]);
+        setMessages([newMessage, ...(Array.isArray(messages) ? messages : [])]);
         setSelectedMessage(newMessage);
         setReplyText("");
       } else {
@@ -151,7 +153,11 @@ export default function CustomerMessagesPage() {
     return null;
   }
 
-  const unreadResponses = messages.filter((m) => m.adminResponse && !m.readByAdmin).length;
+  // Ensure messages is always an array
+  const messagesArray = Array.isArray(messages) ? messages : [];
+  
+  // For clients: count messages with admin responses (since there's no client read tracking yet)
+  const unreadResponses = messagesArray.filter((m) => m.adminResponse).length;
 
   return (
     <div className="space-y-6">
@@ -167,8 +173,8 @@ export default function CustomerMessagesPage() {
                 {unreadResponses} new response{unreadResponses !== 1 ? "s" : ""}
               </span>
             )}
-            {unreadResponses === 0 && messages.length > 0 && "All caught up"}
-            {messages.length === 0 && "No messages yet"}
+            {unreadResponses === 0 && messagesArray.length > 0 && "All caught up"}
+            {messagesArray.length === 0 && "No messages yet"}
           </p>
         </div>
         <Button
@@ -189,11 +195,11 @@ export default function CustomerMessagesPage() {
         <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
             <h2 className="font-semibold text-gray-900 dark:text-gray-100">
-              Your Messages ({messages.length})
+              Your Messages ({messagesArray.length})
             </h2>
           </div>
           <div className="overflow-y-auto max-h-[600px]">
-            {messages.length === 0 ? (
+            {messagesArray.length === 0 ? (
               <div className="p-8 text-center text-gray-500 dark:text-gray-400">
                 <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No messages yet</p>
@@ -201,7 +207,7 @@ export default function CustomerMessagesPage() {
               </div>
             ) : (
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {messages.map((message) => (
+                {messagesArray.map((message) => (
                   <button
                     key={message.id}
                     onClick={() => {
@@ -209,7 +215,7 @@ export default function CustomerMessagesPage() {
                       setShowNewMessageForm(false);
                       setReplyText("");
                     }}
-                    className={`w-full text-left p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                    className={`w-full text-left p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors min-h-[100px] flex flex-col ${
                       selectedMessage?.id === message.id
                         ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-600"
                         : ""
@@ -231,7 +237,7 @@ export default function CustomerMessagesPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2 mb-2">
+                    <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2 mb-2 flex-1">
                       {message.message}
                     </p>
                     {message.adminResponse && (
@@ -247,9 +253,9 @@ export default function CustomerMessagesPage() {
         </div>
 
         {/* Message Detail & Response */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-[600px]">
           {showNewMessageForm ? (
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-full min-h-0">
               <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   New Message
@@ -311,7 +317,7 @@ export default function CustomerMessagesPage() {
               </div>
             </div>
           ) : selectedMessage ? (
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-full min-h-0">
               {/* Message Header */}
               <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                 <div className="flex items-start justify-between mb-2">
@@ -336,12 +342,12 @@ export default function CustomerMessagesPage() {
               </div>
 
               {/* Message Content */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
                 {/* User Message */}
                 <div className="flex flex-col items-end">
-                  <div className="max-w-[80%] rounded-lg bg-blue-600 text-white p-4">
+                  <div className="max-w-[80%] w-full rounded-lg bg-blue-600 text-white p-4 break-words">
                     <p className="text-sm font-medium mb-1">You:</p>
-                    <p className="text-sm whitespace-pre-wrap">{selectedMessage.message}</p>
+                    <p className="text-sm whitespace-pre-wrap break-words">{selectedMessage.message}</p>
                   </div>
                   <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     {formatTime(selectedMessage.createdAt)}
@@ -351,9 +357,9 @@ export default function CustomerMessagesPage() {
                 {/* Admin Response */}
                 {selectedMessage.adminResponse ? (
                   <div className="flex flex-col items-start">
-                    <div className="max-w-[80%] rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 p-4">
+                    <div className="max-w-[80%] w-full rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 p-4 break-words">
                       <p className="text-sm font-medium mb-1">Admin Response:</p>
-                      <p className="text-sm whitespace-pre-wrap">{selectedMessage.adminResponse}</p>
+                      <p className="text-sm whitespace-pre-wrap break-words">{selectedMessage.adminResponse}</p>
                     </div>
                     {selectedMessage.readAt && (
                       <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -363,7 +369,7 @@ export default function CustomerMessagesPage() {
                   </div>
                 ) : (
                   <div className="flex flex-col items-start">
-                    <div className="max-w-[80%] rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 p-4">
+                    <div className="max-w-[80%] w-full rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 p-4">
                       <p className="text-sm text-gray-500 dark:text-gray-400 italic">
                         Waiting for admin response...
                       </p>

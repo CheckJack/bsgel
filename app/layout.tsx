@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { Jost } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { ConditionalNavbar } from "@/components/layout/conditional-navbar";
 import { ConditionalFooter } from "@/components/layout/conditional-footer";
 import { ChatWidget } from "@/components/chat/chat-widget";
+import { AdminQuickMenu } from "@/components/admin/admin-quick-menu";
+import { ReferralTracker } from "@/components/referral-tracker";
 
 // BIO Sculpture Brand Typography: Jost (Google Fonts alternative to Futura)
 // Futura Md BT (Medium) equivalent: Jost Medium (500)
@@ -29,10 +32,14 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={jost.variable}>
         <Providers>
+          <Suspense fallback={null}>
+            <ReferralTracker />
+          </Suspense>
           <ConditionalNavbar />
           <main className="min-h-screen bg-white">{children}</main>
           <ConditionalFooter />
           <ChatWidget />
+          <AdminQuickMenu />
         </Providers>
       </body>
     </html>

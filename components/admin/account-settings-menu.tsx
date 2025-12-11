@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { X, User, Mail, Lock, Camera, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 interface AccountSettingsMenuProps {
   isOpen: boolean;
@@ -122,23 +123,27 @@ export function AccountSettingsMenu({ isOpen, onClose }: AccountSettingsMenuProp
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <>
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black bg-opacity-50 dark:bg-opacity-70"
-        onClick={onClose}
-      />
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black bg-opacity-50 dark:bg-opacity-70 transition-opacity duration-300"
+          onClick={onClose}
+        />
+      )}
 
-      {/* Modal */}
+      {/* Side Panel */}
       <div
         ref={menuRef}
-        className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto"
+        className={cn(
+          "fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white dark:bg-gray-800 shadow-xl transform transition-transform duration-300 ease-in-out",
+          "flex flex-col h-full",
+          isOpen ? "translate-x-0" : "translate-x-full pointer-events-none"
+        )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             Account Settings
           </h2>
@@ -152,7 +157,7 @@ export function AccountSettingsMenu({ isOpen, onClose }: AccountSettingsMenuProp
         </div>
 
         {/* Content */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Profile Photo */}
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -313,7 +318,7 @@ export function AccountSettingsMenu({ isOpen, onClose }: AccountSettingsMenuProp
           </div>
         </form>
       </div>
-    </div>
+    </>
   );
 }
 

@@ -26,7 +26,11 @@ import {
   Ticket,
   Bell,
   Award,
-  Grid3x3
+  Grid3x3,
+  Coins,
+  Gift,
+  Settings as SettingsIcon,
+  ClipboardList
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -74,6 +78,12 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
     {
       title: t("sidebar.allPages"),
       items: [
+        {
+          title: "Activity Logs",
+          href: "/admin/logs",
+          icon: ClipboardList,
+          badge: null,
+        },
         {
           title: t("sidebar.ecommerce"),
           icon: Store,
@@ -150,6 +160,43 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
               title: t("sidebar.megaMenuCards"),
               href: "/admin/mega-menu-cards",
               icon: Grid3x3,
+              badge: null,
+            },
+          ],
+        },
+        {
+          title: "Affiliates & Rewards",
+          icon: Gift,
+          badge: null,
+          children: [
+            {
+              title: "Affiliates",
+              href: "/admin/affiliates",
+              icon: Users,
+              badge: null,
+            },
+            {
+              title: "Points Configuration",
+              href: "/admin/points-config",
+              icon: SettingsIcon,
+              badge: null,
+            },
+            {
+              title: "Rewards Catalog",
+              href: "/admin/rewards",
+              icon: Gift,
+              badge: null,
+            },
+            {
+              title: "Points Transactions",
+              href: "/admin/points-transactions",
+              icon: Coins,
+              badge: null,
+            },
+            {
+              title: "Affiliate Tiers",
+              href: "/admin/affiliate-tiers",
+              icon: Award,
               badge: null,
             },
           ],
@@ -426,10 +473,14 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
       {/* Footer Actions */}
       <div className={cn("border-t border-gray-200 dark:border-gray-700 p-4", collapsed && "md:hidden")}>
         <button
-          onClick={() => signOut({ callbackUrl: "/" })}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100"
+          onClick={() => {
+            if (window.confirm("Are you sure you want to sign out?")) {
+              signOut({ callbackUrl: "/" });
+            }
+          }}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium bg-red-600 text-white transition-colors hover:bg-red-700"
         >
-          <LogOut className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+          <LogOut className="h-5 w-5 text-white" />
           <span>{t("sidebar.logout")}</span>
         </button>
       </div>

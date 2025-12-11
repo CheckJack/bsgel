@@ -143,14 +143,21 @@ export function Navbar() {
           <div className="flex items-center gap-3 lg:gap-6 overflow-visible">
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-3 lg:gap-6">
-              <div 
-                ref={shopMegaMenuRef}
-                className="relative"
-                onMouseEnter={() => {
-                  setAboutMegaMenuOpen(false);
-                  setShopMegaMenuOpen(true);
-                }}
-              >
+            <div 
+              ref={shopMegaMenuRef}
+              className="relative"
+              onMouseEnter={() => {
+                setAboutMegaMenuOpen(false);
+                setShopMegaMenuOpen(true);
+              }}
+              onMouseOver={() => {
+                // Prefetch API data on hover for faster loading
+                fetch("/api/mega-menu-cards?menuType=SHOP", { 
+                  method: 'GET',
+                  cache: 'force-cache'
+                }).catch(() => {});
+              }}
+            >
                 <Link 
                   href="/products" 
                   className="text-brand-white hover:text-brand-sweet-bianca transition-colors text-sm lg:text-base whitespace-nowrap"
@@ -165,6 +172,13 @@ export function Navbar() {
               onMouseEnter={() => {
                 setShopMegaMenuOpen(false);
                 setAboutMegaMenuOpen(true);
+              }}
+              onMouseOver={() => {
+                // Prefetch API data on hover for faster loading
+                fetch("/api/mega-menu-cards?menuType=ABOUT", { 
+                  method: 'GET',
+                  cache: 'force-cache'
+                }).catch(() => {});
               }}
             >
               <Link href="/about" className="text-brand-white hover:text-brand-sweet-bianca transition-colors text-sm lg:text-base whitespace-nowrap">
@@ -215,7 +229,11 @@ export function Navbar() {
                 </Link>
                 <Button
                   variant="ghost"
-                  onClick={() => signOut()}
+                  onClick={() => {
+                    if (window.confirm("Are you sure you want to sign out?")) {
+                      signOut();
+                    }
+                  }}
                   className="hidden md:inline-flex text-brand-white hover:text-brand-sweet-bianca hover:bg-gray-900 text-sm lg:text-base whitespace-nowrap px-3 h-auto py-1"
                 >
                   Sign Out
@@ -270,8 +288,10 @@ export function Navbar() {
                   <Button
                     variant="ghost"
                     onClick={() => {
-                      signOut();
-                      setMobileMenuOpen(false);
+                      if (window.confirm("Are you sure you want to sign out?")) {
+                        signOut();
+                        setMobileMenuOpen(false);
+                      }
                     }}
                     className="w-full text-brand-white hover:text-brand-sweet-bianca hover:bg-gray-900 text-left justify-start px-4 py-3 h-auto"
                   >

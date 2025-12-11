@@ -47,7 +47,9 @@ export default function EditProductPage() {
   // Available showcasing sections
   const showcasingSections = [
     { value: "treatment-gels", label: "Treatment Gels" },
-    { value: "color-gels", label: "Color Gels" },
+    { value: "treatment-base-gels", label: "Treatment Base Gels" },
+    { value: "color-gels", label: "Color Gels (Bio Gel)" },
+    { value: "evo-color-gels", label: "Color Gels (Evo)" },
     { value: "top-coats", label: "Top Coats" },
     { value: "hand-care", label: "Hand Care" },
     { value: "foot-care", label: "Foot Care" },

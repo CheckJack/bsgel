@@ -8,6 +8,7 @@ import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import { NailDiagnosisModal } from "@/components/ui/nail-diagnosis-modal";
 import TextGenerateEffect from "@/components/ui/text-generate-effect";
+import { Pagination } from "@/components/ui/pagination";
 
 interface Product {
   id: string;
@@ -26,10 +27,13 @@ interface Product {
 export default function BioGelPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [isScrolling, setIsScrolling] = useState(false);
   const [showDiagnosisModal, setShowDiagnosisModal] = useState(false);
   const textSectionRef = useRef<HTMLElement>(null);
   const productsSectionRef = useRef<HTMLElement>(null);
+  const isInitialMount = useRef(true);
 
   const slides = [
     {
@@ -43,7 +47,8 @@ export default function BioGelPage() {
 
   useEffect(() => {
     fetchBioGelProducts();
-  }, []);
+  }, [currentPage]);
+
 
   // Intersection Observer for showing diagnosis modal when products section is visible
   useEffect(() => {
@@ -127,18 +132,30 @@ export default function BioGelPage() {
         );
 
         if (bioGelCategory) {
-          // If category exists, fetch all products in that category
-          const res = await fetch(`/api/products?categoryId=${bioGelCategory.id}`);
+          // If category exists, fetch all products in that category with pagination
+          const res = await fetch(`/api/products?categoryId=${bioGelCategory.id}&page=${currentPage}&limit=10`);
           if (res.ok) {
             const data = await res.json();
-            setProducts(Array.isArray(data) ? data : data.products || []);
+            if (data.pagination) {
+              setProducts(data.products || []);
+              setTotalPages(data.pagination.totalPages || 1);
+            } else {
+              setProducts(Array.isArray(data) ? data : data.products || []);
+              setTotalPages(1);
+            }
           }
         } else {
-          // Otherwise, search for products with "bio gel" or "biogel" in the name
-          const res = await fetch(`/api/products?search=bio gel`);
+          // Otherwise, search for products with "bio gel" or "biogel" in the name with pagination
+          const res = await fetch(`/api/products?search=bio gel&page=${currentPage}&limit=10`);
           if (res.ok) {
             const data = await res.json();
-            setProducts(Array.isArray(data) ? data : data.products || []);
+            if (data.pagination) {
+              setProducts(data.products || []);
+              setTotalPages(data.pagination.totalPages || 1);
+            } else {
+              setProducts(Array.isArray(data) ? data : data.products || []);
+              setTotalPages(1);
+            }
           }
         }
       }
@@ -276,19 +293,30 @@ export default function BioGelPage() {
               <p className="text-gray-600">No BIO Gel products found.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  id={product.id}
-                  name={product.name}
-                  price={product.price}
-                  image={product.image}
-                  images={product.images}
-                  featured={product.featured}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {products.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    id={product.id}
+                    name={product.name}
+                    price={product.price}
+                    image={product.image}
+                    images={product.images}
+                    featured={product.featured}
+                  />
+                ))}
+              </div>
+              {totalPages > 1 && (
+                <div className="mt-12">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>

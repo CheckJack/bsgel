@@ -152,3 +152,46 @@ export async function PATCH(req: Request) {
   }
 }
 
+export async function DELETE(req: Request) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Build where clause matching the GET endpoint logic
+    // Admins can delete all notifications they see (all notifications)
+    // Regular users can only delete their own notifications
+    const whereConditions: any[] = []
+    
+    if (session.user.role !== "ADMIN") {
+      // Regular users can only delete their own notifications
+      whereConditions.push({ userId: session.user.id })
+    }
+    // Admins can delete all notifications (no userId filter)
+
+    const where = whereConditions.length > 0 
+      ? { AND: whereConditions }
+      : {}
+
+    // Delete all matching notifications
+    const result = await db.notification.deleteMany({
+      where,
+    })
+
+    console.log(`🗑️ Deleted ${result.count} notification(s) for ${session.user.role}`)
+
+    return NextResponse.json({ 
+      message: "All notifications deleted successfully",
+      count: result.count 
+    })
+  } catch (error) {
+    console.error("Failed to delete notifications:", error)
+    return NextResponse.json(
+      { error: "Failed to delete notifications" },
+      { status: 500 }
+    )
+  }
+}
+

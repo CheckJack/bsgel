@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { logAdminAction, extractRequestInfo } from "@/lib/admin-logger"
 
 export async function GET(request: Request) {
   try {
@@ -232,6 +235,15 @@ export async function GET(request: Request) {
 
 export async function POST(req: Request) {
   try {
+    // Check authentication
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Unauthorized - Admin access required" },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json()
     const { name, slug, description, image, icon, parentId } = body
 
@@ -321,6 +333,25 @@ export async function POST(req: Request) {
         throw error;
       }
     }
+
+    // Log admin action
+    const { ipAddress, userAgent } = extractRequestInfo(req);
+    await logAdminAction({
+      userId: session.user.id!,
+      actionType: "CREATE" as any,
+      resourceType: "Category",
+      resourceId: category.id,
+      description: `Created category "${category.name}"`,
+      details: {
+        after: category,
+      },
+      ipAddress,
+      userAgent,
+      metadata: {
+        url: req.url,
+        method: "POST",
+      },
+    });
 
     return NextResponse.json(category, { status: 201 })
   } catch (error: any) {

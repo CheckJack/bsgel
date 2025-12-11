@@ -2,6 +2,10 @@ import { NextResponse } from "next/server"
 import { hash } from "bcryptjs"
 import { db } from "@/lib/db"
 import { z } from "zod"
+import { createReferral, getOrCreateAffiliate } from "@/lib/affiliate"
+import { calculatePoints, awardPoints } from "@/lib/points"
+import { checkAndNotifyMilestones } from "@/lib/notifications/affiliate-milestones"
+import { autoPromoteAffiliate } from "@/lib/affiliate-tiers"
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -14,12 +18,13 @@ const registerSchema = z.object({
   // Allow null or undefined for certificate (when customer type or no certificate uploaded)
   certificate: z.string().max(15 * 1024 * 1024, "Certificate file is too large (max 10MB original file)").nullable().optional(),
   certificationId: z.string().nullable().optional(),
+  referralCode: z.string().nullable().optional(),
 })
 
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { email, password, name, userType, role, permissions, certificate, certificationId } = registerSchema.parse(body)
+    const { email, password, name, userType, role, permissions, certificate, certificationId, referralCode } = registerSchema.parse(body)
 
     // Normalize email for checking
     const normalizedEmail = email.trim().toLowerCase()
@@ -103,6 +108,72 @@ export async function POST(req: Request) {
         // Log cart error but don't fail the registration (cart can be created later)
         console.error("Failed to create cart:", cartError)
       }
+
+      // Automatically create affiliate record for all customers
+      try {
+        await getOrCreateAffiliate(user.id, normalizedEmail)
+        console.log(`✅ Affiliate record created for user: ${normalizedEmail}`)
+      } catch (affiliateError) {
+        // Log but don't fail registration if affiliate creation fails
+        console.error("Failed to create affiliate record:", affiliateError)
+      }
+    }
+
+    // Handle referral code from registration payload
+    try {
+      if (referralCode) {
+        const referringAffiliate = await db.affiliate.findUnique({
+          where: { affiliateCode: referralCode },
+        })
+
+        if (referringAffiliate && referringAffiliate.isActive) {
+          // Prevent self-referral: check if the referral code belongs to the registering user
+          if (referringAffiliate.userId === user.id) {
+            console.warn(`⚠️ Self-referral attempt blocked for user ${user.email} with code ${referralCode}`)
+            // Skip referral creation - don't fail registration
+          } else {
+            // Mark any recent clicks as converted
+            await db.affiliateLinkClick.updateMany({
+              where: {
+                affiliateId: referringAffiliate.id,
+                converted: false,
+                clickedAt: {
+                  gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
+                },
+              },
+              data: {
+                converted: true,
+                convertedAt: new Date(),
+                convertedUserId: user.id,
+              },
+            })
+
+            // Create referral relationship
+            const referral = await createReferral(referringAffiliate.id, user.id)
+
+            // Award points for referral signup
+            const points = await calculatePoints("REFERRAL_SIGNUP")
+            if (points > 0) {
+              await awardPoints(
+                referringAffiliate.userId,
+                points,
+                "AFFILIATE_REFERRAL",
+                referral.id,
+                `Referral signup: ${user.email}`
+              )
+              
+              // Check for milestones
+              await checkAndNotifyMilestones(referringAffiliate.userId, referringAffiliate.id)
+              
+              // Auto-promote tier if applicable
+              await autoPromoteAffiliate(referringAffiliate.id)
+            }
+          }
+        }
+      }
+    } catch (referralError) {
+      // Log but don't fail registration if referral handling fails
+      console.error("Failed to process referral:", referralError)
     }
 
     // Create notification for admin users when a new customer signs up

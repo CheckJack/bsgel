@@ -110,24 +110,6 @@ export async function PATCH(
       }
     }
 
-    // Get the order first to check the previous status
-    const existingOrder = await db.order.findUnique({
-      where: { id: params.id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-          },
-        },
-      },
-    })
-
-    if (!existingOrder) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 })
-    }
-
     // Build update data
     const updateData: any = {}
     if (status) updateData.status = status

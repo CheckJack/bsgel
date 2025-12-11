@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 
-// GET comments for a blog post
+// GET comments for a blog post (only approved)
 export async function GET(
   req: Request,
   { params }: { params: { blogId: string } }
@@ -12,6 +12,7 @@ export async function GET(
     const comments = await db.comment.findMany({
       where: {
         blogId: params.blogId,
+        status: "APPROVED", // Only show approved comments
       },
       include: {
         user: {
@@ -75,12 +76,13 @@ export async function POST(
       )
     }
 
-    // Create the comment
+    // Create the comment (status defaults to PENDING)
     const comment = await db.comment.create({
       data: {
         blogId: params.blogId,
         userId: session.user.id,
         content: content.trim(),
+        status: "PENDING", // Requires admin approval
       },
       include: {
         user: {

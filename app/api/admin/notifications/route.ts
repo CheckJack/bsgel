@@ -247,3 +247,48 @@ export async function POST(req: Request) {
   }
 }
 
+export async function DELETE(req: Request) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    const { searchParams } = new URL(req.url)
+    const type = searchParams.get("type") // "all" or "system" (default: "system")
+
+    // Build where clause
+    const where: any = {}
+    
+    // Only delete SYSTEM notifications by default (admin-created notifications)
+    // Admins can delete all notifications if explicitly requested
+    if (type === "all") {
+      // Delete all notifications (including order notifications, etc.)
+    } else {
+      // Default: only delete SYSTEM notifications (admin-created)
+      where.type = NotificationType.SYSTEM
+    }
+
+    // Delete all matching notifications
+    const result = await db.notification.deleteMany({
+      where,
+    })
+
+    return NextResponse.json({ 
+      message: "All notifications deleted successfully",
+      count: result.count 
+    })
+  } catch (error) {
+    console.error("Failed to delete notifications:", error)
+    return NextResponse.json(
+      { error: "Failed to delete notifications" },
+      { status: 500 }
+    )
+  }
+}
+

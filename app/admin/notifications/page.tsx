@@ -32,6 +32,7 @@ export default function AdminNotificationsPage() {
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [filteredNotifications, setFilteredNotifications] = useState<Notification[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [deletingAll, setDeletingAll] = useState(false);
 
   useEffect(() => {
     fetchNotifications();
@@ -93,6 +94,33 @@ export default function AdminNotificationsPage() {
     } catch (error) {
       console.error("Failed to delete notification:", error);
       alert("Failed to delete notification. Please try again.");
+    }
+  };
+
+  const deleteAllNotifications = async () => {
+    if (!confirm("Are you sure you want to delete all notifications? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeletingAll(true);
+    try {
+      const res = await fetch("/api/admin/notifications?type=system", {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        alert(`Successfully deleted ${data.count} notification(s).`);
+        fetchNotifications();
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to delete notifications. Please try again.");
+      }
+    } catch (error) {
+      console.error("Failed to delete notifications:", error);
+      alert("Failed to delete notifications. Please try again.");
+    } finally {
+      setDeletingAll(false);
     }
   };
 
@@ -214,12 +242,31 @@ export default function AdminNotificationsPage() {
                 </div>
               </div>
 
-              {/* Add New Button */}
-              <Link href="/admin/notifications/new" className="flex-shrink-0">
-                <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
-                  + Add new
-                </Button>
-              </Link>
+              {/* Action Buttons */}
+              <div className="flex gap-2 flex-shrink-0">
+                {filteredNotifications.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    onClick={deleteAllNotifications}
+                    disabled={deletingAll}
+                    className="w-full sm:w-auto"
+                  >
+                    {deletingAll ? (
+                      "Deleting..."
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete All
+                      </>
+                    )}
+                  </Button>
+                )}
+                <Link href="/admin/notifications/new" className="flex-shrink-0">
+                  <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
+                    + Add new
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </CardContent>

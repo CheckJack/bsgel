@@ -25,6 +25,7 @@ export async function GET(
     const comments = await db.comment.findMany({
       where: {
         blogId: blog.id,
+        status: "APPROVED", // Only show approved comments
       },
       include: {
         user: {
@@ -89,12 +90,13 @@ export async function POST(
       )
     }
 
-    // Create the comment
+    // Create the comment (status defaults to PENDING)
     const comment = await db.comment.create({
       data: {
         blogId: blog.id,
         userId: session.user.id,
         content: content.trim(),
+        status: "PENDING", // Requires admin approval
       },
       include: {
         user: {

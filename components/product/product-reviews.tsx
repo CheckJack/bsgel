@@ -1,7 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { Star, CheckCircle2, Globe, ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Star, CheckCircle2, Globe, ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight, Send } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 interface Review {
   id: string;
@@ -18,6 +23,7 @@ interface Review {
 }
 
 interface ReviewsProps {
+  productId?: string;
   overallRating?: number;
   totalReviews?: number;
   reviews?: Review[];
@@ -92,131 +98,198 @@ const RatingBreakdown = ({
   );
 };
 
-export function ProductReviews({ overallRating = 4.6, totalReviews = 127587, reviews }: ReviewsProps) {
+export function ProductReviews({ 
+  productId, 
+  overallRating: initialOverallRating, 
+  totalReviews: initialTotalReviews, 
+  reviews: initialReviews 
+}: ReviewsProps) {
   const [activeTab, setActiveTab] = useState<"site" | "product">("product");
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState("most-recent");
+  const [reviews, setReviews] = useState<Review[]>(initialReviews || []);
+  const [overallRating, setOverallRating] = useState(initialOverallRating || 0);
+  const [totalReviews, setTotalReviews] = useState(initialTotalReviews || 0);
+  const [breakdown, setBreakdown] = useState<{ stars: number; count: number }[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewContent, setReviewContent] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const { data: session } = useSession();
+  const router = useRouter();
   const reviewsPerPage = 5;
 
-  // Mock data - replace with actual data from props or API
-  const mockReviews: Review[] = reviews || [
-    {
-      id: "1",
-      reviewerName: "Ana S.",
-      rating: 5,
-      content: "❤️❤️",
-      productName: "Sparks",
-      date: "03/12/25",
-      verifiedBuyer: true,
-      companyResponse: undefined,
-      helpfulCount: 0,
-      notHelpfulCount: 0,
-    },
-    {
-      id: "2",
-      reviewerName: "Sofia M.",
-      rating: 5,
-      title: "Macio e confortável",
-      content: "Macio e confortável. A textura delicada realmente faz a diferença para uma preparação confortável das unhas.",
-      productName: "Lima Preparadora",
-      date: "03/12/25",
-      verifiedBuyer: true,
-      companyResponse: "Muito obrigada pelo seu feedback sobre a nossa Lima Preparadora! A textura delicada realmente faz a diferença para uma preparação confortável das unhas. ✨",
-      helpfulCount: 0,
-      notHelpfulCount: 0,
-    },
-    {
-      id: "3",
-      reviewerName: "Carla P.",
-      rating: 5,
-      title: "Espetacular!!! Uma cor vibrante e",
-      content: "Espetacular!!! Uma cor vibrante e profunda, muito particular. Eu também a definiria como perfeita para festas de inverno.",
-      productName: "Poison",
-      date: "03/12/25",
-      verifiedBuyer: true,
-      companyResponse: "Muito obrigada pelo seu feedback! Ficamos felizes que tenha gostado do Poison. ✨",
-      helpfulCount: 0,
-      notHelpfulCount: 0,
-    },
-    {
-      id: "4",
-      reviewerName: "Mariana R.",
-      rating: 5,
-      content: "Cor adorável.\nCor de longa duração.",
-      productName: "Clay",
-      date: "03/12/25",
-      verifiedBuyer: true,
-      companyResponse: "Muito obrigada pelo seu feedback sobre a nossa cor Clay! Ficamos felizes que ela dure tanto e que você goste tanto. ✨💅",
-      helpfulCount: 0,
-      notHelpfulCount: 0,
-    },
-    {
-      id: "5",
-      reviewerName: "Beatriz L.",
-      rating: 5,
-      title: "Ótimo para arrumações eficazes",
-      content: "Ótimo para arrumações eficazes. Realmente facilita muito a limpeza e deixa tudo mais preciso.",
-      productName: "Caneta Corretora de Esmalte",
-      date: "03/12/25",
-      verifiedBuyer: true,
-      companyResponse: "Muito obrigada pelo seu feedback sobre a nossa Caneta Corretora de Esmalte! Ela realmente facilita muito a limpeza e deixa tudo mais preciso. ✨💅",
-      helpfulCount: 0,
-      notHelpfulCount: 0,
-    },
-  ];
+  useEffect(() => {
+    if (productId) {
+      fetchReviews();
+    } else if (initialReviews) {
+      // Use provided reviews if available
+      setReviews(initialReviews);
+      setOverallRating(initialOverallRating || 0);
+      setTotalReviews(initialTotalReviews || 0);
+    }
+  }, [productId]);
 
-  // Calculate breakdown
-  const breakdown = [
-    { stars: 5, count: 102942 },
-    { stars: 4, count: 13274 },
-    { stars: 3, count: 4499 },
-    { stars: 2, count: 2426 },
-    { stars: 1, count: 4446 },
-  ];
+  useEffect(() => {
+    if (productId) {
+      fetchReviews();
+    }
+  }, [sortBy, currentPage]);
 
-  const displayedReviews = mockReviews;
-  const totalPages = Math.ceil(displayedReviews.length / reviewsPerPage);
-  const startIndex = (currentPage - 1) * reviewsPerPage;
-  const endIndex = startIndex + reviewsPerPage;
-  const paginatedReviews = displayedReviews.slice(startIndex, endIndex);
+  const fetchReviews = async () => {
+    if (!productId) return;
+    
+    setIsLoading(true);
+    try {
+      const res = await fetch(
+        `/api/products/${productId}/reviews?page=${currentPage}&limit=${reviewsPerPage}&sortBy=${sortBy}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setReviews(data.reviews || []);
+        setOverallRating(data.stats?.overallRating || 0);
+        setTotalReviews(data.stats?.totalReviews || 0);
+        setBreakdown(data.stats?.breakdown || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch reviews:", error);
+      // On error, show empty state
+      setReviews([]);
+      setOverallRating(0);
+      setTotalReviews(0);
+      setBreakdown([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const displayedReviews = reviews;
+  const totalPages = productId 
+    ? Math.ceil(totalReviews / reviewsPerPage)
+    : Math.ceil(displayedReviews.length / reviewsPerPage);
+  
+  // For productId pages, reviews are already paginated by API
+  // For category pages, we need to paginate locally
+  const paginatedReviews = productId 
+    ? displayedReviews 
+    : displayedReviews.slice((currentPage - 1) * reviewsPerPage, currentPage * reviewsPerPage);
 
   const formatDate = (dateString: string) => {
     return dateString;
   };
 
+  const handleSubmitReview = async () => {
+    if (!session) {
+      router.push("/login");
+      return;
+    }
+
+    if (!productId) return;
+
+    if (reviewRating === 0) {
+      setSubmitError("Please select a rating");
+      return;
+    }
+
+    if (!reviewContent.trim()) {
+      setSubmitError("Please write your review");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const res = await fetch(`/api/products/${productId}/reviews`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          rating: reviewRating,
+          title: reviewTitle.trim() || undefined,
+          content: reviewContent.trim(),
+        }),
+      });
+
+      if (res.ok) {
+        setSubmitSuccess(true);
+        setReviewRating(0);
+        setReviewTitle("");
+        setReviewContent("");
+        setShowReviewForm(false);
+        // Refresh reviews
+        await fetchReviews();
+        setTimeout(() => setSubmitSuccess(false), 5000);
+      } else {
+        const data = await res.json();
+        setSubmitError(data.error || "Failed to submit review");
+      }
+    } catch (error) {
+      console.error("Failed to submit review:", error);
+      setSubmitError("Failed to submit review. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Always render if productId is provided, otherwise only render if there are reviews
+  if (!productId && (!initialReviews || initialReviews.length === 0) && reviews.length === 0) {
+    return null;
+  }
+
   return (
     <section className="relative w-full bg-white py-16">
       <div className="container mx-auto px-4 max-w-7xl">
         {/* Centered Top Section */}
-        <div className="flex flex-col items-center mb-8">
-          {/* Trustpilot Banner */}
-          <div className="flex items-center gap-2 mb-8">
-            <span className="text-xl font-semibold text-gray-800">Excelente</span>
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Star key={star} className="w-5 h-5 fill-pink-500 text-pink-500" />
-              ))}
-            </div>
-            <span className="text-sm text-gray-600">Trustpilot</span>
-          </div>
+        {productId && (
+          <div className="flex flex-col items-center mb-8">
+            {/* Trustpilot Banner */}
+            {overallRating > 0 && (
+              <div className="flex items-center gap-2 mb-8">
+                <span className="text-xl font-semibold text-gray-800">Excelente</span>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star key={star} className="w-5 h-5 fill-pink-500 text-pink-500" />
+                  ))}
+                </div>
+                <span className="text-sm text-gray-600">Trustpilot</span>
+              </div>
+            )}
 
-          {/* Overall Rating Section */}
-          <div className="flex flex-col md:flex-row gap-8 items-center justify-center w-full">
-            <div className="flex flex-col gap-2 items-center">
-              <div className="flex items-center gap-4">
-                <div className="text-5xl font-bold text-gray-900">{overallRating}</div>
-                <StarRating rating={overallRating} size="lg" />
+            {/* Overall Rating Section */}
+            {overallRating > 0 && totalReviews > 0 ? (
+              <div className="flex flex-col md:flex-row gap-8 items-center justify-center w-full">
+                <div className="flex flex-col gap-2 items-center">
+                  <div className="flex items-center gap-4">
+                    <div className="text-5xl font-bold text-gray-900">{overallRating.toFixed(1)}</div>
+                    <StarRating rating={overallRating} size="lg" />
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Com base em {totalReviews.toLocaleString()} avaliações
+                  </div>
+                </div>
+                
+                {breakdown.length > 0 && (
+                  <div className="w-full min-w-[280px] max-w-md mx-auto md:mx-0">
+                    <RatingBreakdown 
+                      totalReviews={totalReviews} 
+                      breakdown={breakdown} 
+                    />
+                  </div>
+                )}
               </div>
-              <div className="text-sm text-gray-600">
-                Com base em {totalReviews.toLocaleString()} avaliações
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-gray-600">No reviews yet. Be the first to review this product!</p>
               </div>
-            </div>
-            
-            <div className="w-full min-w-[280px] max-w-md mx-auto md:mx-0">
-              <RatingBreakdown totalReviews={totalReviews} breakdown={breakdown} />
-            </div>
+            )}
           </div>
-        </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-8 border-b border-gray-200 mb-6">
@@ -243,21 +316,141 @@ export function ProductReviews({ overallRating = 4.6, totalReviews = 127587, rev
         </div>
 
         {/* Sort By */}
-        <div className="flex justify-end mb-6">
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-          >
-            <option value="most-recent">Mais recentes</option>
-            <option value="highest-rated">Melhor avaliados</option>
-            <option value="lowest-rated">Pior avaliados</option>
-          </select>
-        </div>
+        {productId && (
+          <div className="flex justify-end mb-6">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            >
+              <option value="most-recent">Mais recentes</option>
+              <option value="highest-rated">Melhor avaliados</option>
+              <option value="lowest-rated">Pior avaliados</option>
+            </select>
+          </div>
+        )}
+
+        {/* Write a Review Section */}
+        {productId && (
+          <div className="mb-8">
+            {!showReviewForm ? (
+              <Button
+                onClick={() => {
+                  if (!session) {
+                    router.push("/login");
+                    return;
+                  }
+                  setShowReviewForm(true);
+                }}
+                className="bg-brand-champagne hover:bg-brand-champagne/90 text-white"
+              >
+                Write a Review
+              </Button>
+            ) : (
+              <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
+                <h3 className="text-lg font-semibold mb-4">Write a Review</h3>
+                
+                {submitSuccess && (
+                  <div className="mb-4 p-3 bg-green-100 text-green-800 rounded text-sm">
+                    Review submitted successfully! It will be visible after admin approval.
+                  </div>
+                )}
+
+                {submitError && (
+                  <div className="mb-4 p-3 bg-red-100 text-red-800 rounded text-sm">
+                    {submitError}
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Rating *</label>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setReviewRating(star)}
+                          className="focus:outline-none"
+                        >
+                          <Star
+                            className={`h-8 w-8 ${
+                              star <= reviewRating
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "text-gray-300"
+                            }`}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="review-title" className="block text-sm font-medium mb-2">
+                      Review Title (Optional)
+                    </label>
+                    <Input
+                      id="review-title"
+                      value={reviewTitle}
+                      onChange={(e) => setReviewTitle(e.target.value)}
+                      placeholder="Give your review a title"
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="review-content" className="block text-sm font-medium mb-2">
+                      Your Review *
+                    </label>
+                    <Textarea
+                      id="review-content"
+                      value={reviewContent}
+                      onChange={(e) => setReviewContent(e.target.value)}
+                      placeholder="Share your experience with this product..."
+                      rows={5}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleSubmitReview}
+                      disabled={isSubmitting || reviewRating === 0 || !reviewContent.trim()}
+                      className="bg-brand-champagne hover:bg-brand-champagne/90 text-white"
+                    >
+                      {isSubmitting ? "Submitting..." : "Submit Review"}
+                      {!isSubmitting && <Send className="ml-2 h-4 w-4" />}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowReviewForm(false);
+                        setReviewRating(0);
+                        setReviewTitle("");
+                        setReviewContent("");
+                        setSubmitError(null);
+                      }}
+                      disabled={isSubmitting}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Reviews List */}
-        <div className="space-y-8">
-          {paginatedReviews.map((review) => (
+        {isLoading ? (
+          <div className="text-center py-8 text-gray-500">Carregando avaliações...</div>
+        ) : paginatedReviews.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            {productId ? "Nenhuma avaliação ainda. Seja o primeiro a avaliar!" : "Nenhuma avaliação disponível."}
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {paginatedReviews.map((review) => (
             <div key={review.id} className="border-b border-gray-200 pb-8 last:border-b-0">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-start gap-3">
@@ -325,14 +518,17 @@ export function ProductReviews({ overallRating = 4.6, totalReviews = 127587, rev
                 )}
               </div>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {productId && totalPages > 1 && (
           <div className="mt-8 flex justify-center items-center gap-2">
             <button
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              onClick={() => {
+                setCurrentPage(Math.max(1, currentPage - 1));
+              }}
               disabled={currentPage === 1}
               className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -367,7 +563,9 @@ export function ProductReviews({ overallRating = 4.6, totalReviews = 127587, rev
             })}
             
             <button
-              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+              onClick={() => {
+                setCurrentPage(Math.min(totalPages, currentPage + 1));
+              }}
               disabled={currentPage === totalPages}
               className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
             >

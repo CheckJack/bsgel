@@ -334,7 +334,7 @@ export default function AdminMessagesPage() {
                   <button
                     key={message.id}
                     onClick={() => handleSelectMessage(message)}
-                    className={`w-full text-left p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                    className={`w-full text-left p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors min-h-[120px] flex flex-col ${
                       selectedMessage?.id === message.id
                         ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-600"
                         : ""
@@ -355,10 +355,10 @@ export default function AdminMessagesPage() {
                         <Check className="h-4 w-4 text-gray-400 flex-shrink-0" />
                       )}
                     </div>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2 mb-2">
+                    <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2 mb-2 flex-1">
                       {message.message}
                     </p>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mt-auto">
                       <span className="text-xs text-gray-500 dark:text-gray-400">
                         {formatTime(message.createdAt)}
                       </span>
@@ -403,9 +403,9 @@ export default function AdminMessagesPage() {
         </div>
 
         {/* Message Detail & Response */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col">
+        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-[600px]">
           {selectedMessage ? (
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-full min-h-0">
               {/* Message Header */}
               <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                 <div className="flex items-start justify-between mb-2">
@@ -454,11 +454,11 @@ export default function AdminMessagesPage() {
               </div>
 
               {/* Message Content */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
                 {/* User Message */}
                 <div className="flex flex-col items-end">
-                  <div className="max-w-[80%] rounded-lg bg-blue-600 text-white p-4">
-                    <p className="text-sm whitespace-pre-wrap">{selectedMessage.message}</p>
+                  <div className="max-w-[80%] w-full rounded-lg bg-blue-600 text-white p-4 break-words">
+                    <p className="text-sm whitespace-pre-wrap break-words">{selectedMessage.message}</p>
                   </div>
                   <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     {formatTime(selectedMessage.createdAt)}
@@ -468,9 +468,9 @@ export default function AdminMessagesPage() {
                 {/* Admin Response */}
                 {selectedMessage.adminResponse && (
                   <div className="flex flex-col items-start">
-                    <div className="max-w-[80%] rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 p-4">
+                    <div className="max-w-[80%] w-full rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 p-4 break-words">
                       <p className="text-sm font-medium mb-1">{t("messages.adminResponse")}:</p>
-                      <p className="text-sm whitespace-pre-wrap">{selectedMessage.adminResponse}</p>
+                      <p className="text-sm whitespace-pre-wrap break-words">{selectedMessage.adminResponse}</p>
                     </div>
                   </div>
                 )}

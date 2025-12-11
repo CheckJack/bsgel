@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Search, Bell, MessageCircle, Maximize2, Minimize2, Settings, Moon, Sun, Menu, X } from "lucide-react";
+import { Search, Bell, MessageCircle, Maximize2, Minimize2, Settings, Moon, Sun, Menu, X, Trash2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { AccountSettingsMenu } from "./account-settings-menu";
 import { useLanguage } from "@/contexts/language-context";
@@ -50,6 +50,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [deletingAll, setDeletingAll] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
@@ -165,6 +166,31 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
     const interval = setInterval(fetchMessages, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const deleteAllNotifications = async () => {
+    if (!confirm("Are you sure you want to delete all notifications? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeletingAll(true);
+    try {
+      // Use the main notifications endpoint which handles all notification types for admins
+      const res = await fetch("/api/notifications", {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        setNotifications([]);
+        setUnreadCount(0);
+      } else {
+        console.error("Failed to delete notifications");
+      }
+    } catch (error) {
+      console.error("Failed to delete notifications:", error);
+    } finally {
+      setDeletingAll(false);
+    }
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -404,28 +430,38 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
               {/* Footer */}
               {notifications.length > 0 && (
                 <div className="p-3 border-t border-gray-200 dark:border-gray-700">
-                  <button
-                    onClick={async () => {
-                      try {
-                        await fetch("/api/notifications", {
-                          method: "PATCH",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            markAllAsRead: true,
-                          }),
-                        });
-                      } catch (error) {
-                        console.error("Failed to mark all notifications as read:", error);
-                      }
-                      setNotifications((prev) =>
-                        prev.map((n) => ({ ...n, read: true }))
-                      );
-                      setUnreadCount(0);
-                    }}
-                    className="w-full text-sm text-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium py-2"
-                  >
-                    {t("header.markAllAsRead")}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={async () => {
+                        try {
+                          await fetch("/api/notifications", {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              markAllAsRead: true,
+                            }),
+                          });
+                        } catch (error) {
+                          console.error("Failed to mark all notifications as read:", error);
+                        }
+                        setNotifications((prev) =>
+                          prev.map((n) => ({ ...n, read: true }))
+                        );
+                        setUnreadCount(0);
+                      }}
+                      className="flex-1 text-sm text-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium py-2 border-r border-gray-200 dark:border-gray-700"
+                    >
+                      {t("header.markAllAsRead")}
+                    </button>
+                    <button
+                      onClick={deleteAllNotifications}
+                      disabled={deletingAll}
+                      className="flex-1 text-sm text-center text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium py-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      {deletingAll ? "Deleting..." : "Delete all"}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
