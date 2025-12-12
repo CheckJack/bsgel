@@ -1,80 +1,146 @@
 "use client";
 
-import { HeroSlider } from "@/components/layout/hero-slider";
+import { ChevronDown } from "lucide-react";
+import Image from "next/image";
 
 export default function ConceptPage() {
-  const slides = [
-    {
-      type: "image" as const,
-      src: "/306_Sunset_Red_Hands.jpg",
-      title: "Concept",
-      description: "The philosophy behind Biosculpture",
-    },
-  ];
-
   return (
     <>
-      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-[60vh]" />
-      <div className="min-h-screen bg-brand-white">
-
-      {/* Main Content Section */}
-      <section className="py-16 px-4">
-        <div className="container mx-auto max-w-4xl">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-medium mb-4 text-brand-black">Concept</h2>
-            <div className="w-24 h-1 bg-brand-champagne mx-auto"></div>
+      {/* Hero Video Section */}
+      <div className="relative w-full h-[calc(100vh-60px)] md:h-[calc(100vh-70px)] overflow-hidden">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+        >
+          <source src="/Primeiro tratar e depois embelezar..mp4" type="video/mp4" />
+        </video>
+        
+        {/* Text Overlay - Bottom Left - Aligned with Logo */}
+        <div className="absolute bottom-12 md:bottom-16 lg:bottom-20 left-0 right-0 z-10">
+          <div className="container mx-auto px-4">
+            <p className="text-white text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-light leading-relaxed">
+              Primeiro tratar<br />
+              e depois embelezar.
+            </p>
           </div>
-          <p className="text-lg font-light text-brand-black text-center leading-relaxed max-w-3xl mx-auto">
-            The Biosculpture concept is built on a foundation of health, quality, and artistry. 
-            We envision a world where beautiful nails and healthy nails are one and the same, 
-            achieved through innovative products and professional expertise.
+        </div>
+
+        {/* Scroll Indicator - Right Side */}
+        <div className="absolute bottom-12 md:bottom-16 lg:bottom-20 right-4 md:right-8 lg:right-16 z-10 flex flex-col items-center gap-2">
+          <span className="text-white text-sm md:text-base font-light uppercase tracking-wider">Scroll</span>
+          <ChevronDown className="w-6 h-6 md:w-8 md:h-8 text-white animate-bounce" />
+        </div>
+      </div>
+
+      {/* "O que significa Tratar" Section */}
+      <section 
+        className="relative w-full h-[600px] md:h-[700px] lg:h-[800px] flex items-center px-4 md:px-8 lg:px-16" 
+        style={{ backgroundColor: '#ddd6d0' }}
+      >
+        <div className="container mx-auto max-w-4xl">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium mb-8 md:mb-10 text-brand-black">
+            O que significa <span className="font-medium">"Tratar"</span>
+          </h2>
+          <p className="text-lg md:text-xl lg:text-2xl font-light text-brand-black leading-relaxed">
+            Antes de falar em cor, forma ou comprimento, a Terapeuta de unhas BIO observa a unha natural espessura, flexibilidade, quebras, descamação, manchas e até os hábitos diários da cliente.
           </p>
         </div>
       </section>
 
-      {/* Concept Details */}
-      <section className="py-16 px-4 bg-brand-sweet-bianca">
-        <div className="container mx-auto max-w-6xl">
-          <div className="grid md:grid-cols-2 gap-8">
-            <div>
-              <h3 className="text-2xl font-medium mb-4 text-brand-black">Our Vision</h3>
-              <p className="font-light text-brand-champagne leading-relaxed mb-4">
-                To be the leading provider of professional nail care solutions that prioritize 
-                natural nail health without compromising on aesthetic excellence.
-              </p>
+      {/* "O Protocolo" Section */}
+      <section 
+        className="relative w-full h-[600px] md:h-[700px] lg:h-[800px] bg-brand-white"
+      >
+        <div className="w-full h-full">
+          <div className="grid md:grid-cols-2 gap-0 h-full">
+            {/* Text Content - Left Side (50%) */}
+            <div className="px-4 md:px-8 lg:px-16 flex items-center">
+              <div>
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium mb-6 md:mb-8 text-brand-black">
+                  O Protocolo
+                </h2>
+                <p className="text-lg md:text-xl lg:text-2xl font-light text-brand-black leading-relaxed">
+                  No Conceito BIO, o tratamento é personalizado como uma "receita" para cada unha. A profissional escolhe bases, tratamentos ETHOS e cuidados de SPA específicos para fortalecer, equilibrar ou proteger, criando uma base saudável antes de qualquer construção ou cor.
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-2xl font-medium mb-4 text-brand-black">Our Mission</h3>
-              <p className="font-light text-brand-champagne leading-relaxed mb-4">
-                To empower nail professionals with superior products, comprehensive training, 
-                and ongoing support, enabling them to deliver exceptional results for their clients.
-              </p>
+            
+            {/* Image - Right Side (50%) */}
+            <div className="h-full w-full relative">
+              <Image 
+                src="/fdfvd.png" 
+                alt="O Protocolo - Base Gel" 
+                fill
+                className="object-cover"
+                unoptimized
+              />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Philosophy Section */}
-      <section className="py-16 px-4">
-        <div className="container mx-auto max-w-4xl">
-          <div className="text-center mb-8">
-            <h3 className="text-3xl font-medium mb-4 text-brand-black">Our Philosophy</h3>
+      {/* "De Tratamento" Section */}
+      <section 
+        className="relative w-full h-[600px] md:h-[700px] lg:h-[800px] bg-brand-white"
+      >
+        <div className="w-full h-full">
+          <div className="grid md:grid-cols-2 gap-0 h-full">
+            {/* Image - Left Side (50%) */}
+            <div className="h-full w-full relative">
+              <Image 
+                src="/_zx.png" 
+                alt="De Tratamento - Base Gel Products" 
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            </div>
+            
+            {/* Text Content - Right Side (50%) */}
+            <div className="px-4 md:px-8 lg:px-16 flex items-center">
+              <div>
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium mb-6 md:mb-8 text-brand-black">
+                  De Tratamento
+                </h2>
+                <p className="text-lg md:text-xl lg:text-2xl font-light text-brand-black leading-relaxed">
+                  Produtos que hidratam, endurecem ou amaciam as unhas, sempre com fórmulas veganas e sem ingredientes agressivos, pensados para manter a integridade da unha natural. O resultado é uma estrutura confortável e segura, ideal para quem usa gel com frequência ou tem unhas naturalmente sensíveis.
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="space-y-6 font-light text-lg text-brand-black leading-relaxed">
-            <p>
-              At the heart of Biosculpture lies a simple yet powerful philosophy: beauty and health 
-              should never be mutually exclusive. Every product we create, every training program we 
-              develop, and every relationship we build is guided by this principle.
-            </p>
-            <p>
-              We believe that professional nail care is an art form that requires both technical 
-              skill and creative vision. Our concept integrates cutting-edge technology with time-honored 
-              techniques, ensuring that every application is both safe and stunning.
+        </div>
+      </section>
+
+      {/* "O momento de Embelezar" Section */}
+      <section 
+        className="relative w-full h-[600px] md:h-[700px] lg:h-[800px] overflow-hidden"
+      >
+        {/* Background Image */}
+        <div className="absolute inset-0 w-full h-full">
+          <Image 
+            src="/efggaee.png" 
+            alt="O momento de Embelezar" 
+            fill
+            className="object-cover"
+            unoptimized
+          />
+        </div>
+        
+        {/* Semi-transparent Brown Overlay - Rectangle in Middle */}
+        <div className="absolute inset-0 flex items-center justify-center p-4 md:p-8 lg:p-16">
+          <div className="bg-[rgba(139,69,19,0.7)] md:bg-[rgba(139,69,19,0.75)] m-2 md:m-4 lg:m-6 p-12 md:p-16 lg:p-20 max-w-6xl md:max-w-7xl rounded-lg md:rounded-xl lg:rounded-2xl">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium mb-6 md:mb-8 text-white">
+              O momento de "Embelezar"
+            </h2>
+            <p className="text-lg md:text-xl lg:text-2xl font-light text-white leading-relaxed">
+              Só depois de a unha estar cuidada é que entra a parte estética: cor, brilho, comprimento e nail art. A construção, o alongamento e os detalhes artísticos são feitos em cima de uma base estável, o que ajuda a manter o resultado bonito durante mais tempo e reduz a necessidade de correções agressivas.
             </p>
           </div>
         </div>
       </section>
-      </div>
     </>
   );
 }

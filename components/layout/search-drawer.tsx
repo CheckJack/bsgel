@@ -243,7 +243,7 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                     <div className="mt-6 pt-6 border-t border-gray-700">
                       <Button
                         variant="outline"
-                        className="w-full border-gray-700 text-white hover:bg-gray-800"
+                        className="w-full border-gray-700 bg-gray-800/50 text-white hover:bg-gray-800"
                         onClick={handleViewAllResults}
                       >
                         View All Results ({products.length})
