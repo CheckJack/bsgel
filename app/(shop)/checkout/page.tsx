@@ -279,13 +279,13 @@ function CheckoutForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Shipping Information</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">Shipping Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">First Name *</label>
               <Input
@@ -347,7 +347,7 @@ function CheckoutForm() {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Postal Code *</label>
               <Input
@@ -398,10 +398,10 @@ function CheckoutForm() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Payment Information</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">Payment Information</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="border rounded-md p-4">
+          <div className="border rounded-md p-3 sm:p-4">
             <CardElement
               options={{
                 style: {
@@ -424,7 +424,7 @@ function CheckoutForm() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Coupon Code</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">Coupon Code</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {appliedCoupon ? (
@@ -488,24 +488,24 @@ function CheckoutForm() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Order Summary</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">Order Summary</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <div className="flex justify-between">
+          <div className="flex justify-between text-sm sm:text-base">
             <span>Subtotal</span>
             <span>{formatPrice(subtotal)}</span>
           </div>
           {appliedCoupon && (
-            <div className="flex justify-between text-green-600">
+            <div className="flex justify-between text-green-600 text-sm sm:text-base">
               <span>Discount ({appliedCoupon.code})</span>
               <span>-{formatPrice(parseFloat(appliedCoupon.discountAmount))}</span>
             </div>
           )}
-          <div className="flex justify-between">
+          <div className="flex justify-between text-sm sm:text-base">
             <span>Tax</span>
             <span>{formatPrice(tax)}</span>
           </div>
-          <div className="border-t pt-2 flex justify-between font-bold text-lg">
+          <div className="border-t pt-2 flex justify-between font-bold text-base sm:text-lg">
             <span>Total</span>
             <span>{formatPrice(total)}</span>
           </div>
@@ -550,36 +550,37 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-8">Checkout</h1>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 sm:mb-8">Checkout</h1>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
         {/* Left Container - Checkout Information */}
-        <div className="lg:pr-8">
+        <div className="lg:pr-8 order-2 lg:order-1">
           <Elements stripe={stripePromise}>
             <CheckoutForm />
           </Elements>
         </div>
 
         {/* Right Container - Product Photos and Info */}
-        <div className="lg:pl-8">
-          <Card className="sticky top-24">
+        <div className="lg:pl-8 order-1 lg:order-2">
+          <Card className="sticky top-20 lg:top-24">
             <CardHeader>
-              <CardTitle>Order Items</CardTitle>
+              <CardTitle className="text-lg sm:text-xl">Order Items</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {items.length === 0 ? (
-                  <p className="text-center text-gray-500 py-4">Your cart is empty</p>
+                  <p className="text-center text-gray-500 py-4 text-sm sm:text-base">Your cart is empty</p>
                 ) : (
                   items.map((item) => (
-                  <div key={item.id} className="flex gap-4 pb-6 border-b last:border-b-0 last:pb-0">
+                  <div key={item.id} className="flex gap-3 sm:gap-4 pb-4 sm:pb-6 border-b last:border-b-0 last:pb-0">
                     {/* Product Image */}
-                    <div className="relative w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
+                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
                       {item.product.image ? (
                         <Image
                           src={item.product.image}
                           alt={item.product.name}
                           fill
+                          sizes="(max-width: 640px) 80px, 96px"
                           className="object-contain"
                         />
                       ) : (
@@ -591,15 +592,15 @@ export default function CheckoutPage() {
                     
                     {/* Product Info */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-lg mb-1">{item.product.name}</h3>
+                      <h3 className="font-semibold text-base sm:text-lg mb-1 break-words">{item.product.name}</h3>
                       {item.product.description && (
-                        <p className="text-sm text-gray-600 line-clamp-2 mb-2">
+                        <p className="text-xs sm:text-sm text-gray-600 line-clamp-2 mb-2">
                           {item.product.description}
                         </p>
                       )}
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-500">Quantity: {item.quantity}</span>
-                        <span className="font-semibold">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0">
+                        <span className="text-xs sm:text-sm text-gray-500">Quantity: {item.quantity}</span>
+                        <span className="font-semibold text-sm sm:text-base">
                           {formatPrice(parseFloat(item.product.price) * item.quantity)}
                         </span>
                       </div>

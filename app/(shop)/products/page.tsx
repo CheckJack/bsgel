@@ -182,10 +182,10 @@ export default function ProductsPage() {
     <>
       <HeroSlider slides={slides} autoPlayInterval={5000} className="h-[400px]" />
       <div className="bg-brand-white min-h-screen">
-        <div className="container mx-auto px-4 py-12">
-          <div className="flex items-center justify-between mb-8">
-            <h1 className="text-4xl font-medium text-brand-black">Shop</h1>
-            <div className="flex items-center gap-4">
+        <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-medium text-brand-black">Shop</h1>
+            <div className="flex items-center gap-2 sm:gap-4">
               <Button
                 variant="outline"
                 onClick={() => setShowFilters(!showFilters)}
@@ -214,15 +214,16 @@ export default function ProductsPage() {
           </div>
 
           {/* Search and Category Filter */}
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="flex-1">
               <Input
                 placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full"
               />
             </div>
-            <div className="flex gap-2 overflow-x-auto pb-2">
+            <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
               <Button
                 variant={selectedCategory === null ? "default" : "outline"}
                 onClick={() => setSelectedCategory(null)}
@@ -245,8 +246,8 @@ export default function ProductsPage() {
 
           {/* Advanced Filters Panel */}
           {showFilters && (
-            <div className="bg-brand-white border border-brand-champagne/30 rounded-lg p-6 mb-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-brand-white border border-brand-champagne/30 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Price Range */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-brand-black">Price Range</label>
@@ -337,18 +338,18 @@ export default function ProductsPage() {
           )}
 
           {/* Sort and Results Count - Always Visible */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-6">
             {totalProducts > 0 && (
-              <div className="text-sm font-light text-brand-black">
+              <div className="text-xs sm:text-sm font-light text-brand-black">
                 Showing {((currentPage - 1) * 12) + 1} to {Math.min(currentPage * 12, totalProducts)} of {totalProducts} products
               </div>
             )}
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-brand-black">Sort:</label>
+              <label className="text-xs sm:text-sm font-medium text-brand-black">Sort:</label>
               <Select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="w-48"
+                className="w-full sm:w-48"
               >
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>

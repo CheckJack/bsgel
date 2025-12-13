@@ -257,14 +257,14 @@ export default function BioGelPage() {
       <section 
         ref={textSectionRef}
         id="our-funds"
-        className="relative w-full h-[600px] md:h-[700px] lg:h-[800px] bg-brand-white"
+        className="relative w-full h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px] xl:h-[800px] bg-brand-white"
       >
         <div className="w-full h-full flex items-center">
-          <div className="container mx-auto px-4 max-w-6xl">
+          <div className="container mx-auto px-4 sm:px-6 max-w-6xl">
             <div className="text-center">
               <TextGenerateEffect
                 words="BIO Gel represents our revolutionary approach to professional nail treatments, combining advanced gel technology with innovative cooling therapy. The treatment chills system delivers a unique therapeutic experience that soothes and revitalizes nails while providing exceptional durability and strength. Crafted for professionals who demand excellence, BIO Gel treatments deliver chip-resistant, long-lasting results that maintain their vibrant finish while nurturing your natural nails. Experience the perfect fusion of artistry, innovation, and therapeutic care with BIO Gel. #our-funds"
-                className="text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl text-brand-black leading-relaxed font-normal"
+                className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl text-brand-black leading-relaxed font-normal"
                 filter={true}
                 duration={0.5}
                 triggerOnScroll={true}
@@ -282,9 +282,9 @@ export default function BioGelPage() {
       </section>
       
       {/* BIO Gel Products Grid Section */}
-      <section ref={productsSectionRef} className="relative w-full min-h-screen bg-brand-white py-16">
-        <div className="container mx-auto px-4 max-w-7xl">
-          <h2 className="text-4xl md:text-5xl font-medium mb-12 text-center text-brand-black">
+      <section ref={productsSectionRef} className="relative w-full min-h-screen bg-brand-white py-12 sm:py-16">
+        <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-medium mb-8 sm:mb-12 text-center text-brand-black">
             BIO Gel Products
           </h2>
           

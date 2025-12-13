@@ -65,22 +65,22 @@ export default function BlogPage() {
 
   return (
     <>
-      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-[400px]" />
-      <div className="container mx-auto px-4 py-16">
+      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-[300px] sm:h-[400px]" />
+      <div className="container mx-auto px-4 sm:px-6 py-12 sm:py-16">
 
       {posts.length === 0 ? (
         <Card>
-          <CardContent className="p-12 text-center">
-            <p className="text-gray-600 dark:text-gray-400 mb-4 text-lg">
+          <CardContent className="p-8 sm:p-12 text-center">
+            <p className="text-gray-600 dark:text-gray-400 mb-4 text-base sm:text-lg">
               No blog posts available at the moment.
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-500">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-500">
               Check back soon for updates!
             </p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {posts.map((post) => (
             <Card key={post.id} className="hover:shadow-lg transition-shadow flex flex-col overflow-hidden">
               {post.image && (

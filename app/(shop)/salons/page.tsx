@@ -149,14 +149,14 @@ export default function FindSalonPage() {
   return (
     <div className="min-h-screen bg-brand-white">
       {/* Hero Section */}
-      <div className="bg-gradient-to-b from-brand-champagne/10 to-brand-white py-16 px-4">
+      <div className="bg-gradient-to-b from-brand-champagne/10 to-brand-white py-12 sm:py-16 px-4 sm:px-6">
         <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl md:text-5xl font-medium mb-4 text-brand-black">
+          <div className="text-center mb-6 sm:mb-8">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-medium mb-3 sm:mb-4 text-brand-black">
               Find Your Salon
             </h1>
-            <div className="w-24 h-1 bg-brand-champagne mx-auto mb-6"></div>
-            <p className="text-lg font-light text-brand-champagne max-w-2xl mx-auto">
+            <div className="w-24 h-1 bg-brand-champagne mx-auto mb-4 sm:mb-6"></div>
+            <p className="text-base sm:text-lg font-light text-brand-champagne max-w-2xl mx-auto px-4">
               Discover Bio Sculpture salons near you. Search by location, name, or filter by Bio
               Diamond salons.
             </p>
@@ -260,17 +260,17 @@ export default function FindSalonPage() {
             )}
           </div>
         ) : (
-          <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-400px)] min-h-[600px]">
+          <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 h-auto lg:h-[calc(100vh-400px)] min-h-[500px] lg:min-h-[600px]">
             {/* Left Side - Map (Larger) */}
-            <div className="flex-[2] lg:w-[70%] h-full min-h-[500px] lg:min-h-0">
+            <div className="flex-[2] lg:w-[70%] h-[400px] sm:h-[500px] lg:h-full lg:min-h-0">
               <div className="w-full h-full rounded-lg overflow-hidden border border-gray-300">
                 <SalonMap salons={filteredSalons} onMarkerClick={handleMarkerClick} />
               </div>
             </div>
 
             {/* Right Side - Salon List (Smaller) */}
-            <div className="flex-[1] lg:w-[30%] h-full overflow-y-auto">
-              <div className="space-y-4 pr-2 pb-4">
+            <div className="flex-[1] lg:w-[30%] h-auto lg:h-full lg:overflow-y-auto">
+              <div className="space-y-3 sm:space-y-4 pr-0 sm:pr-2 pb-4">
                 {filteredSalons.map((salon) => (
                   <SalonCard
                     key={salon.id}

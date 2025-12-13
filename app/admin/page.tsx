@@ -85,13 +85,13 @@ export default function AdminDashboardPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("dashboard.title")}</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">{t("dashboard.welcome")}</p>
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">{t("dashboard.title")}</h1>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">{t("dashboard.welcome")}</p>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
         <KPICard
           title={t("dashboard.totalSales")}
           value={stats.totalOrders.toLocaleString()}

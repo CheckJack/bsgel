@@ -329,12 +329,12 @@ export default function AdminOrdersPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("orders.title")}</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">{t("orders.title")}</h1>
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
             {t("orders.manageOrders")}
           </p>
         </div>
@@ -345,7 +345,7 @@ export default function AdminOrdersPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -489,11 +489,11 @@ export default function AdminOrdersPage() {
 
       {/* Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <table className="w-full min-w-[900px]">
             <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                   <button
                     onClick={() => handleSort("id")}
                     className="flex items-center hover:text-gray-900 dark:hover:text-gray-100"
@@ -502,7 +502,7 @@ export default function AdminOrdersPage() {
                     {getSortIcon("id")}
                   </button>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                   <button
                     onClick={() => handleSort("date")}
                     className="flex items-center hover:text-gray-900 dark:hover:text-gray-100"
@@ -511,7 +511,7 @@ export default function AdminOrdersPage() {
                     {getSortIcon("date")}
                   </button>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                   <button
                     onClick={() => handleSort("customer")}
                     className="flex items-center hover:text-gray-900 dark:hover:text-gray-100"
@@ -520,10 +520,10 @@ export default function AdminOrdersPage() {
                     {getSortIcon("customer")}
                   </button>
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 text-center text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                   {t("orders.items")}
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 text-center text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                   <button
                     onClick={() => handleSort("total")}
                     className="flex items-center justify-center hover:text-gray-900 dark:hover:text-gray-100"
@@ -532,7 +532,7 @@ export default function AdminOrdersPage() {
                     {getSortIcon("total")}
                   </button>
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 text-center text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                   <button
                     onClick={() => handleSort("status")}
                     className="flex items-center justify-center hover:text-gray-900 dark:hover:text-gray-100"
@@ -541,7 +541,7 @@ export default function AdminOrdersPage() {
                     {getSortIcon("status")}
                   </button>
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                   {t("common.actions")}
                 </th>
               </tr>
@@ -559,9 +559,9 @@ export default function AdminOrdersPage() {
                     key={order.id}
                     className={index % 2 === 0 ? "bg-white dark:bg-gray-800" : "bg-gray-50 dark:bg-gray-900"}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-mono text-gray-900 dark:text-gray-100">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <span className="text-xs sm:text-sm font-mono text-gray-900 dark:text-gray-100">
                           #{order.id.slice(0, 8)}
                         </span>
                         <button
@@ -570,41 +570,41 @@ export default function AdminOrdersPage() {
                           title={t("orders.copyOrderId")}
                         >
                           {copiedOrderId === order.id ? (
-                            <Check className="h-4 w-4 text-green-500" />
+                            <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                           ) : (
-                            <Copy className="h-4 w-4" />
+                            <Copy className="h-3 w-3 sm:h-4 sm:w-4" />
                           )}
                         </button>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                       {new Date(order.createdAt).toLocaleDateString("en-GB", {
                         day: "numeric",
                         month: "short",
                         year: "numeric",
                       })}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                      <div className="text-xs sm:text-sm">
                         <div className="font-medium text-gray-900 dark:text-gray-100">
                           {order.user.name || "N/A"}
                         </div>
-                        <div className="text-gray-500 dark:text-gray-400 text-xs">
+                        <div className="text-gray-500 dark:text-gray-400 text-xs truncate max-w-[150px]">
                           {order.user.email}
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600 dark:text-gray-400">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-center text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                       {order.items.length}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-900 dark:text-gray-100">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-center text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">
                       {formatPrice(parseFloat(order.total))}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-center">
                       <select
                         value={order.status}
                         onChange={(e) => handleStatusUpdate(order.id, e.target.value as OrderStatus)}
-                        className={`text-xs font-medium px-3 py-1 rounded-full border-0 ${getStatusColor(order.status)} focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer`}
+                        className={`text-xs font-medium px-2 sm:px-3 py-1 rounded-full border-0 ${getStatusColor(order.status)} focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer`}
                       >
                         <option value="PENDING">{t("orders.pending")}</option>
                         <option value="PROCESSING">{t("orders.processing")}</option>
@@ -613,12 +613,12 @@ export default function AdminOrdersPage() {
                         <option value="CANCELLED">{t("orders.cancelled")}</option>
                       </select>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right">
                       <Link href={`/admin/orders/${order.id}`}>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="bg-blue-500 hover:bg-blue-600 text-white border-blue-500"
+                          className="bg-blue-500 hover:bg-blue-600 text-white border-blue-500 text-xs sm:text-sm px-2 sm:px-3"
                         >
                           {t("common.view")}
                         </Button>

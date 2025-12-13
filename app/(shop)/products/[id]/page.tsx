@@ -154,8 +154,8 @@ export default function ProductDetailPage() {
 
   return (
     <div className="bg-brand-white min-h-screen">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
+      <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16">
           {/* Left Side - All Images in Square Format (Scrollable) */}
           <div className="space-y-6">
             {images.length > 0 ? (
@@ -200,7 +200,7 @@ export default function ProductDetailPage() {
               )}
 
               {/* Product Heading */}
-              <h1 className="text-3xl lg:text-4xl font-medium text-brand-black mb-4">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-medium text-brand-black mb-4">
                 {product.name}
               </h1>
 
@@ -219,22 +219,22 @@ export default function ProductDetailPage() {
               ) : null}
 
               {/* Product Name/Type */}
-              <h2 className="text-xl font-medium text-brand-black mb-4">
+              <h2 className="text-lg sm:text-xl font-medium text-brand-black mb-4">
                 {product.name.split(' ').slice(-2).join(' ')}
               </h2>
 
               {/* Description */}
               {product.description && (
-                <p className="text-base text-gray-700 mb-8 whitespace-pre-line leading-relaxed">
+                <p className="text-sm sm:text-base text-gray-700 mb-6 sm:mb-8 whitespace-pre-line leading-relaxed">
                   {product.description}
                 </p>
               )}
 
               {/* Price and Add to Cart Section */}
               <Card className="border-gray-200 bg-brand-white">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4 mb-6">
-                    <label htmlFor="quantity" className="font-medium text-brand-black">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+                    <label htmlFor="quantity" className="font-medium text-brand-black text-sm sm:text-base">
                       Quantity:
                     </label>
                     <div className="flex items-center gap-2">
@@ -243,7 +243,7 @@ export default function ProductDetailPage() {
                         size="icon"
                         onClick={() => setQuantity(Math.max(1, quantity - 1))}
                         disabled={quantity <= 1}
-                        className="border-brand-champagne text-brand-champagne hover:bg-brand-champagne hover:text-brand-white"
+                        className="border-brand-champagne text-brand-champagne hover:bg-brand-champagne hover:text-brand-white h-9 w-9 sm:h-10 sm:w-10"
                       >
                         -
                       </Button>
@@ -253,33 +253,33 @@ export default function ProductDetailPage() {
                         min="1"
                         value={quantity}
                         onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-20 text-center border-gray-200"
+                        className="w-20 text-center border-gray-200 text-sm sm:text-base"
                       />
                       <Button
                         variant="outline"
                         size="icon"
                         onClick={() => setQuantity(quantity + 1)}
-                        className="border-brand-champagne text-brand-champagne hover:bg-brand-champagne hover:text-brand-white"
+                        className="border-brand-champagne text-brand-champagne hover:bg-brand-champagne hover:text-brand-white h-9 w-9 sm:h-10 sm:w-10"
                       >
                         +
                       </Button>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between mb-6 pt-6 border-t border-gray-100">
-                    <span className="text-lg font-medium text-brand-black">Total:</span>
-                    <span className="text-3xl font-semibold text-brand-black">
+                  <div className="flex items-center justify-between mb-4 sm:mb-6 pt-4 sm:pt-6 border-t border-gray-100">
+                    <span className="text-base sm:text-lg font-medium text-brand-black">Total:</span>
+                    <span className="text-2xl sm:text-3xl font-semibold text-brand-black">
                       {formatPrice(parseFloat(product.price) * quantity)}
                     </span>
                   </div>
                   <Button
-                    className="w-full bg-brand-black hover:bg-brand-black/90 text-brand-white py-6 text-lg font-medium rounded"
+                    className="w-full bg-brand-black hover:bg-brand-black/90 text-brand-white py-4 sm:py-6 text-base sm:text-lg font-medium rounded"
                     size="lg"
                     onClick={handleAddToCart}
                     disabled={isAdding}
                   >
                     {isAdding ? "Adding..." : "Add to Cart"}
                   </Button>
-                  <div className="flex flex-wrap items-center justify-center gap-2 mt-6 pt-6 border-t border-gray-100">
+                  <div className="flex flex-wrap items-center justify-center gap-2 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-100">
                     <Image
                       src="/maestro-61c41725.svg"
                       alt="Maestro"

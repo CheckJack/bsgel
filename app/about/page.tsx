@@ -80,9 +80,9 @@ function RotatingWordsSection() {
       >
         <source src="/dssfvszvx.mp4" type="video/mp4" />
       </video>
-      <div className="relative z-10 text-center">
-        <div className="text-7xl md:text-8xl lg:text-9xl font-medium text-brand-white" style={{ fontFamily: 'var(--font-jost), sans-serif' }}>
-          <span className="inline-block relative min-w-[400px] md:min-w-[500px] lg:min-w-[600px] h-[1.2em]">
+      <div className="relative z-10 text-center px-4">
+        <div className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl xl:text-9xl font-medium text-brand-white" style={{ fontFamily: 'var(--font-jost), sans-serif' }}>
+          <span className="inline-block relative min-w-[200px] sm:min-w-[300px] md:min-w-[400px] lg:min-w-[500px] xl:min-w-[600px] h-[1.2em]">
             <span
               key={currentIndex}
               className="absolute inset-0 flex items-center justify-center transition-opacity duration-1000 ease-in-out"
@@ -114,9 +114,9 @@ export default function AboutPage() {
       <div className="min-h-screen bg-brand-white">
 
       {/* Mission Section */}
-      <section className="py-28 px-4 flex items-center">
+      <section className="py-16 sm:py-20 md:py-28 px-4 sm:px-6 flex items-center">
         <div className="container mx-auto w-full">
-          <p className="text-2xl font-light text-brand-black text-center leading-relaxed w-full px-8">
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl font-light text-brand-black text-center leading-relaxed w-full px-4 sm:px-6 md:px-8">
             Concentrating solely on gel systems and nail related care since its founding in 1988. 
             Bio Sculpture has become a global powerhouse through its extensive brand portfolio. Products are 
             available for professional and consumer use. Bio Sculpture adheres to a strict channel exclusivity 
@@ -128,15 +128,15 @@ export default function AboutPage() {
       </section>
 
       {/* Product Lines Section */}
-      <section className="py-16 px-4">
-        <div className="container mx-auto mb-8">
-          <h2 className="text-4xl font-medium text-brand-black text-left">Our Product Lines</h2>
+      <section className="py-12 sm:py-16 px-4 sm:px-6">
+        <div className="container mx-auto mb-6 sm:mb-8">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium text-brand-black text-left">Our Product Lines</h2>
         </div>
         <div className="container mx-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
             {productLines.map((category, index) => {
               const content = (
-                <div className="relative w-full h-[400px] overflow-hidden group cursor-pointer">
+                <div className="relative w-full h-[250px] sm:h-[300px] md:h-[400px] overflow-hidden group cursor-pointer">
                   <img
                     src={category.image}
                     alt={category.text}
@@ -203,12 +203,12 @@ export default function AboutPage() {
       </section>
 
       {/* Bespoke Path Section */}
-      <section className="pt-16 pb-32 px-4">
+      <section className="pt-12 sm:pt-16 pb-20 sm:pb-32 px-4 sm:px-6">
         <div className="container mx-auto w-full">
-          <div className="grid md:grid-cols-2 gap-12 items-center px-8">
+          <div className="grid md:grid-cols-2 gap-8 sm:gap-12 items-center px-4 sm:px-6 md:px-8">
             <div>
-              <h2 className="text-4xl font-medium mb-6 text-brand-black">THE BESPOKE PATH TO HEALTHY NAILS</h2>
-              <p className="text-lg font-light text-brand-black leading-relaxed">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-4 sm:mb-6 text-brand-black">THE BESPOKE PATH TO HEALTHY NAILS</h2>
+              <p className="text-base sm:text-lg font-light text-brand-black leading-relaxed">
                 As the bespoke path to nail perfection, we are dedicated to providing nail technicians with a premium system and quality education. Through our comprehensive training programs, nail techs are equipped with the knowledge to analyse each client's unique nail type and condition, delivering prescriptive treatments that promote optimal nail health. We go beyond traditional overlays by offering techniques that create long lasting results, customised to suit the client's lifestyle. With our range of base gels, colours, top coats, and builder gels, nail techs can achieve improved natural nail condition and extended lifespan of their work.
               </p>
             </div>
@@ -216,7 +216,7 @@ export default function AboutPage() {
               <img 
                 src="/Training_1.webp" 
                 alt="Bio Sculpture training" 
-                className="w-full h-[500px] rounded-lg object-cover"
+                className="w-full h-[300px] sm:h-[400px] md:h-[500px] rounded-lg object-cover"
               />
             </div>
           </div>
@@ -227,19 +227,19 @@ export default function AboutPage() {
       <RotatingWordsSection />
 
       {/* Story Section */}
-      <section className="pt-32 pb-32 px-4">
+      <section className="pt-20 sm:pt-32 pb-20 sm:pb-32 px-4 sm:px-6">
         <div className="container mx-auto w-full">
-          <div className="grid md:grid-cols-2 gap-12 items-center px-8">
-            <div className="relative">
+          <div className="grid md:grid-cols-2 gap-8 sm:gap-12 items-center px-4 sm:px-6 md:px-8">
+            <div className="relative order-2 md:order-1">
               <img 
                 src="/306_Sunset_Red_Hands.jpg" 
                 alt="Bio Sculpture story" 
-                className="w-full h-[500px] rounded-lg object-cover"
+                className="w-full h-[300px] sm:h-[400px] md:h-[500px] rounded-lg object-cover"
               />
             </div>
-            <div>
-              <h2 className="text-4xl font-medium mb-6 text-brand-black uppercase">OUR STORY</h2>
-              <div className="space-y-6 font-light text-lg text-brand-black leading-relaxed">
+            <div className="order-1 md:order-2">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-4 sm:mb-6 text-brand-black uppercase">OUR STORY</h2>
+              <div className="space-y-4 sm:space-y-6 font-light text-base sm:text-lg text-brand-black leading-relaxed">
                 <p>
                   Bio Sculpture has been a trusted name in professional nail care for years, 
                   building a reputation for quality, innovation, and commitment to healthy nail practices. 
@@ -265,7 +265,7 @@ export default function AboutPage() {
       </section>
 
       {/* Contact CTA Section */}
-      <section className="relative py-16 px-4 w-full min-h-[400px] overflow-hidden">
+      <section className="relative py-12 sm:py-16 px-4 sm:px-6 w-full min-h-[300px] sm:min-h-[400px] overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img 
             src="/123_Tracey_Wide - Copy.jpg" 
@@ -274,21 +274,21 @@ export default function AboutPage() {
           />
           <div className="absolute inset-0 bg-black/30"></div>
         </div>
-        <div className="container mx-auto max-w-4xl text-center relative z-10">
-          <h2 className="text-4xl font-medium mb-4 text-brand-white">Get in Touch</h2>
-          <p className="text-lg font-light text-brand-white mb-8">
+        <div className="container mx-auto max-w-4xl text-center relative z-10 px-4 sm:px-6">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-3 sm:mb-4 text-brand-white">Get in Touch</h2>
+          <p className="text-base sm:text-lg font-light text-brand-white mb-6 sm:mb-8">
             Have questions or want to learn more about our products and training programs?
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
             <a
               href="/salons"
-              className="px-8 py-3 bg-brand-black text-brand-white border-2 border-brand-black hover:bg-brand-white hover:text-brand-black transition-colors font-medium rounded"
+              className="px-6 sm:px-8 py-2.5 sm:py-3 bg-brand-black text-brand-white border-2 border-brand-black hover:bg-brand-white hover:text-brand-black transition-colors font-medium rounded text-sm sm:text-base"
             >
               Find a Salon
             </a>
             <a
               href="/products"
-              className="px-8 py-3 bg-brand-white text-brand-black border-2 border-brand-black hover:bg-brand-black hover:text-brand-white hover:border-brand-black transition-colors font-medium rounded"
+              className="px-6 sm:px-8 py-2.5 sm:py-3 bg-brand-white text-brand-black border-2 border-brand-black hover:bg-brand-black hover:text-brand-white hover:border-brand-black transition-colors font-medium rounded text-sm sm:text-base"
             >
               Explore Products
             </a>

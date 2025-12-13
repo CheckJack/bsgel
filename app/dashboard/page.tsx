@@ -92,21 +92,21 @@ export default function DashboardPage() {
   const hasConfirmedCertification = certification === "INITIATION" || certification === "PROFESSIONAL";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header Section */}
-      <div className="mb-8">
-        <div className="flex justify-between items-start">
+      <div className="mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
           <div>
-            <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
               Welcome back, {session.user?.name || session.user?.email?.split("@")[0] || "User"}!
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 text-lg">
+            <p className="text-gray-600 dark:text-gray-400 text-base sm:text-lg">
               Here&apos;s an overview of your account activity
             </p>
           </div>
-          <Link href="/dashboard/rewards">
-            <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all">
-              <Award className="h-5 w-5 mr-2" />
+          <Link href="/dashboard/rewards" className="self-start sm:self-auto">
+            <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all text-sm sm:text-base">
+              <Award className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
               My Rewards
             </Button>
           </Link>
@@ -125,34 +125,34 @@ export default function DashboardPage() {
         <Link href="/dashboard/rewards">
           <Card className="relative overflow-hidden border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-300 hover:shadow-xl group cursor-pointer bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950">
             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-400/10 to-indigo-400/10 rounded-full -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-500"></div>
-            <CardContent className="relative p-8">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-6">
-                  <div className="p-5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-xl group-hover:scale-105 transition-transform duration-300">
-                    <Coins className="h-10 w-10 text-white" />
+            <CardContent className="relative p-4 sm:p-6 md:p-8">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6">
+                <div className="flex items-center gap-4 sm:gap-6">
+                  <div className="p-3 sm:p-4 md:p-5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-xl group-hover:scale-105 transition-transform duration-300">
+                    <Coins className="h-6 w-6 sm:h-8 sm:w-8 md:h-10 md:w-10 text-white" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 uppercase tracking-wide">Rewards Balance</p>
-                    <h2 className="text-5xl font-bold text-gray-900 dark:text-white mb-1">
+                    <p className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1 sm:mb-2 uppercase tracking-wide">Rewards Balance</p>
+                    <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-1">
                       {pointsData.pointsBalance.toLocaleString()}
                     </h2>
-                    <div className="flex items-center gap-4 mt-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2">
                       {pointsData.pointsThisMonth > 0 && (
-                        <span className="text-sm text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
-                          <TrendingUp className="h-4 w-4" />
+                        <span className="text-xs sm:text-sm text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
                           +{pointsData.pointsThisMonth.toLocaleString()} this month
                         </span>
                       )}
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                      <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                         Lifetime: {pointsData.totalEarnings.toLocaleString()} pts
                       </span>
                     </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg group-hover:shadow-xl transition-all px-6 py-6 text-base">
+                <div className="text-left sm:text-right w-full sm:w-auto">
+                  <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg group-hover:shadow-xl transition-all px-4 sm:px-6 py-3 sm:py-4 md:py-6 text-sm sm:text-base w-full sm:w-auto">
                     Redeem Rewards
-                    <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 ml-2 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </div>
               </div>
@@ -163,7 +163,7 @@ export default function DashboardPage() {
 
       {/* Account Statistics - Modern Design */}
       {(hasConfirmedCertification || !isPendingCertification) && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
           <Card className="hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -223,16 +223,16 @@ export default function DashboardPage() {
       {/* Recent Orders - Always visible */}
       {recentOrders.length > 0 && (
         <div>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Recent Orders</h2>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">Recent Orders</h2>
             <Link href="/dashboard/orders">
-              <Button variant="outline" className="hover:bg-gray-100 dark:hover:bg-gray-800">
+              <Button variant="outline" className="hover:bg-gray-100 dark:hover:bg-gray-800 text-sm sm:text-base w-full sm:w-auto">
                 View All
-                <ArrowRight className="h-4 w-4 ml-2" />
+                <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-2" />
               </Button>
             </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {recentOrders.map((order) => (
               <Card key={order.id} className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-l-4 border-l-blue-500">
                 <CardContent className="p-5">

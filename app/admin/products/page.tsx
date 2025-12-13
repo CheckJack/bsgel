@@ -522,11 +522,11 @@ export default function AdminProductsPage() {
   }
 
   return (
-    <div className="p-6 min-h-screen">
+    <div className="p-4 sm:p-6 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("products.title")}</h1>
-        <div className="text-sm text-gray-600 dark:text-gray-400">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 sm:mb-6 gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">{t("products.title")}</h1>
+        <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
           {t("sidebar.dashboard")} <span className="mx-2">&gt;</span> {t("sidebar.ecommerce")}{" "}
           <span className="mx-2">&gt;</span> {t("products.title")}
         </div>
@@ -666,11 +666,11 @@ export default function AdminProductsPage() {
       {/* Product Table */}
       <Card className="bg-white dark:bg-gray-800 overflow-hidden">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-12">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider w-12">
                     <input
                       type="checkbox"
                       checked={
@@ -681,19 +681,19 @@ export default function AdminProductsPage() {
                       className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                     />
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     {t("products.product")}
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     {t("products.productId")}
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     {t("products.price")}
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     {t("products.startDate")}
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     {t("common.actions")}
                   </th>
                 </tr>
@@ -719,7 +719,7 @@ export default function AdminProductsPage() {
                         }`}
                       >
                         {/* Checkbox Column */}
-                        <td className="px-6 py-4">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4">
                           <input
                             type="checkbox"
                             checked={selectedProducts.has(product.id)}
@@ -732,15 +732,15 @@ export default function AdminProductsPage() {
                           />
                         </td>
                         {/* Product Column */}
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4">
+                          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                            <div className="relative w-10 h-10 sm:w-14 sm:h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0">
                               {product.image ? (
                                 <Image
                                   src={product.image}
                                   alt={product.name}
                                   fill
-                                  sizes="56px"
+                                  sizes="(max-width: 640px) 40px, 56px"
                                   className="object-cover"
                                 />
                               ) : (
@@ -750,7 +750,7 @@ export default function AdminProductsPage() {
                               )}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">
+                              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">
                                 {product.name}
                               </p>
                             </div>
@@ -758,26 +758,26 @@ export default function AdminProductsPage() {
                         </td>
 
                         {/* Product ID */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-gray-900 dark:text-gray-100">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                          <span className="text-xs sm:text-sm text-gray-900 dark:text-gray-100">
                             {getShortProductId(product.id)}
                           </span>
                         </td>
 
                         {/* Price */}
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                           <div className="flex flex-col">
                             {product.salePrice ? (
                               <>
-                                <span className="text-sm text-gray-400 dark:text-gray-500 line-through">
+                                <span className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 line-through">
                                   {formatPrice(product.price)}
                                 </span>
-                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">
                                   {formatPrice(product.salePrice)}
                                 </span>
                               </>
                             ) : (
-                              <span className="text-sm text-gray-900 dark:text-gray-100">
+                              <span className="text-xs sm:text-sm text-gray-900 dark:text-gray-100">
                                 {formatPrice(product.price)}
                               </span>
                             )}
@@ -785,15 +785,15 @@ export default function AdminProductsPage() {
                         </td>
 
                         {/* Start Date */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-gray-900 dark:text-gray-100">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                          <span className="text-xs sm:text-sm text-gray-900 dark:text-gray-100">
                             {formatDate(product.createdAt)}
                           </span>
                         </td>
 
                         {/* Actions */}
-                        <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center gap-2">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-1 sm:gap-2">
                             <Link href={`/admin/products/${product.id}?${new URLSearchParams({
                               ...(searchQuery && { search: searchQuery }),
                               ...(categoryFilter && { category: categoryFilter }),

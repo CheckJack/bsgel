@@ -255,22 +255,22 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
+    <div className="flex flex-col md:flex-row h-screen w-full overflow-hidden">
       {/* Left Container - Image */}
-      <div className="w-1/2 h-full relative hidden md:block">
+      <div className="w-full md:w-1/2 h-48 md:h-full relative flex-shrink-0">
         <Image
           src="/328 Peach Pitstop - hand and product (5).jpg"
           alt="Bio Sculpture Nail Products"
           fill
           className="object-cover"
           priority
-          sizes="50vw"
+          sizes="(max-width: 768px) 100vw, 50vw"
         />
       </div>
 
       {/* Right Container - Login/Register Form */}
-      <div className="w-full md:w-1/2 h-full flex items-center justify-center px-4 bg-white overflow-y-auto">
-        <Card className="w-full max-w-md my-8">
+      <div className="w-full md:w-1/2 h-full flex items-center justify-center px-4 sm:px-6 bg-white overflow-y-auto">
+        <Card className="w-full max-w-md my-4 sm:my-8">
           <CardHeader>
             <CardTitle>{isRegisterMode ? "Create Account" : "Sign In"}</CardTitle>
             <CardDescription>
