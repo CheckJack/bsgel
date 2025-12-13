@@ -19,7 +19,9 @@
     "create-admin": "node scripts/create-admin.js",
     "create-admin:quick": "node scripts/create-admin-quick.js",
     "make-admin": "node scripts/make-admin.js",
-    "import-products": "node scripts/import-products-from-csv.js"
+    "import-products": "node scripts/import-products-from-csv.js",
+    "export-products": "node scripts/export-products.js",
+    "import-products:json": "node scripts/import-products.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",
