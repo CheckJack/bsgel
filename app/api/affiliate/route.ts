@@ -71,7 +71,12 @@ export async function GET(req: Request) {
       _sum: { amount: true },
     })
 
-    const affiliateLink = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/?ref=${affiliate.affiliateCode}`
+    // Use NEXTAUTH_URL in production, fallback only for development
+    const baseUrl = process.env.NEXTAUTH_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3000')
+    if (!baseUrl && process.env.NODE_ENV === 'production') {
+      console.error('NEXTAUTH_URL is required in production environment')
+    }
+    const affiliateLink = `${baseUrl}/?ref=${affiliate.affiliateCode}`
 
     // Calculate commission rate dynamically from points configuration
     let commissionRate = 0

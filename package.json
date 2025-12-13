@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p ${PORT:-3000}",
+    "start:prod": "NODE_ENV=production next start -p ${PORT:-3000}",
     "lint": "next lint",
     "db:push": "echo '⚠️  WARNING: db:push can cause data loss! Use migrations instead: npx prisma migrate dev' && exit 1",
     "db:migrate": "node scripts/safe-migrate.js",
