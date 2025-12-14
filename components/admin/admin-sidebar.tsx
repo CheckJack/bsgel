@@ -31,7 +31,9 @@ import {
   Gift,
   Settings as SettingsIcon,
   ClipboardList,
-  Star
+  Star,
+  Mail,
+  Calendar
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -158,6 +160,12 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
               badge: null,
             },
             {
+              title: "Email Campaigns",
+              href: "/admin/email-campaigns",
+              icon: Mail,
+              badge: null,
+            },
+            {
               title: t("sidebar.notifications"),
               href: "/admin/notifications",
               icon: Bell,
@@ -257,6 +265,31 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
             },
           ],
         },
+        {
+          title: "Training",
+          icon: BookOpen,
+          badge: null,
+          children: [
+            {
+              title: "Training Programs",
+              href: "/admin/trainings",
+              icon: BookOpen,
+              badge: null,
+            },
+            {
+              title: "Sessions",
+              href: "/admin/trainings/sessions",
+              icon: Calendar,
+              badge: null,
+            },
+            {
+              title: "Bookings",
+              href: "/admin/trainings/bookings",
+              icon: ClipboardList,
+              badge: null,
+            },
+          ],
+        },
       ],
     },
     {
@@ -275,7 +308,48 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
 
   const isItemActive = (item: NavItem): boolean => {
     if (item.href) {
-      return pathname === item.href || (item.href !== "/admin" && pathname?.startsWith(item.href + "/"));
+      // Exact match
+      if (pathname === item.href) {
+        return true;
+      }
+      
+      // For items with children, check if any child is active first
+      if (item.children && item.children.length > 0) {
+        // If a child is active, the parent should be active too (for dropdown highlighting)
+        const hasActiveChild = item.children.some((child) => {
+          if (!child.href) return false;
+          // Exact match with child
+          if (pathname === child.href) return true;
+          // Check if pathname is a sub-path of this child
+          if (pathname?.startsWith(child.href + "/")) {
+            // Make sure it's not matching another sibling child's path
+            const otherChildren = item.children.filter((c) => c.href && c.href !== child.href);
+            const matchesSibling = otherChildren.some((sibling) => 
+              sibling.href && pathname?.startsWith(sibling.href + "/")
+            );
+            // Only active if it matches this child and not a sibling
+            return !matchesSibling;
+          }
+          return false;
+        });
+        
+        if (hasActiveChild) {
+          return true;
+        }
+        
+        // If no child matches, check if it's a direct sub-path of parent (not a child's path)
+        if (pathname?.startsWith(item.href + "/")) {
+          // Make sure it's not matching any child's path
+          const matchesAnyChild = item.children.some((child) => 
+            child.href && pathname?.startsWith(child.href + "/")
+          );
+          // Only active if it's a sub-path of parent but not a child
+          return !matchesAnyChild;
+        }
+      } else {
+        // For items without children, use startsWith for sub-pages
+        return item.href !== "/admin" && pathname?.startsWith(item.href + "/");
+      }
     }
     if (item.children) {
       return item.children.some((child) => isItemActive(child));
@@ -414,7 +488,28 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
                         <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-gray-700 pl-2">
                           {item.children!.map((child) => {
                             const ChildIcon = child.icon;
-                            const isChildActive = pathname === child.href || (child.href !== "/admin" && pathname?.startsWith(child.href + "/"));
+                            // More precise matching for child items
+                            let isChildActive = false;
+                            if (child.href) {
+                              // Exact match
+                              if (pathname === child.href) {
+                                isChildActive = true;
+                              } else if (pathname?.startsWith(child.href + "/")) {
+                                // Check if any sibling has a more specific path that matches
+                                const otherSiblings = item.children!.filter((c) => c.href && c.href !== child.href);
+                                const hasMoreSpecificMatch = otherSiblings.some((sibling) => {
+                                  if (!sibling.href) return false;
+                                  // Check if sibling's path is longer and matches the current pathname
+                                  // This means the sibling is more specific (e.g., /admin/trainings/bookings vs /admin/trainings)
+                                  if (sibling.href.length > child.href.length) {
+                                    return pathname === sibling.href || pathname?.startsWith(sibling.href + "/");
+                                  }
+                                  return false;
+                                });
+                                // Only active if no sibling has a more specific match
+                                isChildActive = !hasMoreSpecificMatch;
+                              }
+                            }
                             
                             return (
                               <Link

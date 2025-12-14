@@ -237,7 +237,7 @@ export function ChatWidget() {
       {/* Floating Button */}
       <button
         onClick={handleOpen}
-        className="z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-black text-white shadow-lg transition-all hover:bg-gray-900 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 relative"
+        className="z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-[#857D71] text-white shadow-lg transition-all hover:bg-[#6d685f] hover:scale-110 focus:outline-none focus:ring-2 focus:ring-[#857D71] focus:ring-offset-2 relative"
         style={{ 
           position: 'fixed',
           bottom: '24px',
@@ -267,14 +267,14 @@ export function ChatWidget() {
           }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-black text-white p-3 sm:p-4 rounded-t-lg sm:rounded-t-lg">
+          <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-[#857D71] text-white p-3 sm:p-4 rounded-t-lg sm:rounded-t-lg">
             <div className="flex-1 min-w-0 pr-2">
               <h3 className="font-semibold text-sm sm:text-base">Chat with us</h3>
               <p className="text-xs text-gray-300 hidden sm:block">We&apos;ll respond as soon as possible</p>
             </div>
             <button
               onClick={handleClose}
-              className="p-1 hover:bg-gray-900 rounded transition-colors flex-shrink-0"
+              className="p-1 hover:bg-[#6d685f] rounded transition-colors flex-shrink-0"
               aria-label="Close chat"
             >
               <X className="h-5 w-5" />
@@ -349,7 +349,7 @@ export function ChatWidget() {
               <Button
                 type="submit"
                 disabled={!newMessage.trim() || isSending}
-                className="bg-black hover:bg-gray-900 text-white px-3 sm:px-4 h-[38px] sm:h-auto flex-shrink-0"
+                className="bg-[#857D71] hover:bg-[#6d685f] text-white px-3 sm:px-4 h-[38px] sm:h-auto flex-shrink-0"
               >
                 {isSending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

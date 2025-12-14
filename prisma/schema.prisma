@@ -71,6 +71,7 @@ model User {
   pointsRedemptions  PointsRedemption[]
   affiliateReferral  AffiliateReferral?  @relation("ReferredUser")
   adminLogs          AdminLog[]          @relation("AdminLogs")
+  trainingBookings   TrainingBooking[]
 
   @@index([certificationId])
 }
@@ -116,6 +117,7 @@ model Product {
   cartItems     CartItem[]
   orderItems    OrderItem[]
   reviews       ProductReview[]
+  trainingPrograms TrainingProgramProduct[]
 }
 
 model ProductSubcategory {
@@ -384,6 +386,15 @@ enum SocialMediaPostStatus {
   PUBLISHED
 }
 
+enum EmailCampaignStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  SCHEDULED
+  SENT
+}
+
 enum SalonStatus {
   PENDING_REVIEW
   APPROVED
@@ -462,6 +473,30 @@ model SocialMediaPost {
   @@index([scheduledDate])
   @@index([createdAt])
   @@index([assignedReviewerId])
+}
+
+model EmailCampaign {
+  id                 String              @id @default(cuid())
+  subject            String              @db.Text
+  content            String              @db.Text // HTML email content
+  pdfUrl             String?             // URL to uploaded PDF file (optional)
+  scheduledDate      DateTime?           // When the email should be sent (null = not scheduled)
+  status             EmailCampaignStatus @default(DRAFT)
+  reviewComments     String?             @db.Text // Rejection reason if rejected
+  reviewedBy         String?             // User ID who reviewed
+  reviewedAt         DateTime?
+  createdBy          String?             // User ID who created
+  assignedReviewerId String?             // User ID assigned to review (set when status is PENDING_REVIEW)
+  recipientList      String[]            @default([]) // List of email addresses or segment identifiers
+  recipientType      String              @default("ALL") // ALL, SEGMENT, CUSTOM
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([status])
+  @@index([scheduledDate])
+  @@index([createdAt])
+  @@index([assignedReviewerId])
+  @@index([createdBy])
 }
 
 model Coupon {
@@ -766,4 +801,96 @@ model AdminLog {
   @@index([resourceType])
   @@index([createdAt])
   @@index([userId, createdAt])
+}
+
+enum TrainingBookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+model TrainingProgram {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  content     String?  @db.Text // General training content/overview
+  days        Json?    // Array of day objects: [{ day: 1, hours: 8, content: "...", format: "PRESENTIAL" }]
+  totalHours  Int      // Total duration in hours (calculated from days)
+  price       Decimal  @db.Decimal(10, 2)
+  image       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sessions TrainingSession[]
+  bookings TrainingBooking[]
+  products TrainingProgramProduct[]
+
+  @@index([isActive])
+  @@index([createdAt])
+}
+
+model TrainingProgramProduct {
+  id                String          @id @default(cuid())
+  trainingProgramId String
+  trainingProgram   TrainingProgram @relation(fields: [trainingProgramId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity          Int             @default(1) // Quantity of this product included in the training
+  createdAt         DateTime        @default(now())
+
+  @@unique([trainingProgramId, productId])
+  @@index([trainingProgramId])
+  @@index([productId])
+}
+
+enum TrainingFormat {
+  ONLINE
+  PRESENTIAL
+  HYBRID
+}
+
+model TrainingSession {
+  id              String          @id @default(cuid())
+  programId       String
+  program         TrainingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  startDate      DateTime
+  endDate         DateTime
+  location        String?         @db.Text
+  format          TrainingFormat  @default(PRESENTIAL) // ONLINE, PRESENTIAL, or HYBRID
+  maxParticipants Int            @default(10)
+  currentBookings Int             @default(0)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  bookings TrainingBooking[]
+
+  @@index([programId])
+  @@index([startDate])
+  @@index([isActive])
+  @@index([startDate, isActive])
+  @@index([format])
+}
+
+model TrainingBooking {
+  id        String                @id @default(cuid())
+  userId    String
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  programId String
+  program   TrainingProgram       @relation(fields: [programId], references: [id], onDelete: Cascade)
+  sessionId String
+  session   TrainingSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  status    TrainingBookingStatus @default(PENDING)
+  notes     String?               @db.Text
+  createdAt DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+
+  @@index([userId])
+  @@index([programId])
+  @@index([sessionId])
+  @@index([status])
+  @@index([createdAt])
+  @@unique([userId, sessionId]) // One booking per user per session
 }

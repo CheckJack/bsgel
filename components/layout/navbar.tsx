@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, User, Menu, X, Search } from "lucide-react";
+import { ShoppingCart, User, Menu, X, Search, ChevronDown, ChevronUp } from "lucide-react";
 import { useCart } from "@/contexts/cart-context";
 import { useState, useRef, useEffect } from "react";
 import { CartDrawer } from "@/components/cart/cart-drawer";
@@ -21,8 +21,12 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [shopMegaMenuOpen, setShopMegaMenuOpen] = useState(false);
   const [aboutMegaMenuOpen, setAboutMegaMenuOpen] = useState(false);
+  const [expandedShopItems, setExpandedShopItems] = useState<Set<string>>(new Set());
+  const [expandedAboutItems, setExpandedAboutItems] = useState<Set<string>>(new Set());
+  const [navbarHeight, setNavbarHeight] = useState(0);
   const shopMegaMenuRef = useRef<HTMLDivElement>(null);
   const aboutMegaMenuRef = useRef<HTMLDivElement>(null);
+  const navbarRef = useRef<HTMLElement>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -68,23 +72,59 @@ export function Navbar() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (mobileMenuOpen && !target.closest('[data-mobile-menu]')) {
+      // Check if click is on the toggle button or inside the mobile menu
+      const isMobileMenuButton = target.closest('[data-mobile-menu-button]');
+      const isInsideMobileMenu = target.closest('[data-mobile-menu-content]');
+      
+      if (mobileMenuOpen && !isMobileMenuButton && !isInsideMobileMenu) {
         setMobileMenuOpen(false);
       }
     };
 
+    const preventScroll = (e: TouchEvent | WheelEvent) => {
+      e.preventDefault();
+    };
+
     if (mobileMenuOpen) {
       document.addEventListener("mousedown", handleClickOutside);
-      // Prevent body scroll when menu is open
-      document.body.style.overflow = "hidden";
+      // Prevent scrolling without affecting navbar visibility
+      // Use html overflow to prevent scroll while keeping navbar sticky
+      document.documentElement.style.overflow = "hidden";
+      // Also prevent touch and wheel scrolling
+      document.addEventListener("touchmove", preventScroll, { passive: false });
+      document.addEventListener("wheel", preventScroll, { passive: false });
+      
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        document.documentElement.style.overflow = "";
+        document.removeEventListener("touchmove", preventScroll);
+        document.removeEventListener("wheel", preventScroll);
+      };
     } else {
-      document.body.style.overflow = "unset";
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
     }
+  }, [mobileMenuOpen]);
 
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.body.style.overflow = "unset";
+  // Calculate navbar height for mobile menu positioning
+  useEffect(() => {
+    const updateNavbarHeight = () => {
+      if (navbarRef.current) {
+        setNavbarHeight(navbarRef.current.offsetHeight);
+      }
     };
+
+    updateNavbarHeight();
+    window.addEventListener("resize", updateNavbarHeight);
+    
+    // Update height when mobile menu opens to ensure accurate positioning
+    if (mobileMenuOpen) {
+      // Small delay to ensure DOM is updated
+      setTimeout(updateNavbarHeight, 0);
+    }
+    
+    return () => window.removeEventListener("resize", updateNavbarHeight);
   }, [mobileMenuOpen]);
 
   // Listen for custom event to open cart drawer
@@ -101,22 +141,31 @@ export function Navbar() {
 
   return (
     <nav 
-      className="sticky top-0 bg-brand-black z-50 relative"
+      ref={navbarRef}
+      className="sticky top-0 bg-brand-black z-[100] relative"
+      style={{ position: 'sticky' }}
       onMouseLeave={() => {
         setShopMegaMenuOpen(false);
         setAboutMegaMenuOpen(false);
       }}
     >
-      <div className="container mx-auto px-4 py-3 md:py-4 relative overflow-visible">
+      <div className="w-full px-6 md:px-12 lg:px-16 py-3 md:py-4 relative overflow-visible">
         <div className="flex items-center justify-between relative overflow-visible">
           {/* Left - Logo and Mobile Menu Button */}
           <div className="flex items-center gap-3 lg:gap-6">
             {/* Mobile Menu Toggle Button */}
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={() => {
+                setMobileMenuOpen(!mobileMenuOpen);
+                // Reset expanded states when closing menu
+                if (mobileMenuOpen) {
+                  setExpandedShopItems(new Set());
+                  setExpandedAboutItems(new Set());
+                }
+              }}
               className="text-brand-white hover:text-brand-sweet-bianca transition-colors flex-shrink-0 md:hidden"
               aria-label="Toggle menu"
-              data-mobile-menu
+              data-mobile-menu-button
             >
               {mobileMenuOpen ? (
                 <X className="h-6 w-6" />
@@ -185,6 +234,13 @@ export function Navbar() {
                 About
               </Link>
             </div>
+
+            <Link 
+              href="/training" 
+              className="text-brand-white hover:text-brand-sweet-bianca transition-colors text-sm lg:text-base whitespace-nowrap"
+            >
+              Training
+            </Link>
             </div>
 
             {/* Desktop divider */}
@@ -263,24 +319,259 @@ export function Navbar() {
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div 
-            className="absolute top-full left-0 right-0 bg-brand-black border-t border-gray-800 md:hidden z-40"
-            data-mobile-menu
+            className="fixed left-0 right-0 bg-brand-black border-t border-gray-800 md:hidden z-[60] overflow-y-auto"
+            style={{ top: `${navbarHeight}px`, maxHeight: `calc(100vh - ${navbarHeight}px)` }}
+            data-mobile-menu-content
           >
-            <div className="container mx-auto px-4 py-4 space-y-1">
-              <Link
-                href="/products"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-4 py-3 text-brand-white hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
-              >
-                Shop
-              </Link>
+            <div className="w-full px-6 md:px-12 lg:px-16 py-4 space-y-1">
+              {/* Shop Menu with Subpages */}
+              <div>
+                <button
+                  onClick={() => {
+                    const newExpanded = new Set(expandedShopItems);
+                    if (newExpanded.has('shop')) {
+                      newExpanded.delete('shop');
+                    } else {
+                      newExpanded.add('shop');
+                      // Close About menu if it's open
+                      setExpandedAboutItems(new Set());
+                    }
+                    setExpandedShopItems(newExpanded);
+                  }}
+                  className="w-full flex items-center justify-between px-4 py-3 text-brand-white hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                >
+                  <span>Shop</span>
+                  {expandedShopItems.has('shop') ? (
+                    <ChevronUp className="h-5 w-5" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5" />
+                  )}
+                </button>
+                {expandedShopItems.has('shop') && (
+                  <div className="pl-4 mt-1 space-y-1">
+                    <Link
+                      href="/products"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      All Products
+                    </Link>
+                    <Link
+                      href="/bio-gel"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      BIO Gel
+                    </Link>
+                    <Link
+                      href="/bio-gel/treatment-gels"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      Treatment Gels
+                    </Link>
+                    <Link
+                      href="/bio-gel/color-gels"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      Color Gels
+                    </Link>
+                    <Link
+                      href="/bio-gel/top-coats"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      Top Coats
+                    </Link>
+                    <Link
+                      href="/gemini"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      Gemini
+                    </Link>
+                    <Link
+                      href="/gemini/reds"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      Reds
+                    </Link>
+                    <Link
+                      href="/gemini/pinks"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      Pinks
+                    </Link>
+                    <Link
+                      href="/gemini/nudes-neutrals-browns"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      Nudes / Neutrals / Browns
+                    </Link>
+                    <Link
+                      href="/gemini/oranges-corals-yellows"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      Oranges & Corals / Yellows
+                    </Link>
+                    <Link
+                      href="/ethos"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      Ethos
+                    </Link>
+                    <Link
+                      href="/ethos/nail-diagnosis"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      Nail diagnosis
+                    </Link>
+                    <Link
+                      href="/spa"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      SPA
+                    </Link>
+                    <Link
+                      href="/spa/hand-care"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      Hand Care
+                    </Link>
+                    <Link
+                      href="/spa/foot-care"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      Foot Care
+                    </Link>
+                    <Link
+                      href="/evo"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      Evo
+                    </Link>
+                    <Link
+                      href="/evo/treatment-base-gels"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      Treatment Base Gels
+                    </Link>
+                    <Link
+                      href="/evo/colour-gels"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      Colour Gels
+                    </Link>
+                    <Link
+                      href="/evo/top-coats"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      Top Coats
+                    </Link>
+                  </div>
+                )}
+              </div>
               
+              {/* About Menu with Subpages */}
+              <div>
+                <button
+                  onClick={() => {
+                    const newExpanded = new Set(expandedAboutItems);
+                    if (newExpanded.has('about')) {
+                      newExpanded.delete('about');
+                    } else {
+                      newExpanded.add('about');
+                      // Close Shop menu if it's open
+                      setExpandedShopItems(new Set());
+                      setExpandedBrandItems(new Set());
+                    }
+                    setExpandedAboutItems(newExpanded);
+                  }}
+                  className="w-full flex items-center justify-between px-4 py-3 text-brand-white hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                >
+                  <span>About</span>
+                  {expandedAboutItems.has('about') ? (
+                    <ChevronUp className="h-5 w-5" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5" />
+                  )}
+                </button>
+                {expandedAboutItems.has('about') && (
+                  <div className="pl-4 mt-1 space-y-1">
+                    <Link
+                      href="/about/biosculpture"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      Biosculpture
+                    </Link>
+                    <Link
+                      href="/about/biosculpture/concept"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      Concept
+                    </Link>
+                    <Link
+                      href="/about/biosculpture/sustainability"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      Sustainability
+                    </Link>
+                    <Link
+                      href="/about/biosculpture/awards"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      Awards
+                    </Link>
+                    <Link
+                      href="/contact"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      Contact
+                    </Link>
+                    <Link
+                      href="/salons"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      Find Salon
+                    </Link>
+                    <Link
+                      href="/blog"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      Blog
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              {/* Training Link */}
               <Link
-                href="/about"
+                href="/training"
                 onClick={() => setMobileMenuOpen(false)}
                 className="block px-4 py-3 text-brand-white hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
               >
-                About
+                Training
               </Link>
               
               {session && (
