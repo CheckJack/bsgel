@@ -195,12 +195,12 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/about/biosculpture/training" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/training" className="text-sm text-white/90 hover:text-white transition-colors">
                   Training
                 </Link>
               </li>
               <li>
-                <Link href="/about/biosculpture/certifications" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/about/biosculpture/certifications" prefetch={false} className="text-sm text-white/90 hover:text-white transition-colors">
                   Certifications
                 </Link>
               </li>
@@ -217,7 +217,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/about/biosculpture/philosophy" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/about/biosculpture/philosophy" prefetch={false} className="text-sm text-white/90 hover:text-white transition-colors">
                   Philosophy
                 </Link>
               </li>
@@ -232,7 +232,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/orders" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/dashboard/orders" className="text-sm text-white/90 hover:text-white transition-colors">
                   Orders
                 </Link>
               </li>
@@ -272,17 +272,17 @@ export function Footer() {
             <h4 className="font-medium text-base mb-3">Legal</h4>
             <ul className="space-y-2.5">
               <li>
-                <Link href="/privacy" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/privacy" prefetch={false} className="text-sm text-white/90 hover:text-white transition-colors">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/terms" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/terms" prefetch={false} className="text-sm text-white/90 hover:text-white transition-colors">
                   Terms of Service
                 </Link>
               </li>
               <li>
-                <Link href="/shipping" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/shipping" prefetch={false} className="text-sm text-white/90 hover:text-white transition-colors">
                   Shipping Policy
                 </Link>
               </li>

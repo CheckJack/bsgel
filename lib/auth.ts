@@ -18,6 +18,7 @@ export const authOptions: NextAuthOptions = {
             return null
           }
 
+<<<<<<< HEAD
           // Normalize email to lowercase (same as registration)
           const normalizedEmail = credentials.email.trim().toLowerCase()
           console.log("🔐 Auth: Attempting login for:", normalizedEmail)

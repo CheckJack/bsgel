@@ -105,7 +105,7 @@ export function CategoryBanner({ categories }: CategoryBannerProps) {
           );
 
           return category.link ? (
-            <Link key={index} href={category.link}>
+            <Link key={index} href={category.link} prefetch={category.link.startsWith('/elim') || category.link.startsWith('/tint') || category.link.startsWith('/category5') ? false : undefined}>
               {content}
             </Link>
           ) : (
