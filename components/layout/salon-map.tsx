@@ -16,6 +16,11 @@ interface Salon {
   isBioDiamond?: boolean;
 }
 
+interface SalonWithCoords extends Salon {
+  latitude: number;
+  longitude: number;
+}
+
 interface SalonMapProps {
   salons: Salon[];
   onMarkerClick?: (salonId: string) => void;
@@ -75,7 +80,7 @@ export function SalonMap({ salons, onMarkerClick }: SalonMapProps) {
           longitude: lng,
         };
       })
-      .filter((salon): salon is Salon => salon !== null);
+      .filter((salon): salon is SalonWithCoords => salon !== null);
   }, [salons]);
   
   // Debug: Log all salons and their coordinates
@@ -101,11 +106,11 @@ export function SalonMap({ salons, onMarkerClick }: SalonMapProps) {
     
     // Dynamically import Leaflet and react-leaflet only on client side
     if (typeof window !== "undefined") {
-      import("leaflet/dist/leaflet.css");
-      
       Promise.all([
         import("react-leaflet"),
-        import("leaflet")
+        import("leaflet"),
+        // @ts-ignore - CSS import
+        import("leaflet/dist/leaflet.css").catch(() => {})
       ]).then(([reactLeaflet, L]) => {
         // Fix for default marker icons
         delete (L.default.Icon.Default.prototype as any)._getIconUrl;

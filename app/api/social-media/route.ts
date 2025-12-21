@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { SocialMediaPlatform, ContentType, SocialMediaPostStatus } from "@prisma/client"
 
 export async function GET(req: Request) {
   try {
@@ -71,23 +72,23 @@ export async function POST(req: Request) {
     } = body
 
     const postData: {
-      platform: string;
-      contentType: string;
+      platform: SocialMediaPlatform;
+      contentType: ContentType;
       caption: string;
       images: string[];
       videos?: string[];
       scheduledDate: Date;
-      status: string;
+      status: SocialMediaPostStatus;
       hashtags: string[];
       createdBy: string;
       assignedReviewerId?: string;
     } = {
-      platform: platform || "INSTAGRAM",
-      contentType: contentType || "POST",
+      platform: (platform || "INSTAGRAM") as SocialMediaPlatform,
+      contentType: (contentType || "POST") as ContentType,
       caption: caption || "",
       images: images || [],
       scheduledDate: new Date(scheduledDate),
-      status: status || "DRAFT",
+      status: (status || "DRAFT") as SocialMediaPostStatus,
       hashtags: hashtags || [],
       createdBy: session.user.id,
     }

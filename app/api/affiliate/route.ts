@@ -48,12 +48,12 @@ export async function GET(req: Request) {
 
     // Get affiliate stats
     const totalReferrals = await db.affiliateReferral.count({
-      where: { affiliateId: affiliate.id },
+      where: { affiliateId: affiliateBase.id },
     })
 
     const activeReferrals = await db.affiliateReferral.count({
       where: {
-        affiliateId: affiliate.id,
+        affiliateId: affiliateBase.id,
         status: ReferralStatus.ACTIVE,
       },
     })
@@ -195,8 +195,10 @@ export async function GET(req: Request) {
       commissionRate = 0
     }
 
+    // Affiliate already fetched above with tier
+
     // Get tier benefits
-    const tierBenefits = getTierBenefits(affiliate.tier)
+    const tierBenefits = getTierBenefits(affiliate?.tier || "BRONZE")
 
     const stats = {
       totalReferrals,
@@ -208,7 +210,7 @@ export async function GET(req: Request) {
       affiliateCode: affiliate.affiliateCode,
       affiliateLink,
       commissionRate,
-      tier: affiliate.tier,
+      tier: affiliate?.tier || "BRONZE",
       tierBenefits,
     }
 

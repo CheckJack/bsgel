@@ -119,7 +119,6 @@ export function RecentOrderChart({ onDataReady, refreshTrigger }: RecentOrderCha
             border: "1px solid #e0e0e0",
             borderRadius: "8px",
           }}
-          className="dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
         />
         <Area
           type="monotone"

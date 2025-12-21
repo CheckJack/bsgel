@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { SocialMediaPlatform, ContentType, SocialMediaPostStatus } from "@prisma/client"
 
 export async function GET(
   req: Request,
@@ -59,13 +60,13 @@ export async function PUT(
     } = body
 
     const updateData: {
-      platform?: string;
-      contentType?: string;
+      platform?: SocialMediaPlatform;
+      contentType?: ContentType;
       caption?: string;
       images?: string[];
       videos?: string[];
       scheduledDate?: Date;
-      status?: string;
+      status?: SocialMediaPostStatus;
       hashtags?: string[];
       assignedReviewerId?: string | null;
       reviewedBy?: string;
@@ -73,8 +74,8 @@ export async function PUT(
       reviewComments?: string;
     } = {}
 
-    if (platform !== undefined) updateData.platform = platform
-    if (contentType !== undefined) updateData.contentType = contentType
+    if (platform !== undefined) updateData.platform = platform as SocialMediaPlatform
+    if (contentType !== undefined) updateData.contentType = contentType as ContentType
     if (caption !== undefined) updateData.caption = caption
     if (images !== undefined) updateData.images = images
     if (videos !== undefined) updateData.videos = videos
@@ -83,7 +84,7 @@ export async function PUT(
 
     // Handle status changes and review workflow
     if (status !== undefined) {
-      updateData.status = status
+      updateData.status = status as SocialMediaPostStatus
       
       // If status is PENDING_REVIEW, set assignedReviewerId
       if (status === "PENDING_REVIEW") {

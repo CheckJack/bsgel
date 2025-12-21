@@ -227,7 +227,7 @@ export default function AdminCategoriesPage() {
       return;
     }
 
-    const confirmMessage = t("categories.bulkDeleteConfirm", { count: selectedCategories.size.toString() });
+    const confirmMessage = t("categories.bulkDeleteConfirm", { count: String(selectedCategories.size) });
     if (!confirm(confirmMessage)) {
       return;
     }

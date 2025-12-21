@@ -341,8 +341,9 @@ export default function ProductDetailPage() {
               {(() => {
                 // Check if most products are from the same category as current product
                 if (product?.category?.id) {
+                  const categoryId = product.category.id;
                   const sameCategoryCount = relatedProducts.filter(
-                    (p) => p.category?.id === product.category?.id
+                    (p) => p.category?.id === categoryId
                   ).length;
                   // If at least half are from same category, show "Related Products"
                   if (sameCategoryCount >= Math.ceil(relatedProducts.length / 2)) {

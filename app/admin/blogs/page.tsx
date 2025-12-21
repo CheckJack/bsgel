@@ -111,6 +111,10 @@ export default function AdminBlogsPage() {
           aValue = new Date(a.updatedAt).getTime();
           bValue = new Date(b.updatedAt).getTime();
           break;
+        case "status":
+          aValue = a.status.toLowerCase();
+          bValue = b.status.toLowerCase();
+          break;
         default:
           return 0;
       }

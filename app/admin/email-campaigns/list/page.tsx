@@ -564,9 +564,9 @@ export default function EmailCampaignsListPage() {
                         <div className="font-medium text-sm flex items-center gap-2">
                           {campaign.subject}
                           {campaign.pdfUrl && (
-                            <div title="Has PDF attachment">
+                            <span title="Has PDF attachment">
                               <FileText className="h-4 w-4 text-red-600 dark:text-red-400" />
-                            </div>
+                            </span>
                           )}
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">

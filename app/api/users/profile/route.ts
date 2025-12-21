@@ -90,7 +90,7 @@ export async function PATCH(req: Request) {
 
     // Prepare update data
     const updateData: {
-      name?: string;
+      name?: string | null;
       email?: string;
       password?: string;
       image?: string | null;

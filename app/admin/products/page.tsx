@@ -416,7 +416,7 @@ export default function AdminProductsPage() {
       return;
     }
 
-    const confirmMessage = t("products.bulkDeleteConfirm", { count: selectedProducts.size });
+    const confirmMessage = t("products.bulkDeleteConfirm", { count: String(selectedProducts.size) });
     if (!confirm(confirmMessage)) {
       return;
     }
@@ -482,7 +482,7 @@ export default function AdminProductsPage() {
       link.click();
       document.body.removeChild(link);
 
-      toast(t("products.exportSuccessWithCount", { count: filteredProducts.length }), "success");
+      toast(t("products.exportSuccessWithCount", { count: String(filteredProducts.length) }), "success");
     } catch (error) {
       console.error("Failed to export products:", error);
       toast("Failed to export products", "error");
@@ -552,7 +552,7 @@ export default function AdminProductsPage() {
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="text-sm text-gray-700 dark:text-gray-300">
-                <span className="font-medium">{selectedProducts.size}</span> {t("products.title").toLowerCase()}(s) {t("table.selected", { count: selectedProducts.size })}
+                <span className="font-medium">{selectedProducts.size}</span> {t("products.title").toLowerCase()}(s) {t("table.selected", { count: String(selectedProducts.size) })}
               </div>
               <div className="flex gap-2">
                 <Button
@@ -932,7 +932,7 @@ export default function AdminProductsPage() {
               </div>
 
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                {t("products.updateSelectedProducts", { count: selectedProducts.size })}
+                {t("products.updateSelectedProducts", { count: String(selectedProducts.size) })}
               </p>
 
               <div className="flex gap-6">

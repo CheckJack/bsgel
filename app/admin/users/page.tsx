@@ -449,7 +449,7 @@ export default function AdminUsersPage() {
                         {/* Permissions Column */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm text-gray-900 dark:text-gray-100">
-                            {t("users.permissionCount", { count: permissionCount, total: totalPermissions })}
+                            {t("users.permissionCount", { count: String(permissionCount), total: String(totalPermissions) })}
                           </span>
                         </td>
 

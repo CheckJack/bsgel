@@ -323,7 +323,7 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
           // Check if pathname is a sub-path of this child
           if (pathname?.startsWith(child.href + "/")) {
             // Make sure it's not matching another sibling child's path
-            const otherChildren = item.children.filter((c) => c.href && c.href !== child.href);
+            const otherChildren = (item.children || []).filter((c) => c.href && c.href !== child.href);
             const matchesSibling = otherChildren.some((sibling) => 
               sibling.href && pathname?.startsWith(sibling.href + "/")
             );
@@ -501,7 +501,7 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
                                   if (!sibling.href) return false;
                                   // Check if sibling's path is longer and matches the current pathname
                                   // This means the sibling is more specific (e.g., /admin/trainings/bookings vs /admin/trainings)
-                                  if (sibling.href.length > child.href.length) {
+                                  if (sibling.href && child.href && sibling.href.length > child.href.length) {
                                     return pathname === sibling.href || pathname?.startsWith(sibling.href + "/");
                                   }
                                   return false;

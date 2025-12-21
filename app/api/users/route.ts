@@ -52,6 +52,12 @@ export async function GET(req: Request) {
             total: true,
           },
         },
+        certification: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",

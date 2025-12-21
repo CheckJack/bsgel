@@ -344,8 +344,6 @@ export const pt = {
     emailPlaceholder: "utilizador@exemplo.com",
   },
 
-  // Messages
-
   // Marketing
   marketing: {
     title: "Marketing",

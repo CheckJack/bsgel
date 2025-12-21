@@ -98,7 +98,7 @@ export async function GET(req: Request) {
     }
 
     // Get approved reviews for these products
-    let reviews, total;
+    let reviews: any[], total: number;
     try {
       [reviews, total] = await Promise.all([
         db.productReview.findMany({
@@ -177,7 +177,7 @@ export async function GET(req: Request) {
     }
 
     // Calculate rating breakdown
-    let allApprovedReviews = [];
+    let allApprovedReviews: any[] = [];
     try {
       allApprovedReviews = await db.productReview.findMany({
         where: {
