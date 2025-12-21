@@ -4,11 +4,6 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   
-  // Temporarily ignore ESLint errors during build
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  
   images: {
     // Remove localhost - use remotePatterns for production
     remotePatterns: [

@@ -15,6 +15,9 @@ interface CategoryBannerProps {
   categories: CategoryPanel[];
 }
 
+// Routes that are linked but not yet implemented - disable prefetch to prevent 404 errors
+const UNIMPLEMENTED_ROUTES = new Set(['/elim', '/tint', '/category5']);
+
 export function CategoryBanner({ categories }: CategoryBannerProps) {
   return (
     <section className="w-full mt-2">
@@ -105,7 +108,11 @@ export function CategoryBanner({ categories }: CategoryBannerProps) {
           );
 
           return category.link ? (
-            <Link key={index} href={category.link} prefetch={category.link.startsWith('/elim') || category.link.startsWith('/tint') || category.link.startsWith('/category5') ? false : undefined}>
+            <Link 
+              key={index} 
+              href={category.link} 
+              prefetch={UNIMPLEMENTED_ROUTES.has(category.link) ? false : undefined}
+            >
               {content}
             </Link>
           ) : (
