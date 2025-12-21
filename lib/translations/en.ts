@@ -435,6 +435,10 @@ export const en = {
     sortStatus: "Status",
     reply: "Reply",
     noResponse: "No response yet",
+    sent: "Sent",
+    adminResponse: "Admin Response",
+    typeResponse: "Type your response...",
+    selectMessage: "Select a message to view details",
   },
 };
 
