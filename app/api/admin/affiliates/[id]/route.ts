@@ -7,8 +7,9 @@ import { logAdminAction, extractRequestInfo, getActionDescription } from "@/lib/
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions);
 
@@ -17,7 +18,7 @@ export async function GET(
     }
 
     const affiliate = await db.affiliate.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: {
         user: {
           select: {
@@ -88,8 +89,9 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions);
 
@@ -101,7 +103,7 @@ export async function PATCH(
     const { isActive, approvedBy, pointsAdjustment, pointsDescription } = body;
 
     const affiliate = await db.affiliate.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!affiliate) {
@@ -156,7 +158,7 @@ export async function PATCH(
         userId: session.user.id!,
         actionType: "UPDATE" as any,
         resourceType: "Affiliate",
-        resourceId: params.id,
+        resourceId: id,
         description: `Adjusted ${pointsAdjustment > 0 ? 'added' : 'removed'} ${Math.abs(pointsAdjustment)} points for affiliate (${affiliateUser?.email || affiliateUser?.name || affiliate.userId})`,
         details: {
           before: { pointsBalance: userBefore?.pointsBalance || 0 },
@@ -175,7 +177,7 @@ export async function PATCH(
         metadata: {
           url: req.url,
           method: "PATCH",
-          affiliateId: params.id,
+          affiliateId: id,
           affiliateUserId: affiliate.userId,
         },
       });
@@ -184,7 +186,7 @@ export async function PATCH(
     if (Object.keys(updateData).length > 0) {
       const affiliateBefore = { ...affiliate };
       await db.affiliate.update({
-        where: { id: params.id },
+        where: { id: id },
         data: updateData,
       });
 
@@ -197,7 +199,7 @@ export async function PATCH(
           userId: session.user.id!,
           actionType,
           resourceType: "Affiliate",
-          resourceId: params.id,
+          resourceId: id,
           description: changes.join(", ") + ` for affiliate (${affiliateUser?.email || affiliateUser?.name || affiliate.userId})`,
           details: {
             before: {
@@ -216,7 +218,7 @@ export async function PATCH(
           metadata: {
             url: req.url,
             method: "PATCH",
-            affiliateId: params.id,
+            affiliateId: id,
             affiliateUserId: affiliate.userId,
           },
         });
@@ -224,7 +226,7 @@ export async function PATCH(
     }
 
     const updated = await db.affiliate.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: {
         user: {
           select: {

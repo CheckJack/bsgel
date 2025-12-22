@@ -18,9 +18,10 @@ const updateUserSchema = z.object({
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
@@ -33,7 +34,7 @@ export async function GET(
     }
 
     const user = await db.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         orders: {
           select: {
@@ -85,9 +86,10 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
@@ -104,7 +106,7 @@ export async function PATCH(
 
     // Check if user exists
     const existingUser = await db.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         certification: {
           select: {
@@ -191,7 +193,7 @@ export async function PATCH(
 
     // Update user
     const user = await db.user.update({
-      where: { id: params.id },
+      where: { id: id },
       include: {
         orders: {
           select: {
@@ -250,9 +252,10 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
@@ -265,7 +268,7 @@ export async function DELETE(
     }
 
     // Prevent deleting yourself
-    if (session.user.id === params.id) {
+    if (session.user.id === id) {
       return NextResponse.json(
         { error: "Cannot delete your own account" },
         { status: 400 }
@@ -274,7 +277,7 @@ export async function DELETE(
 
     // Check if user exists
     const user = await db.user.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     if (!user) {
@@ -291,7 +294,7 @@ export async function DELETE(
 
     // Delete user (cascade will handle related records like cart, orders, etc.)
     await db.user.delete({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     // Log admin action
@@ -300,7 +303,7 @@ export async function DELETE(
       userId: session.user.id!,
       actionType: "DELETE" as any,
       resourceType: "User",
-      resourceId: params.id,
+      resourceId: id,
       description: `Deleted user "${userInfo.email}"`,
       details: {
         before: userInfo,

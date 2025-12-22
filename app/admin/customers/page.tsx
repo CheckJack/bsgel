@@ -123,15 +123,29 @@ export default function AdminCustomersPage() {
 
   const fetchCustomers = async () => {
     try {
+      setIsLoading(true);
       // Only fetch USER role customers (people who buy)
       const res = await fetch("/api/users?role=USER");
-      if (res.ok) {
-        const data = await res.json();
-        setCustomers(data);
-        setFilteredCustomers(data);
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
+        console.error("❌ Failed to fetch customers:", res.status, res.statusText, errorData);
+        setError(`Failed to fetch customers: ${errorData.error || res.statusText} (${res.status})`);
+        setCustomers([]);
+        setFilteredCustomers([]);
+        return;
       }
-    } catch (error) {
-      console.error("Failed to fetch customers:", error);
+      
+      const data = await res.json();
+      console.log("✅ Customers fetched successfully:", data.length, "customers");
+      setCustomers(data);
+      setFilteredCustomers(data);
+      setError("");
+    } catch (error: any) {
+      console.error("❌ Error fetching customers:", error);
+      setError(`Failed to fetch customers: ${error?.message || "Network error"}`);
+      setCustomers([]);
+      setFilteredCustomers([]);
     } finally {
       setIsLoading(false);
     }
@@ -775,6 +789,7 @@ export default function AdminCustomersPage() {
                       email: "",
                       password: "",
                       confirmPassword: "",
+                      certificationId: null,
                     });
                   }}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
@@ -939,7 +954,7 @@ export default function AdminCustomersPage() {
                         email: "",
                         password: "",
                         confirmPassword: "",
-                        certification: "NONE",
+                        certificationId: null,
                       });
                     }}
                     className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
@@ -1338,7 +1353,7 @@ export default function AdminCustomersPage() {
                         email: "",
                         password: "",
                         confirmPassword: "",
-                        certification: "NONE",
+                        certificationId: null,
                       });
                     }}
                     className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"

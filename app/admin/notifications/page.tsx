@@ -10,7 +10,7 @@ interface Notification {
   id: string;
   title: string;
   message: string;
-  linkUrl: string;
+  linkUrl: string | null;
   type: string;
   scheduledFor: string | null;
   isScheduled: boolean;
@@ -47,7 +47,7 @@ export default function AdminNotificationsPage() {
         (notification) =>
           notification.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           notification.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          notification.linkUrl.toLowerCase().includes(searchQuery.toLowerCase())
+          (notification.linkUrl && notification.linkUrl.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
 
@@ -343,17 +343,21 @@ export default function AdminNotificationsPage() {
 
                       {/* Link */}
                       <td className="px-6 py-4">
-                        <a
-                          href={notification.linkUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
-                        >
-                          {notification.linkUrl.length > 30
-                            ? `${notification.linkUrl.substring(0, 30)}...`
-                            : notification.linkUrl}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
+                        {notification.linkUrl ? (
+                          <a
+                            href={notification.linkUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                          >
+                            {notification.linkUrl.length > 30
+                              ? `${notification.linkUrl.substring(0, 30)}...`
+                              : notification.linkUrl}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : (
+                          <span className="text-sm text-gray-500 dark:text-gray-400">No link</span>
+                        )}
                       </td>
 
                       {/* Target */}

@@ -120,6 +120,9 @@ export async function POST(req: NextRequest) {
       const name = formData.get("name") as string;
       const folderId = formData.get("folderId") as string | null;
       const description = formData.get("description") as string | null;
+      const coverPicture = formData.get("coverPicture") as File | null;
+      const optimizeWidth = formData.get("optimizeWidth") as string | null;
+      const optimizeHeight = formData.get("optimizeHeight") as string | null;
 
       if (!name) {
         return NextResponse.json(
@@ -144,6 +147,62 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Handle cover picture upload if provided
+      let coverPictureUrl: string | null = null;
+      if (coverPicture && coverPicture.size > 0) {
+        await ensureUploadDir();
+
+        // Validate it's an image
+        if (!coverPicture.type.startsWith("image/")) {
+          return NextResponse.json(
+            { error: "Cover picture must be an image file" },
+            { status: 400 }
+          );
+        }
+
+        // Generate unique filename
+        const timestamp = Date.now();
+        const sanitizedName = coverPicture.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+        const filename = `cover_${timestamp}_${sanitizedName}`;
+        const filepath = join(UPLOAD_DIR, filename);
+
+        // Save file
+        const bytes = await coverPicture.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        
+        try {
+          await writeFile(filepath, buffer);
+          coverPictureUrl = `/uploads/gallery/${filename}`;
+        } catch (writeError: any) {
+          console.error("Failed to write cover picture:", writeError);
+          return NextResponse.json(
+            { 
+              error: "Failed to save cover picture",
+              details: writeError?.message || String(writeError)
+            },
+            { status: 500 }
+          );
+        }
+      }
+
+      // Parse optimize dimensions
+      const width = optimizeWidth ? parseInt(optimizeWidth, 10) : null;
+      const height = optimizeHeight ? parseInt(optimizeHeight, 10) : null;
+
+      // Validate optimize dimensions if provided
+      if (width !== null && (isNaN(width) || width <= 0)) {
+        return NextResponse.json(
+          { error: "Optimize width must be a positive number" },
+          { status: 400 }
+        );
+      }
+      if (height !== null && (isNaN(height) || height <= 0)) {
+        return NextResponse.json(
+          { error: "Optimize height must be a positive number" },
+          { status: 400 }
+        );
+      }
+
       let folder;
       try {
         folder = await db.galleryItem.create({
@@ -152,9 +211,24 @@ export async function POST(req: NextRequest) {
             type: "FOLDER",
             folderId: folderId || null,
             description: description || null,
+            coverPictureUrl: coverPictureUrl || null,
+            optimizeWidth: width || null,
+            optimizeHeight: height || null,
           },
         });
       } catch (dbError: any) {
+        // If database insert fails, try to clean up the cover picture file
+        if (coverPictureUrl) {
+          try {
+            const filepath = join(process.cwd(), "public", coverPictureUrl);
+            if (existsSync(filepath)) {
+              await unlink(filepath);
+            }
+          } catch (cleanupError) {
+            console.error("Failed to cleanup cover picture after DB error:", cleanupError);
+          }
+        }
+
         // Check if GalleryItem model doesn't exist
         if (dbError?.code === "P2021" || dbError?.message?.includes("does not exist") || dbError?.message?.includes("Unknown model")) {
           return NextResponse.json(

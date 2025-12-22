@@ -6,8 +6,9 @@ import { db } from "@/lib/db"
 // GET - Get a specific booking
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -16,7 +17,7 @@ export async function GET(
     }
 
     const booking = await db.trainingBooking.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: {
         user: {
           select: {
@@ -72,8 +73,9 @@ export async function GET(
 // PATCH - Update booking status (admin only) or cancel booking (user can cancel their own)
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -86,7 +88,7 @@ export async function PATCH(
 
     // Check if booking exists
     const existing = await db.trainingBooking.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     if (!existing) {
@@ -128,7 +130,7 @@ export async function PATCH(
     }
 
     const booking = await db.trainingBooking.update({
-      where: { id: params.id },
+      where: { id: id },
       data: updateData,
       include: {
         user: {
@@ -186,8 +188,9 @@ export async function PATCH(
 // DELETE - Delete booking (admin only, or user can delete their own cancelled bookings)
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -197,7 +200,7 @@ export async function DELETE(
 
     // Check if booking exists
     const existing = await db.trainingBooking.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     if (!existing) {
@@ -222,7 +225,7 @@ export async function DELETE(
     }
 
     await db.trainingBooking.delete({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     return NextResponse.json({ message: "Booking deleted successfully" })

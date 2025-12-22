@@ -6,11 +6,12 @@ import { logAdminAction, extractRequestInfo, createChangeDetails } from "@/lib/a
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const category = await db.category.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     if (!category) {
@@ -29,8 +30,9 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
@@ -43,7 +45,7 @@ export async function PATCH(
 
     // Get category before update for logging
     const categoryBefore = await db.category.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!categoryBefore) {
@@ -69,7 +71,7 @@ export async function PATCH(
       const existingCategory = await db.category.findFirst({
         where: {
           slug: normalizedSlug,
-          NOT: { id: params.id },
+          NOT: { id: id },
         },
         select: { name: true, slug: true },
       })
@@ -90,7 +92,7 @@ export async function PATCH(
         // Setting to null is allowed (removing parent)
         // But we need to check if this category has subcategories
         const currentCategory = await db.category.findUnique({
-          where: { id: params.id },
+          where: { id: id },
           include: {
             _count: {
               select: { subcategories: true },
@@ -126,7 +128,7 @@ export async function PATCH(
         }
         
         // Prevent setting itself as parent
-        if (parentId === params.id) {
+        if (parentId === id) {
           return NextResponse.json(
             { error: "A category cannot be its own parent." },
             { status: 400 }
@@ -145,7 +147,7 @@ export async function PATCH(
     if (parentId !== undefined) updateData.parentId = parentId || null
 
     const category = await db.category.update({
-      where: { id: params.id },
+      where: { id: id },
       data: updateData,
     })
 
@@ -155,7 +157,7 @@ export async function PATCH(
       userId: session.user.id!,
       actionType: "UPDATE" as any,
       resourceType: "Category",
-      resourceId: params.id,
+      resourceId: id,
       description: `Updated category "${category.name}"`,
       details: createChangeDetails(categoryBefore, category),
       ipAddress,
@@ -187,8 +189,9 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
@@ -201,7 +204,7 @@ export async function DELETE(
 
     // Check if category has products
     const category = await db.category.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: {
         _count: {
           select: { products: true },
@@ -224,7 +227,7 @@ export async function DELETE(
     }
 
     await db.category.delete({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     // Log admin action
@@ -233,7 +236,7 @@ export async function DELETE(
       userId: session.user.id!,
       actionType: "DELETE" as any,
       resourceType: "Category",
-      resourceId: params.id,
+      resourceId: id,
       description: `Deleted category "${category.name}"`,
       details: {
         before: category,

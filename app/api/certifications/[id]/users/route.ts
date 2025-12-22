@@ -5,9 +5,10 @@ import { db } from "@/lib/db"
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
@@ -24,7 +25,7 @@ export async function GET(
 
     // Check if certification exists
     const certification = await db.certification.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!certification) {
@@ -37,7 +38,7 @@ export async function GET(
     // Get total count
     const total = await db.user.count({
       where: {
-        certificationId: params.id,
+        certificationId: id,
       },
     })
 
@@ -48,7 +49,7 @@ export async function GET(
     // Get users with this certification
     const users = await db.user.findMany({
       where: {
-        certificationId: params.id,
+        certificationId: id,
       },
       select: {
         id: true,

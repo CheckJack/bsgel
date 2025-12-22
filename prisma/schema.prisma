@@ -113,11 +113,17 @@ model Product {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  subcategories ProductSubcategory[]
-  cartItems     CartItem[]
-  orderItems    OrderItem[]
-  reviews       ProductReview[]
+  subcategories    ProductSubcategory[]
+  cartItems        CartItem[]
+  orderItems       OrderItem[]
+  reviews          ProductReview[]
   trainingPrograms TrainingProgramProduct[]
+
+  @@index([categoryId])
+  @@index([featured])
+  @@index([price])
+  @@index([createdAt])
+  @@index([categoryId, featured])
 }
 
 model ProductSubcategory {
@@ -211,18 +217,21 @@ enum GalleryItemType {
 }
 
 model GalleryItem {
-  id          String          @id @default(cuid())
-  name        String
-  type        GalleryItemType
-  url         String? // For files, this is the file URL
-  mimeType    String? // For files, e.g., "image/jpeg", "application/pdf"
-  size        Int? // File size in bytes
-  folderId    String? // Parent folder ID
-  folder      GalleryItem?    @relation("FolderItems", fields: [folderId], references: [id], onDelete: Cascade)
-  items       GalleryItem[]   @relation("FolderItems")
-  description String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id              String          @id @default(cuid())
+  name            String
+  type            GalleryItemType
+  url             String? // For files, this is the file URL
+  mimeType        String? // For files, e.g., "image/jpeg", "application/pdf"
+  size            Int? // File size in bytes
+  folderId        String? // Parent folder ID
+  folder          GalleryItem?    @relation("FolderItems", fields: [folderId], references: [id], onDelete: Cascade)
+  items           GalleryItem[]   @relation("FolderItems")
+  description     String?
+  coverPictureUrl String? // For folders, URL of the cover picture
+  optimizeWidth   Int? // For folders, optimized width in pixels
+  optimizeHeight  Int? // For folders, optimized height in pixels
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   @@index([folderId])
 }
@@ -302,27 +311,37 @@ model ChatMessage {
 
 enum BlogStatus {
   DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
   PUBLISHED
 }
 
 model Blog {
-  id          String     @id @default(cuid())
-  title       String
-  slug        String     @unique
-  excerpt     String?
-  content     String     @db.Text
-  image       String?
-  author      String?
-  status      BlogStatus @default(DRAFT)
-  publishedAt DateTime?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id                 String     @id @default(cuid())
+  title              String
+  slug               String     @unique
+  excerpt            String?
+  content            String     @db.Text
+  image              String?
+  author             String?
+  status             BlogStatus @default(DRAFT)
+  publishedAt        DateTime?
+  reviewComments     String?    @db.Text
+  reviewedBy         String? // User ID who reviewed
+  reviewedAt         DateTime?
+  createdBy          String? // User ID who created
+  assignedReviewerId String? // User ID assigned to review (set when status is PENDING_REVIEW)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
 
   comments Comment[]
 
   @@index([slug])
   @@index([status])
   @@index([publishedAt])
+  @@index([assignedReviewerId])
+  @@index([createdBy])
 }
 
 model Comment {
@@ -350,7 +369,7 @@ model ProductReview {
   product         Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
   userId          String
   user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rating          Int          // 1-5
+  rating          Int // 1-5
   title           String?
   content         String       @db.Text
   verifiedBuyer   Boolean      @default(false)
@@ -368,6 +387,7 @@ model ProductReview {
   @@index([status])
   @@index([createdAt])
   @@index([rating])
+  @@index([productId, status])
 }
 
 enum SocialMediaPlatform {
@@ -479,14 +499,14 @@ model EmailCampaign {
   id                 String              @id @default(cuid())
   subject            String              @db.Text
   content            String              @db.Text // HTML email content
-  pdfUrl             String?             // URL to uploaded PDF file (optional)
-  scheduledDate      DateTime?           // When the email should be sent (null = not scheduled)
+  pdfUrl             String? // URL to uploaded PDF file (optional)
+  scheduledDate      DateTime? // When the email should be sent (null = not scheduled)
   status             EmailCampaignStatus @default(DRAFT)
   reviewComments     String?             @db.Text // Rejection reason if rejected
-  reviewedBy         String?             // User ID who reviewed
+  reviewedBy         String? // User ID who reviewed
   reviewedAt         DateTime?
-  createdBy          String?             // User ID who created
-  assignedReviewerId String?             // User ID assigned to review (set when status is PENDING_REVIEW)
+  createdBy          String? // User ID who created
+  assignedReviewerId String? // User ID assigned to review (set when status is PENDING_REVIEW)
   recipientList      String[]            @default([]) // List of email addresses or segment identifiers
   recipientType      String              @default("ALL") // ALL, SEGMENT, CUSTOM
   createdAt          DateTime            @default(now())
@@ -624,23 +644,23 @@ model Page {
 }
 
 model Affiliate {
-  id                   String    @id @default(cuid())
-  userId               String    @unique
-  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  affiliateCode        String    @unique
-  isActive             Boolean   @default(true)
+  id                   String        @id @default(cuid())
+  userId               String        @unique
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  affiliateCode        String        @unique
+  isActive             Boolean       @default(true)
   approvedAt           DateTime?
   approvedBy           String? // User ID of admin who approved
-  totalPointsEarned    Int       @default(0)
-  currentPointsBalance Int       @default(0) // Cached balance
-  totalReferrals       Int       @default(0)
-  activeReferrals      Int       @default(0)
+  totalPointsEarned    Int           @default(0)
+  currentPointsBalance Int           @default(0) // Cached balance
+  totalReferrals       Int           @default(0)
+  activeReferrals      Int           @default(0)
   tier                 AffiliateTier @default(BRONZE)
   tierUpdatedAt        DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
 
-  referrals AffiliateReferral[]
+  referrals  AffiliateReferral[]
   linkClicks AffiliateLinkClick[]
 
   @@index([affiliateCode])
@@ -669,14 +689,14 @@ model AffiliateReferral {
 }
 
 model AffiliateLinkClick {
-  id          String   @id @default(cuid())
-  affiliateId String
-  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
-  clickedAt   DateTime @default(now())
-  ipAddress   String?
-  userAgent   String?
-  converted   Boolean  @default(false) // Did it lead to registration?
-  convertedAt DateTime? // When did conversion happen
+  id              String    @id @default(cuid())
+  affiliateId     String
+  affiliate       Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  clickedAt       DateTime  @default(now())
+  ipAddress       String?
+  userAgent       String?
+  converted       Boolean   @default(false) // Did it lead to registration?
+  convertedAt     DateTime? // When did conversion happen
   convertedUserId String? // User ID if converted
 
   @@index([affiliateId])
@@ -815,8 +835,8 @@ model TrainingProgram {
   title       String
   description String?  @db.Text
   content     String?  @db.Text // General training content/overview
-  days        Json?    // Array of day objects: [{ day: 1, hours: 8, content: "...", format: "PRESENTIAL" }]
-  totalHours  Int      // Total duration in hours (calculated from days)
+  days        Json? // Array of day objects: [{ day: 1, hours: 8, content: "...", format: "PRESENTIAL" }]
+  totalHours  Int // Total duration in hours (calculated from days)
   price       Decimal  @db.Decimal(10, 2)
   image       String?
   isActive    Boolean  @default(true)
@@ -855,11 +875,11 @@ model TrainingSession {
   id              String          @id @default(cuid())
   programId       String
   program         TrainingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
-  startDate      DateTime
+  startDate       DateTime
   endDate         DateTime
   location        String?         @db.Text
   format          TrainingFormat  @default(PRESENTIAL) // ONLINE, PRESENTIAL, or HYBRID
-  maxParticipants Int            @default(10)
+  maxParticipants Int             @default(10)
   currentBookings Int             @default(0)
   isActive        Boolean         @default(true)
   createdAt       DateTime        @default(now())
@@ -885,12 +905,12 @@ model TrainingBooking {
   status    TrainingBookingStatus @default(PENDING)
   notes     String?               @db.Text
   createdAt DateTime              @default(now())
-  updatedAt  DateTime              @updatedAt
+  updatedAt DateTime              @updatedAt
 
+  @@unique([userId, sessionId]) // One booking per user per session
   @@index([userId])
   @@index([programId])
   @@index([sessionId])
   @@index([status])
   @@index([createdAt])
-  @@unique([userId, sessionId]) // One booking per user per session
 }

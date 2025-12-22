@@ -5,8 +5,9 @@ import { db } from "@/lib/db";
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions);
 
@@ -80,7 +81,7 @@ export async function PATCH(
     }
 
     const reward = await db.reward.update({
-      where: { id: params.id },
+      where: { id: id },
       data: updateData,
     });
 
@@ -96,8 +97,9 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions);
 
@@ -107,7 +109,7 @@ export async function DELETE(
 
     // Check if reward has redemptions
     const redemptionCount = await db.pointsRedemption.count({
-      where: { rewardId: params.id },
+      where: { rewardId: id },
     });
 
     if (redemptionCount > 0) {
@@ -118,7 +120,7 @@ export async function DELETE(
     }
 
     await db.reward.delete({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     return NextResponse.json({ success: true });

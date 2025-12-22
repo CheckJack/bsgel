@@ -341,21 +341,7 @@ export const pt = {
     denied: "Negado",
     updateUser: "Atualizar Utilizador",
     passwordRequirements: "A palavra-passe deve conter maiúsculas, minúsculas, números e caracteres especiais",
-    updateError: "Falha ao atualizar utilizador",
-    deleteError: "Falha ao eliminar utilizador",
     emailPlaceholder: "utilizador@exemplo.com",
-  },
-
-  // Messages
-  messages: {
-    title: "Mensagens",
-    from: "De",
-    subject: "Assunto",
-    received: "Recebido",
-    read: "Lido",
-    unread: "Não lido",
-    reply: "Responder",
-    noMessages: "Nenhuma mensagem encontrada",
   },
 
   // Marketing

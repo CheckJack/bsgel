@@ -59,38 +59,93 @@ export async function GET(req: Request) {
     // Get total count for pagination (only if pagination is used)
     let total = 0
     let totalPages = 0
-    if (usePagination) {
-      total = await db.certification.count({ where })
-      totalPages = Math.ceil(total / limit)
-    }
+    let certifications;
+    
+    try {
+      if (usePagination) {
+        try {
+          total = await db.certification.count({ where })
+          totalPages = Math.ceil(total / limit)
+        } catch (countError: any) {
+          // If count fails due to missing table, set to 0
+          const countErrorMessage = countError?.message || String(countError);
+          const countErrorCode = countError?.code;
+          
+          if (
+            countErrorCode === "P2021" || 
+            countErrorCode === "P2001" ||
+            countErrorMessage?.includes("does not exist") || 
+            countErrorMessage?.includes("Certification") ||
+            countErrorMessage?.includes("Unknown table") ||
+            countErrorMessage?.includes("relation") ||
+            countErrorMessage?.includes("does not exist in the current database")
+          ) {
+            console.warn("Certification table does not exist, count failed");
+            total = 0
+            totalPages = 0
+          } else {
+            throw countError
+          }
+        }
+      }
 
-    // Calculate pagination
-    const skip = usePagination ? (page - 1) * limit : 0
-    const take = usePagination ? limit : undefined
+      // Calculate pagination
+      const skip = usePagination ? (page - 1) * limit : 0
+      const take = usePagination ? limit : undefined
 
-    const certifications = await db.certification.findMany({
-      where,
-      include: {
-        certificationCategories: {
-          include: {
-            category: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
+      certifications = await db.certification.findMany({
+        where,
+        include: {
+          certificationCategories: {
+            include: {
+              category: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                },
               },
             },
           },
-        },
-        _count: {
-          select: {
-            users: true,
+          _count: {
+            select: {
+              users: true,
+            },
           },
         },
-      },
-      orderBy,
-      ...(usePagination && { skip, take }),
-    })
+        orderBy,
+        ...(usePagination && { skip, take }),
+      })
+    } catch (error: any) {
+      // If table doesn't exist or any Prisma error, return empty array
+      const errorMessage = error?.message || String(error);
+      const errorCode = error?.code;
+      
+      if (
+        errorCode === "P2021" || 
+        errorCode === "P2001" ||
+        errorMessage?.includes("does not exist") || 
+        errorMessage?.includes("Certification") ||
+        errorMessage?.includes("Unknown table") ||
+        errorMessage?.includes("relation") ||
+        errorMessage?.includes("does not exist in the current database")
+      ) {
+        console.warn("Certification table does not exist in database, returning empty array. Error:", errorMessage);
+        if (usePagination) {
+          return NextResponse.json({
+            certifications: [],
+            pagination: {
+              page: 1,
+              limit: 10,
+              total: 0,
+              totalPages: 0,
+            },
+          });
+        }
+        return NextResponse.json([]);
+      }
+      throw error;
+    }
 
     const formatted = certifications.map((cert) => ({
       id: cert.id,
@@ -165,9 +220,31 @@ export async function POST(req: Request) {
     }
 
     // Check if certification with this name already exists
-    const existingCert = await db.certification.findUnique({
-      where: { name: name.trim() },
-    })
+    let existingCert;
+    try {
+      existingCert = await db.certification.findUnique({
+        where: { name: name.trim() },
+      })
+    } catch (error: any) {
+      const errorMessage = error?.message || String(error);
+      const errorCode = error?.code;
+      
+      if (
+        errorCode === "P2021" || 
+        errorCode === "P2001" ||
+        errorMessage?.includes("does not exist") || 
+        errorMessage?.includes("Certification") ||
+        errorMessage?.includes("Unknown table") ||
+        errorMessage?.includes("relation") ||
+        errorMessage?.includes("does not exist in the current database")
+      ) {
+        return NextResponse.json(
+          { error: "Certification table does not exist in database. Please run migrations first." },
+          { status: 500 }
+        );
+      }
+      throw error;
+    }
 
     if (existingCert) {
       return NextResponse.json(
@@ -195,7 +272,9 @@ export async function POST(req: Request) {
     }
 
     // Create certification with category associations
-    const certification = await db.certification.create({
+    let certification;
+    try {
+      certification = await db.certification.create({
       data: {
         name: name.trim(),
         description: description?.trim() || null,
@@ -227,6 +306,26 @@ export async function POST(req: Request) {
         },
       },
     })
+    } catch (error: any) {
+      const errorMessage = error?.message || String(error);
+      const errorCode = error?.code;
+      
+      if (
+        errorCode === "P2021" || 
+        errorCode === "P2001" ||
+        errorMessage?.includes("does not exist") || 
+        errorMessage?.includes("Certification") ||
+        errorMessage?.includes("Unknown table") ||
+        errorMessage?.includes("relation") ||
+        errorMessage?.includes("does not exist in the current database")
+      ) {
+        return NextResponse.json(
+          { error: "Certification table does not exist in database. Please run migrations first." },
+          { status: 500 }
+        );
+      }
+      throw error;
+    }
 
     const formatted = {
       id: certification.id,

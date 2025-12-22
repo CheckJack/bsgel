@@ -5,8 +5,9 @@ import { db } from "@/lib/db"
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -19,7 +20,7 @@ export async function GET(
     }
 
     const coupon = await db.coupon.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     if (!coupon) {
@@ -38,8 +39,9 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -73,7 +75,7 @@ export async function PATCH(
 
     // Check if coupon exists
     const existingCoupon = await db.coupon.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     if (!existingCoupon) {
@@ -139,7 +141,7 @@ export async function PATCH(
     }
 
     const coupon = await db.coupon.update({
-      where: { id: params.id },
+      where: { id: id },
       data: updateData,
     })
 
@@ -163,8 +165,9 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -177,7 +180,7 @@ export async function DELETE(
     }
 
     const coupon = await db.coupon.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     if (!coupon) {
@@ -185,7 +188,7 @@ export async function DELETE(
     }
 
     await db.coupon.delete({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     return NextResponse.json({ message: "Coupon deleted successfully" })

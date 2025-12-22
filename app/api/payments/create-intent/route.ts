@@ -13,7 +13,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { shippingAddress, couponCode } = await req.json()
+    const body = await req.json()
+    const { shippingAddress, couponCode } = body
+
+    // Validate input
+    if (couponCode !== undefined && couponCode !== null && (typeof couponCode !== "string" || couponCode.trim().length === 0)) {
+      return NextResponse.json(
+        { error: "Coupon code must be a valid string if provided" },
+        { status: 400 }
+      )
+    }
+
+    if (shippingAddress !== undefined && shippingAddress !== null && typeof shippingAddress !== "string") {
+      return NextResponse.json(
+        { error: "Shipping address must be a valid string if provided" },
+        { status: 400 }
+      )
+    }
 
     // Get user info to check if email is banned
     const user = await db.user.findUnique({
@@ -78,7 +94,13 @@ export async function POST(req: Request) {
 
     // Calculate subtotal
     const subtotal = cart.items.reduce(
-      (sum, item) => sum + Number(item.product.price) * item.quantity,
+      (sum, item) => {
+        if (!item.product || !item.product.price) {
+          console.error(`Product or price missing for cart item ${item.id}`)
+          return sum
+        }
+        return sum + Number(item.product.price) * item.quantity
+      },
       0
     )
 

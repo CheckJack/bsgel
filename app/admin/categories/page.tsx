@@ -227,7 +227,7 @@ export default function AdminCategoriesPage() {
       return;
     }
 
-    const confirmMessage = t("categories.bulkDeleteConfirm", { count: selectedCategories.size });
+    const confirmMessage = t("categories.bulkDeleteConfirm", { count: selectedCategories.size.toString() });
     if (!confirm(confirmMessage)) {
       return;
     }
@@ -343,7 +343,7 @@ export default function AdminCategoriesPage() {
 
       const csvContent = [
         headers.join(","),
-        ...rows.map((row) => row.join(",")),
+        ...rows.map((row: string[]) => row.join(",")),
       ].join("\n");
 
       // Create blob and download

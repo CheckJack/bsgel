@@ -12,58 +12,89 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null
-        }
-
-        // Normalize email to lowercase (same as registration)
-        const normalizedEmail = credentials.email.trim().toLowerCase()
-
-        // Use raw query to avoid schema mismatch issues
-        const users = await db.$queryRaw<Array<{
-          id: string
-          email: string
-          password: string
-          role: string
-          name: string | null
-          certificationId: string | null
-        }>>`
-          SELECT u.id, u.email, u.password, u.role, u.name, u."certificationId"
-          FROM "User" u
-          WHERE LOWER(u.email) = ${normalizedEmail}
-          LIMIT 1
-        `
-
-        if (!users || users.length === 0) {
-          return null
-        }
-
-        const user = users[0]
-
-        const isPasswordValid = await compare(credentials.password, user.password)
-
-        if (!isPasswordValid) {
-          return null
-        }
-
-        // Get certification if exists
-        let certificationName = null
-        if (user.certificationId) {
-          const certs = await db.$queryRaw<Array<{ id: string; name: string }>>`
-            SELECT id, name FROM "Certification" WHERE id = ${user.certificationId} LIMIT 1
-          `
-          if (certs && certs.length > 0) {
-            certificationName = certs[0].name
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            console.error("❌ Auth: Missing credentials")
+            return null
           }
-        }
 
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          certification: certificationName,
-          certificationId: user.certificationId,
+          // Normalize email to lowercase (same as registration)
+          const normalizedEmail = credentials.email.trim().toLowerCase()
+          console.log("🔐 Auth: Attempting login for:", normalizedEmail)
+
+          // Use raw query to avoid schema mismatch issues with missing columns
+          const users = await db.$queryRaw<Array<{
+            id: string
+            email: string
+            password: string
+            role: string
+            name: string | null
+          }>>`
+            SELECT id, email, password, role, name
+            FROM "User"
+            WHERE LOWER(email) = ${normalizedEmail}
+            LIMIT 1
+          `
+
+          if (!users || users.length === 0) {
+            console.error("❌ Auth: User not found for email:", normalizedEmail)
+            return null
+          }
+
+          const user = users[0]
+          const userId = user.id
+          const userEmail = user.email
+          const userPassword = user.password
+          const userRole = user.role
+          const userName = user.name
+
+          console.log("✅ Auth: User found:", userEmail, "Role:", userRole)
+
+          const isPasswordValid = await compare(credentials.password, userPassword)
+
+          if (!isPasswordValid) {
+            console.error("❌ Auth: Invalid password for:", normalizedEmail)
+            return null
+          }
+
+          console.log("✅ Auth: Password valid for:", normalizedEmail)
+
+          // Get certification if exists (try to fetch certificationId from database)
+          let certificationName = null
+          let userCertificationId = null
+          try {
+            const certResult = await db.$queryRaw<Array<{ certificationId: string | null }>>`
+              SELECT "certificationId" FROM "User" WHERE id = ${userId} LIMIT 1
+            `
+            if (certResult && certResult.length > 0 && certResult[0].certificationId) {
+              userCertificationId = certResult[0].certificationId
+              const cert = await db.certification.findUnique({
+                where: { id: userCertificationId },
+                select: { name: true },
+              })
+              if (cert) {
+                certificationName = cert.name
+              }
+            }
+          } catch (certError) {
+            // Certification lookup failed, continue without it
+            console.warn("⚠️ Auth: Could not fetch certification:", certError)
+          }
+
+          const authUser = {
+            id: userId,
+            email: userEmail,
+            name: userName,
+            role: userRole,
+            certification: certificationName || undefined, // Convert null to undefined for NextAuth
+            certificationId: userCertificationId || undefined,
+          }
+          
+          console.log("✅ Auth: Returning user object for:", normalizedEmail)
+          return authUser
+        } catch (error: any) {
+          console.error("❌ Auth: Error during authorization:", error?.message || error)
+          return null
         }
       },
     }),
@@ -86,7 +117,13 @@ export const authOptions: NextAuthOptions = {
       return session
     },
     async redirect({ url, baseUrl }) {
-      // Always redirect to dashboard after login
+      // If there's a callback URL, use it
+      if (url && url.startsWith(baseUrl)) {
+        return url
+      }
+      
+      // Default to dashboard (role-based redirect is handled in login page)
+      // This callback is only used when redirect: true, but we use redirect: false
       return `${baseUrl}/dashboard`
     },
   },

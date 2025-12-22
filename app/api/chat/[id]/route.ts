@@ -6,8 +6,9 @@ import { db } from "@/lib/db";
 // PUT - Mark message as read (admin only)
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions);
 
@@ -23,7 +24,7 @@ export async function PUT(
     }
 
     const message = await db.chatMessage.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!message) {
@@ -34,7 +35,7 @@ export async function PUT(
     }
 
     const updatedMessage = await db.chatMessage.update({
-      where: { id: params.id },
+      where: { id: id },
       data: {
         readByAdmin: true,
         readAt: new Date(),

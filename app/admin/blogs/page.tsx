@@ -32,9 +32,12 @@ interface Blog {
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  assignedReviewerId?: string | null;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
 }
 
-type SortField = "title" | "publishedAt" | "createdAt" | "updatedAt";
+type SortField = "title" | "publishedAt" | "createdAt" | "updatedAt" | "status";
 type SortOrder = "asc" | "desc";
 
 export default function AdminBlogsPage() {
@@ -262,7 +265,7 @@ export default function AdminBlogsPage() {
     }
   };
 
-  const handleBulkStatusChange = async (status: "DRAFT" | "PUBLISHED") => {
+  const handleBulkStatusChange = async (status: "DRAFT" | "PUBLISHED" | "PENDING_REVIEW") => {
     if (selectedBlogs.size === 0) {
       toast("Please select at least one blog post", "warning");
       return;
@@ -424,6 +427,13 @@ export default function AdminBlogsPage() {
                   {isBulkUpdating ? "Updating..." : "Publish Selected"}
                 </Button>
                 <Button
+                  onClick={() => handleBulkStatusChange("PENDING_REVIEW")}
+                  className="bg-blue-600 hover:bg-blue-700"
+                  disabled={isBulkUpdating || isBulkDeleting}
+                >
+                  {isBulkUpdating ? "Updating..." : "Send to Review"}
+                </Button>
+                <Button
                   onClick={() => handleBulkStatusChange("DRAFT")}
                   className="bg-yellow-600 hover:bg-yellow-700"
                   disabled={isBulkUpdating || isBulkDeleting}
@@ -487,6 +497,9 @@ export default function AdminBlogsPage() {
               >
                 <option value="">All Status</option>
                 <option value="DRAFT">Draft</option>
+                <option value="PENDING_REVIEW">Pending Review</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
                 <option value="PUBLISHED">Published</option>
               </select>
 
@@ -677,10 +690,18 @@ export default function AdminBlogsPage() {
                           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
                             blog.status === "PUBLISHED"
                               ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                              : blog.status === "PENDING_REVIEW"
+                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                              : blog.status === "APPROVED"
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
+                              : blog.status === "REJECTED"
+                              ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
                               : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
                           }`}
                         >
-                          {blog.status}
+                          {blog.status === "PENDING_REVIEW"
+                            ? "Pending Review"
+                            : blog.status}
                         </span>
                       </td>
 

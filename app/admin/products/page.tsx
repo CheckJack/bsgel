@@ -220,15 +220,29 @@ export default function AdminProductsPage() {
 
   const fetchProducts = async () => {
     try {
+      setIsLoading(true);
       const res = await fetch("/api/products");
-      if (res.ok) {
-        const data = await res.json();
-        setProducts(data);
-        setFilteredProducts(data);
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
+        console.error("❌ Failed to fetch products:", res.status, res.statusText, errorData);
+        toast(`Failed to fetch products: ${errorData.error || res.statusText} (${res.status})`, "error");
+        setProducts([]);
+        setFilteredProducts([]);
+        return;
       }
-    } catch (error) {
-      console.error("Failed to fetch products:", error);
-      toast("Failed to fetch products", "error");
+      
+      const data = await res.json();
+      // Handle different response formats
+      const productsArray = Array.isArray(data) ? data : (data.products || []);
+      console.log("✅ Products fetched successfully:", productsArray.length, "products");
+      setProducts(productsArray);
+      setFilteredProducts(productsArray);
+    } catch (error: any) {
+      console.error("❌ Error fetching products:", error);
+      toast(`Failed to fetch products: ${error?.message || "Network error"}`, "error");
+      setProducts([]);
+      setFilteredProducts([]);
     } finally {
       setIsLoading(false);
     }

@@ -7,66 +7,84 @@ import { logAdminAction, extractRequestInfo, createChangeDetails } from "@/lib/a
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     let product;
     try {
-      // Try with full schema first
+      // Use select to only get fields that exist in the database
       product = await db.product.findUnique({
-        where: { id: params.id },
-        include: {
-          category: true,
-          subcategories: {
-            include: {
-              category: true,
+        where: { id },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          price: true,
+          image: true,
+          images: true,
+          featured: true,
+          categoryId: true,
+          attributes: true,
+          createdAt: true,
+          updatedAt: true,
+          category: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
             },
           },
         },
       });
+      // Add subcategories as empty array since it doesn't exist in schema
+      if (product) {
+        (product as any).subcategories = [];
+        (product as any).showcasingSections = [];
+      }
     } catch (error: any) {
       // If schema doesn't match, use raw SQL to only get fields that exist
       if (error.code === 'P2021' || error.message?.includes('salePrice') || error.message?.includes('does not exist')) {
         console.log("Schema mismatch detected, using raw SQL query");
         const result = await db.$queryRaw`
           SELECT 
-            p.id, p.name, p.description, p.price, p.image, p.images, p.featured, p."categoryId", p.attributes, p."showcasingSections",
+            p.id, p.name, p.description, p.price, p.image, p.images, p.featured, p."categoryId", p.attributes,
             p."createdAt", p."updatedAt",
             c.id as "category_id", c.name as "category_name", c.slug as "category_slug"
           FROM "Product" p
           LEFT JOIN "Category" c ON p."categoryId" = c.id
-          WHERE p.id = ${params.id}
+          WHERE p.id = ${id}
         `;
         const row = (result as any[])[0];
         if (!row) {
           return NextResponse.json({ error: "Product not found" }, { status: 404 });
         }
-        product = {
-          id: row.id,
-          name: row.name,
-          description: row.description,
-          price: row.price,
-          image: row.image,
-          images: row.images || [],
-          featured: row.featured,
-          categoryId: row.categoryId,
-          attributes: row.attributes,
-          showcasingSections: row.showcasingSections || [],
-          createdAt: row.createdAt,
-          updatedAt: row.updatedAt,
-          category: row.category_id ? {
-            id: row.category_id,
-            name: row.category_name,
-            slug: row.category_slug,
-          } : null,
-          subcategories: [],
-        };
+          product = {
+            id: row.id,
+            name: row.name,
+            description: row.description,
+            price: row.price,
+            image: row.image,
+            images: row.images || [],
+            featured: row.featured,
+            categoryId: row.categoryId,
+            attributes: row.attributes,
+            showcasingSections: [], // Field doesn't exist in database
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+            category: row.category_id ? {
+              id: row.category_id,
+              name: row.category_name,
+              slug: row.category_slug,
+            } : null,
+            subcategories: [],
+          };
       } else {
         // If it's a different error, try simpler query with select to avoid schema issues
         console.log("Trying simpler query with select");
         try {
           product = await db.product.findUnique({
-            where: { id: params.id },
+            where: { id },
             select: {
               id: true,
               name: true,
@@ -93,12 +111,12 @@ export async function GET(
           console.log("Select query failed, using raw SQL");
           const result = await db.$queryRaw`
             SELECT 
-              p.id, p.name, p.description, p.price, p.image, p.images, p.featured, p."categoryId", p.attributes, p."showcasingSections",
+              p.id, p.name, p.description, p.price, p.image, p.images, p.featured, p."categoryId", p.attributes,
               p."createdAt", p."updatedAt",
               c.id as "category_id", c.name as "category_name", c.slug as "category_slug"
             FROM "Product" p
             LEFT JOIN "Category" c ON p."categoryId" = c.id
-            WHERE p.id = ${params.id}
+            WHERE p.id = ${id}
           `;
           const row = (result as any[])[0];
           if (!row) {
@@ -114,7 +132,7 @@ export async function GET(
             featured: row.featured,
             categoryId: row.categoryId,
             attributes: row.attributes,
-            showcasingSections: row.showcasingSections || [],
+            showcasingSections: [], // Field doesn't exist in database
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
             category: row.category_id ? {
@@ -138,7 +156,7 @@ export async function GET(
     try {
       const reviewStats = await db.productReview.aggregate({
         where: {
-          productId: params.id,
+          productId: id,
           status: 'APPROVED',
         },
         _count: {
@@ -166,19 +184,12 @@ export async function GET(
       }
     }
     
-    let salePriceString = null;
-    if (product.salePrice !== null && product.salePrice !== undefined) {
-      if (typeof product.salePrice === 'object' && 'toString' in product.salePrice) {
-        salePriceString = product.salePrice.toString();
-      } else {
-        salePriceString = String(product.salePrice);
-      }
-    }
-    
+    // salePrice doesn't exist in database, return null
     const serializedProduct = {
       ...product,
       price: priceString,
-      salePrice: salePriceString,
+      salePrice: null, // Field doesn't exist in database
+      discountPercentage: null, // Field doesn't exist in database
       rating: rating,
       reviewCount: reviewCount,
     }
@@ -190,7 +201,7 @@ export async function GET(
       message: error?.message,
       code: error?.code,
       stack: error?.stack,
-      params: params.id,
+      params: id,
     })
     return NextResponse.json(
       { 
@@ -204,8 +215,9 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   let updateData: any = {}
   
   try {
@@ -218,16 +230,31 @@ export async function PATCH(
     if (isAdmin && session?.user?.id) {
       try {
         productBefore = await db.product.findUnique({
-          where: { id: params.id },
-          include: {
-            category: true,
-            subcategories: {
-              include: {
-                category: true,
+          where: { id },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            price: true,
+            image: true,
+            images: true,
+            featured: true,
+            categoryId: true,
+            attributes: true,
+            createdAt: true,
+            updatedAt: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
               },
             },
           },
         });
+        if (productBefore) {
+          (productBefore as any).subcategories = [];
+        }
         console.log("📋 Product before update fetched:", productBefore ? "YES" : "NO");
       } catch (error: any) {
         console.error("Error fetching product before update:", error);
@@ -245,7 +272,8 @@ export async function PATCH(
     if (image !== undefined) updateData.image = image
     if (images !== undefined) updateData.images = images
     if (featured !== undefined) updateData.featured = featured
-    if (showcasingSections !== undefined) updateData.showcasingSections = showcasingSections || []
+    // showcasingSections field doesn't exist in database, skip it
+    // if (showcasingSections !== undefined) updateData.showcasingSections = showcasingSections || []
     
     // Handle categoryId using relation syntax (required for updates in some Prisma versions)
     if (categoryId !== undefined) {
@@ -290,28 +318,60 @@ export async function PATCH(
     let product;
     try {
       product = await db.product.update({
-        where: { id: params.id },
+        where: { id: id },
         data: updateData,
-        include: {
-          category: true,
-          subcategories: {
-            include: {
-              category: true,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          price: true,
+          image: true,
+          images: true,
+          featured: true,
+          categoryId: true,
+          attributes: true,
+          createdAt: true,
+          updatedAt: true,
+          category: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
             },
           },
         },
       });
+      // Add subcategories as empty array since it doesn't exist in schema
+      (product as any).subcategories = [];
     } catch (error: any) {
       // If schema hasn't been migrated yet, remove subcategories from update and retry
       if (error?.message?.includes("subcategories") || error?.code === "P2021" || error?.code === "P2009" || error?.code === "P2014") {
         const { subcategories, ...dataWithoutSubcategories } = updateData;
         product = await db.product.update({
-          where: { id: params.id },
+          where: { id: id },
           data: dataWithoutSubcategories,
-          include: {
-            category: true,
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            price: true,
+            image: true,
+            images: true,
+            featured: true,
+            categoryId: true,
+            attributes: true,
+            createdAt: true,
+            updatedAt: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
           },
         });
+        (product as any).subcategories = [];
       } else {
         throw error;
       }
@@ -328,19 +388,12 @@ export async function PATCH(
       }
     }
     
-    let salePriceString = null;
-    if (product.salePrice !== null && product.salePrice !== undefined) {
-      if (typeof product.salePrice === 'object' && 'toString' in product.salePrice) {
-        salePriceString = product.salePrice.toString();
-      } else {
-        salePriceString = String(product.salePrice);
-      }
-    }
-    
+    // salePrice doesn't exist in database
     const serializedProduct = {
       ...product,
       price: priceString,
-      salePrice: salePriceString,
+      salePrice: null, // Field doesn't exist in database
+      discountPercentage: null, // Field doesn't exist in database
     }
 
     // Log admin action - ALWAYS log if admin (even if productBefore fetch failed)
@@ -360,7 +413,7 @@ export async function PATCH(
           userId: session.user.id!,
           actionType: "UPDATE" as any,
           resourceType: "Product",
-          resourceId: params.id,
+          resourceId: id,
           description: `Updated product "${product.name}"`,
           details: productBefore ? createChangeDetails(productBefore, product) : { after: product },
           ipAddress,
@@ -405,8 +458,9 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
@@ -419,7 +473,7 @@ export async function DELETE(
 
     // Get product before deletion for logging
     const product = await db.product.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: {
         category: true,
       },
@@ -430,7 +484,7 @@ export async function DELETE(
     }
 
     await db.product.delete({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     // Log admin action
@@ -439,7 +493,7 @@ export async function DELETE(
       userId: session.user.id!,
       actionType: "DELETE" as any,
       resourceType: "Product",
-      resourceId: params.id,
+      resourceId: id,
       description: `Deleted product "${product.name}"`,
       details: {
         before: product,

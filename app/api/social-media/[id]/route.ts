@@ -5,11 +5,12 @@ import { authOptions } from "@/lib/auth"
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const post = await db.socialMediaPost.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     if (!post) {
@@ -31,8 +32,9 @@ export async function GET(
 
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id || session.user.role !== "ADMIN") {
@@ -106,7 +108,7 @@ export async function PUT(
     if (assignedReviewerId !== undefined && status === undefined) {
       // Only update if current status is PENDING_REVIEW
       const currentPost = await db.socialMediaPost.findUnique({
-        where: { id: params.id },
+        where: { id: id },
         select: { status: true },
       })
       if (currentPost?.status === "PENDING_REVIEW") {
@@ -119,7 +121,7 @@ export async function PUT(
     }
 
     const post = await db.socialMediaPost.update({
-      where: { id: params.id },
+      where: { id: id },
       data: updateData,
     })
 
@@ -135,8 +137,9 @@ export async function PUT(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id || session.user.role !== "ADMIN") {
@@ -147,7 +150,7 @@ export async function DELETE(
     }
 
     await db.socialMediaPost.delete({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     return NextResponse.json({ success: true })

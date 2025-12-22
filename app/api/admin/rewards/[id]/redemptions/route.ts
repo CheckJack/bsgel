@@ -5,9 +5,10 @@ import { db } from "@/lib/db";
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions);
 
     if (!session?.user || session.user.role !== "ADMIN") {
@@ -20,7 +21,7 @@ export async function GET(
 
     const [redemptions, total] = await Promise.all([
       db.pointsRedemption.findMany({
-        where: { rewardId: params.id },
+        where: { rewardId: id },
         include: {
           user: {
             select: {
@@ -43,7 +44,7 @@ export async function GET(
         take: perPage,
       }),
       db.pointsRedemption.count({
-        where: { rewardId: params.id },
+        where: { rewardId: id },
       }),
     ]);
 

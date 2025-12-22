@@ -6,9 +6,10 @@ import { db } from "@/lib/db";
 // GET approved reviews for a product (and user's own pending review if logged in)
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "5");
@@ -21,7 +22,7 @@ export async function GET(
 
     // Verify product exists
     const product = await db.product.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!product) {
@@ -40,12 +41,12 @@ export async function GET(
     }
 
     // Get approved reviews only
-    let reviews, total;
+    let reviews: any[], total: number;
     try {
       // First, let's check all reviews for this product (for debugging)
       const allReviewsForProduct = await db.productReview.findMany({
         where: {
-          productId: params.id,
+          productId: id,
         },
         select: {
           id: true,
@@ -54,13 +55,13 @@ export async function GET(
           rating: true,
         },
       });
-      console.log(`[Reviews API] Product ${params.id}: All reviews (any status):`, allReviewsForProduct.length);
+      console.log(`[Reviews API] Product ${id}: All reviews (any status):`, allReviewsForProduct.length);
       console.log(`[Reviews API] Review statuses:`, allReviewsForProduct.map(r => ({ id: r.id, status: r.status, productId: r.productId })));
 
       [reviews, total] = await Promise.all([
         db.productReview.findMany({
           where: {
-            productId: params.id,
+            productId: id,
             status: "APPROVED",
           },
           include: {
@@ -86,20 +87,20 @@ export async function GET(
         }),
         db.productReview.count({
           where: {
-            productId: params.id,
+            productId: id,
             status: "APPROVED",
           },
         }),
       ]);
       
-      console.log(`[Reviews API] Product ${params.id}: Found ${reviews.length} approved reviews (total: ${total})`);
+      console.log(`[Reviews API] Product ${id}: Found ${reviews.length} approved reviews (total: ${total})`);
 
       // If user is logged in, also get their own pending review to show them it was submitted
       if (userId) {
         try {
           const userPendingReview = await db.productReview.findFirst({
             where: {
-              productId: params.id,
+              productId: id,
               userId: userId,
               status: "PENDING",
             },
@@ -143,11 +144,11 @@ export async function GET(
     }
 
     // Calculate rating breakdown
-    let allApprovedReviews = [];
+    let allApprovedReviews: any[] = [];
     try {
       allApprovedReviews = await db.productReview.findMany({
         where: {
-          productId: params.id,
+          productId: id,
           status: "APPROVED",
         },
         select: {
@@ -157,7 +158,7 @@ export async function GET(
           status: true,
         },
       });
-      console.log(`[Reviews API] Product ${params.id}: All approved reviews for stats:`, allApprovedReviews.length);
+      console.log(`[Reviews API] Product ${id}: All approved reviews for stats:`, allApprovedReviews.length);
       console.log(`[Reviews API] Approved review details:`, allApprovedReviews.map(r => ({ id: r.id, rating: r.rating, productId: r.productId, status: r.status })));
     } catch (error: any) {
       // If table doesn't exist, use empty array
@@ -180,7 +181,7 @@ export async function GET(
         : 0;
 
     // Debug: Log review count and statuses
-    console.log(`[Reviews API] Product ${params.id}: Found ${reviews.length} approved reviews`);
+    console.log(`[Reviews API] Product ${id}: Found ${reviews.length} approved reviews`);
     if (reviews.length > 0) {
       console.log(`[Reviews API] Review statuses:`, reviews.map(r => ({ id: r.id, status: r.status })));
     }
@@ -188,7 +189,7 @@ export async function GET(
     // Map reviews to response format
     const mappedReviews = reviews.map((review) => ({
       id: review.id,
-      reviewerName: review.user.name || review.user.email?.split("@")[0] || "Anonymous",
+      reviewerName: review.user?.name || review.user?.email?.split("@")[0] || "Anonymous",
       rating: review.rating,
       title: review.title,
       content: review.content,
@@ -230,8 +231,9 @@ export async function GET(
 // POST a new review (requires authentication)
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const session = await getServerSession(authOptions);
 
@@ -261,7 +263,7 @@ export async function POST(
 
     // Verify product exists
     const product = await db.product.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!product) {
@@ -276,7 +278,7 @@ export async function POST(
     try {
       existingReview = await db.productReview.findFirst({
         where: {
-          productId: params.id,
+          productId: id,
           userId: session.user.id,
         },
       });
@@ -302,7 +304,7 @@ export async function POST(
     try {
       const orderItem = await db.orderItem.findFirst({
         where: {
-          productId: params.id,
+          productId: id,
           order: {
             userId: session.user.id,
             status: {
@@ -330,7 +332,7 @@ export async function POST(
     try {
       review = await db.productReview.create({
         data: {
-          productId: params.id,
+          productId: id,
           userId: session.user.id,
           rating: parseInt(rating),
           title: title?.trim() || null,

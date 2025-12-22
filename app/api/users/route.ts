@@ -7,12 +7,21 @@ export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions)
 
+    console.log("🔍 [Users API] Session check:", {
+      hasSession: !!session,
+      userId: session?.user?.id,
+      userRole: session?.user?.role,
+      userEmail: session?.user?.email,
+    })
+
     if (!session?.user?.id) {
+      console.error("❌ [Users API] No session or user ID")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     // Only admins can view users
-    if (session.user.role !== "ADMIN") {
+    if (!session.user.role || session.user.role !== "ADMIN") {
+      console.error("❌ [Users API] User is not admin. Role:", session.user.role)
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
@@ -28,9 +37,16 @@ export async function GET(req: Request) {
     }
     // If no role specified, return all users
 
+    // Use select to only get fields that exist in the database
     const users = await db.user.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
         orders: {
           select: {
             total: true,
@@ -44,33 +60,35 @@ export async function GET(req: Request) {
 
     // Calculate total spent and order count for each user
     const usersWithStats = users.map((user) => {
-      const totalSpent = user.orders.reduce(
-        (sum, order) => sum + parseFloat(order.total.toString()),
+      const orders = user.orders || []
+      const totalSpent = orders.reduce(
+        (sum, order) => sum + parseFloat(order.total?.toString() || "0"),
         0
       )
-      const orderCount = user.orders.length
+      const orderCount = orders.length
 
       return {
         id: user.id,
         email: user.email,
         name: user.name,
         role: user.role,
-        permissions: user.permissions,
-        isActive: user.isActive,
-        lastLoginAt: user.lastLoginAt,
-        certification: user.certification,
-        certificateUrl: user.certificateUrl,
+        permissions: null, // Field doesn't exist in database, return null
+        isActive: true, // Field doesn't exist in database, default to true
+        lastLoginAt: null, // Field doesn't exist in database, return null
+        certification: null, // Not fetched to avoid schema issues
+        certificateUrl: null, // Not fetched to avoid schema issues
         createdAt: user.createdAt,
         totalSpent,
         orderCount,
       }
     })
 
+    console.log("✅ [Users API] Returning", usersWithStats.length, "users")
     return NextResponse.json(usersWithStats)
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to fetch users:", error)
     return NextResponse.json(
-      { error: "Failed to fetch users" },
+      { error: "Failed to fetch users", details: error?.message || String(error) },
       { status: 500 }
     )
   }

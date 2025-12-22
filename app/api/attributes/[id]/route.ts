@@ -3,11 +3,12 @@ import { db } from "@/lib/db"
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const attribute = await db.attribute.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     if (!attribute) {
@@ -29,8 +30,9 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const body = await request.json()
     const { category, values } = body
@@ -43,7 +45,7 @@ export async function PUT(
     }
 
     const attribute = await db.attribute.update({
-      where: { id: params.id },
+      where: { id: id },
       data: {
         category,
         values,
@@ -77,11 +79,12 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     await db.attribute.delete({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     return NextResponse.json({ message: "Attribute deleted successfully" })

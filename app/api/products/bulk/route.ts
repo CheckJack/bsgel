@@ -54,22 +54,14 @@ export async function PATCH(req: Request) {
       updateData.price = parseFloat(updates.price)
     }
 
-    // Handle discountPercentage (if provided)
-    if (updates.discountPercentage !== undefined && updates.discountPercentage !== null && updates.discountPercentage !== "") {
-      updateData.discountPercentage = parseInt(updates.discountPercentage)
-    }
+    // discountPercentage and showcasingSections fields don't exist in database, skip them
+    // if (updates.discountPercentage !== undefined && updates.discountPercentage !== null && updates.discountPercentage !== "") {
+    //   updateData.discountPercentage = parseInt(updates.discountPercentage)
+    // }
 
-    // Handle showcasingSections (if provided)
-    if (updates.showcasingSections !== undefined) {
-      updateData.showcasingSections = Array.isArray(updates.showcasingSections) ? updates.showcasingSections : []
-    }
-
-    // Handle salePrice calculation if discountPercentage is provided
-    if (updates.discountPercentage !== undefined && updates.discountPercentage !== null && updates.discountPercentage !== "") {
-      // We'll need to fetch products first to calculate salePrice
-      // For now, we'll update discountPercentage and let the frontend calculate salePrice
-      // Or we can calculate it here if we have the original price
-    }
+    // if (updates.showcasingSections !== undefined) {
+    //   updateData.showcasingSections = Array.isArray(updates.showcasingSections) ? updates.showcasingSections : []
+    // }
 
     // Handle subcategoryIds (if provided)
     let needsSubcategoryUpdate = false
@@ -111,11 +103,12 @@ export async function PATCH(req: Request) {
         // Prepare product update data
         const productUpdate: any = {}
         
-        // Copy non-relation fields
+        // Copy non-relation fields (skip discountPercentage and showcasingSections as they don't exist)
         if (updateData.featured !== undefined) productUpdate.featured = updateData.featured
         if (updateData.price !== undefined) productUpdate.price = updateData.price
-        if (updateData.discountPercentage !== undefined) productUpdate.discountPercentage = updateData.discountPercentage
-        if (updateData.showcasingSections !== undefined) productUpdate.showcasingSections = updateData.showcasingSections
+        // discountPercentage and showcasingSections don't exist in database
+        // if (updateData.discountPercentage !== undefined) productUpdate.discountPercentage = updateData.discountPercentage
+        // if (updateData.showcasingSections !== undefined) productUpdate.showcasingSections = updateData.showcasingSections
         
         // Update product with non-relation fields first
         if (Object.keys(productUpdate).length > 0) {

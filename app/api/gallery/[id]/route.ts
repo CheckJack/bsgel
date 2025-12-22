@@ -9,8 +9,9 @@ export const dynamic = "force-dynamic";
 // GET - Get single gallery item
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions);
     if (!session || session.user?.role !== "ADMIN") {
@@ -18,7 +19,7 @@ export async function GET(
     }
 
     const item = await db.galleryItem.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: {
         folder: true,
         items: {
@@ -49,8 +50,9 @@ export async function GET(
 // PUT - Update gallery item
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions);
     if (!session || session.user?.role !== "ADMIN") {
@@ -61,7 +63,7 @@ export async function PUT(
     const { name, description } = body;
 
     const item = await db.galleryItem.update({
-      where: { id: params.id },
+      where: { id: id },
       data: {
         ...(name && { name }),
         ...(description !== undefined && { description }),

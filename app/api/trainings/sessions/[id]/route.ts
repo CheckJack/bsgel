@@ -6,11 +6,12 @@ import { db } from "@/lib/db"
 // GET - Get a specific training session
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await db.trainingSession.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: {
         program: true,
         _count: {
@@ -60,8 +61,9 @@ export async function GET(
 // PUT - Admin only: Update a training session
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -78,7 +80,7 @@ export async function PUT(
 
     // Check if session exists
     const existing = await db.trainingSession.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: {
         _count: {
           select: {
@@ -156,7 +158,7 @@ export async function PUT(
     }
 
     const updated = await db.trainingSession.update({
-      where: { id: params.id },
+      where: { id: id },
       data: updateData,
       include: {
         program: {
@@ -203,8 +205,9 @@ export async function PUT(
 // DELETE - Admin only: Delete a training session
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -218,7 +221,7 @@ export async function DELETE(
 
     // Check if session exists
     const existing = await db.trainingSession.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: {
         _count: {
           select: {
@@ -244,7 +247,7 @@ export async function DELETE(
     }
 
     await db.trainingSession.delete({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     return NextResponse.json({ message: "Training session deleted successfully" })

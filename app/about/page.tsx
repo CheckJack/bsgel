@@ -2,6 +2,7 @@
 
 import { HeroSlider } from "@/components/layout/hero-slider";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 
 const productLines = [
   {
@@ -76,6 +77,7 @@ function RotatingWordsSection() {
         loop
         muted
         playsInline
+        preload="metadata"
         className="absolute inset-0 w-full h-full object-cover z-0"
       >
         <source src="/dssfvszvx.mp4" type="video/mp4" />
@@ -137,53 +139,71 @@ export default function AboutPage() {
             {productLines.map((category, index) => {
               const content = (
                 <div className="relative w-full h-[250px] sm:h-[300px] md:h-[400px] overflow-hidden group cursor-pointer">
-                  <img
+                  <Image
                     src={category.image}
                     alt={category.text}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 20vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    loading="lazy"
                   />
                   {index === 0 && (
                     <div className="absolute inset-0 flex items-center justify-center z-10 p-4">
-                      <img
+                      <Image
                         src="/ETHOSLOGO.png"
                         alt="ETHOS Logo"
-                        className="object-contain w-auto h-auto max-w-[200px] max-h-[200px]"
+                        width={200}
+                        height={200}
+                        className="object-contain max-w-[200px] max-h-[200px]"
+                        loading="lazy"
                       />
                     </div>
                   )}
                   {index === 1 && (
                     <div className="absolute inset-0 flex items-center justify-center z-10 p-4">
-                      <img
+                      <Image
                         src="/biologo.png"
                         alt="BIO Logo"
-                        className="object-contain w-auto h-auto max-w-[200px] max-h-[200px]"
+                        width={200}
+                        height={200}
+                        className="object-contain max-w-[200px] max-h-[200px]"
+                        loading="lazy"
                       />
                     </div>
                   )}
                   {index === 2 && (
                     <div className="absolute inset-0 flex items-center justify-center z-10 p-4">
-                      <img
+                      <Image
                         src="/EVOLOGO.png"
                         alt="EVO Logo"
-                        className="object-contain w-auto h-auto max-w-[140px] max-h-[140px]"
+                        width={140}
+                        height={140}
+                        className="object-contain max-w-[140px] max-h-[140px]"
+                        loading="lazy"
                       />
                     </div>
                   )}
                   {index === 3 && (
                     <div className="absolute inset-0 flex items-center justify-center z-10 p-4">
-                      <img
+                      <Image
                         src="/SPALOGO.png"
                         alt="SPA Logo"
-                        className="object-contain w-auto h-auto max-w-[120px] max-h-[120px]"
+                        width={120}
+                        height={120}
+                        className="object-contain max-w-[120px] max-h-[120px]"
+                        loading="lazy"
                       />
                     </div>
                   )}
                   {index === 4 && (
                     <div className="absolute inset-0 flex items-center justify-center z-10 p-4">
-                      <img
+                      <Image
                         src="/geminilogo.png"
                         alt="Gemini Logo"
-                        className="object-contain w-auto h-auto max-w-[195px] max-h-[195px]"
+                        width={195}
+                        height={195}
+                        className="object-contain max-w-[195px] max-h-[195px]"
+                        loading="lazy"
                       />
                     </div>
                   )}
@@ -212,11 +232,14 @@ export default function AboutPage() {
                 As the bespoke path to nail perfection, we are dedicated to providing nail technicians with a premium system and quality education. Through our comprehensive training programs, nail techs are equipped with the knowledge to analyse each client's unique nail type and condition, delivering prescriptive treatments that promote optimal nail health. We go beyond traditional overlays by offering techniques that create long lasting results, customised to suit the client's lifestyle. With our range of base gels, colours, top coats, and builder gels, nail techs can achieve improved natural nail condition and extended lifespan of their work.
               </p>
             </div>
-            <div className="relative">
-              <img 
+            <div className="relative h-[300px] sm:h-[400px] md:h-[500px]">
+              <Image 
                 src="/Training_1.webp" 
                 alt="Bio Sculpture training" 
-                className="w-full h-[300px] sm:h-[400px] md:h-[500px] rounded-lg object-cover"
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="rounded-lg object-cover"
+                loading="lazy"
               />
             </div>
           </div>
@@ -230,11 +253,14 @@ export default function AboutPage() {
       <section className="pt-20 sm:pt-32 pb-20 sm:pb-32 px-4 sm:px-6">
         <div className="container mx-auto w-full">
           <div className="grid md:grid-cols-2 gap-8 sm:gap-12 items-center px-4 sm:px-6 md:px-8">
-            <div className="relative order-2 md:order-1">
-              <img 
+            <div className="relative order-2 md:order-1 h-[300px] sm:h-[400px] md:h-[500px]">
+              <Image 
                 src="/306_Sunset_Red_Hands.jpg" 
                 alt="Bio Sculpture story" 
-                className="w-full h-[300px] sm:h-[400px] md:h-[500px] rounded-lg object-cover"
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="rounded-lg object-cover"
+                loading="lazy"
               />
             </div>
             <div className="order-1 md:order-2">
@@ -267,10 +293,14 @@ export default function AboutPage() {
       {/* Contact CTA Section */}
       <section className="relative py-12 sm:py-16 px-4 sm:px-6 w-full min-h-[300px] sm:min-h-[400px] overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img 
+          <Image 
             src="/123_Tracey_Wide - Copy.jpg" 
             alt="Background" 
-            className="absolute inset-0 w-full h-full object-cover"
+            fill
+            sizes="100vw"
+            className="object-cover"
+            loading="lazy"
+            priority={false}
           />
           <div className="absolute inset-0 bg-black/30"></div>
         </div>

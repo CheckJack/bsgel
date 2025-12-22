@@ -10,9 +10,10 @@ const updateCertificationSchema = z.object({
 
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
@@ -58,7 +59,7 @@ export async function PUT(
     }
 
     const user = await db.user.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         orders: {
@@ -119,7 +120,7 @@ export async function PUT(
 // Keep PATCH for backward compatibility
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return PUT(req, { params })
 }

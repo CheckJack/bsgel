@@ -21,6 +21,10 @@ interface Blog {
   author: string | null;
   status: string;
   publishedAt: string | null;
+  assignedReviewerId?: string | null;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  reviewComments?: string | null;
 }
 
 interface ImagePreview {
@@ -41,18 +45,51 @@ export default function EditBlogPage() {
     excerpt: "",
     content: "",
     author: "",
-    status: "DRAFT" as "DRAFT" | "PUBLISHED",
+    status: "DRAFT" as "DRAFT" | "PUBLISHED" | "PENDING_REVIEW" | "APPROVED" | "REJECTED",
   });
   const [image, setImage] = useState<ImagePreview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+  const [adminUsers, setAdminUsers] = useState<Array<{ id: string; name: string | null; email: string }>>([]);
+  const [isLoadingAdmins, setIsLoadingAdmins] = useState(false);
+  const [assignedReviewerId, setAssignedReviewerId] = useState<string>("");
+  const [reviewers, setReviewers] = useState<Record<string, { name: string | null; email: string }>>({});
 
   useEffect(() => {
     if (blogId) {
       fetchBlog();
     }
+    fetchAdminUsers();
   }, [blogId]);
+
+  // Fetch admin users for reviewer selection
+  const fetchAdminUsers = async () => {
+    try {
+      setIsLoadingAdmins(true);
+      const res = await fetch("/api/users?role=ADMIN");
+      if (res.ok) {
+        const users = await res.json();
+        const usersMap = users.map((user: { id: string; name: string | null; email: string }) => ({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        }));
+        setAdminUsers(usersMap);
+        
+        // Create a map for quick reviewer lookup
+        const reviewerMap: Record<string, { name: string | null; email: string }> = {};
+        usersMap.forEach((user: { id: string; name: string | null; email: string }) => {
+          reviewerMap[user.id] = { name: user.name, email: user.email };
+        });
+        setReviewers(reviewerMap);
+      }
+    } catch (error) {
+      console.error("Failed to fetch admin users:", error);
+    } finally {
+      setIsLoadingAdmins(false);
+    }
+  };
 
   const fetchBlog = async () => {
     try {
@@ -70,6 +107,9 @@ export default function EditBlogPage() {
         });
         if (data.image) {
           setImage({ url: data.image });
+        }
+        if (data.assignedReviewerId) {
+          setAssignedReviewerId(data.assignedReviewerId);
         }
       } else {
         setError("Blog post not found");
@@ -151,6 +191,7 @@ export default function EditBlogPage() {
           formData.status === "PUBLISHED" && !blog?.publishedAt
             ? new Date().toISOString()
             : blog?.publishedAt || null,
+        assignedReviewerId: formData.status === "PENDING_REVIEW" && assignedReviewerId ? assignedReviewerId : (formData.status !== "PENDING_REVIEW" ? null : blog?.assignedReviewerId || null),
       };
 
       const res = await fetch(`/api/blogs/${blogId}`, {
@@ -329,13 +370,73 @@ export default function EditBlogPage() {
                   className="flex h-10 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={formData.status}
                   onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value as "DRAFT" | "PUBLISHED" })
+                    setFormData({ ...formData, status: e.target.value as "DRAFT" | "PUBLISHED" | "PENDING_REVIEW" | "APPROVED" | "REJECTED" })
                   }
                 >
                   <option value="DRAFT">Draft</option>
+                  <option value="PENDING_REVIEW">Send to Review</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="REJECTED">Rejected</option>
                   <option value="PUBLISHED">Published</option>
                 </select>
               </div>
+
+              {/* Reviewer Selection - Only show when status is PENDING_REVIEW */}
+              {formData.status === "PENDING_REVIEW" && (
+                <div>
+                  <label
+                    htmlFor="reviewer"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Assign Reviewer <span className="text-red-500">*</span>
+                  </label>
+                  {isLoadingAdmins ? (
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Loading admins...</div>
+                  ) : (
+                    <select
+                      id="reviewer"
+                      className="flex h-10 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={assignedReviewerId}
+                      onChange={(e) => setAssignedReviewerId(e.target.value)}
+                      required={formData.status === "PENDING_REVIEW"}
+                    >
+                      <option value="">Select an admin reviewer</option>
+                      {adminUsers.map((admin) => (
+                        <option key={admin.id} value={admin.id}>
+                          {admin.name || admin.email}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">
+                    Select an admin user to review this blog post
+                  </p>
+                </div>
+              )}
+
+              {/* Review Information - Show if blog has been reviewed */}
+              {blog && (blog.reviewedBy || blog.reviewComments) && (
+                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg space-y-2">
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Review Information</h4>
+                  {blog.reviewedBy && reviewers[blog.reviewedBy] && (
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Reviewed by: {reviewers[blog.reviewedBy].name || reviewers[blog.reviewedBy].email}
+                      {blog.reviewedAt && ` on ${new Date(blog.reviewedAt).toLocaleDateString()}`}
+                    </p>
+                  )}
+                  {blog.reviewComments && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Review Comments:</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{blog.reviewComments}</p>
+                    </div>
+                  )}
+                  {blog.assignedReviewerId && reviewers[blog.assignedReviewerId] && (
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Assigned to: {reviewers[blog.assignedReviewerId].name || reviewers[blog.assignedReviewerId].email}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Author */}
               <div>
@@ -408,10 +509,16 @@ export default function EditBlogPage() {
           <div className="flex flex-col gap-3">
             <Button
               type="submit"
-              disabled={isSaving}
+              disabled={isSaving || (formData.status === "PENDING_REVIEW" && !assignedReviewerId)}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium"
             >
-              {isSaving ? "Saving..." : formData.status === "PUBLISHED" ? "Update & Publish" : "Save Changes"}
+              {isSaving
+                ? "Saving..."
+                : formData.status === "PUBLISHED"
+                ? "Update & Publish"
+                : formData.status === "PENDING_REVIEW"
+                ? "Send to Review"
+                : "Save Changes"}
             </Button>
             <Button
               type="button"

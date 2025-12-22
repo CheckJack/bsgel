@@ -6,8 +6,9 @@ import { db } from "@/lib/db";
 // PUT - Approve or reject a review
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions);
 
@@ -30,7 +31,7 @@ export async function PUT(
 
     // Check if review exists
     const review = await db.productReview.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!review) {
@@ -43,10 +44,10 @@ export async function PUT(
     // Update review status
     const newStatus = action === "approve" ? "APPROVED" : "REJECTED";
     
-    console.log(`[Admin Reviews] Updating review ${params.id} to status: ${newStatus}`);
+    console.log(`[Admin Reviews] Updating review ${id} to status: ${newStatus}`);
     
     const updatedReview = await db.productReview.update({
-      where: { id: params.id },
+      where: { id: id },
       data: {
         status: newStatus,
         reviewedBy: session.user.id,
@@ -74,7 +75,7 @@ export async function PUT(
 
     // Verify the update worked
     const verifyReview = await db.productReview.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       select: { id: true, status: true, productId: true },
     });
 
@@ -86,7 +87,7 @@ export async function PUT(
       );
     }
 
-    console.log(`[Admin Reviews] Verification passed. Review ${params.id} is now ${verifyReview.status}`);
+    console.log(`[Admin Reviews] Verification passed. Review ${id} is now ${verifyReview.status}`);
 
     return NextResponse.json({
       ...updatedReview,
@@ -106,8 +107,9 @@ export async function PUT(
 // DELETE - Delete a review
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions);
 
@@ -119,7 +121,7 @@ export async function DELETE(
     }
 
     const review = await db.productReview.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!review) {
@@ -130,7 +132,7 @@ export async function DELETE(
     }
 
     await db.productReview.delete({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     return NextResponse.json({ success: true });

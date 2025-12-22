@@ -63,13 +63,30 @@ export async function GET(req: Request) {
       orderBy = { status: sortOrder === "asc" ? "asc" : "desc" }
     }
 
+    // Use select to avoid schema mismatch with missing fields
     const [orders, total] = await Promise.all([
       db.order.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          userId: true,
+          status: true,
+          total: true,
+          createdAt: true,
+          updatedAt: true,
           items: {
-            include: {
-              product: true,
+            select: {
+              id: true,
+              quantity: true,
+              price: true,
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true,
+                  price: true,
+                },
+              },
             },
           },
           user: {
@@ -174,7 +191,13 @@ export async function POST(req: Request) {
 
     // Calculate subtotal
     const subtotal = cart.items.reduce(
-      (sum, item) => sum + Number(item.product.price) * item.quantity,
+      (sum, item) => {
+        if (!item.product || !item.product.price) {
+          console.error(`Product or price missing for cart item ${item.id}`)
+          return sum
+        }
+        return sum + Number(item.product.price) * item.quantity
+      },
       0
     )
 

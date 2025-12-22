@@ -2,10 +2,15 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { z } from "zod"
+
+const updateCartItemSchema = z.object({
+  quantity: z.number().int().positive(),
+})
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -14,17 +19,36 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { quantity } = await req.json()
-
-    if (quantity <= 0) {
+    const { id } = await params
+    const body = await req.json()
+    
+    // Validate input
+    const validationResult = updateCartItemSchema.safeParse(body)
+    if (!validationResult.success) {
       return NextResponse.json(
-        { error: "Quantity must be greater than 0" },
+        { error: "Invalid input", details: validationResult.error.errors },
         { status: 400 }
       )
     }
 
+    const { quantity } = validationResult.data
+
+    // Verify cart item belongs to the user
+    const cartItem = await db.cartItem.findUnique({
+      where: { id },
+      include: { cart: true },
+    })
+
+    if (!cartItem) {
+      return NextResponse.json({ error: "Cart item not found" }, { status: 404 })
+    }
+
+    if (cartItem.cart.userId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
     await db.cartItem.update({
-      where: { id: params.id },
+      where: { id },
       data: { quantity },
     })
 
@@ -40,7 +64,7 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -49,8 +73,24 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const { id } = await params
+
+    // Verify cart item belongs to the user
+    const cartItem = await db.cartItem.findUnique({
+      where: { id },
+      include: { cart: true },
+    })
+
+    if (!cartItem) {
+      return NextResponse.json({ error: "Cart item not found" }, { status: 404 })
+    }
+
+    if (cartItem.cart.userId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
     await db.cartItem.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ message: "Item removed from cart" })

@@ -5,11 +5,12 @@ import { authOptions } from "@/lib/auth"
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const blog = await db.blog.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     if (!blog) {
@@ -28,8 +29,9 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -38,11 +40,11 @@ export async function PATCH(
     }
 
     const body = await req.json()
-    const { title, slug, excerpt, content, image, author, status, publishedAt } = body
+    const { title, slug, excerpt, content, image, author, status, publishedAt, assignedReviewerId } = body
 
     // Check if blog exists
     const existingBlog = await db.blog.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     if (!existingBlog) {
@@ -76,11 +78,21 @@ export async function PATCH(
       if (status === "PUBLISHED" && !existingBlog.publishedAt) {
         updateData.publishedAt = publishedAt ? new Date(publishedAt) : new Date()
       }
+      // Handle assignedReviewerId based on status
+      if (status === "PENDING_REVIEW") {
+        updateData.assignedReviewerId = assignedReviewerId || existingBlog.assignedReviewerId
+      } else {
+        // Clear assignedReviewerId when status is not PENDING_REVIEW
+        updateData.assignedReviewerId = null
+      }
+    }
+    if (assignedReviewerId !== undefined && status === "PENDING_REVIEW") {
+      updateData.assignedReviewerId = assignedReviewerId
     }
     if (publishedAt !== undefined) updateData.publishedAt = publishedAt ? new Date(publishedAt) : null
 
     const blog = await db.blog.update({
-      where: { id: params.id },
+      where: { id: id },
       data: updateData,
     })
 
@@ -96,8 +108,9 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -106,7 +119,7 @@ export async function DELETE(
     }
 
     const blog = await db.blog.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     if (!blog) {
@@ -114,7 +127,7 @@ export async function DELETE(
     }
 
     await db.blog.delete({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     return NextResponse.json({ message: "Blog deleted successfully" })

@@ -3,11 +3,12 @@ import { db } from "@/lib/db"
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const product = await db.product.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         category: true,
       },
@@ -18,13 +19,13 @@ export async function GET(
     }
 
     const relatedProducts: any[] = []
-    const productIds = new Set<string>([params.id]) // Track products we've already included
+    const productIds = new Set<string>([id]) // Track products we've already included
 
     // Strategy 1: Find products frequently bought together
     // Get orders that contain this product
     const ordersWithThisProduct = await db.orderItem.findMany({
       where: {
-        productId: params.id,
+        productId: id,
       },
       select: {
         orderId: true,
@@ -39,7 +40,7 @@ export async function GET(
         by: ["productId"],
         where: {
           orderId: { in: orderIds },
-          productId: { not: params.id }, // Exclude current product
+          productId: { not: id }, // Exclude current product
         },
         _count: {
           productId: true,
@@ -196,19 +197,12 @@ export async function GET(
         }
       }
       
-      let salePriceString = null;
-      if (product.salePrice !== null && product.salePrice !== undefined) {
-        if (typeof product.salePrice === 'object' && 'toString' in product.salePrice) {
-          salePriceString = product.salePrice.toString();
-        } else {
-          salePriceString = String(product.salePrice);
-        }
-      }
-      
+      // salePrice doesn't exist in database
       return {
         ...product,
         price: priceString,
-        salePrice: salePriceString,
+        salePrice: null, // Field doesn't exist in database
+        discountPercentage: null, // Field doesn't exist in database
       };
     })
 
@@ -219,7 +213,7 @@ export async function GET(
       message: error?.message,
       code: error?.code,
       stack: error?.stack,
-      params: params.id,
+      params: (await params).id,
     })
     return NextResponse.json(
       { 

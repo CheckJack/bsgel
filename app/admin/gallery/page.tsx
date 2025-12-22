@@ -46,6 +46,9 @@ interface GalleryItem {
   size?: number | null;
   folderId?: string | null;
   description?: string | null;
+  coverPictureUrl?: string | null;
+  optimizeWidth?: number | null;
+  optimizeHeight?: number | null;
   createdAt: string;
   updatedAt: string;
   items?: GalleryItem[];
@@ -72,6 +75,10 @@ export default function GalleryPage() {
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderDescription, setNewFolderDescription] = useState("");
+  const [coverPicture, setCoverPicture] = useState<File | null>(null);
+  const [optimizeWidth, setOptimizeWidth] = useState<string>("");
+  const [optimizeHeight, setOptimizeHeight] = useState<string>("");
+  const coverPictureInputRef = useRef<HTMLInputElement>(null);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadDescription, setUploadDescription] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -222,6 +229,19 @@ export default function GalleryPage() {
       formData.append("name", newFolderName);
       if (currentFolderId) formData.append("folderId", currentFolderId);
       if (newFolderDescription) formData.append("description", newFolderDescription);
+      
+      // Add cover picture if selected
+      if (coverPicture) {
+        formData.append("coverPicture", coverPicture);
+      }
+      
+      // Add optimize dimensions if provided
+      if (optimizeWidth) {
+        formData.append("optimizeWidth", optimizeWidth);
+      }
+      if (optimizeHeight) {
+        formData.append("optimizeHeight", optimizeHeight);
+      }
 
       const response = await fetch("/api/gallery", {
         method: "POST",
@@ -232,6 +252,12 @@ export default function GalleryPage() {
         setShowFolderModal(false);
         setNewFolderName("");
         setNewFolderDescription("");
+        setCoverPicture(null);
+        setOptimizeWidth("");
+        setOptimizeHeight("");
+        if (coverPictureInputRef.current) {
+          coverPictureInputRef.current.value = "";
+        }
         toast("Folder created successfully", "success");
         fetchItems();
       } else {
@@ -773,9 +799,18 @@ export default function GalleryPage() {
                   </div>
 
                   {item.type === "FOLDER" ? (
-                    <div className="flex items-center justify-center h-full">
-                      <Folder className="h-16 w-16 text-blue-500" />
-                    </div>
+                    item.coverPictureUrl ? (
+                      <Image
+                        src={item.coverPictureUrl}
+                        alt={item.name}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <Folder className="h-16 w-16 text-blue-500" />
+                      </div>
+                    )
                   ) : isImage(item.mimeType) && item.url ? (
                     <Image
                       src={item.url}
@@ -921,9 +956,18 @@ export default function GalleryPage() {
                   </button>
                   <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0">
                     {item.type === "FOLDER" ? (
-                      <div className="flex items-center justify-center h-full">
-                        <Folder className="h-10 w-10 text-blue-500" />
-                      </div>
+                      item.coverPictureUrl ? (
+                        <Image
+                          src={item.coverPictureUrl}
+                          alt={item.name}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-full">
+                          <Folder className="h-10 w-10 text-blue-500" />
+                        </div>
+                      )
                     ) : isImage(item.mimeType) && item.url ? (
                       <Image
                         src={item.url}
@@ -1180,7 +1224,7 @@ export default function GalleryPage() {
       {/* Create Folder Modal */}
       {showFolderModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Card className="bg-white dark:bg-gray-800 w-full max-w-md mx-4">
+          <Card className="bg-white dark:bg-gray-800 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Create Folder</h2>
@@ -1191,6 +1235,12 @@ export default function GalleryPage() {
                     setShowFolderModal(false);
                     setNewFolderName("");
                     setNewFolderDescription("");
+                    setCoverPicture(null);
+                    setOptimizeWidth("");
+                    setOptimizeHeight("");
+                    if (coverPictureInputRef.current) {
+                      coverPictureInputRef.current.value = "";
+                    }
                   }}
                 >
                   <X className="h-4 w-4" />
@@ -1229,6 +1279,103 @@ export default function GalleryPage() {
                     }}
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Cover Picture (optional)
+                  </label>
+                  <div
+                    className="relative border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors bg-gray-50 dark:bg-gray-700/50"
+                    onClick={() => coverPictureInputRef.current?.click()}
+                  >
+                    <input
+                      ref={coverPictureInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setCoverPicture(file);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    {coverPicture ? (
+                      <div className="w-full space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">
+                            {coverPicture.name}
+                          </span>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCoverPicture(null);
+                              if (coverPictureInputRef.current) {
+                                coverPictureInputRef.current.value = "";
+                              }
+                            }}
+                            className="flex-shrink-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="w-full h-32 relative rounded overflow-hidden bg-gray-100 dark:bg-gray-800">
+                          <Image
+                            src={URL.createObjectURL(coverPicture)}
+                            alt="Preview"
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <ImageIcon className="h-8 w-8 text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+                          Click to select a cover picture
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                          Recommended: JPG, PNG, or WebP
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Optimize Size (optional)
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                        Width (px)
+                      </label>
+                      <Input
+                        type="number"
+                        value={optimizeWidth}
+                        onChange={(e) => setOptimizeWidth(e.target.value)}
+                        placeholder="Width"
+                        min="1"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                        Height (px)
+                      </label>
+                      <Input
+                        type="number"
+                        value={optimizeHeight}
+                        onChange={(e) => setOptimizeHeight(e.target.value)}
+                        placeholder="Height"
+                        min="1"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    Specify dimensions for optimized cover picture display
+                  </p>
+                </div>
                 <div className="flex gap-3 justify-end">
                   <Button
                     variant="outline"
@@ -1236,6 +1383,12 @@ export default function GalleryPage() {
                       setShowFolderModal(false);
                       setNewFolderName("");
                       setNewFolderDescription("");
+                      setCoverPicture(null);
+                      setOptimizeWidth("");
+                      setOptimizeHeight("");
+                      if (coverPictureInputRef.current) {
+                        coverPictureInputRef.current.value = "";
+                      }
                     }}
                   >
                     Cancel

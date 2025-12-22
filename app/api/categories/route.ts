@@ -8,8 +8,12 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get("search") || ""
-    const page = parseInt(searchParams.get("page") || "1")
-    const limit = parseInt(searchParams.get("limit") || "10")
+    const pageParam = searchParams.get("page")
+    const limitParam = searchParams.get("limit")
+    // Only use pagination if explicitly requested, otherwise return all
+    const usePagination = pageParam !== null || limitParam !== null
+    const page = pageParam ? parseInt(pageParam) : 1
+    const limit = limitParam ? parseInt(limitParam) : 1000 // High default if limit is specified
     const sortField = searchParams.get("sortField") || "name"
     const sortDirection = searchParams.get("sortDirection") || "asc"
 
@@ -35,11 +39,12 @@ export async function GET(request: Request) {
       dbOrderBy.name = "asc"
     }
 
-    // Fetch all categories with product counts and subcategories (we need all for sorting by computed fields)
+    // Fetch all categories with product counts (optimized - removed products array)
     // This includes both main categories and subcategories
     let allCategories;
     try {
       // Use select to only get fields that exist in the database
+      // Removed products array to improve performance - we only need the count
       allCategories = await db.category.findMany({
         where,
         select: {
@@ -49,35 +54,26 @@ export async function GET(request: Request) {
           description: true,
           image: true,
           icon: true,
+          parentId: true,
           createdAt: true,
           updatedAt: true,
           _count: {
             select: { products: true },
           },
-          products: {
-            select: {
-              id: true,
-              orderItems: {
-                select: {
-                  id: true,
-                },
-              },
-            },
-          },
         },
         orderBy: dbOrderBy,
-      });
+      })
+      
       // Add missing fields that don't exist in DB
       allCategories = allCategories.map((cat: any) => ({
         ...cat,
-        parentId: null,
         parent: null,
         subcategories: [],
         _count: {
           ...cat._count,
           subcategories: 0,
         },
-      }));
+      }))
     } catch (error: any) {
       // If schema doesn't match, use raw SQL
       console.log("Schema mismatch detected, using raw SQL for categories");
@@ -126,16 +122,12 @@ export async function GET(request: Request) {
       }));
     }
 
-    // Calculate quantity (product count) and sale (order items count) for each category
+    // Calculate quantity (product count) for each category
+    // Removed sale calculation (order items count) as it's not needed and was slow
     let categoriesWithStats = allCategories.map((category: any) => {
       const quantity = category._count?.products || 0
-      // Count order items for products in this category
-      const sale = Array.isArray(category.products)
-        ? category.products.reduce(
-            (sum: number, product: any) => sum + (Array.isArray(product.orderItems) ? product.orderItems.length : 0),
-            0
-          )
-        : 0
+      // Sale count removed for performance - not needed for list view
+      const sale = 0
 
       const categoryData = {
         id: category.id,
@@ -186,18 +178,21 @@ export async function GET(request: Request) {
       })
     }
 
-    // Apply pagination after sorting
-    const startIndex = (page - 1) * limit
-    const endIndex = startIndex + limit
-    const paginatedCategories = categoriesWithStats.slice(startIndex, endIndex)
+    // Apply pagination only if explicitly requested
+    let paginatedCategories = categoriesWithStats
+    if (usePagination) {
+      const startIndex = (page - 1) * limit
+      const endIndex = startIndex + limit
+      paginatedCategories = categoriesWithStats.slice(startIndex, endIndex)
+    }
 
     return NextResponse.json({
       categories: paginatedCategories,
       pagination: {
-        page,
-        limit,
+        page: usePagination ? page : 1,
+        limit: usePagination ? limit : total,
         total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: usePagination ? Math.ceil(total / limit) : 1,
       },
     })
   } catch (error: any) {

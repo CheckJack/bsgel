@@ -5,9 +5,10 @@ import { db } from "@/lib/db"
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
@@ -20,7 +21,7 @@ export async function POST(
 
     const { codeSuffix } = await req.json().catch(() => ({}))
     const originalCoupon = await db.coupon.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!originalCoupon) {

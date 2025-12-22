@@ -39,11 +39,12 @@ export async function GET(req: Request) {
       where.featured = true
     }
 
-    if (showcasingSection) {
-      where.showcasingSections = {
-        has: showcasingSection
-      }
-    }
+    // showcasingSections field doesn't exist in database, skip filter
+    // if (showcasingSection) {
+    //   where.showcasingSections = {
+    //     has: showcasingSection
+    //   }
+    // }
 
     // Price range filter
     if (minPrice || maxPrice) {
@@ -83,13 +84,25 @@ export async function GET(req: Request) {
 
     let products;
     try {
+      // Optimized query: Only select needed fields, skip subcategories for list view
       products = await db.product.findMany({
         where,
-        include: {
-          category: true,
-          subcategories: {
-            include: {
-              category: true,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          price: true,
+          image: true,
+          images: true,
+          featured: true,
+          categoryId: true,
+          createdAt: true,
+          updatedAt: true,
+          category: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
             },
           },
         },
@@ -100,9 +113,11 @@ export async function GET(req: Request) {
         }),
       });
 
-      // Calculate review stats for each product
+      // Calculate review stats in a single optimized query (only if products exist)
       if (products.length > 0) {
         const productIds = products.map(p => p.id);
+        
+        // Use a single aggregated query instead of groupBy for better performance
         const reviewStats = await db.productReview.groupBy({
           by: ['productId'],
           where: {
@@ -141,8 +156,24 @@ export async function GET(req: Request) {
         console.log("Subcategory relation not available, using fallback query");
         products = await db.product.findMany({
           where,
-          include: {
-            category: true,
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            price: true,
+            image: true,
+            images: true,
+            featured: true,
+            categoryId: true,
+            createdAt: true,
+            updatedAt: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
           },
           orderBy,
           ...(usePagination && {
@@ -150,6 +181,46 @@ export async function GET(req: Request) {
             take: limit,
           }),
         });
+        
+        // Add review stats for fallback query too
+        if (products.length > 0) {
+          const productIds = products.map((p: any) => p.id);
+          try {
+            const reviewStats = await db.$queryRaw<Array<{ productId: string; reviewCount: bigint; avgRating: number }>>`
+              SELECT 
+                "productId",
+                COUNT(*)::int as "reviewCount",
+                COALESCE(AVG(rating)::float, 0) as "avgRating"
+              FROM "ProductReview"
+              WHERE "productId" = ANY(${productIds}::text[])
+                AND status = 'APPROVED'
+              GROUP BY "productId"
+            `;
+
+            const statsMap = new Map(
+              reviewStats.map(stat => [
+                stat.productId,
+                {
+                  reviewCount: Number(stat.reviewCount),
+                  rating: Number(stat.avgRating),
+                }
+              ])
+            );
+
+            products = products.map((product: any) => ({
+              ...product,
+              reviewCount: statsMap.get(product.id)?.reviewCount || 0,
+              rating: statsMap.get(product.id)?.rating || 0,
+            }));
+          } catch (reviewError) {
+            // If review stats fail, just set defaults
+            products = products.map((product: any) => ({
+              ...product,
+              reviewCount: 0,
+              rating: 0,
+            }));
+          }
+        }
       } catch (fallbackError: any) {
         // If Prisma still fails (e.g., missing columns), use raw SQL
         console.log("Prisma query failed, using raw SQL fallback");
@@ -181,11 +252,12 @@ export async function GET(req: Request) {
           sqlQuery += ` AND p.featured = true`;
         }
 
-        if (showcasingSection) {
-          sqlQuery += ` AND $${paramIndex} = ANY(p."showcasingSections")`;
-          params.push(showcasingSection);
-          paramIndex++;
-        }
+        // showcasingSections field doesn't exist in database, skip filter
+        // if (showcasingSection) {
+        //   sqlQuery += ` AND $${paramIndex} = ANY(p."showcasingSections")`;
+        //   params.push(showcasingSection);
+        //   paramIndex++;
+        // }
 
         if (minPrice) {
           sqlQuery += ` AND p.price >= $${paramIndex}`;
@@ -232,7 +304,7 @@ export async function GET(req: Request) {
           } : null,
         }));
 
-        // Calculate review stats for raw SQL products
+        // Calculate review stats for raw SQL products using optimized query
         if (products.length > 0) {
           const productIds = products.map((p: any) => p.id);
           try {
@@ -305,7 +377,8 @@ export async function GET(req: Request) {
         }
 
         if (showcasingSection) {
-          countQuery += ` AND $${paramIndex} = ANY(p."showcasingSections")`;
+          // showcasingSections field doesn't exist in database, skip filter
+          // countQuery += ` AND $${paramIndex} = ANY(p."showcasingSections")`;
           countParams.push(showcasingSection);
           paramIndex++;
         }
@@ -398,7 +471,8 @@ export async function POST(req: Request) {
       categoryId: categoryId || null,
       featured: featured === true,
       attributes: attributes || null,
-      showcasingSections: Array.isArray(showcasingSections) ? showcasingSections : [],
+      // showcasingSections field doesn't exist in database, skip it
+      // showcasingSections: Array.isArray(showcasingSections) ? showcasingSections : [],
     };
     
     // Handle multiple subcategories
