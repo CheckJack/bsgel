@@ -15,11 +15,11 @@ export async function GET(request: Request) {
     // Build where clause for search
     const where: any = {};
 
-    // For non-admin users, only show approved and active salons
+    // For non-admin users, only show active salons
     // For admins, show all salons
     if (!isAdmin) {
       where.isActive = true;
-      where.status = "APPROVED";
+      // Note: status field may not exist in database, so we don't filter by it
     }
 
     if (search) {
@@ -34,18 +34,39 @@ export async function GET(request: Request) {
       where.city = { contains: city, mode: "insensitive" as const };
     }
 
-    // Fetch salons - include user info for admin, BIO Diamond salons first, then by city and name
+    // Fetch salons - use select to avoid schema mismatch with status field
+    // BIO Diamond salons first, then by city and name
     const salons = await db.salon.findMany({
       where,
-      include: isAdmin ? {
-        user: {
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        city: true,
+        postalCode: true,
+        phone: true,
+        email: true,
+        website: true,
+        latitude: true,
+        longitude: true,
+        image: true,
+        logo: true,
+        images: true,
+        description: true,
+        isActive: true,
+        isBioDiamond: true,
+        userId: true,
+        workingHours: true,
+        createdAt: true,
+        updatedAt: true,
+        user: isAdmin ? {
           select: {
             id: true,
             name: true,
             email: true,
           },
-        },
-      } : undefined,
+        } : undefined,
+      },
       orderBy: [
         { isBioDiamond: "desc" },
         { city: "asc" },

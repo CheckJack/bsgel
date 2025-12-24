@@ -34,7 +34,17 @@ export async function GET(req: Request) {
     }
 
     // Get or create affiliate record (no certification requirement)
-    const affiliate = await getOrCreateAffiliate(user.id, user.email!)
+    const affiliateBase = await getOrCreateAffiliate(user.id, user.email!)
+    
+    // Fetch affiliate with tier
+    const affiliate = await db.affiliate.findUnique({
+      where: { id: affiliateBase.id },
+      select: { id: true, affiliateCode: true, tier: true },
+    })
+    
+    if (!affiliate) {
+      return NextResponse.json({ error: "Affiliate not found" }, { status: 404 })
+    }
 
     // Get affiliate stats
     const totalReferrals = await db.affiliateReferral.count({

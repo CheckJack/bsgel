@@ -71,23 +71,28 @@ export default function AdminAttributesPage() {
       }
 
       const res = await fetch(`/api/attributes?${params.toString()}`);
-      const data = await res.json();
       
-      if (res.ok) {
-        const attributesArray = Array.isArray(data.attributes) 
-          ? data.attributes 
-          : [];
-        
-        setAttributes(attributesArray);
-        setPagination(data.pagination || pagination);
-      } else {
-        console.error("Failed to fetch attributes:", data.error || "Unknown error");
-        toast("Failed to fetch attributes", "error");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
+        console.error("❌ Failed to fetch attributes:", res.status, res.statusText, errorData);
+        toast(`Failed to fetch attributes: ${errorData.error || res.statusText} (${res.status})`, "error");
         setAttributes([]);
+        return;
       }
-    } catch (error) {
-      console.error("Failed to fetch attributes:", error);
-      toast("Failed to fetch attributes", "error");
+      
+      const data = await res.json();
+      const attributesArray = Array.isArray(data.attributes) 
+        ? data.attributes 
+        : Array.isArray(data)
+        ? data
+        : [];
+      
+      console.log("✅ Attributes fetched successfully:", attributesArray.length, "attributes");
+      setAttributes(attributesArray);
+      setPagination(data.pagination || pagination);
+    } catch (error: any) {
+      console.error("❌ Error fetching attributes:", error);
+      toast(`Failed to fetch attributes: ${error?.message || "Network error"}`, "error");
       setAttributes([]);
     } finally {
       setIsLoading(false);

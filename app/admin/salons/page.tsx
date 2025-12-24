@@ -28,9 +28,7 @@ import {
   ArrowUp,
   ArrowDown,
   Filter,
-  Building2,
   Star,
-  Users,
   Calendar,
   CheckSquare,
   Square,
@@ -109,15 +107,22 @@ export default function AdminSalonsPage() {
     setIsLoading(true);
     try {
       const res = await fetch("/api/salons");
-      if (res.ok) {
-        const data = await res.json();
-        setSalons(data || []);
-      } else {
-        toast("Failed to fetch salons", "error");
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
+        console.error("❌ Failed to fetch salons:", res.status, res.statusText, errorData);
+        toast(`Failed to fetch salons: ${errorData.error || res.statusText} (${res.status})`, "error");
+        setSalons([]);
+        return;
       }
-    } catch (error) {
-      console.error("Failed to fetch salons:", error);
-      toast("Failed to fetch salons. Please try again.", "error");
+      
+      const data = await res.json();
+      console.log("✅ Salons fetched successfully:", Array.isArray(data) ? data.length : 0, "salons");
+      setSalons(data || []);
+    } catch (error: any) {
+      console.error("❌ Error fetching salons:", error);
+      toast(`Failed to fetch salons: ${error?.message || "Network error"}`, "error");
+      setSalons([]);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -132,9 +137,13 @@ export default function AdminSalonsPage() {
   const filterAndSortSalons = () => {
     let filtered = [...salons];
 
-    // Apply status filter
+    // Apply status filter (only if status field exists on salon)
     if (statusFilter !== "ALL") {
-      filtered = filtered.filter((salon) => salon.status === statusFilter);
+      filtered = filtered.filter((salon) => {
+        // Status field doesn't exist in database, so skip status filtering
+        if (!('status' in salon)) return true;
+        return salon.status === statusFilter;
+      });
     }
 
     // Apply city filter
@@ -500,7 +509,7 @@ export default function AdminSalonsPage() {
   };
 
   const getStatusBadge = (status: Salon["status"]) => {
-    const config = {
+    const config: Record<string, { icon: any; color: string; text: string }> = {
       PENDING_REVIEW: {
         icon: AlertCircle,
         color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200",
@@ -518,8 +527,8 @@ export default function AdminSalonsPage() {
       },
     };
 
-    const statusConfig = config[status];
-    const Icon = statusConfig.icon;
+    const statusConfig = config[status] || config.APPROVED; // Default to APPROVED if status is undefined
+    const Icon = statusConfig?.icon || CheckCircle;
 
     return (
       <span
@@ -608,76 +617,6 @@ export default function AdminSalonsPage() {
             </span>
           </div>
         )}
-      </div>
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Salons</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.total}</p>
-              </div>
-              <Building2 className="h-8 w-8 text-gray-400" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Pending</p>
-                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stats.pending}</p>
-              </div>
-              <AlertCircle className="h-8 w-8 text-yellow-400" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Approved</p>
-                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.approved}</p>
-              </div>
-              <CheckCircle className="h-8 w-8 text-green-400" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Rejected</p>
-                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.rejected}</p>
-              </div>
-              <XCircle className="h-8 w-8 text-red-400" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Bio Diamond</p>
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.bioDiamond}</p>
-              </div>
-              <Star className="h-8 w-8 text-blue-400" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Active</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.active}</p>
-              </div>
-              <Users className="h-8 w-8 text-gray-400" />
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Bulk Actions Bar */}

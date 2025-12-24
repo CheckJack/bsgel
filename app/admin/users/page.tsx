@@ -88,15 +88,29 @@ export default function AdminUsersPage() {
 
   const fetchUsers = async () => {
     try {
+      setIsLoading(true);
       // Only fetch ADMIN users (backend workers)
       const res = await fetch("/api/users?role=ADMIN");
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data);
-        setFilteredUsers(data);
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
+        console.error("❌ Failed to fetch users:", res.status, res.statusText, errorData);
+        setError(`Failed to fetch users: ${errorData.error || res.statusText} (${res.status})`);
+        setUsers([]);
+        setFilteredUsers([]);
+        return;
       }
-    } catch (error) {
-      console.error("Failed to fetch users:", error);
+      
+      const data = await res.json();
+      console.log("✅ Users fetched successfully:", data.length, "users");
+      setUsers(data);
+      setFilteredUsers(data);
+      setError("");
+    } catch (error: any) {
+      console.error("❌ Error fetching users:", error);
+      setError(`Failed to fetch users: ${error?.message || "Network error"}`);
+      setUsers([]);
+      setFilteredUsers([]);
     } finally {
       setIsLoading(false);
     }
@@ -303,6 +317,13 @@ export default function AdminUsersPage() {
           <span className="mx-2">&gt;</span> {t("users.backendUsers")}
         </div>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-800">
+          <strong>Error:</strong> {error}
+        </div>
+      )}
 
       {/* Search and Add Section */}
       <Card className="mb-6 bg-white dark:bg-gray-800">

@@ -56,7 +56,13 @@ export async function POST(req: Request) {
     if (cart && cart.items.length > 0) {
       // Calculate subtotal
       const subtotal = cart.items.reduce(
-        (sum, item) => sum + Number(item.product.price) * item.quantity,
+        (sum, item) => {
+          if (!item.product || !item.product.price) {
+            console.error(`Product or price missing for cart item ${item.id}`)
+            return sum
+          }
+          return sum + Number(item.product.price) * item.quantity
+        },
         0
       )
 

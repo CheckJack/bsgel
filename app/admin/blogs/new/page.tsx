@@ -25,11 +25,14 @@ export default function NewBlogPage() {
     excerpt: "",
     content: "",
     author: "",
-    status: "DRAFT" as "DRAFT" | "PUBLISHED",
+    status: "DRAFT" as "DRAFT" | "PUBLISHED" | "PENDING_REVIEW",
   });
   const [image, setImage] = useState<ImagePreview | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [adminUsers, setAdminUsers] = useState<Array<{ id: string; name: string | null; email: string }>>([]);
+  const [isLoadingAdmins, setIsLoadingAdmins] = useState(false);
+  const [assignedReviewerId, setAssignedReviewerId] = useState<string>("");
 
   // Auto-generate slug from title
   useEffect(() => {
@@ -41,6 +44,29 @@ export default function NewBlogPage() {
       setFormData((prev) => ({ ...prev, slug: generatedSlug }));
     }
   }, [formData.title]);
+
+  // Fetch admin users for reviewer selection
+  useEffect(() => {
+    const fetchAdminUsers = async () => {
+      try {
+        setIsLoadingAdmins(true);
+        const res = await fetch("/api/users?role=ADMIN");
+        if (res.ok) {
+          const users = await res.json();
+          setAdminUsers(users.map((user: { id: string; name: string | null; email: string }) => ({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+          })));
+        }
+      } catch (error) {
+        console.error("Failed to fetch admin users:", error);
+      } finally {
+        setIsLoadingAdmins(false);
+      }
+    };
+    fetchAdminUsers();
+  }, []);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -106,6 +132,8 @@ export default function NewBlogPage() {
         author: formData.author || null,
         status: formData.status,
         publishedAt: formData.status === "PUBLISHED" ? new Date().toISOString() : null,
+        assignedReviewerId: formData.status === "PENDING_REVIEW" && assignedReviewerId ? assignedReviewerId : null,
+        createdBy: session?.user?.id || null,
       };
 
       const res = await fetch("/api/blogs", {
@@ -263,13 +291,47 @@ export default function NewBlogPage() {
                   className="flex h-10 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={formData.status}
                   onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value as "DRAFT" | "PUBLISHED" })
+                    setFormData({ ...formData, status: e.target.value as "DRAFT" | "PUBLISHED" | "PENDING_REVIEW" })
                   }
                 >
                   <option value="DRAFT">Draft</option>
+                  <option value="PENDING_REVIEW">Send to Review</option>
                   <option value="PUBLISHED">Published</option>
                 </select>
               </div>
+
+              {/* Reviewer Selection - Only show when status is PENDING_REVIEW */}
+              {formData.status === "PENDING_REVIEW" && (
+                <div>
+                  <label
+                    htmlFor="reviewer"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Assign Reviewer <span className="text-red-500">*</span>
+                  </label>
+                  {isLoadingAdmins ? (
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Loading admins...</div>
+                  ) : (
+                    <select
+                      id="reviewer"
+                      className="flex h-10 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={assignedReviewerId}
+                      onChange={(e) => setAssignedReviewerId(e.target.value)}
+                      required={formData.status === "PENDING_REVIEW"}
+                    >
+                      <option value="">Select an admin reviewer</option>
+                      {adminUsers.map((admin) => (
+                        <option key={admin.id} value={admin.id}>
+                          {admin.name || admin.email}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">
+                    Select an admin user to review this blog post
+                  </p>
+                </div>
+              )}
 
               {/* Author */}
               <div>
@@ -342,10 +404,16 @@ export default function NewBlogPage() {
           <div className="flex flex-col gap-3">
             <Button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || (formData.status === "PENDING_REVIEW" && !assignedReviewerId)}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium"
             >
-              {isLoading ? "Creating..." : formData.status === "PUBLISHED" ? "Publish Post" : "Save Draft"}
+              {isLoading
+                ? "Creating..."
+                : formData.status === "PUBLISHED"
+                ? "Publish Post"
+                : formData.status === "PENDING_REVIEW"
+                ? "Send to Review"
+                : "Save Draft"}
             </Button>
             <Button
               type="button"

@@ -6,12 +6,13 @@ import { db } from "@/lib/db"
 // GET comments for a blog post by slug
 export async function GET(
   req: Request,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const { slug } = await params
     // First find the blog by slug
     const blog = await db.blog.findUnique({
-      where: { slug: params.slug },
+      where: { slug },
       select: { id: true },
     })
 
@@ -55,9 +56,10 @@ export async function GET(
 // POST a new comment (requires authentication)
 export async function POST(
   req: Request,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const { slug } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
@@ -70,7 +72,7 @@ export async function POST(
     const body = await req.json()
     const { content } = body
 
-    if (!content || content.trim().length === 0) {
+    if (!content || typeof content !== "string" || content.trim().length === 0) {
       return NextResponse.json(
         { error: "Comment content is required" },
         { status: 400 }
@@ -79,7 +81,7 @@ export async function POST(
 
     // Find the blog by slug
     const blog = await db.blog.findUnique({
-      where: { slug: params.slug },
+      where: { slug },
       select: { id: true },
     })
 

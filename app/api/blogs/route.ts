@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    const { title, slug, excerpt, content, image, author, status, publishedAt } = body
+    const { title, slug, excerpt, content, image, author, status, publishedAt, assignedReviewerId, createdBy } = body
 
     if (!title || !slug) {
       return NextResponse.json(
@@ -85,6 +85,8 @@ export async function POST(req: Request) {
         author: author || null,
         status: status || "DRAFT",
         publishedAt: status === "PUBLISHED" ? (publishedAt ? new Date(publishedAt) : new Date()) : null,
+        assignedReviewerId: status === "PENDING_REVIEW" && assignedReviewerId ? assignedReviewerId : null,
+        createdBy: createdBy || session.user.id,
       },
     })
 

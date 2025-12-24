@@ -2,12 +2,14 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { NotificationType } from "@prisma/client"
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
@@ -15,7 +17,7 @@ export async function GET(
     }
 
     const order = await db.order.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         items: {
           include: {
@@ -53,9 +55,10 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
@@ -67,7 +70,7 @@ export async function PATCH(
 
     // Get the order first to check ownership and current status
     const existingOrder = await db.order.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         user: {
           select: {
@@ -117,7 +120,7 @@ export async function PATCH(
     // For now, we'll store them in metadata or add to schema later
 
     const order = await db.order.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         items: {
@@ -132,29 +135,29 @@ export async function PATCH(
     if (existingOrder.status !== status && existingOrder.userId) {
       let notificationType = "ORDER_STATUS"
       let title = "Order Status Updated"
-      let message = `Your order #${params.id.slice(0, 8)} status has been updated to ${status}`
+      let message = `Your order #${id.slice(0, 8)} status has been updated to ${status}`
 
       if (status === "SHIPPED") {
         notificationType = "ORDER_SHIPPED"
         title = "Order Shipped"
-        message = `Great news! Your order #${params.id.slice(0, 8)} has been shipped and is on its way.`
+        message = `Great news! Your order #${id.slice(0, 8)} has been shipped and is on its way.`
       } else if (status === "DELIVERED") {
         notificationType = "ORDER_DELIVERED"
         title = "Order Delivered"
-        message = `Your order #${params.id.slice(0, 8)} has been delivered. Thank you for your purchase!`
+        message = `Your order #${id.slice(0, 8)} has been delivered. Thank you for your purchase!`
       } else if (status === "CANCELLED") {
         title = "Order Cancelled"
-        message = `Your order #${params.id.slice(0, 8)} has been cancelled.`
+        message = `Your order #${id.slice(0, 8)} has been cancelled.`
       }
 
       await db.notification.create({
         data: {
-          type: notificationType as any,
+          type: notificationType as NotificationType,
           title,
           message,
           userId: existingOrder.userId,
           metadata: {
-            orderId: params.id,
+            orderId: id,
             orderStatus: status,
           },
         },

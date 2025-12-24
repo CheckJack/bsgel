@@ -340,9 +340,9 @@ export default function ProductDetailPage() {
             <h2 className="text-2xl lg:text-3xl font-medium text-brand-black mb-8">
               {(() => {
                 // Check if most products are from the same category as current product
-                if (product?.categoryId) {
+                if (product?.category?.id) {
                   const sameCategoryCount = relatedProducts.filter(
-                    (p) => p.category?.id === product.categoryId
+                    (p) => p.category?.id === product.category?.id
                   ).length;
                   // If at least half are from same category, show "Related Products"
                   if (sameCategoryCount >= Math.ceil(relatedProducts.length / 2)) {

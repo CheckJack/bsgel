@@ -5,9 +5,10 @@ import { db } from "@/lib/db";
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id || session.user.role !== "ADMIN") {
@@ -36,7 +37,7 @@ export async function POST(
 
     // Check if salon exists
     const salon = await db.salon.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { user: true },
     });
 
@@ -65,7 +66,7 @@ export async function POST(
     }
 
     const updatedSalon = await db.salon.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
     });
 

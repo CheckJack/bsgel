@@ -12,15 +12,15 @@ export const dynamic = "force-dynamic";
 // PUT - Update mega menu card
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  { params }: { params: Promise<{ id: string }> }
+)   {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions);
     if (!session || session.user?.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
     const body = await req.json();
 
     const { imageUrl, linkUrl, isActive } = body;
@@ -58,15 +58,14 @@ export async function PUT(
 // DELETE - Delete mega menu card
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  { params }: { params: Promise<{ id: string }> }
+)   {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions);
     if (!session || session.user?.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const { id } = params;
 
     const card = await db.megaMenuCard.findUnique({
       where: { id },

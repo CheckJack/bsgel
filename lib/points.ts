@@ -47,7 +47,7 @@ export async function calculatePoints(
 
   // If tiered config exists, use it
   if (config.tieredConfig) {
-    const tieredConfig = config.tieredConfig as TieredConfig;
+    const tieredConfig = config.tieredConfig as unknown as TieredConfig;
     if (orderValue !== null && tieredConfig.tiers) {
       // Find matching tier
       for (const tier of tieredConfig.tiers) {

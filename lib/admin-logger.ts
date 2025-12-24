@@ -119,7 +119,7 @@ export function createChangeDetails(before: any, after: any): LogDetails {
   // Compare objects and track changes
   const allKeys = new Set([...Object.keys(before || {}), ...Object.keys(after || {})]);
   
-  for (const key of allKeys) {
+  for (const key of Array.from(allKeys)) {
     const beforeValue = before?.[key];
     const afterValue = after?.[key];
     

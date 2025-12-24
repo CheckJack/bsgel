@@ -330,21 +330,7 @@ export const en = {
     denied: "Denied",
     updateUser: "Update User",
     passwordRequirements: "Password must contain uppercase, lowercase, number, and special character",
-    updateError: "Failed to update user",
-    deleteError: "Failed to delete user",
     emailPlaceholder: "user@example.com",
-  },
-
-  // Messages
-  messages: {
-    title: "Messages",
-    from: "From",
-    subject: "Subject",
-    received: "Received",
-    read: "Read",
-    unread: "Unread",
-    reply: "Reply",
-    noMessages: "No messages found",
   },
 
   // Marketing

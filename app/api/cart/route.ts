@@ -77,11 +77,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { productId, quantity } = await req.json()
+    const body = await req.json()
+    const { productId, quantity } = body
 
-    if (!productId || !quantity) {
+    // Validate input
+    if (!productId || typeof productId !== "string" || productId.trim().length === 0) {
       return NextResponse.json(
-        { error: "Product ID and quantity are required" },
+        { error: "Valid product ID is required" },
+        { status: 400 }
+      )
+    }
+
+    if (!quantity || typeof quantity !== "number" || quantity <= 0 || !Number.isInteger(quantity)) {
+      return NextResponse.json(
+        { error: "Quantity must be a positive integer" },
         { status: 400 }
       )
     }

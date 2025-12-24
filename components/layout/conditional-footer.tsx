@@ -10,6 +10,11 @@ export function ConditionalFooter() {
   if (pathname?.startsWith("/admin")) {
     return null;
   }
+
+  // Hide footer on dashboard/client panel routes
+  if (pathname?.startsWith("/dashboard")) {
+    return null;
+  }
   
   // Hide footer on auth routes (login, register)
   if (pathname === "/login" || pathname === "/register") {

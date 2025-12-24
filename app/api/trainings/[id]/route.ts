@@ -6,11 +6,14 @@ import { db } from "@/lib/db"
 // GET - Get a specific training program (public)
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
-    const program = await db.trainingProgram.findUnique({
-      where: { id: params.id },
+    let program;
+    try {
+      program = await db.trainingProgram.findUnique({
+        where: { id: id },
       include: {
         sessions: {
           where: {
@@ -50,6 +53,17 @@ export async function GET(
         },
       },
     })
+    } catch (error: any) {
+      // If table doesn't exist, return 404
+      if (error?.code === "P2021" || error?.message?.includes("does not exist") || error?.message?.includes("TrainingProgram")) {
+        console.warn("TrainingProgram table does not exist in database");
+        return NextResponse.json(
+          { error: "Training program not found" },
+          { status: 404 }
+        );
+      }
+      throw error;
+    }
 
     if (!program) {
       return NextResponse.json(
@@ -105,8 +119,9 @@ export async function GET(
 // PUT - Admin only: Update a training program
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -122,9 +137,20 @@ export async function PUT(
     const { title, description, content, days, price, image, isActive, productIds } = body
 
     // Check if program exists
-    const existing = await db.trainingProgram.findUnique({
-      where: { id: params.id },
-    })
+    let existing;
+    try {
+      existing = await db.trainingProgram.findUnique({
+        where: { id: id },
+      })
+    } catch (error: any) {
+      if (error?.code === "P2021" || error?.message?.includes("does not exist") || error?.message?.includes("TrainingProgram")) {
+        return NextResponse.json(
+          { error: "Training program not found" },
+          { status: 404 }
+        );
+      }
+      throw error;
+    }
 
     if (!existing) {
       return NextResponse.json(
@@ -196,7 +222,7 @@ export async function PUT(
     if (productIds !== undefined) {
       // Delete existing product associations
       await db.trainingProgramProduct.deleteMany({
-        where: { trainingProgramId: params.id },
+        where: { trainingProgramId: id },
       })
 
       // Create new product associations if provided
@@ -210,9 +236,11 @@ export async function PUT(
       }
     }
 
-    const program = await db.trainingProgram.update({
-      where: { id: params.id },
-      data: updateData,
+    let program;
+    try {
+      program = await db.trainingProgram.update({
+        where: { id: id },
+        data: updateData,
       include: {
         products: {
           include: {
@@ -228,6 +256,15 @@ export async function PUT(
         },
       },
     })
+    } catch (error: any) {
+      if (error?.code === "P2021" || error?.message?.includes("does not exist") || error?.message?.includes("TrainingProgram")) {
+        return NextResponse.json(
+          { error: "Training program not found" },
+          { status: 404 }
+        );
+      }
+      throw error;
+    }
 
     const formatted = {
       ...program,
@@ -254,8 +291,9 @@ export async function PUT(
 // DELETE - Admin only: Delete a training program
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -268,17 +306,28 @@ export async function DELETE(
     }
 
     // Check if program exists
-    const existing = await db.trainingProgram.findUnique({
-      where: { id: params.id },
-      include: {
-        _count: {
-          select: {
-            bookings: true,
-            sessions: true,
+    let existing;
+    try {
+      existing = await db.trainingProgram.findUnique({
+        where: { id: id },
+        include: {
+          _count: {
+            select: {
+              bookings: true,
+              sessions: true,
+            },
           },
         },
-      },
-    })
+      });
+    } catch (error: any) {
+      if (error?.code === "P2021" || error?.message?.includes("does not exist") || error?.message?.includes("TrainingProgram")) {
+        return NextResponse.json(
+          { error: "Training program not found" },
+          { status: 404 }
+        );
+      }
+      throw error;
+    }
 
     if (!existing) {
       return NextResponse.json(
@@ -295,11 +344,21 @@ export async function DELETE(
       )
     }
 
-    await db.trainingProgram.delete({
-      where: { id: params.id },
-    })
+    try {
+      await db.trainingProgram.delete({
+        where: { id: id },
+      })
+    } catch (error: any) {
+      if (error?.code === "P2021" || error?.message?.includes("does not exist") || error?.message?.includes("TrainingProgram")) {
+        return NextResponse.json(
+          { error: "Training program not found" },
+          { status: 404 }
+        );
+      }
+      throw error;
+    }
 
-    return NextResponse.json({ message: "Training program deleted successfully" })
+    return NextResponse.json({ message: "Training program deleted successfully" });
   } catch (error: any) {
     console.error("Failed to delete training program:", error)
     return NextResponse.json(

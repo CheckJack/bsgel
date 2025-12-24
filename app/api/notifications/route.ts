@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     const whereConditions: any[] = []
     
     // Clients only see their own notifications
-    if (session.user.role !== "ADMIN") {
+    if (!session.user.role || session.user.role !== "ADMIN") {
       whereConditions.push({ userId: session.user.id })
     }
     
@@ -57,7 +57,7 @@ export async function GET(req: Request) {
       message: notification.message,
       image: notification.image,
       time: notification.createdAt.toISOString(),
-      type: notification.type.toLowerCase(),
+      type: String(notification.type).toLowerCase(),
       read: notification.read,
       linkUrl: notification.linkUrl,
       metadata: notification.metadata,
@@ -66,10 +66,10 @@ export async function GET(req: Request) {
     console.log(`📬 Returning ${formattedNotifications.length} notifications for ${session.user.role}`)
 
     return NextResponse.json(formattedNotifications)
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to fetch notifications:", error)
     return NextResponse.json(
-      { error: "Failed to fetch notifications" },
+      { error: "Failed to fetch notifications", details: error?.message || String(error) },
       { status: 500 }
     )
   }

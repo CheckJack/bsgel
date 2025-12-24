@@ -21,7 +21,8 @@
     "make-admin": "node scripts/make-admin.js",
     "import-products": "node scripts/import-products-from-csv.js",
     "export-products": "node scripts/export-products.js",
-    "import-products:json": "node scripts/import-products.js"
+    "import-products:json": "node scripts/import-products.js",
+    "test:performance": "node scripts/performance-test.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",
@@ -66,14 +67,17 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@lhci/cli": "^0.15.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.14.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
+    "autocannon": "^8.0.0",
     "autoprefixer": "^10.4.19",
     "dotenv": "^17.2.3",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.0",
+    "lighthouse": "^12.8.2",
     "postcss": "^8.4.40",
     "prisma": "^5.19.0",
     "tailwindcss": "^3.4.7",

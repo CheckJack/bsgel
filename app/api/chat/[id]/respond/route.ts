@@ -6,9 +6,10 @@ import { db } from "@/lib/db";
 // PUT - Admin responds to a message
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
@@ -32,7 +33,7 @@ export async function PUT(
     }
 
     const message = await db.chatMessage.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!message) {
@@ -43,7 +44,7 @@ export async function PUT(
     }
 
     const updatedMessage = await db.chatMessage.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         adminResponse: adminResponse.trim(),
         readByAdmin: true,

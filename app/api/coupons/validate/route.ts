@@ -11,11 +11,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { code, subtotal, cartItems } = await req.json()
+    const body = await req.json()
+    const { code, subtotal, cartItems } = body
 
-    if (!code) {
+    // Validate input
+    if (!code || typeof code !== "string" || code.trim().length === 0) {
       return NextResponse.json(
         { error: "Coupon code is required" },
+        { status: 400 }
+      )
+    }
+
+    if (subtotal !== undefined && (typeof subtotal !== "number" || subtotal < 0 || isNaN(subtotal))) {
+      return NextResponse.json(
+        { error: "Subtotal must be a valid non-negative number" },
+        { status: 400 }
+      )
+    }
+
+    if (cartItems !== undefined && !Array.isArray(cartItems)) {
+      return NextResponse.json(
+        { error: "Cart items must be an array" },
         { status: 400 }
       )
     }

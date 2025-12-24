@@ -6,8 +6,9 @@ import { NotificationType } from "@prisma/client"
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -20,7 +21,7 @@ export async function GET(
     }
 
     const notification = await db.notification.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: {
         user: {
           select: {
@@ -58,8 +59,9 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -72,7 +74,7 @@ export async function PATCH(
     }
 
     const notification = await db.notification.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     if (!notification) {
@@ -132,7 +134,7 @@ export async function PATCH(
     }
 
     const updated = await db.notification.update({
-      where: { id: params.id },
+      where: { id: id },
       data: updateData,
       include: {
         user: {
@@ -160,8 +162,9 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -174,7 +177,7 @@ export async function DELETE(
     }
 
     const notification = await db.notification.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     if (!notification) {
@@ -192,7 +195,7 @@ export async function DELETE(
     }
 
     await db.notification.delete({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     return NextResponse.json({ message: "Notification deleted successfully" })

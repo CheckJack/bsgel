@@ -5,8 +5,9 @@ import { db } from "@/lib/db"
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -18,27 +19,40 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const certification = await db.certification.findUnique({
-      where: { id: params.id },
-      include: {
-        certificationCategories: {
-          include: {
-            category: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
+    let certification;
+    try {
+      certification = await db.certification.findUnique({
+        where: { id: id },
+        include: {
+          certificationCategories: {
+            include: {
+              category: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                },
               },
             },
           },
-        },
-        _count: {
-          select: {
-            users: true,
+          _count: {
+            select: {
+              users: true,
+            },
           },
         },
-      },
-    })
+      })
+    } catch (error: any) {
+      // If table doesn't exist, return 404
+      if (error?.code === "P2021" || error?.message?.includes("does not exist") || error?.message?.includes("Certification")) {
+        console.warn("Certification table does not exist in database");
+        return NextResponse.json(
+          { error: "Certification not found" },
+          { status: 404 }
+        );
+      }
+      throw error;
+    }
 
     if (!certification) {
       return NextResponse.json(
@@ -74,8 +88,9 @@ export async function GET(
 
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -92,7 +107,7 @@ export async function PUT(
 
     // Check if certification exists
     const existingCert = await db.certification.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     if (!existingCert) {
@@ -151,7 +166,7 @@ export async function PUT(
     if (categoryIds !== undefined) {
       // Delete existing category associations
       await db.certificationCategory.deleteMany({
-        where: { certificationId: params.id },
+        where: { certificationId: id },
       })
 
       // Create new associations if categoryIds array is provided and not empty
@@ -165,7 +180,7 @@ export async function PUT(
     }
 
     const certification = await db.certification.update({
-      where: { id: params.id },
+      where: { id: id },
       data: updateData,
       include: {
         certificationCategories: {
@@ -222,8 +237,9 @@ export async function PUT(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -240,7 +256,7 @@ export async function PATCH(
 
     // Check if certification exists
     const existingCert = await db.certification.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     if (!existingCert) {
@@ -252,7 +268,7 @@ export async function PATCH(
 
     // Update only isActive status
     const certification = await db.certification.update({
-      where: { id: params.id },
+      where: { id: id },
       data: {
         isActive: isActive !== undefined ? Boolean(isActive) : existingCert.isActive,
       },
@@ -303,8 +319,9 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions)
 
@@ -318,7 +335,7 @@ export async function DELETE(
 
     // Check if certification exists
     const certification = await db.certification.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: {
         _count: {
           select: {
@@ -347,7 +364,7 @@ export async function DELETE(
 
     // Delete certification (cascade will delete CertificationCategory associations)
     await db.certification.delete({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     return NextResponse.json({ message: "Certification deleted successfully" })

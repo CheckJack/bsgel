@@ -5,11 +5,12 @@ import { db } from "@/lib/db";
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const salon = await db.salon.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!salon) {
@@ -28,8 +29,9 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions);
     const body = await req.json();
@@ -37,7 +39,7 @@ export async function PATCH(
 
     // Check if salon exists
     const existingSalon = await db.salon.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!existingSalon) {
@@ -113,7 +115,7 @@ export async function PATCH(
     }
 
     const salon = await db.salon.update({
-      where: { id: params.id },
+      where: { id: id },
       data: updateData,
     });
 
@@ -144,8 +146,9 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions);
 
@@ -158,7 +161,7 @@ export async function DELETE(
 
     // Check if salon exists
     const existingSalon = await db.salon.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!existingSalon) {
@@ -179,7 +182,7 @@ export async function DELETE(
     }
 
     await db.salon.delete({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     return NextResponse.json({ message: "Salon deleted successfully" });

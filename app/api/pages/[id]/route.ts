@@ -6,11 +6,12 @@ import { logAdminAction, extractRequestInfo, createChangeDetails } from "@/lib/a
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const page = await db.page.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!page) {
@@ -26,8 +27,9 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
@@ -39,7 +41,7 @@ export async function PATCH(
 
     // Check if page exists
     const existingPage = await db.page.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!existingPage) {
@@ -65,7 +67,7 @@ export async function PATCH(
     }
 
     const updatedPage = await db.page.update({
-      where: { id: params.id },
+      where: { id: id },
       data: updateData,
     });
 
@@ -75,7 +77,7 @@ export async function PATCH(
       userId: session.user.id!,
       actionType: "UPDATE" as any,
       resourceType: "Page",
-      resourceId: params.id,
+      resourceId: id,
       description: `Updated page "${updatedPage.name}"`,
       details: createChangeDetails(pageBefore, updatedPage),
       ipAddress,
@@ -100,8 +102,9 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
@@ -109,7 +112,7 @@ export async function DELETE(
     }
 
     const page = await db.page.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!page) {
@@ -117,7 +120,7 @@ export async function DELETE(
     }
 
     await db.page.delete({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     // Log admin action
@@ -126,7 +129,7 @@ export async function DELETE(
       userId: session.user.id!,
       actionType: "DELETE" as any,
       resourceType: "Page",
-      resourceId: params.id,
+      resourceId: id,
       description: `Deleted page "${page.name}"`,
       details: {
         before: page,

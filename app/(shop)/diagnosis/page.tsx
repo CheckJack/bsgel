@@ -116,7 +116,7 @@ const questions: Question[] = [
       { value: "oil", label: "I use cuticle oil regularly" },
       { value: "push", label: "I push them back gently" },
       { value: "cut", label: "I cut them" },
-      { value: "nothing", label: "I don't do anything" },
+      { value: "nothing", label: "I don&apos;t do anything" },
     ],
     category: "habits",
   },
@@ -128,7 +128,7 @@ const questions: Question[] = [
       { value: "acetone-free", label: "Acetone-free remover" },
       { value: "acetone", label: "Acetone-based remover" },
       { value: "peel", label: "I peel it off" },
-      { value: "never", label: "I don't use polish" },
+      { value: "never", label: "I don&apos;t use polish" },
     ],
     category: "habits",
   },
@@ -312,14 +312,14 @@ export default function NailDiagnosisPage() {
         "Moisturize hands regularly",
         "Avoid acetone-based removers",
         "Use a strengthening base coat",
-        "Don't cut cuticles, push them back gently",
+        "Don&apos;t cut cuticles, push them back gently",
       ];
       productCategories = ["cuticle-care", "moisturizing", "strengthening", "treatment"];
     } else if (brittleScore >= 3 || damageScore >= 3) {
       condition = "Weak Nails Needing Strength";
       severity = "moderate";
       description =
-        "Your nails need strengthening and protection. They're showing early signs of weakness that can be addressed with proper care.";
+        "Your nails need strengthening and protection. They&apos;re showing early signs of weakness that can be addressed with proper care.";
       recommendations = [
         "Use a strengthening treatment",
         "Apply a protective base coat",
@@ -411,7 +411,7 @@ export default function NailDiagnosisPage() {
                 <CardHeader>
                   <CardTitle className="text-2xl">Welcome to Your Nail Diagnosis</CardTitle>
                   <CardDescription>
-                    We'll ask you a few questions about your nails to provide personalized recommendations
+                    We&apos;ll ask you a few questions about your nails to provide personalized recommendations
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -423,7 +423,7 @@ export default function NailDiagnosisPage() {
                       <div>
                         <h3 className="font-semibold mb-1">Answer Questions</h3>
                         <p className="text-sm text-gray-600">
-                          We'll ask about your nail condition, care habits, and appearance
+                          We&apos;ll ask about your nail condition, care habits, and appearance
                         </p>
                       </div>
                     </div>

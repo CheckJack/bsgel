@@ -329,15 +329,31 @@ export default function CustomerMessagesPage() {
                       Sent: {formatTime(selectedMessage.createdAt)}
                     </p>
                   </div>
-                  <span
-                    className={`px-3 py-1 rounded text-sm ${
-                      selectedMessage.adminResponse
-                        ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
-                        : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400"
-                    }`}
-                  >
-                    {selectedMessage.adminResponse ? "Replied" : "Awaiting Response"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowNewMessageForm(true);
+                        setSelectedMessage(null);
+                        setReplyText("");
+                      }}
+                      className="text-xs"
+                    >
+                      <Send className="h-3 w-3 mr-1" />
+                      New Message
+                    </Button>
+                    <span
+                      className={`px-3 py-1 rounded text-sm ${
+                        selectedMessage.adminResponse
+                          ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                          : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400"
+                      }`}
+                    >
+                      {selectedMessage.adminResponse ? "Replied" : "Awaiting Response"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -378,22 +394,25 @@ export default function CustomerMessagesPage() {
                 )}
               </div>
 
-              {/* Reply Form */}
-              {selectedMessage.adminResponse && (
-                <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+              {/* Send New Message or Reply Form */}
+              <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                {selectedMessage.adminResponse ? (
                   <form onSubmit={handleReply} className="space-y-4">
                     <div>
                       <label
                         htmlFor="reply"
                         className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                       >
-                        Reply to Admin
+                        Send a New Message
                       </label>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                        This will create a new message in your conversation. To start a completely new topic, use the "New Message" button above.
+                      </p>
                       <Textarea
                         id="reply"
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
-                        placeholder="Type your reply..."
+                        placeholder="Type your message..."
                         rows={4}
                         className="w-full"
                         disabled={isSending}
@@ -412,13 +431,19 @@ export default function CustomerMessagesPage() {
                       ) : (
                         <>
                           <Send className="h-4 w-4" />
-                          Send Reply
+                          Send Message
                         </>
                       )}
                     </Button>
                   </form>
-                </div>
-              )}
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      Waiting for admin response. You can start a new conversation using the "New Message" button above.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="flex items-center justify-center h-[600px] text-gray-500 dark:text-gray-400">

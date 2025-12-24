@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Eye, EyeOff, Upload, X } from "lucide-react";
@@ -73,7 +73,20 @@ export default function LoginPage() {
       if (result?.error) {
         setError("Invalid email or password");
       } else {
-        router.push("/dashboard");
+        // Wait a moment for session to be available, then check user role
+        // Retry getting session in case of timing issues
+        let session = await getSession();
+        if (!session) {
+          // Retry after a short delay
+          await new Promise(resolve => setTimeout(resolve, 100));
+          session = await getSession();
+        }
+        
+        if (session?.user?.role === "ADMIN") {
+          router.push("/admin");
+        } else {
+          router.push("/dashboard");
+        }
         router.refresh();
       }
     } catch (error) {

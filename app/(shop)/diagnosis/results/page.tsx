@@ -229,7 +229,7 @@ export default function DiagnosisResultsPage() {
             <p className={`text-lg lg:text-xl font-sans font-light text-brand-champagne max-w-2xl mx-auto transition-all duration-700 delay-100 ${
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}>
-              Based on your responses, here's your personalized nail care analysis
+              Based on your responses, here&apos;s your personalized nail care analysis
             </p>
           </div>
 

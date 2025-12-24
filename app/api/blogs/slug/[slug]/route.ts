@@ -3,11 +3,12 @@ import { db } from "@/lib/db"
 
 export async function GET(
   req: Request,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
+    const { slug } = await params
   try {
     const blog = await db.blog.findUnique({
-      where: { slug: params.slug },
+      where: { slug: slug },
     })
 
     if (!blog) {

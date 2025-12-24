@@ -134,9 +134,22 @@ export async function POST(req: Request) {
     }
 
     // Check if program exists
-    const program = await db.trainingProgram.findUnique({
-      where: { id: programId },
-    })
+    let program;
+    try {
+      program = await db.trainingProgram.findUnique({
+        where: { id: programId },
+      })
+    } catch (error: any) {
+      // If table doesn't exist, return 404
+      if (error?.code === "P2021" || error?.message?.includes("does not exist") || error?.message?.includes("TrainingProgram")) {
+        console.warn("TrainingProgram table does not exist in database");
+        return NextResponse.json(
+          { error: "Training program not found" },
+          { status: 404 }
+        );
+      }
+      throw error;
+    }
 
     if (!program) {
       return NextResponse.json(

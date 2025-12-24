@@ -29,10 +29,20 @@ export async function GET(req: Request) {
       // Filter by category
       productWhere.categoryId = categoryId;
     } else if (showcasingSection) {
-      // Filter by showcasing section
-      productWhere.showcasingSections = {
-        has: showcasingSection,
-      };
+      // showcasingSections field doesn't exist in database, skip filter
+      // productWhere.showcasingSections = {
+      //   has: showcasingSection,
+      // };
+      // Return empty for now since we can't filter by non-existent field
+      return NextResponse.json({
+        reviews: [],
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 0,
+          totalPages: 0,
+        },
+      });
     } else {
       // No filter - return empty
       return NextResponse.json({

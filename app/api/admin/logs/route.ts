@@ -101,7 +101,7 @@ export async function GET(request: Request) {
         });
         
         // Manually attach user info
-        const userIds = [...new Set(logsWithoutUser.map(log => log.userId))];
+        const userIds = Array.from(new Set(logsWithoutUser.map(log => log.userId)));
         const usersMap = new Map();
         
         if (userIds.length > 0) {
@@ -146,10 +146,10 @@ export async function GET(request: Request) {
       const [allActionTypes, allResourceTypes, adminUsers] = await Promise.all([
         db.adminLog.findMany({
           select: { actionType: true },
-        }).then(logs => [...new Set(logs.map(l => l.actionType))]).catch(() => []),
+        }).then(logs => Array.from(new Set(logs.map(l => l.actionType)))).catch(() => []),
         db.adminLog.findMany({
           select: { resourceType: true },
-        }).then(logs => [...new Set(logs.map(l => l.resourceType))]).catch(() => []),
+        }).then(logs => Array.from(new Set(logs.map(l => l.resourceType)))).catch(() => []),
         db.user.findMany({
           where: {
             role: "ADMIN",

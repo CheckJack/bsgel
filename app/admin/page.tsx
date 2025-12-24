@@ -28,10 +28,22 @@ export default function AdminDashboardPage() {
 
   const fetchStats = async () => {
     try {
+      setIsLoading(true);
       const [productsRes, ordersRes] = await Promise.all([
         fetch("/api/products"),
         fetch("/api/orders"),
       ]);
+
+      // Check for errors
+      if (!productsRes.ok) {
+        const errorData = await productsRes.json().catch(() => ({ error: "Unknown error" }));
+        console.error("❌ Failed to fetch products:", productsRes.status, errorData);
+      }
+      
+      if (!ordersRes.ok) {
+        const errorData = await ordersRes.json().catch(() => ({ error: "Unknown error" }));
+        console.error("❌ Failed to fetch orders:", ordersRes.status, errorData);
+      }
 
       if (productsRes.ok && ordersRes.ok) {
         const productsData = await productsRes.json();
@@ -49,15 +61,30 @@ export default function AdminDashboardPage() {
           (order: any) => order.status === "PENDING" || order.status === "PROCESSING"
         ).length : 0;
 
+        console.log("✅ Stats fetched:", { products: products.length, orders: orders.length });
         setStats({
           totalProducts: Array.isArray(products) ? products.length : 0,
           totalOrders: Array.isArray(orders) ? orders.length : 0,
           totalRevenue,
           pendingOrders,
         });
+      } else {
+        // Set defaults if API calls failed
+        setStats({
+          totalProducts: 0,
+          totalOrders: 0,
+          totalRevenue: 0,
+          pendingOrders: 0,
+        });
       }
     } catch (error) {
-      console.error("Failed to fetch stats:", error);
+      console.error("❌ Error fetching stats:", error);
+      setStats({
+        totalProducts: 0,
+        totalOrders: 0,
+        totalRevenue: 0,
+        pendingOrders: 0,
+      });
     } finally {
       setIsLoading(false);
     }

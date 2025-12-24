@@ -6,8 +6,9 @@ import { db } from "@/lib/db";
 // PUT - Approve or reject a comment
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions);
 
@@ -29,7 +30,7 @@ export async function PUT(
     }
 
     const comment = await db.comment.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!comment) {
@@ -40,7 +41,7 @@ export async function PUT(
     }
 
     const updatedComment = await db.comment.update({
-      where: { id: params.id },
+      where: { id: id },
       data: {
         status: action === "approve" ? "APPROVED" : "REJECTED",
         reviewedBy: session.user.id,
@@ -77,8 +78,9 @@ export async function PUT(
 // DELETE - Delete a comment
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params
   try {
     const session = await getServerSession(authOptions);
 
@@ -90,7 +92,7 @@ export async function DELETE(
     }
 
     const comment = await db.comment.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     if (!comment) {
@@ -101,7 +103,7 @@ export async function DELETE(
     }
 
     await db.comment.delete({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     return NextResponse.json({ success: true });

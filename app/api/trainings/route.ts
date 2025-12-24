@@ -27,43 +27,53 @@ export async function GET(req: Request) {
       where.isActive = isActive === "true"
     }
 
-    const programs = await db.trainingProgram.findMany({
-      where,
-      include: {
-        sessions: {
-          where: {
-            isActive: true,
-            startDate: {
-              gte: new Date(), // Only future sessions
+    let programs;
+    try {
+      programs = await db.trainingProgram.findMany({
+        where,
+        include: {
+          sessions: {
+            where: {
+              isActive: true,
+              startDate: {
+                gte: new Date(), // Only future sessions
+              },
+            },
+            orderBy: {
+              startDate: "asc",
             },
           },
-          orderBy: {
-            startDate: "asc",
-          },
-        },
-        products: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                price: true,
-                image: true,
+          products: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true,
+                  image: true,
+                },
               },
             },
           },
-        },
-        _count: {
-          select: {
-            bookings: true,
-            sessions: true,
+          _count: {
+            select: {
+              bookings: true,
+              sessions: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    })
+        orderBy: {
+          createdAt: "desc",
+        },
+      })
+    } catch (error: any) {
+      // If table doesn't exist, return empty array
+      if (error?.code === "P2021" || error?.message?.includes("does not exist") || error?.message?.includes("TrainingProgram")) {
+        console.warn("TrainingProgram table does not exist in database, returning empty array");
+        return NextResponse.json([]);
+      }
+      throw error;
+    }
 
     const formatted = programs.map((program) => ({
       id: program.id,
@@ -173,8 +183,10 @@ export async function POST(req: Request) {
       }
     }
 
-    const program = await db.trainingProgram.create({
-      data: {
+    let program;
+    try {
+      program = await db.trainingProgram.create({
+        data: {
         title: title.trim(),
         description: description?.trim() || null,
         content: content?.trim() || null,
@@ -207,6 +219,15 @@ export async function POST(req: Request) {
         },
       },
     })
+    } catch (error: any) {
+      if (error?.code === "P2021" || error?.message?.includes("does not exist") || error?.message?.includes("TrainingProgram")) {
+        return NextResponse.json(
+          { error: "Training program table does not exist in database" },
+          { status: 500 }
+        );
+      }
+      throw error;
+    }
 
     const formatted = {
       ...program,
