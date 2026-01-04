@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/contexts/cart-context";
+import { useLanguage } from "@/contexts/language-context";
 
 export default function CartPage() {
+  const { t } = useLanguage();
   const { data: session } = useSession();
   const router = useRouter();
   const { items, isLoading, updateQuantity, removeItem, itemCount } = useCart();
@@ -17,25 +19,25 @@ export default function CartPage() {
   if (!session) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
-        <p className="text-lg mb-4">Please sign in to view your cart.</p>
+        <p className="text-lg mb-4">{t("cart.pleaseSignIn")}</p>
         <Link href="/login">
-          <Button>Sign In</Button>
+          <Button>{t("cart.signIn")}</Button>
         </Link>
       </div>
     );
   }
 
   if (isLoading) {
-    return <div className="container mx-auto px-4 py-8 text-center">Loading cart...</div>;
+    return <div className="container mx-auto px-4 py-8 text-center">{t("cart.loadingCart")}</div>;
   }
 
   if (itemCount === 0) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
-        <h1 className="text-4xl font-bold mb-4">Your Cart</h1>
-        <p className="text-lg mb-6">Your cart is empty.</p>
+        <h1 className="text-4xl font-bold mb-4">{t("cart.title")}</h1>
+        <p className="text-lg mb-6">{t("cart.empty")}</p>
         <Link href="/products">
-          <Button>Continue Shopping</Button>
+          <Button>{t("cart.continueShopping")}</Button>
         </Link>
       </div>
     );
@@ -50,7 +52,7 @@ export default function CartPage() {
 
   return (
     <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 sm:mb-8">Your Cart</h1>
+      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 sm:mb-8">{t("cart.title")}</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         <div className="lg:col-span-2 space-y-4">
@@ -59,18 +61,21 @@ export default function CartPage() {
               <CardContent className="p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row gap-4">
                   {item.product.image ? (
-                    <Link href={`/products/${item.product.id}`} className="relative w-full sm:w-24 h-48 sm:h-24 flex-shrink-0">
+                    <Link href={`/products/${item.product.id}`} className="relative w-full sm:w-24 h-48 sm:h-24 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
                       <Image
                         src={item.product.image}
                         alt={item.product.name}
                         fill
                         sizes="(max-width: 640px) 100vw, 96px"
-                        className="object-cover rounded"
+                        className="object-contain rounded"
+                        priority
+                        loading="eager"
+                        unoptimized={item.product.image?.startsWith('data:') || item.product.image?.startsWith('blob:')}
                       />
                     </Link>
                   ) : (
                     <div className="w-full sm:w-24 h-48 sm:h-24 bg-gray-200 rounded flex-shrink-0 flex items-center justify-center">
-                      <span className="text-gray-400 text-xs">No Image</span>
+                      <span className="text-gray-400 text-xs">{t("cart.noImage")}</span>
                     </div>
                   )}
 
@@ -107,7 +112,7 @@ export default function CartPage() {
                         onClick={() => removeItem(item.id)}
                         className="text-red-600 hover:text-red-700 text-sm sm:text-base"
                       >
-                        Remove
+                        {t("cart.remove")}
                       </Button>
                     </div>
                   </div>
@@ -126,19 +131,19 @@ export default function CartPage() {
         <div className="lg:sticky lg:top-24 lg:self-start">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg sm:text-xl">Order Summary</CardTitle>
+              <CardTitle className="text-lg sm:text-xl">{t("cart.orderSummary")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex justify-between text-sm sm:text-base">
-                <span>Subtotal</span>
+                <span>{t("cart.subtotal")}</span>
                 <span>{formatPrice(subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm sm:text-base">
-                <span>Tax</span>
+                <span>{t("cart.tax")}</span>
                 <span>{formatPrice(tax)}</span>
               </div>
               <div className="border-t pt-4 flex justify-between font-bold text-base sm:text-lg">
-                <span>Total</span>
+                <span>{t("cart.total")}</span>
                 <span>{formatPrice(total)}</span>
               </div>
               <Button
@@ -146,11 +151,11 @@ export default function CartPage() {
                 size="lg"
                 onClick={() => router.push("/checkout")}
               >
-                Proceed to Checkout
+                {t("cart.proceedToCheckout")}
               </Button>
               <Link href="/products">
                 <Button variant="outline" className="w-full">
-                  Continue Shopping
+                  {t("cart.continueShopping")}
                 </Button>
               </Link>
             </CardContent>

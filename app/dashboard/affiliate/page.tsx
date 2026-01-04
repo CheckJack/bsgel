@@ -52,11 +52,26 @@ export default function AffiliatePage() {
   const [topReferrals, setTopReferrals] = useState<any[]>([]);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [earningsPeriod, setEarningsPeriod] = useState<"month" | "year">("month");
+  const [featureSettings, setFeatureSettings] = useState({
+    rewardsEnabled: true,
+    affiliateEnabled: true,
+  });
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
     } else if (session) {
+      fetchFeatureSettings();
+    }
+  }, [session, status, router]);
+
+  useEffect(() => {
+    if (!featureSettings.affiliateEnabled && session) {
+      router.push("/dashboard");
+      return;
+    }
+    
+    if (featureSettings.affiliateEnabled && session) {
       // Affiliate program is open to all customers
       fetchAffiliateData();
       fetchRewards();
@@ -65,7 +80,23 @@ export default function AffiliatePage() {
       fetchTopReferrals();
       fetchRecentActivity();
     }
-  }, [session, status, router]);
+  }, [featureSettings.affiliateEnabled, session, router]);
+
+  const fetchFeatureSettings = async () => {
+    try {
+      const res = await fetch("/api/admin/feature-settings");
+      if (res.ok) {
+        const data = await res.json();
+        setFeatureSettings({
+          rewardsEnabled: data.rewardsEnabled ?? true,
+          affiliateEnabled: data.affiliateEnabled ?? true,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch feature settings:", error);
+      setFeatureSettings({ rewardsEnabled: true, affiliateEnabled: true });
+    }
+  };
 
   const fetchAffiliateData = async () => {
     try {

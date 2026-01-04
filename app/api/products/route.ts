@@ -17,10 +17,10 @@ export async function GET(req: Request) {
     const pageParam = searchParams.get("page")
     const limitParam = searchParams.get("limit")
     
-    // Check if pagination is requested
-    const usePagination = pageParam !== null || limitParam !== null
+    // Always use pagination with reasonable defaults to prevent loading all products
     const page = pageParam ? parseInt(pageParam) : 1
-    const limit = limitParam ? parseInt(limitParam) : 12
+    const limit = limitParam ? parseInt(limitParam) : (pageParam ? 12 : 100) // Default to 100 if no pagination params, but still limit
+    const usePagination = true // Always use pagination for performance
 
     const where: any = {}
 
@@ -107,48 +107,54 @@ export async function GET(req: Request) {
           },
         },
         orderBy,
-        ...(usePagination && {
-          skip: (page - 1) * limit,
-          take: limit,
-        }),
+        skip: (page - 1) * limit,
+        take: limit,
       });
 
       // Calculate review stats in a single optimized query (only if products exist)
+      // Use raw SQL for better performance with large datasets
       if (products.length > 0) {
         const productIds = products.map(p => p.id);
         
-        // Use a single aggregated query instead of groupBy for better performance
-        const reviewStats = await db.productReview.groupBy({
-          by: ['productId'],
-          where: {
-            productId: { in: productIds },
-            status: 'APPROVED',
-          },
-          _count: {
-            id: true,
-          },
-          _avg: {
-            rating: true,
-          },
-        });
+        try {
+          // Use raw SQL for better performance - much faster than groupBy
+          const reviewStats = await db.$queryRaw<Array<{ productId: string; reviewCount: bigint; avgRating: number }>>`
+            SELECT 
+              "productId",
+              COUNT(*)::int as "reviewCount",
+              COALESCE(AVG(rating)::float, 0) as "avgRating"
+            FROM "ProductReview"
+            WHERE "productId" = ANY(${productIds}::text[])
+              AND status = 'APPROVED'
+            GROUP BY "productId"
+          `;
 
-        // Create a map of productId -> stats
-        const statsMap = new Map(
-          reviewStats.map(stat => [
-            stat.productId,
-            {
-              reviewCount: stat._count.id,
-              rating: stat._avg.rating || 0,
-            }
-          ])
-        );
+          // Create a map of productId -> stats
+          const statsMap = new Map(
+            reviewStats.map(stat => [
+              stat.productId,
+              {
+                reviewCount: Number(stat.reviewCount),
+                rating: Number(stat.avgRating),
+              }
+            ])
+          );
 
-        // Add review stats to each product
-        products = products.map(product => ({
-          ...product,
-          reviewCount: statsMap.get(product.id)?.reviewCount || 0,
-          rating: statsMap.get(product.id)?.rating || 0,
-        }));
+          // Add review stats to each product
+          products = products.map(product => ({
+            ...product,
+            reviewCount: statsMap.get(product.id)?.reviewCount || 0,
+            rating: statsMap.get(product.id)?.rating || 0,
+          }));
+        } catch (reviewError) {
+          // If review stats fail, just set defaults - don't fail the whole request
+          console.warn("Failed to fetch review stats:", reviewError);
+          products = products.map(product => ({
+            ...product,
+            reviewCount: 0,
+            rating: 0,
+          }));
+        }
       }
     } catch (error: any) {
       // If schema hasn't been migrated yet, use simpler query without subcategory
@@ -176,10 +182,8 @@ export async function GET(req: Request) {
             },
           },
           orderBy,
-          ...(usePagination && {
-            skip: (page - 1) * limit,
-            take: limit,
-          }),
+          skip: (page - 1) * limit,
+          take: limit,
         });
         
         // Add review stats for fallback query too
@@ -278,11 +282,9 @@ export async function GET(req: Request) {
         const sortOrder = sortBy === "price-asc" || sortBy === "name-asc" || sortBy === "oldest" ? "ASC" : "DESC";
         sqlQuery += ` ORDER BY ${sortField} ${sortOrder}`;
 
-        // Add pagination
-        if (usePagination) {
-          sqlQuery += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-          params.push(limit, (page - 1) * limit);
-        }
+        // Always add pagination for performance
+        sqlQuery += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+        params.push(limit, (page - 1) * limit);
 
         const rawProducts = await db.$queryRawUnsafe(sqlQuery, ...params) as any[];
         
@@ -349,76 +351,81 @@ export async function GET(req: Request) {
       }
     }
 
-    // If pagination is requested, return paginated response
-    if (usePagination) {
-      let total;
-      try {
-        total = await db.product.count({ where });
-      } catch (error: any) {
-        // If count fails, use raw SQL
-        let countQuery = `SELECT COUNT(*) as count FROM "Product" p WHERE 1=1`;
-        const countParams: any[] = [];
-        let paramIndex = 1;
+    // Always return paginated response for consistency and performance
+    let total;
+    try {
+      total = await db.product.count({ where });
+    } catch (error: any) {
+      // If count fails, use raw SQL
+      let countQuery = `SELECT COUNT(*) as count FROM "Product" p WHERE 1=1`;
+      const countParams: any[] = [];
+      let paramIndex = 1;
 
-        if (categoryId) {
-          countQuery += ` AND p."categoryId" = $${paramIndex}`;
-          countParams.push(categoryId);
-          paramIndex++;
-        }
-
-        if (search) {
-          countQuery += ` AND (LOWER(p.name) LIKE $${paramIndex} OR LOWER(COALESCE(p.description, '')) LIKE $${paramIndex})`;
-          countParams.push(`%${search.toLowerCase()}%`);
-          paramIndex++;
-        }
-
-        if (featured === "true") {
-          countQuery += ` AND p.featured = true`;
-        }
-
-        if (showcasingSection) {
-          // showcasingSections field doesn't exist in database, skip filter
-          // countQuery += ` AND $${paramIndex} = ANY(p."showcasingSections")`;
-          countParams.push(showcasingSection);
-          paramIndex++;
-        }
-
-        if (minPrice) {
-          countQuery += ` AND p.price >= $${paramIndex}`;
-          countParams.push(parseFloat(minPrice));
-          paramIndex++;
-        }
-
-        if (maxPrice) {
-          countQuery += ` AND p.price <= $${paramIndex}`;
-          countParams.push(parseFloat(maxPrice));
-          paramIndex++;
-        }
-
-        const countResult = await db.$queryRawUnsafe(countQuery, ...countParams) as any[];
-        total = parseInt(countResult[0]?.count || "0");
+      if (categoryId) {
+        countQuery += ` AND p."categoryId" = $${paramIndex}`;
+        countParams.push(categoryId);
+        paramIndex++;
       }
-      const totalPages = Math.ceil(total / limit)
 
-      return NextResponse.json({
-        products,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages,
-          hasNextPage: page < totalPages,
-          hasPreviousPage: page > 1,
-        },
-      })
+      if (search) {
+        countQuery += ` AND (LOWER(p.name) LIKE $${paramIndex} OR LOWER(COALESCE(p.description, '')) LIKE $${paramIndex})`;
+        countParams.push(`%${search.toLowerCase()}%`);
+        paramIndex++;
+      }
+
+      if (featured === "true") {
+        countQuery += ` AND p.featured = true`;
+      }
+
+      if (minPrice) {
+        countQuery += ` AND p.price >= $${paramIndex}`;
+        countParams.push(parseFloat(minPrice));
+        paramIndex++;
+      }
+
+      if (maxPrice) {
+        countQuery += ` AND p.price <= $${paramIndex}`;
+        countParams.push(parseFloat(maxPrice));
+        paramIndex++;
+      }
+
+      const countResult = await db.$queryRawUnsafe(countQuery, ...countParams) as any[];
+      total = parseInt(countResult[0]?.count || "0");
     }
+    const totalPages = Math.ceil(total / limit)
 
-    // Otherwise, return the old format (just products array) for backward compatibility
-    return NextResponse.json(products)
-  } catch (error) {
+    // Add caching headers for better performance (cache for 60 seconds)
+    const headers = new Headers();
+    headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
+
+    return NextResponse.json({
+      products,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    }, { headers })
+  } catch (error: any) {
     console.error("Failed to fetch products:", error)
+    // Return a more helpful error response
     return NextResponse.json(
-      { error: "Failed to fetch products" },
+      { 
+        error: "Failed to fetch products",
+        message: error?.message || "Unknown error",
+        products: [],
+        pagination: {
+          page: 1,
+          limit: 12,
+          total: 0,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        }
+      },
       { status: 500 }
     )
   }

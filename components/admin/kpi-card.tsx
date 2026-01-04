@@ -121,7 +121,7 @@ export function KPICard({
   const actualBarWidth = barWidth - barSpacing;
 
   // Handle mouse move to show tooltip
-  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>, index: number) => {
+  const handleMouseMove = (e: React.MouseEvent<SVGElement>, index: number) => {
     if (!graphRef.current) return;
     
     const rect = graphRef.current.getBoundingClientRect();

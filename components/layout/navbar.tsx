@@ -12,10 +12,12 @@ import { ShopMegaMenu } from "./shop-mega-menu";
 import { AboutMegaMenu } from "./about-mega-menu";
 import { SearchDrawer } from "./search-drawer";
 import { NotificationDropdown } from "./notification-dropdown";
+import { useLanguage } from "@/contexts/language-context";
 
 export function Navbar() {
   const { data: session } = useSession();
   const { itemCount } = useCart();
+  const { language, setLanguage, t } = useLanguage();
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [searchDrawerOpen, setSearchDrawerOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -211,7 +213,7 @@ export function Navbar() {
                   href="/products" 
                   className="text-brand-white hover:text-brand-sweet-bianca transition-colors text-sm lg:text-base whitespace-nowrap"
                 >
-                  Shop
+                  {t("nav.shop")}
                 </Link>
               </div>
               
@@ -231,7 +233,7 @@ export function Navbar() {
               }}
             >
               <Link href="/about" className="text-brand-white hover:text-brand-sweet-bianca transition-colors text-sm lg:text-base whitespace-nowrap">
-                About
+                {t("nav.about")}
               </Link>
             </div>
 
@@ -239,7 +241,7 @@ export function Navbar() {
               href="/training" 
               className="text-brand-white hover:text-brand-sweet-bianca transition-colors text-sm lg:text-base whitespace-nowrap"
             >
-              Training
+              {t("nav.training")}
             </Link>
             </div>
 
@@ -286,20 +288,30 @@ export function Navbar() {
                 <Button
                   variant="ghost"
                   onClick={() => {
-                    if (window.confirm("Are you sure you want to sign out?")) {
-                      signOut();
+                    if (window.confirm(t("nav.signOut"))) {
+                      signOut({ callbackUrl: "/login" });
                     }
                   }}
                   className="hidden md:inline-flex text-brand-white hover:text-brand-sweet-bianca hover:bg-gray-900 text-sm lg:text-base whitespace-nowrap px-3 h-auto py-1"
                 >
-                  Sign Out
+                  {t("nav.signOut")}
                 </Button>
               </>
             ) : (
-              <Link href="/login" className="text-brand-white hover:text-brand-sweet-bianca transition-colors flex-shrink-0" title="Sign In">
+              <Link href="/login" className="text-brand-white hover:text-brand-sweet-bianca transition-colors flex-shrink-0" title={t("nav.signIn")}>
                 <User className="h-6 w-6" />
               </Link>
             )}
+
+            {/* Language Selector */}
+            <button
+              onClick={() => setLanguage(language === "en" ? "pt" : "en")}
+              className="text-brand-white hover:text-brand-sweet-bianca transition-colors flex-shrink-0 text-sm lg:text-base px-2"
+              aria-label={language === "en" ? t("header.switchToPortuguese") : t("header.switchToEnglish")}
+              title={t("header.currentLanguage", { language: language === "en" ? t("header.english") : t("header.portuguese") })}
+            >
+              <span className="text-lg">{language === "en" ? "🇬🇧" : "🇵🇹"}</span>
+            </button>
 
             <button
               onClick={() => setCartDrawerOpen(true)}
@@ -340,7 +352,7 @@ export function Navbar() {
                   }}
                   className="w-full flex items-center justify-between px-4 py-3 text-brand-white hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
                 >
-                  <span>Shop</span>
+                  <span>{t("nav.shop")}</span>
                   {expandedShopItems.has('shop') ? (
                     <ChevronUp className="h-5 w-5" />
                   ) : (
@@ -354,133 +366,126 @@ export function Navbar() {
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
                     >
-                      All Products
+                      {t("nav.shopMenu.allProducts")}
                     </Link>
                     <Link
                       href="/bio-gel"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
                     >
-                      BIO Gel
+                      {t("nav.shopMenu.bioGel")}
                     </Link>
                     <Link
                       href="/bio-gel/treatment-gels"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      Treatment Gels
+                      {t("nav.shopMenu.treatmentGels")}
                     </Link>
                     <Link
                       href="/bio-gel/color-gels"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      Color Gels
-                    </Link>
-                    <Link
-                      href="/bio-gel/top-coats"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
-                    >
-                      Top Coats
+                      {t("nav.shopMenu.colorGels")}
                     </Link>
                     <Link
                       href="/gemini"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
                     >
-                      Gemini
+                      {t("nav.shopMenu.gemini")}
                     </Link>
                     <Link
                       href="/gemini/reds"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      Reds
+                      {t("nav.shopMenu.reds")}
                     </Link>
                     <Link
                       href="/gemini/pinks"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      Pinks
+                      {t("nav.shopMenu.pinks")}
                     </Link>
                     <Link
                       href="/gemini/nudes-neutrals-browns"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      Nudes / Neutrals / Browns
+                      {t("nav.shopMenu.nudesNeutralsBrowns")}
                     </Link>
                     <Link
                       href="/gemini/oranges-corals-yellows"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      Oranges & Corals / Yellows
+                      {t("nav.shopMenu.orangesCoralsYellows")}
                     </Link>
                     <Link
                       href="/ethos"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
                     >
-                      Ethos
+                      {t("nav.shopMenu.ethos")}
                     </Link>
                     <Link
                       href="/ethos/nail-diagnosis"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      Nail diagnosis
+                      {t("nav.shopMenu.nailDiagnosis")}
                     </Link>
                     <Link
                       href="/spa"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
                     >
-                      SPA
+                      {t("nav.shopMenu.spa")}
                     </Link>
                     <Link
                       href="/spa/hand-care"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      Hand Care
+                      {t("nav.shopMenu.handCare")}
                     </Link>
                     <Link
                       href="/spa/foot-care"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      Foot Care
+                      {t("nav.shopMenu.footCare")}
                     </Link>
                     <Link
                       href="/evo"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
                     >
-                      Evo
+                      {t("nav.shopMenu.evo")}
                     </Link>
                     <Link
                       href="/evo/treatment-base-gels"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      Treatment Base Gels
+                      {t("nav.shopMenu.treatmentBaseGels")}
                     </Link>
                     <Link
                       href="/evo/colour-gels"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      Colour Gels
+                      {t("nav.shopMenu.colourGels")}
                     </Link>
                     <Link
                       href="/evo/top-coats"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      Top Coats
+                      {t("nav.shopMenu.topCoats")}
                     </Link>
                   </div>
                 )}
@@ -497,13 +502,12 @@ export function Navbar() {
                       newExpanded.add('about');
                       // Close Shop menu if it's open
                       setExpandedShopItems(new Set());
-                      setExpandedBrandItems(new Set());
                     }
                     setExpandedAboutItems(newExpanded);
                   }}
                   className="w-full flex items-center justify-between px-4 py-3 text-brand-white hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
                 >
-                  <span>About</span>
+                  <span>{t("nav.about")}</span>
                   {expandedAboutItems.has('about') ? (
                     <ChevronUp className="h-5 w-5" />
                   ) : (
@@ -517,49 +521,49 @@ export function Navbar() {
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
                     >
-                      Biosculpture
+                      {t("nav.aboutMenu.biosculpture")}
                     </Link>
                     <Link
                       href="/about/biosculpture/concept"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      Concept
+                      {t("nav.aboutMenu.concept")}
                     </Link>
                     <Link
                       href="/about/biosculpture/sustainability"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      Sustainability
+                      {t("nav.aboutMenu.sustainability")}
                     </Link>
                     <Link
                       href="/about/biosculpture/awards"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      Awards
+                      {t("nav.aboutMenu.awards")}
                     </Link>
                     <Link
                       href="/contact"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
                     >
-                      Contact
+                      {t("nav.aboutMenu.contact")}
                     </Link>
                     <Link
                       href="/salons"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      Find Salon
+                      {t("nav.aboutMenu.findSalon")}
                     </Link>
                     <Link
                       href="/blog"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
                     >
-                      Blog
+                      {t("nav.aboutMenu.blog")}
                     </Link>
                   </div>
                 )}
@@ -571,7 +575,7 @@ export function Navbar() {
                 onClick={() => setMobileMenuOpen(false)}
                 className="block px-4 py-3 text-brand-white hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
               >
-                Training
+                {t("nav.training")}
               </Link>
               
               {session && (
@@ -579,14 +583,14 @@ export function Navbar() {
                   <Button
                     variant="ghost"
                     onClick={() => {
-                      if (window.confirm("Are you sure you want to sign out?")) {
-                        signOut();
+                      if (window.confirm(t("nav.signOut"))) {
+                        signOut({ callbackUrl: "/login" });
                         setMobileMenuOpen(false);
                       }
                     }}
                     className="w-full text-brand-white hover:text-brand-sweet-bianca hover:bg-gray-900 text-left justify-start px-4 py-3 h-auto"
                   >
-                    Sign Out
+                    {t("nav.signOut")}
                   </Button>
                 </div>
               )}

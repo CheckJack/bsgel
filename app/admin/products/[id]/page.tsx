@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
@@ -28,7 +28,7 @@ interface Attribute {
   values: string[];
 }
 
-export default function EditProductPage() {
+function EditProductPageContent() {
   const params = useParams();
   const router = useRouter();
   const { data: session } = useSession();
@@ -711,6 +711,21 @@ export default function EditProductPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function EditProductPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-sm text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <EditProductPageContent />
+    </Suspense>
   );
 }
 

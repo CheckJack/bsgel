@@ -75,7 +75,7 @@ export class AdminErrorBoundary extends Component<Props, State> {
                   Something went wrong
                 </h1>
                 <p className="text-gray-600 dark:text-gray-400">
-                  An unexpected error occurred while loading this page. This has been logged and we'll look into it.
+                  An unexpected error occurred while loading this page. This has been logged and we&apos;ll look into it.
                 </p>
               </div>
             </div>

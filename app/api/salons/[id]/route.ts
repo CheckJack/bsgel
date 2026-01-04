@@ -9,19 +9,98 @@ export async function GET(
 ) {
     const { id } = await params
   try {
+    const session = await getServerSession(authOptions);
+    const isAdmin = session?.user?.role === "ADMIN";
+
+    console.log(`[Salon Detail API] Fetching salon with ID: ${id}, isAdmin: ${isAdmin}`);
+
+    // Use select to match the list endpoint and avoid schema issues
+    // Only select fields that definitely exist to avoid errors
+    const selectFields: any = {
+      id: true,
+      name: true,
+      address: true,
+      city: true,
+      postalCode: true,
+      phone: true,
+      email: true,
+      website: true,
+      latitude: true,
+      longitude: true,
+      image: true,
+      logo: true,
+      images: true,
+      description: true,
+      isActive: true,
+      isBioDiamond: true,
+      status: true,
+      userId: true,
+      workingHours: true,
+      createdAt: true,
+      updatedAt: true,
+    };
+
+    // Only include user relation for admins
+    if (isAdmin) {
+      selectFields.user = {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      };
+    }
+
     const salon = await db.salon.findUnique({
       where: { id: id },
+      select: selectFields,
     });
 
     if (!salon) {
+      console.log(`[Salon Detail API] Salon not found with ID: ${id}`);
       return NextResponse.json({ error: "Salon not found" }, { status: 404 });
     }
 
+    console.log(`[Salon Detail API] Found salon: ${salon.name}, isActive: ${salon.isActive}, status: ${salon.status}`);
+
+    // For non-admin users, only show active and approved salons (exclude pending review)
+    // This matches the filtering logic in the list endpoint
+    if (!isAdmin) {
+      if (!salon.isActive) {
+        console.log(`[Salon Detail API] Salon ${salon.name} is not active, blocking access`);
+        return NextResponse.json({ error: "Salon not found" }, { status: 404 });
+      }
+      if (salon.status === "PENDING_REVIEW") {
+        console.log(`[Salon Detail API] Salon ${salon.name} is pending review, blocking access`);
+        return NextResponse.json({ error: "Salon not found" }, { status: 404 });
+      }
+    }
+
     return NextResponse.json(salon);
-  } catch (error) {
-    console.error("Failed to fetch salon:", error);
+  } catch (error: any) {
+    console.error("[Salon Detail API] Failed to fetch salon:", error);
+    console.error("[Salon Detail API] Error details:", {
+      message: error?.message,
+      code: error?.code,
+      stack: error?.stack,
+    });
+    
+    // Check if it's a database connection error
+    if (error?.code === "P1001") {
+      return NextResponse.json(
+        { 
+          error: "Database connection error. Please check your DATABASE_URL in .env.local",
+          details: error?.message,
+        },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: "Failed to fetch salon" },
+      { 
+        error: "Failed to fetch salon",
+        details: error?.message || "Unknown error",
+      },
       { status: 500 }
     );
   }
@@ -49,8 +128,18 @@ export async function PATCH(
       );
     }
 
-    // If user is logged in and not admin, verify they own this salon
+    // If user is logged in and not admin, verify they own this salon and are a professional
     if (session?.user?.id && session.user.role !== "ADMIN") {
+      // Check if user is a professional (has certification)
+      const hasCertification = !!session.user.certification;
+      if (!hasCertification) {
+        return NextResponse.json(
+          { error: "Only professionals can manage salon listings. Please contact support to get certified." },
+          { status: 403 }
+        );
+      }
+      
+      // Verify they own this salon
       if (existingSalon.userId !== session.user.id) {
         return NextResponse.json(
           { error: "Unauthorized - You can only edit your own salon" },
@@ -95,9 +184,15 @@ export async function PATCH(
     if (workingHours !== undefined) updateData.workingHours = workingHours || null;
     if (isActive !== undefined) updateData.isActive = isActive;
     
-    // Only include isBioDiamond if it's provided (and handle if field doesn't exist yet)
+    // Only admins can change isBioDiamond - regular users cannot modify this field
+    const isAdmin = session?.user?.role === "ADMIN";
     if (isBioDiamond !== undefined) {
-      updateData.isBioDiamond = isBioDiamond;
+      if (isAdmin) {
+        updateData.isBioDiamond = isBioDiamond;
+      } else {
+        // Non-admin users cannot change isBioDiamond - ignore the value
+        // This prevents users from trying to set it via API calls
+      }
     }
 
     // If user is logged in and updating from client panel, ensure userId is set

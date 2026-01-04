@@ -32,14 +32,45 @@ export default function ReferralsPage() {
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<"all" | "PENDING" | "ACTIVE" | "INACTIVE">("all");
+  const [featureSettings, setFeatureSettings] = useState({
+    rewardsEnabled: true,
+    affiliateEnabled: true,
+  });
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
     } else if (session) {
-      fetchReferrals();
+      fetchFeatureSettings();
     }
   }, [session, status, router]);
+
+  useEffect(() => {
+    if (!featureSettings.affiliateEnabled && session) {
+      router.push("/dashboard");
+      return;
+    }
+    
+    if (featureSettings.affiliateEnabled && session) {
+      fetchReferrals();
+    }
+  }, [featureSettings.affiliateEnabled, session, router]);
+
+  const fetchFeatureSettings = async () => {
+    try {
+      const res = await fetch("/api/admin/feature-settings");
+      if (res.ok) {
+        const data = await res.json();
+        setFeatureSettings({
+          rewardsEnabled: data.rewardsEnabled ?? true,
+          affiliateEnabled: data.affiliateEnabled ?? true,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch feature settings:", error);
+      setFeatureSettings({ rewardsEnabled: true, affiliateEnabled: true });
+    }
+  };
 
   const fetchReferrals = async () => {
     try {
@@ -105,7 +136,7 @@ export default function ReferralsPage() {
         </Button>
         <h1 className="text-4xl font-bold mb-2">My Referrals</h1>
         <p className="text-gray-600 dark:text-gray-400">
-          View all users you've referred and their activity
+          View all users you&apos;ve referred and their activity
         </p>
       </div>
 

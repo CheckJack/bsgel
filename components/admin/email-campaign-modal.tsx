@@ -140,21 +140,21 @@ export function EmailCampaignModal({
     setPdfFile(file);
 
     try {
-      const formData = new FormData();
-      formData.append("action", "upload");
-      formData.append("file", file);
-      formData.append("folderId", "");
+      const uploadFormData = new FormData();
+      uploadFormData.append("action", "upload");
+      uploadFormData.append("file", file);
+      uploadFormData.append("folderId", "");
 
       const res = await fetch("/api/gallery", {
         method: "POST",
-        body: formData,
+        body: uploadFormData,
       });
 
       if (res.ok) {
         const data = await res.json();
         setPdfUrl(data.url || data.item?.url);
         // Clear HTML content when PDF is uploaded (mutually exclusive)
-        setFormData({ ...formData, content: "" });
+        setFormData(prev => ({ ...prev, content: "" }));
         toast("PDF uploaded successfully. HTML content cleared.", "success");
       } else {
         const errorData = await res.json().catch(() => ({}));

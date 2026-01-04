@@ -168,7 +168,8 @@ export default function ProductDetailPage() {
                       playsInline
                       muted
                       loop
-                      autoPlay
+                      autoPlay={index === 0}
+                      preload={index === 0 ? "auto" : "metadata"}
                     />
                   ) : (
                     <Image
@@ -178,6 +179,8 @@ export default function ProductDetailPage() {
                       sizes="(max-width: 1024px) 100vw, 50vw"
                       className="object-cover"
                       priority={index === 0}
+                      loading={index === 0 ? undefined : "lazy"}
+                      unoptimized={image?.startsWith('data:') || image?.startsWith('blob:') || !image?.startsWith('http')}
                     />
                   )}
                 </div>
@@ -286,6 +289,8 @@ export default function ProductDetailPage() {
                       width={40}
                       height={25}
                       className="h-5 w-auto"
+                      unoptimized
+                      priority={false}
                     />
                     <Image
                       src="/paypal-a7c68b85.svg"
@@ -293,6 +298,8 @@ export default function ProductDetailPage() {
                       width={40}
                       height={25}
                       className="h-5 w-auto"
+                      unoptimized
+                      priority={false}
                     />
                     <Image
                       src="/master-54b5a7ce.svg"
@@ -300,6 +307,8 @@ export default function ProductDetailPage() {
                       width={40}
                       height={25}
                       className="h-5 w-auto"
+                      unoptimized
+                      priority={false}
                     />
                     <Image
                       src="/visa-65d650f7.svg"
@@ -307,6 +316,8 @@ export default function ProductDetailPage() {
                       width={40}
                       height={25}
                       className="h-5 w-auto"
+                      unoptimized
+                      priority={false}
                     />
                     <Image
                       src="/google_pay-34c30515 (1).svg"
@@ -314,6 +325,8 @@ export default function ProductDetailPage() {
                       width={40}
                       height={25}
                       className="h-5 w-auto"
+                      unoptimized
+                      priority={false}
                     />
                     <Image
                       src="/apple_pay-1721ebad (1).svg"
@@ -321,6 +334,8 @@ export default function ProductDetailPage() {
                       width={40}
                       height={25}
                       className="h-5 w-auto"
+                      unoptimized
+                      priority={false}
                     />
                   </div>
                 </CardContent>

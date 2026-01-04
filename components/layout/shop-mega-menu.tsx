@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useCallback } from "react";
+import { useLanguage } from "@/contexts/language-context";
 
 interface ShopMegaMenuProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ interface BrandPage {
 }
 
 export function ShopMegaMenu({ isOpen, onClose, onMouseEnter }: ShopMegaMenuProps) {
+  const { t } = useLanguage();
   const [cards, setCards] = useState<MegaMenuCard[]>([]);
   const [isLoadingCards, setIsLoadingCards] = useState(true);
   const [hasFetched, setHasFetched] = useState(false);
@@ -97,46 +99,45 @@ export function ShopMegaMenu({ isOpen, onClose, onMouseEnter }: ShopMegaMenuProp
   // Brand pages that exist - these link to the brand-specific pages
   const brandPages: BrandPage[] = [
     { 
-      name: "BIO Gel", 
+      name: t("nav.shopMenu.bioGel"), 
       href: "/bio-gel",
       children: [
-        { name: "Treatment Gels", href: "/bio-gel/treatment-gels" },
-        { name: "Color Gels", href: "/bio-gel/color-gels" },
-        { name: "Top Coats", href: "/bio-gel/top-coats" }
+        { name: t("nav.shopMenu.treatmentGels"), href: "/bio-gel/treatment-gels" },
+        { name: t("nav.shopMenu.colorGels"), href: "/bio-gel/color-gels" }
       ]
     },
     { 
-      name: "Gemini", 
+      name: t("nav.shopMenu.gemini"), 
       href: "/gemini",
       children: [
-        { name: "Reds", href: "/gemini/reds" },
-        { name: "Pinks", href: "/gemini/pinks" },
-        { name: "Nudes / Neutrals / Browns", href: "/gemini/nudes-neutrals-browns" },
-        { name: "Oranges & Corals / Yellows", href: "/gemini/oranges-corals-yellows" }
+        { name: t("nav.shopMenu.reds"), href: "/gemini/reds" },
+        { name: t("nav.shopMenu.pinks"), href: "/gemini/pinks" },
+        { name: t("nav.shopMenu.nudesNeutralsBrowns"), href: "/gemini/nudes-neutrals-browns" },
+        { name: t("nav.shopMenu.orangesCoralsYellows"), href: "/gemini/oranges-corals-yellows" }
       ]
     },
     { 
-      name: "Ethos", 
+      name: t("nav.shopMenu.ethos"), 
       href: "/ethos",
       children: [
-        { name: "Nail diagnosis", href: "/ethos/nail-diagnosis" }
+        { name: t("nav.shopMenu.nailDiagnosis"), href: "/ethos/nail-diagnosis" }
       ]
     },
     { 
-      name: "SPA", 
+      name: t("nav.shopMenu.spa"), 
       href: "/spa",
       children: [
-        { name: "Hand Care", href: "/spa/hand-care" },
-        { name: "Foot Care", href: "/spa/foot-care" }
+        { name: t("nav.shopMenu.handCare"), href: "/spa/hand-care" },
+        { name: t("nav.shopMenu.footCare"), href: "/spa/foot-care" }
       ]
     },
     { 
-      name: "Evo", 
+      name: t("nav.shopMenu.evo"), 
       href: "/evo",
       children: [
-        { name: "Treatment Base Gels", href: "/evo/treatment-base-gels" },
-        { name: "Colour Gels", href: "/evo/colour-gels" },
-        { name: "Top Coats", href: "/evo/top-coats" }
+        { name: t("nav.shopMenu.treatmentBaseGels"), href: "/evo/treatment-base-gels" },
+        { name: t("nav.shopMenu.colourGels"), href: "/evo/colour-gels" },
+        { name: t("nav.shopMenu.topCoats"), href: "/evo/top-coats" }
       ]
     },
   ];
@@ -283,7 +284,7 @@ export function ShopMegaMenu({ isOpen, onClose, onMouseEnter }: ShopMegaMenuProp
                         onClick={handleLinkClick}
                         className="w-full bg-black hover:bg-gray-800 text-white py-3.5 px-4 rounded-md transition-all duration-200 font-medium text-sm text-center"
                       >
-                        Discover
+                        {t("nav.discover")}
                       </Link>
                     </div>
                   </div>
@@ -310,7 +311,7 @@ export function ShopMegaMenu({ isOpen, onClose, onMouseEnter }: ShopMegaMenuProp
                       onClick={handleLinkClick}
                       className="w-full bg-black hover:bg-gray-800 text-white py-3.5 px-4 rounded-md transition-all duration-200 font-medium text-sm text-center"
                     >
-                      Discover
+                      {t("nav.discover")}
                     </Link>
                   </div>
                 </div>
@@ -359,7 +360,7 @@ export function ShopMegaMenu({ isOpen, onClose, onMouseEnter }: ShopMegaMenuProp
                         onClick={handleLinkClick}
                         className="w-full bg-black hover:bg-gray-800 text-white py-3.5 px-4 rounded-md transition-all duration-200 font-medium text-sm text-center"
                       >
-                        Discover
+                        {t("nav.discover")}
                       </Link>
                     </div>
                   </div>
@@ -385,7 +386,7 @@ export function ShopMegaMenu({ isOpen, onClose, onMouseEnter }: ShopMegaMenuProp
                       onClick={handleLinkClick}
                       className="w-full bg-black hover:bg-gray-800 text-white py-3.5 px-4 rounded-md transition-all duration-200 font-medium text-sm text-center"
                     >
-                      Discover
+                      {t("nav.discover")}
                     </Link>
                   </div>
                 </div>

@@ -73,6 +73,7 @@ export default function AdminCustomersPage() {
   const [showBanModal, setShowBanModal] = useState(false);
   const [customerToBan, setCustomerToBan] = useState<Customer | null>(null);
   const [banReason, setBanReason] = useState("");
+  const [isUpdatingCertification, setIsUpdatingCertification] = useState(false);
 
   useEffect(() => {
     fetchCustomers();
@@ -240,6 +241,34 @@ export default function AdminCustomersPage() {
       setError("An error occurred. Please try again.");
     } finally {
       setIsValidating(false);
+    }
+  };
+
+  const handleUpdateCertification = async (customerId: string, certificationId: string | null) => {
+    setIsUpdatingCertification(true);
+    try {
+      const res = await fetch(`/api/users/${customerId}/certification`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          certificationId: certificationId || null,
+        }),
+      });
+
+      if (res.ok) {
+        await fetchCustomers();
+        if (selectedCustomer?.id === customerId) {
+          const updatedCustomer = await res.json();
+          setSelectedCustomer(updatedCustomer);
+        }
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to update certification");
+      }
+    } catch (error) {
+      setError("An error occurred. Please try again.");
+    } finally {
+      setIsUpdatingCertification(false);
     }
   };
 
@@ -1081,9 +1110,22 @@ export default function AdminCustomersPage() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Certification
                     </label>
-                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg font-semibold">
-                      {formatCertification(selectedCustomer.certification)}
-                    </p>
+                    <select
+                      value={selectedCustomer.certification?.id || ""}
+                      onChange={(e) => {
+                        const newCertificationId = e.target.value || null;
+                        handleUpdateCertification(selectedCustomer.id, newCertificationId);
+                      }}
+                      disabled={isUpdatingCertification}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">None</option>
+                      {certifications.map((cert) => (
+                        <option key={cert.id} value={cert.id}>
+                          {cert.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
