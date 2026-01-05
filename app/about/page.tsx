@@ -3,6 +3,7 @@
 import { HeroSlider } from "@/components/layout/hero-slider";
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { useLanguage } from "@/contexts/language-context";
 
 const productLines = [
   {
@@ -44,7 +45,8 @@ const productLines = [
 
 
 function RotatingWordsSection() {
-  const words = ["HEALTHY", "QUALITY", "LONGEVITY"];
+  const { t } = useLanguage();
+  const words = [t("home.healthy"), t("home.quality"), t("home.longevity")];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
 
@@ -103,6 +105,8 @@ function RotatingWordsSection() {
 }
 
 export default function AboutPage() {
+  const { t } = useLanguage();
+
   const slides = [
     {
       type: "video" as const,
@@ -119,12 +123,7 @@ export default function AboutPage() {
       <section className="py-16 sm:py-20 md:py-28 px-4 sm:px-6 flex items-center">
         <div className="container mx-auto w-full">
           <p className="text-base sm:text-lg md:text-xl lg:text-2xl font-light text-brand-black text-center leading-relaxed w-full px-4 sm:px-6 md:px-8">
-            Concentrating solely on gel systems and nail related care since its founding in 1988. 
-            Bio Sculpture has become a global powerhouse through its extensive brand portfolio. Products are 
-            available for professional and consumer use. Bio Sculpture adheres to a strict channel exclusivity 
-            strategy with professional products (Biogel, Evo and Bi-olygel) that are sold to certified trained 
-            Bio Sculpture nail technicians. Retail products (Spa, Ethos and Gemini Nail Polish) is sold to retail 
-            consumers. Bio Sculpture is sold in over 40 countries.
+            {t("about.mission")}
           </p>
         </div>
       </section>
@@ -132,7 +131,7 @@ export default function AboutPage() {
       {/* Product Lines Section */}
       <section className="py-12 sm:py-16 px-4 sm:px-6">
         <div className="container mx-auto mb-6 sm:mb-8">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium text-brand-black text-left">Our Product Lines</h2>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium text-brand-black text-left">{t("about.ourProductLines")}</h2>
         </div>
         <div className="container mx-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
@@ -145,7 +144,8 @@ export default function AboutPage() {
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 20vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    loading="lazy"
+                    priority={index < 3}
+                    loading={index < 3 ? undefined : "lazy"}
                   />
                   {index === 0 && (
                     <div className="absolute inset-0 flex items-center justify-center z-10 p-4">
@@ -155,7 +155,7 @@ export default function AboutPage() {
                         width={200}
                         height={200}
                         className="object-contain max-w-[200px] max-h-[200px]"
-                        loading="lazy"
+                        priority
                       />
                     </div>
                   )}
@@ -167,7 +167,7 @@ export default function AboutPage() {
                         width={200}
                         height={200}
                         className="object-contain max-w-[200px] max-h-[200px]"
-                        loading="lazy"
+                        priority
                       />
                     </div>
                   )}
@@ -179,7 +179,7 @@ export default function AboutPage() {
                         width={140}
                         height={140}
                         className="object-contain max-w-[140px] max-h-[140px]"
-                        loading="lazy"
+                        priority
                       />
                     </div>
                   )}
@@ -191,7 +191,7 @@ export default function AboutPage() {
                         width={120}
                         height={120}
                         className="object-contain max-w-[120px] max-h-[120px]"
-                        loading="lazy"
+                        loading={index < 3 ? undefined : "lazy"}
                       />
                     </div>
                   )}
@@ -227,9 +227,9 @@ export default function AboutPage() {
         <div className="container mx-auto w-full">
           <div className="grid md:grid-cols-2 gap-8 sm:gap-12 items-center px-4 sm:px-6 md:px-8">
             <div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-4 sm:mb-6 text-brand-black">THE BESPOKE PATH TO HEALTHY NAILS</h2>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-4 sm:mb-6 text-brand-black">{t("about.bespokePath")}</h2>
               <p className="text-base sm:text-lg font-light text-brand-black leading-relaxed">
-                As the bespoke path to nail perfection, we are dedicated to providing nail technicians with a premium system and quality education. Through our comprehensive training programs, nail techs are equipped with the knowledge to analyse each client&apos;s unique nail type and condition, delivering prescriptive treatments that promote optimal nail health. We go beyond traditional overlays by offering techniques that create long lasting results, customised to suit the client&apos;s lifestyle. With our range of base gels, colours, top coats, and builder gels, nail techs can achieve improved natural nail condition and extended lifespan of their work.
+                {t("about.bespokePathDesc")}
               </p>
             </div>
             <div className="relative h-[300px] sm:h-[400px] md:h-[500px]">
@@ -239,7 +239,7 @@ export default function AboutPage() {
                 fill
                 sizes="(max-width: 768px) 100vw, 50vw"
                 className="rounded-lg object-cover"
-                loading="lazy"
+                priority
               />
             </div>
           </div>
@@ -260,29 +260,20 @@ export default function AboutPage() {
                 fill
                 sizes="(max-width: 768px) 100vw, 50vw"
                 className="rounded-lg object-cover"
-                loading="lazy"
+                priority
               />
             </div>
             <div className="order-1 md:order-2">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-4 sm:mb-6 text-brand-black uppercase">OUR STORY</h2>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-4 sm:mb-6 text-brand-black uppercase">{t("about.ourStory")}</h2>
               <div className="space-y-4 sm:space-y-6 font-light text-base sm:text-lg text-brand-black leading-relaxed">
                 <p>
-                  Bio Sculpture has been a trusted name in professional nail care for years, 
-                  building a reputation for quality, innovation, and commitment to healthy nail practices. 
-                  Our journey began with a simple belief: that beautiful nails and healthy nails are not 
-                  mutually exclusive.
+                  {t("about.ourStory1")}
                 </p>
                 <p>
-                  Today, we continue to lead the industry with our range of premium products, 
-                  including Bio Sculpture, Biogel, Evo, Bi-olygel, Ethos, Gemini, and Spa. Each brand 
-                  in our portfolio is carefully crafted to meet the diverse needs of nail professionals 
-                  and their clients.
+                  {t("about.ourStory2")}
                 </p>
                 <p>
-                  Our comprehensive training programs empower nail technicians with the knowledge and 
-                  skills needed to excel in their craft, while our commitment to ethical practices 
-                  ensures that every product we create aligns with our values of health, sustainability, 
-                  and professionalism.
+                  {t("about.ourStory3")}
                 </p>
               </div>
             </div>
@@ -299,28 +290,27 @@ export default function AboutPage() {
             fill
             sizes="100vw"
             className="object-cover"
-            loading="lazy"
-            priority={false}
+            priority
           />
           <div className="absolute inset-0 bg-black/30"></div>
         </div>
         <div className="container mx-auto max-w-4xl text-center relative z-10 px-4 sm:px-6">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-3 sm:mb-4 text-brand-white">Get in Touch</h2>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-3 sm:mb-4 text-brand-white">{t("about.getInTouch")}</h2>
           <p className="text-base sm:text-lg font-light text-brand-white mb-6 sm:mb-8">
-            Have questions or want to learn more about our products and training programs?
+            {t("about.getInTouchDesc")}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
             <a
               href="/salons"
               className="px-6 sm:px-8 py-2.5 sm:py-3 bg-brand-black text-brand-white border-2 border-brand-black hover:bg-brand-white hover:text-brand-black transition-colors font-medium rounded text-sm sm:text-base"
             >
-              Find a Salon
+              {t("about.findASalon")}
             </a>
             <a
               href="/products"
               className="px-6 sm:px-8 py-2.5 sm:py-3 bg-brand-white text-brand-black border-2 border-brand-black hover:bg-brand-black hover:text-brand-white hover:border-brand-black transition-colors font-medium rounded text-sm sm:text-base"
             >
-              Explore Products
+              {t("about.exploreProducts")}
             </a>
           </div>
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
@@ -33,7 +33,7 @@ interface Category {
   parentId?: string | null;
 }
 
-export default function AdminProductsPage() {
+function AdminProductsPageContent() {
   const { t } = useLanguage();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -1121,5 +1121,20 @@ export default function AdminProductsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AdminProductsPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-sm text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AdminProductsPageContent />
+    </Suspense>
   );
 }

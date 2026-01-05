@@ -11,11 +11,13 @@ import { Eye, EyeOff, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLanguage } from "@/contexts/language-context";
 
-function LoginForm() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { t } = useLanguage();
   
   // Check if we should show register form (from URL param or default)
   const [isRegisterMode, setIsRegisterMode] = useState(false);
@@ -60,6 +62,82 @@ function LoginForm() {
   });
   const [certificateFile, setCertificateFile] = useState<File | null>(null);
   const [certificatePreview, setCertificatePreview] = useState<string | null>(null);
+  const [certifications, setCertifications] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedCertificationId, setSelectedCertificationId] = useState<string | null>(null);
+  
+  // Track professional registration step
+  const [professionalStep, setProfessionalStep] = useState<"certification" | "upload" | "complete">("certification");
+
+  // Fetch certifications when in professional mode
+  useEffect(() => {
+    if (isRegisterMode && formData.userType === "professional") {
+      fetchCertifications();
+      // Reset professional step when switching to professional
+      setProfessionalStep("certification");
+      setSelectedCertificationId(null);
+      setCertificateFile(null);
+      if (certificatePreview) {
+        URL.revokeObjectURL(certificatePreview);
+        setCertificatePreview(null);
+      }
+    } else if (formData.userType === "customer") {
+      // Reset professional step when switching to customer
+      setProfessionalStep("certification");
+      setSelectedCertificationId(null);
+      setCertificateFile(null);
+      if (certificatePreview) {
+        URL.revokeObjectURL(certificatePreview);
+        setCertificatePreview(null);
+      }
+    }
+  }, [isRegisterMode, formData.userType]);
+  
+  // Update professional step when certification is selected
+  useEffect(() => {
+    if (formData.userType === "professional" && selectedCertificationId) {
+      setProfessionalStep("upload");
+    } else if (formData.userType === "professional" && !selectedCertificationId) {
+      setProfessionalStep("certification");
+    }
+  }, [selectedCertificationId, formData.userType]);
+  
+  // Reset certificate when certification selection changes (using a separate effect to avoid dependency issues)
+  const prevCertificationIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (formData.userType === "professional" && selectedCertificationId && prevCertificationIdRef.current !== selectedCertificationId && prevCertificationIdRef.current !== null) {
+      // Certification changed, reset certificate
+      setCertificateFile(null);
+      if (certificatePreview) {
+        URL.revokeObjectURL(certificatePreview);
+        setCertificatePreview(null);
+      }
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+    prevCertificationIdRef.current = selectedCertificationId;
+  }, [selectedCertificationId, formData.userType, certificatePreview]);
+  
+  // Update professional step when certificate is uploaded
+  useEffect(() => {
+    if (formData.userType === "professional" && certificateFile && selectedCertificationId) {
+      setProfessionalStep("complete");
+    } else if (formData.userType === "professional" && !certificateFile && selectedCertificationId) {
+      setProfessionalStep("upload");
+    }
+  }, [certificateFile, selectedCertificationId, formData.userType]);
+
+  const fetchCertifications = async () => {
+    try {
+      const res = await fetch("/api/certifications?public=true&isActive=true");
+      if (res.ok) {
+        const data = await res.json();
+        setCertifications(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch certifications:", error);
+    }
+  };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +152,7 @@ function LoginForm() {
       });
 
       if (result?.error) {
-        setError("Invalid email or password");
+        setError(t("auth.invalidCredentials"));
       } else {
         // Wait a moment for session to be available, then check user role
         // Retry getting session in case of timing issues
@@ -107,7 +185,7 @@ function LoginForm() {
         const url = URL.createObjectURL(file);
         setCertificatePreview(url);
       } else {
-        setError("Please upload a PDF or image file");
+        setError(t("auth.invalidFileType"));
       }
     }
   };
@@ -121,6 +199,10 @@ function LoginForm() {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+    // Reset step to upload when certificate is removed
+    if (formData.userType === "professional" && selectedCertificationId) {
+      setProfessionalStep("upload");
+    }
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
@@ -128,23 +210,29 @@ function LoginForm() {
     setError("");
 
     if (!formData.name.trim()) {
-      setError("Name is required");
+      setError(t("auth.nameRequired"));
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("auth.passwordsDoNotMatch"));
       return;
     }
 
     if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError(t("auth.passwordTooShort"));
       return;
     }
 
-    if (formData.userType === "professional" && !certificateFile) {
-      setError("Please upload your certificate");
-      return;
+    if (formData.userType === "professional") {
+      if (!selectedCertificationId) {
+        setError("Please select a certification");
+        return;
+      }
+      if (!certificateFile) {
+        setError(t("auth.certificateRequired"));
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -201,6 +289,7 @@ function LoginForm() {
         password: string;
         userType: string;
         certificate?: string;
+        certificationId?: string | null;
         referralCode?: string | null;
       } = {
         name: formData.name.trim(),
@@ -211,6 +300,10 @@ function LoginForm() {
 
       if (certificateUrl) {
         payload.certificate = certificateUrl;
+      }
+
+      if (formData.userType === "professional" && selectedCertificationId) {
+        payload.certificationId = selectedCertificationId;
       }
 
       if (referralCode) {
@@ -256,6 +349,7 @@ function LoginForm() {
           userType: "customer",
         });
         setCertificateFile(null);
+        setSelectedCertificationId(null);
         if (certificatePreview) {
           URL.revokeObjectURL(certificatePreview);
           setCertificatePreview(null);
@@ -271,9 +365,9 @@ function LoginForm() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen w-full overflow-hidden">
+    <div className="flex flex-col md:flex-row min-h-screen w-full md:items-stretch">
       {/* Left Container - Image */}
-      <div className="w-full md:w-1/2 h-48 md:h-full relative flex-shrink-0">
+      <div className="w-full md:w-1/2 h-48 md:h-auto relative flex-shrink-0 bg-gray-200 overflow-hidden">
         <Image
           src="/328 Peach Pitstop - hand and product (5).jpg"
           alt="Bio Sculpture Nail Products"
@@ -281,18 +375,20 @@ function LoginForm() {
           className="object-cover"
           priority
           sizes="(max-width: 768px) 100vw, 50vw"
+          placeholder="blur"
+          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
         />
       </div>
 
       {/* Right Container - Login/Register Form */}
-      <div className="w-full md:w-1/2 h-full flex items-center justify-center px-4 sm:px-6 bg-white overflow-y-auto">
+      <div className="w-full md:w-1/2 flex items-start md:items-center justify-center px-4 sm:px-6 py-8 md:py-4 bg-white">
         <Card className="w-full max-w-md my-4 sm:my-8">
           <CardHeader>
-            <CardTitle>{isRegisterMode ? "Create Account" : "Sign In"}</CardTitle>
+            <CardTitle>{isRegisterMode ? t("auth.register") : t("auth.login")}</CardTitle>
             <CardDescription>
               {isRegisterMode
-                ? "Sign up to start shopping"
-                : "Enter your credentials to access your account"}
+                ? t("auth.signUpDescription")
+                : t("auth.loginDescription")}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -306,7 +402,7 @@ function LoginForm() {
                 )}
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium mb-1">
-                    Name
+                    {t("auth.name")}
                   </label>
                   <Input
                     id="name"
@@ -319,7 +415,7 @@ function LoginForm() {
                 </div>
                 <div>
                   <label htmlFor="register-email" className="block text-sm font-medium mb-1">
-                    Email
+                    {t("auth.email")}
                   </label>
                   <Input
                     id="register-email"
@@ -332,7 +428,7 @@ function LoginForm() {
                 </div>
                 <div>
                   <label htmlFor="register-password" className="block text-sm font-medium mb-1">
-                    Password
+                    {t("auth.password")}
                   </label>
                   <Input
                     id="register-password"
@@ -345,7 +441,7 @@ function LoginForm() {
                 </div>
                 <div>
                   <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1">
-                    Confirm Password
+                    {t("auth.confirmPassword")}
                   </label>
                   <Input
                     id="confirmPassword"
@@ -360,7 +456,7 @@ function LoginForm() {
                 {/* User Type Selection */}
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    I am a:
+                    {t("auth.userType")}:
                   </label>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -373,7 +469,7 @@ function LoginForm() {
                         disabled={isLoading}
                         className="w-4 h-4"
                       />
-                      <span className="text-sm">Customer</span>
+                      <span className="text-sm">{t("auth.customer")}</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -385,73 +481,162 @@ function LoginForm() {
                         disabled={isLoading}
                         className="w-4 h-4"
                       />
-                      <span className="text-sm">Professional</span>
+                      <span className="text-sm">{t("auth.professional")}</span>
                     </label>
                   </div>
                 </div>
 
-                {/* Certificate Upload - Only show for professionals */}
+                {/* Professional Registration Steps */}
                 {formData.userType === "professional" && (
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Upload Certificate <span className="text-red-500">*</span>
-                    </label>
-                    {certificatePreview ? (
-                      <div className="relative border-2 border-gray-300 rounded-lg p-4 bg-gray-50">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-10 h-10 bg-blue-100 rounded flex items-center justify-center">
-                              <Upload className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">
-                                {certificateFile?.name || "Certificate"}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {(certificateFile?.size || 0) / 1024} KB
-                              </p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleCertificateRemove}
-                            className="text-red-600 hover:text-red-700"
-                            disabled={isLoading}
-                          >
-                            <X className="h-5 w-5" />
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 transition-colors bg-gray-50">
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept=".pdf,image/*"
-                          onChange={handleCertificateUpload}
-                          className="hidden"
-                          id="certificate-upload"
-                          disabled={isLoading}
-                        />
-                        <label
-                          htmlFor="certificate-upload"
-                          className="cursor-pointer flex flex-col items-center"
-                        >
-                          <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                          <p className="text-sm text-gray-600">
-                            Click to upload or drag and drop
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            PDF or Image (PNG, JPG, etc.)
-                          </p>
+                  <>
+                    {/* Step 1: Certification Selection */}
+                    {professionalStep === "certification" && (
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Certification <span className="text-red-500">*</span>
                         </label>
+                        <select
+                          value={selectedCertificationId || ""}
+                          onChange={(e) => setSelectedCertificationId(e.target.value || null)}
+                          disabled={isLoading}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          required
+                        >
+                          <option value="">Select a certification</option>
+                          {certifications.map((cert) => (
+                            <option key={cert.id} value={cert.id}>
+                              {cert.name}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     )}
-                  </div>
+
+                    {/* Step 2: Certificate Upload - Only show after certification is selected */}
+                    {professionalStep === "upload" && selectedCertificationId && (
+                      <div>
+                        <div className="mb-2">
+                          <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                            <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-medium">
+                              ✓
+                            </div>
+                            <span>Certification selected</span>
+                          </div>
+                        </div>
+                        <label className="block text-sm font-medium mb-2">
+                          {t("auth.certificateUpload")} <span className="text-red-500">*</span>
+                        </label>
+                        {certificatePreview ? (
+                          <div className="relative border-2 border-gray-300 rounded-lg p-4 bg-gray-50">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="w-10 h-10 bg-blue-100 rounded flex items-center justify-center">
+                                  <Upload className="h-5 w-5 text-blue-600" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {certificateFile?.name || "Certificate"}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {(certificateFile?.size || 0) / 1024} KB
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleCertificateRemove}
+                                className="text-red-600 hover:text-red-700"
+                                disabled={isLoading}
+                              >
+                                <X className="h-5 w-5" />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 transition-colors bg-gray-50">
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept=".pdf,image/*"
+                              onChange={handleCertificateUpload}
+                              className="hidden"
+                              id="certificate-upload"
+                              disabled={isLoading}
+                            />
+                            <label
+                              htmlFor="certificate-upload"
+                              className="cursor-pointer flex flex-col items-center"
+                            >
+                              <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                              <p className="text-sm text-gray-600">
+                                {t("auth.clickToUpload")}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {t("auth.pdfOrImage")}
+                              </p>
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Step 3: Complete - Show both when certificate is uploaded */}
+                    {professionalStep === "complete" && selectedCertificationId && certificateFile && (
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                            <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-medium">
+                              ✓
+                            </div>
+                            <span>Certification selected</span>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">
+                            {t("auth.certificateUpload")} <span className="text-red-500">*</span>
+                          </label>
+                          {certificatePreview ? (
+                            <div className="relative border-2 border-gray-300 rounded-lg p-4 bg-gray-50">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-10 h-10 bg-blue-100 rounded flex items-center justify-center">
+                                    <Upload className="h-5 w-5 text-blue-600" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-900">
+                                      {certificateFile?.name || "Certificate"}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      {(certificateFile?.size || 0) / 1024} KB
+                                    </p>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={handleCertificateRemove}
+                                  className="text-red-600 hover:text-red-700"
+                                  disabled={isLoading}
+                                >
+                                  <X className="h-5 w-5" />
+                                </button>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Creating account..." : "Sign Up"}
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={
+                    isLoading || 
+                    (formData.userType === "professional" && professionalStep !== "complete")
+                  }
+                >
+                  {isLoading ? t("auth.registering") : t("auth.registerButton")}
                 </Button>
               </form>
             ) : (
@@ -459,7 +644,7 @@ function LoginForm() {
               <form onSubmit={handleLoginSubmit} className="space-y-4">
                 {searchParams?.get("registered") === "true" && (
                   <div className="p-3 text-sm text-green-600 bg-green-50 rounded-md">
-                    Account created successfully! Please sign in.
+                    {t("auth.accountCreatedSuccess")}
                   </div>
                 )}
                 {error && (
@@ -469,7 +654,7 @@ function LoginForm() {
                 )}
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium mb-1">
-                    Email
+                    {t("auth.email")}
                   </label>
                   <Input
                     id="email"
@@ -482,7 +667,7 @@ function LoginForm() {
                 </div>
                 <div>
                   <label htmlFor="password" className="block text-sm font-medium mb-1">
-                    Password
+                    {t("auth.password")}
                   </label>
                   <div className="relative">
                     <Input
@@ -499,7 +684,7 @@ function LoginForm() {
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
                       disabled={isLoading}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
                     >
                       {showPassword ? (
                         <EyeOff className="h-5 w-5" />
@@ -510,14 +695,14 @@ function LoginForm() {
                   </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Signing in..." : "Sign In"}
+                  {isLoading ? t("auth.loggingIn") : t("auth.loginButton")}
                 </Button>
               </form>
             )}
             <p className="mt-4 text-center text-sm text-gray-600">
               {isRegisterMode ? (
                 <>
-                  Already have an account?{" "}
+                  {t("auth.switchToLogin")}{" "}
                   <button
                     type="button"
                     onClick={() => {
@@ -526,12 +711,12 @@ function LoginForm() {
                     }}
                     className="text-black font-medium hover:underline"
                   >
-                    Sign in
+                    {t("auth.login")}
                   </button>
                 </>
               ) : (
                 <>
-                  Don&apos;t have an account?{" "}
+                  {t("auth.switchToRegister")}{" "}
                   <button
                     type="button"
                     onClick={() => {
@@ -540,7 +725,7 @@ function LoginForm() {
                     }}
                     className="text-black font-medium hover:underline"
                   >
-                    Sign up
+                    {t("auth.register")}
                   </button>
                 </>
               )}
@@ -555,14 +740,28 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+      <div className="flex flex-col md:flex-row min-h-screen w-full md:items-stretch">
+        <div className="w-full md:w-1/2 h-48 md:h-auto relative flex-shrink-0 bg-gray-200 overflow-hidden">
+          <Image
+            src="/328 Peach Pitstop - hand and product (5).jpg"
+            alt="Bio Sculpture Nail Products"
+            fill
+            className="object-cover"
+            priority
+            sizes="(max-width: 768px) 100vw, 50vw"
+            placeholder="blur"
+            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+          />
+        </div>
+        <div className="w-full md:w-1/2 flex items-center justify-center px-4 sm:px-6 py-8 md:py-4 bg-white">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+            <p className="mt-4 text-sm text-gray-600">Loading...</p>
+          </div>
         </div>
       </div>
     }>
-      <LoginForm />
+      <LoginPageContent />
     </Suspense>
   );
 }

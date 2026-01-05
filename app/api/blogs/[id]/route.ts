@@ -80,7 +80,7 @@ export async function PATCH(
       }
       // Handle assignedReviewerId based on status
       if (status === "PENDING_REVIEW") {
-        updateData.assignedReviewerId = assignedReviewerId || existingBlog.assignedReviewerId
+        updateData.assignedReviewerId = assignedReviewerId || (existingBlog as any).assignedReviewerId
       } else {
         // Clear assignedReviewerId when status is not PENDING_REVIEW
         updateData.assignedReviewerId = null
@@ -93,7 +93,7 @@ export async function PATCH(
 
     const blog = await db.blog.update({
       where: { id: id },
-      data: updateData,
+      data: updateData as any,
     })
 
     return NextResponse.json(blog)

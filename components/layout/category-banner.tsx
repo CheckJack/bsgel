@@ -29,6 +29,8 @@ export function CategoryBanner({ categories }: CategoryBannerProps) {
                   fill
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                   sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 20vw"
+                  priority={index < 3}
+                  loading={index < 3 ? undefined : "lazy"}
                 />
               </div>
               {index === 0 && (
@@ -41,6 +43,7 @@ export function CategoryBanner({ categories }: CategoryBannerProps) {
                       height={200}
                       className="object-contain w-[60%] sm:w-[50%] md:w-[45%] lg:w-auto h-auto max-w-[200px]"
                       style={{ maxWidth: '100%', maxHeight: '100%' }}
+                      priority
                     />
                   </div>
                 </div>
@@ -55,6 +58,7 @@ export function CategoryBanner({ categories }: CategoryBannerProps) {
                       height={200}
                       className="object-contain w-[60%] sm:w-[50%] md:w-[45%] lg:w-auto h-auto max-w-[200px]"
                       style={{ maxWidth: '100%', maxHeight: '100%' }}
+                      priority
                     />
                   </div>
                 </div>
@@ -69,6 +73,7 @@ export function CategoryBanner({ categories }: CategoryBannerProps) {
                       height={140}
                       className="object-contain w-[50%] sm:w-[40%] md:w-[35%] lg:w-auto h-auto max-w-[140px]"
                       style={{ maxWidth: '100%', maxHeight: '100%' }}
+                      priority
                     />
                   </div>
                 </div>

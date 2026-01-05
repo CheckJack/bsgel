@@ -284,7 +284,7 @@ export default function EditPagePage() {
   const renderSectionMedia = (
     sectionKey: string,
     sectionName: string,
-    media: any[],
+    media: string | any[],
     type: "slider" | "gallery" | "single" | "categories" = "gallery"
   ) => {
     return (
@@ -293,7 +293,7 @@ export default function EditPagePage() {
           <CardTitle className="text-lg font-semibold">{sectionName}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {type === "slider" && media.length > 0 && (
+          {type === "slider" && Array.isArray(media) && media.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {media.map((slide: Slide, index: number) => (
                 <div key={index} className="relative group">
@@ -340,7 +340,7 @@ export default function EditPagePage() {
             </div>
           )}
 
-          {type === "categories" && media.length > 0 && (
+          {type === "categories" && Array.isArray(media) && media.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {media.map((category: Category, index: number) => (
                 <div key={index} className="relative group">
@@ -379,7 +379,7 @@ export default function EditPagePage() {
             </div>
           )}
 
-          {type === "gallery" && media.length > 0 && (
+          {type === "gallery" && Array.isArray(media) && media.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {media.map((url: string, index: number) => (
                 <div key={index} className="relative group">
@@ -402,11 +402,11 @@ export default function EditPagePage() {
             </div>
           )}
 
-          {type === "single" && media && media.length > 0 && (
+          {type === "single" && media && typeof media === "string" && (
             <div className="relative group">
               <div className="relative aspect-video rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                 <Image
-                  src={media[0]}
+                  src={media}
                   alt={sectionName}
                   fill
                   className="object-cover"
@@ -440,9 +440,7 @@ export default function EditPagePage() {
             className="relative border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors bg-gray-50 dark:bg-gray-900"
           >
             <input
-              ref={(el) => {
-                fileInputRefs.current[sectionKey] = el;
-              }}
+              ref={(el) => { fileInputRefs.current[sectionKey] = el; }}
               type="file"
               accept="image/*,video/*"
               multiple={type !== "single"}
@@ -631,9 +629,7 @@ export default function EditPagePage() {
                           className="relative border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors bg-gray-50 dark:bg-gray-900"
                         >
                           <input
-                            ref={(el) => {
-                              fileInputRefs.current["trainingBanner"] = el;
-                            }}
+                            ref={(el) => { fileInputRefs.current["trainingBanner"] = el; }}
                             type="file"
                             accept="image/*"
                             onChange={(e) => {

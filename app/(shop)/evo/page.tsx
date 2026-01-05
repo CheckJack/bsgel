@@ -8,6 +8,7 @@ import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import { NailDiagnosisModal } from "@/components/ui/nail-diagnosis-modal";
 import TextGenerateEffect from "@/components/ui/text-generate-effect";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Product {
   id: string;
@@ -26,6 +27,7 @@ interface Product {
 }
 
 export default function EvoPage() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [categoryId, setCategoryId] = useState<string | undefined>();
@@ -246,7 +248,7 @@ export default function EvoPage() {
           <div className="container mx-auto px-4 max-w-6xl">
             <div className="text-center">
               <TextGenerateEffect
-                words="Evo represents the evolution of professional nail care, combining innovative technology with premium ingredients to deliver next-generation results. Our Evo collection pushes the boundaries of what's possible in nail treatments, offering advanced formulations that adapt to your needs while maintaining the highest standards of quality and performance. Experience the future of nail care with Evo, where innovation meets excellence. #our-funds"
+                words={`${t("productPages.evo.description")} #our-funds`}
                 className="text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl text-brand-black leading-relaxed font-normal"
                 filter={true}
                 duration={0.5}
@@ -268,16 +270,16 @@ export default function EvoPage() {
       <section ref={productsSectionRef} className="relative w-full min-h-screen bg-brand-white py-16">
         <div className="container mx-auto px-4 max-w-7xl">
           <h2 className="text-4xl md:text-5xl font-medium mb-12 text-center text-brand-black">
-            Evo Products
+            {t("productPages.evoProducts")}
           </h2>
           
           {isLoading ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">Loading products...</p>
+              <p className="text-gray-600">{t("productPages.loadingProducts")}</p>
             </div>
           ) : products.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">No Evo products found.</p>
+              <p className="text-gray-600">{t("productPages.noEvoProducts")}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

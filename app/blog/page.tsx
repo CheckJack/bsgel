@@ -90,6 +90,8 @@ export default function BlogPage() {
                     alt={post.title}
                     fill
                     className="object-cover"
+                    priority={posts.indexOf(post) < 3}
+                    loading={posts.indexOf(post) < 3 ? undefined : "lazy"}
                   />
                 </div>
               )}

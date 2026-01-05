@@ -80,7 +80,7 @@ export function SalonMap({ salons, onMarkerClick }: SalonMapProps) {
           longitude: lng,
         };
       })
-      .filter((salon): salon is SalonWithCoords => salon !== null);
+      .filter((salon): salon is SalonWithCoords => salon !== null && salon !== undefined);
   }, [salons]);
   
   // Debug: Log all salons and their coordinates
@@ -106,7 +106,8 @@ export function SalonMap({ salons, onMarkerClick }: SalonMapProps) {
     
     // Dynamically import Leaflet and react-leaflet only on client side
     if (typeof window !== "undefined") {
-      import("leaflet/dist/leaflet.css" as any);
+      // @ts-ignore - CSS imports don't need type checking
+      import("leaflet/dist/leaflet.css");
       
       Promise.all([
         import("react-leaflet"),
@@ -154,8 +155,9 @@ export function SalonMap({ salons, onMarkerClick }: SalonMapProps) {
             
             return null;
           };
+          FitBounds.displayName = 'FitBounds';
           
-          const DynamicMap = () => (
+          const DynamicMapComponent = () => (
             <MapContainer
               center={portugalCenter}
               zoom={currentSalons.length > 0 ? 7 : 6}
@@ -187,10 +189,9 @@ export function SalonMap({ salons, onMarkerClick }: SalonMapProps) {
               <FitBounds />
             </MapContainer>
           );
+          DynamicMapComponent.displayName = 'DynamicMapComponent';
           
-          DynamicMap.displayName = 'DynamicMap';
-          
-          return DynamicMap;
+          return DynamicMapComponent;
         });
       }).catch((error) => {
         console.error("Failed to load map:", error);

@@ -122,7 +122,7 @@ export async function PUT(
 
     const campaign = await db.emailCampaign.update({
       where: { id: id },
-      data: updateData,
+      data: updateData as any,
     })
 
     return NextResponse.json(campaign)

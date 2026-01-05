@@ -72,10 +72,13 @@ export default function SalonPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [isGeocoding, setIsGeocoding] = useState(false);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const imagesInputRef = useRef<HTMLInputElement>(null);
+  const geocodeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastGeocodedAddressRef = useRef<string>("");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -87,7 +90,6 @@ export default function SalonPage() {
     latitude: "",
     longitude: "",
     description: "",
-    isBioDiamond: false,
   });
 
   const [image, setImage] = useState<{ url: string; file?: File } | null>(null);
@@ -105,8 +107,83 @@ export default function SalonPage() {
   });
 
   useEffect(() => {
+    // Check if user is a professional (has certification)
+    // Only professionals can access salon management
+    if (session?.user && !session.user.certification) {
+      router.push("/dashboard");
+      return;
+    }
     fetchSalon();
-  }, [session]);
+  }, [session, router]);
+
+  // Auto-geocode address when city, address, and postal code are filled
+  useEffect(() => {
+    // Only geocode when editing and all required fields are filled
+    if (!isEditing) return;
+    
+    const address = formData.address.trim();
+    const city = formData.city.trim();
+    const postalCode = formData.postalCode.trim();
+
+    // Check if all required fields are filled
+    if (!address || !city) return;
+
+    // Build a unique key for this address combination
+    const addressKey = `${address}|${city}|${postalCode}`;
+    
+    // Skip if we've already geocoded this exact address
+    if (addressKey === lastGeocodedAddressRef.current) return;
+
+    // Clear existing timeout
+    if (geocodeTimeoutRef.current) {
+      clearTimeout(geocodeTimeoutRef.current);
+    }
+
+    // Debounce geocoding by 1 second after user stops typing
+    geocodeTimeoutRef.current = setTimeout(async () => {
+      // Double-check fields are still filled
+      if (!formData.address.trim() || !formData.city.trim()) return;
+
+      setIsGeocoding(true);
+      try {
+        const params = new URLSearchParams({
+          address: formData.address.trim(),
+          city: formData.city.trim(),
+        });
+        if (formData.postalCode.trim()) {
+          params.append("postalCode", formData.postalCode.trim());
+        }
+
+        const res = await fetch(`/api/geocode?${params.toString()}`);
+        const data = await res.json();
+
+        if (res.ok && data.lat && data.lng) {
+          // Update coordinates
+          setFormData((prev) => ({
+            ...prev,
+            latitude: data.lat.toString(),
+            longitude: data.lng.toString(),
+          }));
+          lastGeocodedAddressRef.current = addressKey;
+        } else {
+          // Silently fail - user can still enter coordinates manually
+          console.log("Geocoding failed:", data.error);
+        }
+      } catch (error) {
+        console.error("Geocoding error:", error);
+        // Silently fail - user can still enter coordinates manually
+      } finally {
+        setIsGeocoding(false);
+      }
+    }, 1000);
+
+    // Cleanup function
+    return () => {
+      if (geocodeTimeoutRef.current) {
+        clearTimeout(geocodeTimeoutRef.current);
+      }
+    };
+  }, [formData.address, formData.city, formData.postalCode, isEditing]);
 
   const fetchSalon = async () => {
     setIsLoading(true);
@@ -135,6 +212,9 @@ export default function SalonPage() {
   };
 
   const populateForm = (salonData: Salon) => {
+    const addressKey = `${salonData.address || ""}|${salonData.city || ""}|${salonData.postalCode || ""}`;
+    lastGeocodedAddressRef.current = addressKey;
+    
     setFormData({
       name: salonData.name || "",
       address: salonData.address || "",
@@ -145,7 +225,6 @@ export default function SalonPage() {
       latitude: salonData.latitude?.toString() || "",
       longitude: salonData.longitude?.toString() || "",
       description: salonData.description || "",
-      isBioDiamond: salonData.isBioDiamond || false,
     });
 
     if (salonData.image) {
@@ -246,7 +325,6 @@ export default function SalonPage() {
         images: imagesBase64.filter((img) => img !== null),
         description: formData.description.trim() || null,
         workingHours: workingHours,
-        isBioDiamond: formData.isBioDiamond,
       };
 
       let res;
@@ -477,6 +555,9 @@ export default function SalonPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Latitude
+                  {isGeocoding && (
+                    <span className="ml-2 text-xs text-gray-500">(auto-detecting...)</span>
+                  )}
                 </label>
                 <Input
                   type="number"
@@ -493,6 +574,9 @@ export default function SalonPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Longitude
+                  {isGeocoding && (
+                    <span className="ml-2 text-xs text-gray-500">(auto-detecting...)</span>
+                  )}
                 </label>
                 <Input
                   type="number"
@@ -797,31 +881,6 @@ export default function SalonPage() {
                 </div>
               )}
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Additional Options</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.isBioDiamond}
-                onChange={(e) =>
-                  setFormData({ ...formData, isBioDiamond: e.target.checked })
-                }
-                disabled={!isEditing}
-                className="rounded"
-              />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Bio Diamond Salon
-              </span>
-            </label>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Mark your salon as a Bio Diamond certified location
-            </p>
           </CardContent>
         </Card>
 

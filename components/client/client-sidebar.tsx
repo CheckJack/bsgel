@@ -150,38 +150,83 @@ export function ClientSidebar({ isMobileOpen, onMobileClose }: ClientSidebarProp
   const { data: session } = useSession();
   const [collapsed, setCollapsed] = useState(false);
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
+  const [featureSettings, setFeatureSettings] = useState({
+    rewardsEnabled: true,
+    affiliateEnabled: true,
+  });
   
   // Check if user is pending certification
   const certification = session?.user?.certification as string | undefined;
   const isPendingCertification = certification === "PROFESSIONAL_NON_CERTIFIED";
   const hasConfirmedCertification = certification === "INITIATION" || certification === "PROFESSIONAL";
+
+  // Fetch feature settings
+  useEffect(() => {
+    const fetchFeatureSettings = async () => {
+      try {
+        const res = await fetch("/api/admin/feature-settings");
+        if (res.ok) {
+          const data = await res.json();
+          setFeatureSettings({
+            rewardsEnabled: data.rewardsEnabled ?? true,
+            affiliateEnabled: data.affiliateEnabled ?? true,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch feature settings:", error);
+        // Default to enabled if fetch fails
+        setFeatureSettings({ rewardsEnabled: true, affiliateEnabled: true });
+      }
+    };
+    
+    if (session) {
+      fetchFeatureSettings();
+    }
+  }, [session]);
   
-  // Filter nav items based on certification status
+  // Filter nav items based on certification status and feature settings
   const getFilteredNavSections = () => {
+    // Check if user is a professional (has certification)
+    const isProfessional = !!certification;
+    
     return navSections.map(section => ({
       ...section,
       items: section.items.filter(item => {
-        // Always show: Dashboard, Order History, My Coupons, Messages, My Salon, Settings, Blog, Rewards, Affiliate Program
+        // Hide rewards if disabled
+        if (item.href === "/dashboard/rewards" || item.title === "Rewards") {
+          return featureSettings.rewardsEnabled;
+        }
+        
+        // Hide affiliate program if disabled
+        if (item.title === "Affiliate Program" || 
+            item.href === "/dashboard/affiliate" ||
+            (item.children && item.children.some(child => 
+              child.href?.startsWith("/dashboard/affiliate") || 
+              child.href?.startsWith("/dashboard/affiliates")
+            ))) {
+          return featureSettings.affiliateEnabled;
+        }
+        
+        // My Salon is only for professionals
+        if (item.href === "/dashboard/salon") {
+          return isProfessional;
+        }
+        
+        // Always show: Dashboard, Order History, My Coupons, Messages, Settings, Blog
         if (item.href === "/dashboard" || 
             item.href === "/dashboard/orders" || 
             item.href === "/dashboard/coupons" ||
             item.href === "/dashboard/messages" ||
-            item.href === "/dashboard/salon" ||
             item.href === "/dashboard/settings" || 
-            item.href === "/dashboard/blog" ||
-            item.href === "/dashboard/rewards" ||
-            item.href === "/dashboard/affiliate" ||
-            item.title === "Affiliate Program" || // Show affiliate program dropdown
-            (item.children && item.children.some(child => 
-              child.href === "/dashboard/affiliate" || 
-              child.href === "/dashboard/affiliates/referrals"
-            ))) {
+            item.href === "/dashboard/blog") {
           return true;
         }
+        
         // Resources requires certification
         if (item.href === "/dashboard/resources") {
           return hasConfirmedCertification;
         }
+        
         // Default: show all other items
         return true;
       })
@@ -400,7 +445,7 @@ export function ClientSidebar({ isMobileOpen, onMobileClose }: ClientSidebarProp
         <button
           onClick={() => {
             if (window.confirm("Are you sure you want to sign out?")) {
-              signOut({ callbackUrl: "/" });
+              signOut({ callbackUrl: "/login" });
             }
           }}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100"

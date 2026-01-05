@@ -186,6 +186,10 @@ export async function GET(request: Request) {
       paginatedCategories = categoriesWithStats.slice(startIndex, endIndex)
     }
 
+    // Add caching headers for better performance (cache for 5 minutes)
+    const headers = new Headers();
+    headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+
     return NextResponse.json({
       categories: paginatedCategories,
       pagination: {
@@ -194,7 +198,7 @@ export async function GET(request: Request) {
         total,
         totalPages: usePagination ? Math.ceil(total / limit) : 1,
       },
-    })
+    }, { headers })
   } catch (error: any) {
     console.error("Failed to fetch categories:", error)
     

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/contexts/cart-context";
+import { useLanguage } from "@/contexts/language-context";
 import Image from "next/image";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -33,6 +34,7 @@ function CheckoutForm() {
   const router = useRouter();
   const { data: session } = useSession();
   const { items, isLoading, clearCart } = useCart();
+  const { t } = useLanguage();
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     firstName: "",
     lastName: "",
@@ -168,14 +170,14 @@ function CheckoutForm() {
   }, [shippingAddress.postalCode, items, appliedCoupon]);
 
   if (isLoading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return <div className="text-center py-8">{t("checkout.loading")}</div>;
   }
 
   if (items.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="mb-4">Your cart is empty.</p>
-        <Button onClick={() => router.push("/products")}>Continue Shopping</Button>
+        <p className="mb-4">{t("checkout.cartEmpty")}</p>
+        <Button onClick={() => router.push("/products")}>{t("cart.continueShopping")}</Button>
       </div>
     );
   }
@@ -342,23 +344,23 @@ function CheckoutForm() {
     <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Shipping Information</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">{t("checkout.shippingInformation")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">First Name *</label>
+              <label className="block text-sm font-medium mb-1">{t("checkout.firstName")} *</label>
               <Input
-                placeholder="First Name"
+                placeholder={t("checkout.firstNamePlaceholder")}
                 value={shippingAddress.firstName}
                 onChange={(e) => handleAddressChange("firstName", e.target.value)}
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Last Name *</label>
+              <label className="block text-sm font-medium mb-1">{t("checkout.lastName")} *</label>
               <Input
-                placeholder="Last Name"
+                placeholder={t("checkout.lastNamePlaceholder")}
                 value={shippingAddress.lastName}
                 onChange={(e) => handleAddressChange("lastName", e.target.value)}
                 required
@@ -367,10 +369,10 @@ function CheckoutForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Email *</label>
+            <label className="block text-sm font-medium mb-1">{t("checkout.email")} *</label>
             <Input
               type="email"
-              placeholder="your.email@example.com"
+              placeholder={t("checkout.emailPlaceholder")}
               value={shippingAddress.email}
               onChange={(e) => handleAddressChange("email", e.target.value)}
               required
@@ -378,10 +380,10 @@ function CheckoutForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Phone Number *</label>
+            <label className="block text-sm font-medium mb-1">{t("checkout.phoneNumber")} *</label>
             <Input
               type="tel"
-              placeholder="+351 XXX XXX XXX"
+              placeholder={t("checkout.phonePlaceholder")}
               value={shippingAddress.phone}
               onChange={(e) => handleAddressChange("phone", e.target.value)}
               required
@@ -389,9 +391,9 @@ function CheckoutForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Address Line 1 *</label>
+            <label className="block text-sm font-medium mb-1">{t("checkout.addressLine1")} *</label>
             <Input
-              placeholder="Street address, house number"
+              placeholder={t("checkout.addressLine1Placeholder")}
               value={shippingAddress.addressLine1}
               onChange={(e) => handleAddressChange("addressLine1", e.target.value)}
               required
@@ -399,9 +401,9 @@ function CheckoutForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Address Line 2</label>
+            <label className="block text-sm font-medium mb-1">{t("checkout.addressLine2")}</label>
             <Input
-              placeholder="Apartment, suite, etc. (optional)"
+              placeholder={t("checkout.addressLine2Placeholder")}
               value={shippingAddress.addressLine2}
               onChange={(e) => handleAddressChange("addressLine2", e.target.value)}
             />
@@ -409,9 +411,9 @@ function CheckoutForm() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Postal Code *</label>
+              <label className="block text-sm font-medium mb-1">{t("checkout.postalCode")} *</label>
               <Input
-                placeholder="XXXX-XXX"
+                placeholder={t("checkout.postalCodePlaceholder")}
                 value={shippingAddress.postalCode}
                 onChange={(e) => {
                   let input = e.target.value;
@@ -444,9 +446,9 @@ function CheckoutForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">City *</label>
+              <label className="block text-sm font-medium mb-1">{t("checkout.city")} *</label>
               <Input
-                placeholder="City"
+                placeholder={t("checkout.cityPlaceholder")}
                 value={shippingAddress.city}
                 onChange={(e) => handleAddressChange("city", e.target.value)}
                 required
@@ -455,9 +457,9 @@ function CheckoutForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">District *</label>
+            <label className="block text-sm font-medium mb-1">{t("checkout.district")} *</label>
             <Input
-              placeholder="District (e.g., Lisboa, Porto, Braga)"
+              placeholder={t("checkout.districtPlaceholder")}
               value={shippingAddress.district}
               onChange={(e) => handleAddressChange("district", e.target.value)}
               required
@@ -465,7 +467,7 @@ function CheckoutForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Country *</label>
+            <label className="block text-sm font-medium mb-1">{t("checkout.country")} *</label>
             <Input
               value={shippingAddress.country}
               onChange={(e) => handleAddressChange("country", e.target.value)}
@@ -477,7 +479,7 @@ function CheckoutForm() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Payment Information</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">{t("checkout.paymentInformation")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="border rounded-md p-3 sm:p-4">
@@ -503,7 +505,7 @@ function CheckoutForm() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Coupon Code</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">{t("checkout.couponCode")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {appliedCoupon ? (
@@ -511,13 +513,13 @@ function CheckoutForm() {
               <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-md">
                 <div>
                   <p className="font-medium text-green-800">
-                    Coupon Applied: {appliedCoupon.code}
+                    {t("checkout.couponApplied")}: {appliedCoupon.code}
                   </p>
                   {appliedCoupon.description && (
                     <p className="text-sm text-green-600">{appliedCoupon.description}</p>
                   )}
                   <p className="text-sm font-semibold text-green-700 mt-1">
-                    Discount: -{formatPrice(parseFloat(appliedCoupon.discountAmount))}
+                    {t("checkout.discount")}: -{formatPrice(parseFloat(appliedCoupon.discountAmount))}
                   </p>
                 </div>
                 <Button
@@ -527,7 +529,7 @@ function CheckoutForm() {
                   onClick={handleRemoveCoupon}
                   className="text-red-600 hover:text-red-700"
                 >
-                  Remove
+                  {t("checkout.removeCoupon")}
                 </Button>
               </div>
             </div>
@@ -535,7 +537,7 @@ function CheckoutForm() {
             <div className="space-y-2">
               <div className="flex gap-2">
                 <Input
-                  placeholder="Enter coupon code"
+                  placeholder={t("checkout.couponCode")}
                   value={couponCode}
                   onChange={(e) => {
                     setCouponCode(e.target.value.toUpperCase());
@@ -554,7 +556,7 @@ function CheckoutForm() {
                   onClick={handleApplyCoupon}
                   disabled={isApplyingCoupon || !couponCode.trim()}
                 >
-                  {isApplyingCoupon ? "Applying..." : "Apply"}
+                  {isApplyingCoupon ? t("checkout.processing") : t("checkout.applyCoupon")}
                 </Button>
               </div>
               {couponError && (
@@ -567,16 +569,16 @@ function CheckoutForm() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Order Summary</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">{t("checkout.orderSummary")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="flex justify-between text-sm sm:text-base">
-            <span>Subtotal</span>
+            <span>{t("checkout.subtotal")}</span>
             <span>{formatPrice(subtotal)}</span>
           </div>
           {appliedCoupon && (
             <div className="flex justify-between text-green-600 text-sm sm:text-base">
-              <span>Discount ({appliedCoupon.code})</span>
+              <span>{t("checkout.discount")} ({appliedCoupon.code})</span>
               <span>-{formatPrice(parseFloat(appliedCoupon.discountAmount))}</span>
             </div>
           )}
@@ -599,7 +601,7 @@ function CheckoutForm() {
             </span>
           </div>
           <div className="border-t pt-2 flex justify-between font-bold text-base sm:text-lg">
-            <span>Total</span>
+            <span>{t("checkout.total")}</span>
             <span>{formatPrice(total)}</span>
           </div>
         </CardContent>
@@ -617,7 +619,7 @@ function CheckoutForm() {
         size="lg"
         disabled={!stripe || isProcessing}
       >
-        {isProcessing ? "Processing..." : `Pay ${formatPrice(total)}`}
+        {isProcessing ? t("checkout.processing") : `${t("checkout.placeOrder")} ${formatPrice(total)}`}
       </Button>
     </form>
   );
@@ -634,8 +636,10 @@ export default function CheckoutPage() {
     }
   }, [status, router]);
 
+  const { t } = useLanguage();
+
   if (status === "loading" || isLoading) {
-    return <div className="container mx-auto px-4 py-8 text-center">Loading...</div>;
+    return <div className="container mx-auto px-4 py-8 text-center">{t("checkout.loading")}</div>;
   }
 
   if (!session) {
@@ -644,7 +648,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 sm:mb-8">Checkout</h1>
+      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 sm:mb-8">{t("checkout.title")}</h1>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
         {/* Left Container - Checkout Information */}
         <div className="lg:pr-8 order-2 lg:order-1">
@@ -657,12 +661,12 @@ export default function CheckoutPage() {
         <div className="lg:pl-8 order-1 lg:order-2">
           <Card className="sticky top-20 lg:top-24">
             <CardHeader>
-              <CardTitle className="text-lg sm:text-xl">Order Items</CardTitle>
+              <CardTitle className="text-lg sm:text-xl">{t("checkout.orderItems")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4 sm:space-y-6">
                 {items.length === 0 ? (
-                  <p className="text-center text-gray-500 py-4 text-sm sm:text-base">Your cart is empty</p>
+                  <p className="text-center text-gray-500 py-4 text-sm sm:text-base">{t("checkout.cartEmpty")}</p>
                 ) : (
                   items.map((item) => (
                   <div key={item.id} className="flex gap-3 sm:gap-4 pb-4 sm:pb-6 border-b last:border-b-0 last:pb-0">
@@ -675,10 +679,13 @@ export default function CheckoutPage() {
                           fill
                           sizes="(max-width: 640px) 80px, 96px"
                           className="object-contain"
+                          priority
+                          loading="eager"
+                          unoptimized={item.product.image?.startsWith('data:') || item.product.image?.startsWith('blob:')}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                          No Image
+                          {t("cart.noImage")}
                         </div>
                       )}
                     </div>
@@ -692,7 +699,7 @@ export default function CheckoutPage() {
                         </p>
                       )}
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0">
-                        <span className="text-xs sm:text-sm text-gray-500">Quantity: {item.quantity}</span>
+                        <span className="text-xs sm:text-sm text-gray-500">{t("checkout.quantity")} {item.quantity}</span>
                         <span className="font-semibold text-sm sm:text-base">
                           {formatPrice(parseFloat(item.product.price) * item.quantity)}
                         </span>

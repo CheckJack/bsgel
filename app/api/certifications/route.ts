@@ -6,18 +6,25 @@ import { db } from "@/lib/db"
 export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    if (session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
     const { searchParams } = new URL(req.url)
-    const search = searchParams.get("search") || ""
+    const isPublic = searchParams.get("public") === "true"
     const isActive = searchParams.get("isActive")
+    
+    // Allow public access for active certifications only (for registration)
+    const isPublicActiveRequest = isPublic && isActive === "true"
+    
+    // For admin requests, require authentication
+    if (!isPublicActiveRequest) {
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
+
+      if (session.user.role !== "ADMIN") {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+    }
+
+    const search = searchParams.get("search") || ""
     const pageParam = searchParams.get("page")
     const limitParam = searchParams.get("limit")
     const sortField = searchParams.get("sortField") || "createdAt"

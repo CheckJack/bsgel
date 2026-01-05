@@ -104,7 +104,7 @@ export async function POST(req: Request) {
     }
 
     const post = await db.socialMediaPost.create({
-      data: postData,
+      data: postData as any,
     })
 
     return NextResponse.json(post, { status: 201 })

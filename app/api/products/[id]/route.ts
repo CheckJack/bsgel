@@ -194,7 +194,11 @@ export async function GET(
       reviewCount: reviewCount,
     }
 
-    return NextResponse.json(serializedProduct)
+    // Add caching headers for better performance (cache for 5 minutes)
+    const headers = new Headers();
+    headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+
+    return NextResponse.json(serializedProduct, { headers })
   } catch (error: any) {
     console.error("Failed to fetch product:", error)
     const { id: errorId } = await params;

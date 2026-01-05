@@ -8,6 +8,7 @@ import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import { NailDiagnosisModal } from "@/components/ui/nail-diagnosis-modal";
 import TextGenerateEffect from "@/components/ui/text-generate-effect";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Product {
   id: string;
@@ -26,6 +27,7 @@ interface Product {
 }
 
 export default function SpaPage() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [categoryId, setCategoryId] = useState<string | undefined>();
@@ -246,7 +248,7 @@ export default function SpaPage() {
           <div className="container mx-auto px-4 max-w-6xl">
             <div className="text-center">
               <TextGenerateEffect
-                words="SPA represents our commitment to luxurious, therapeutic nail care experiences. Our SPA collection combines premium natural ingredients with advanced formulations to deliver a truly indulgent treatment that pampers both nails and cuticles. Each product in our SPA line is designed to transform your nail care routine into a spa-like experience, providing deep hydration, gentle exfoliation, and lasting nourishment. Experience the perfect blend of relaxation and results with our SPA collection. #our-funds"
+                words={`${t("productPages.spa.description")} #our-funds`}
                 className="text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl text-brand-black leading-relaxed font-normal"
                 filter={true}
                 duration={0.5}
@@ -268,16 +270,16 @@ export default function SpaPage() {
       <section ref={productsSectionRef} className="relative w-full min-h-screen bg-brand-white py-16">
         <div className="container mx-auto px-4 max-w-7xl">
           <h2 className="text-4xl md:text-5xl font-medium mb-12 text-center text-brand-black">
-            SPA Products
+            {t("productPages.spaProducts")}
           </h2>
           
           {isLoading ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">Loading products...</p>
+              <p className="text-gray-600">{t("productPages.loadingProducts")}</p>
             </div>
           ) : products.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">No SPA products found.</p>
+              <p className="text-gray-600">{t("productPages.noSpaProducts")}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

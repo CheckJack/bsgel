@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { formatPrice } from "@/lib/utils";
 import { X, Search, Loader2 } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
+import { useLanguage } from "@/contexts/language-context";
 
 interface SearchDrawerProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ interface Product {
 
 export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
   const router = useRouter();
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -147,7 +149,7 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
           <div className="container mx-auto px-4 py-6">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white m-0">Search Products</h2>
+              <h2 className="text-2xl font-bold text-white m-0">{t("search.title")}</h2>
               <button
                 onClick={onClose}
                 className="p-2 hover:bg-gray-800 rounded-full transition-colors"
@@ -163,7 +165,7 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
               <Input
                 ref={inputRef}
                 type="text"
-                placeholder="Search for products..."
+                placeholder={t("search.placeholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-4 py-3 text-lg bg-white/10 backdrop-blur-sm text-white border-gray-600/50 focus:border-brand-sweet-bianca/60 focus-visible:ring-brand-sweet-bianca/40 placeholder:text-gray-400"
@@ -180,11 +182,11 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
               ) : searchQuery.trim() === "" ? (
                 <div className="text-center py-12 text-white">
                   <Search className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                  <p className="text-lg">Start typing to search for products</p>
+                  <p className="text-lg">{t("search.startTyping")}</p>
                 </div>
               ) : products.length === 0 ? (
                 <div className="text-center py-12 text-white">
-                  <p className="text-lg mb-2">No products found</p>
+                  <p className="text-lg mb-2">{t("search.noResults")}</p>
                   <p className="text-sm">Try a different search term</p>
                 </div>
               ) : (
@@ -246,7 +248,7 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                         className="w-full border-gray-700 bg-gray-800/50 text-white hover:bg-gray-800"
                         onClick={handleViewAllResults}
                       >
-                        View All Results ({products.length})
+                        {t("search.viewAllResults")} ({products.length})
                       </Button>
                     </div>
                   )}
