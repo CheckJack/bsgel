@@ -214,7 +214,7 @@ export async function POST(req: NextRequest) {
             coverPictureUrl: coverPictureUrl || null,
             optimizeWidth: width || null,
             optimizeHeight: height || null,
-          },
+          } as any,
         });
       } catch (dbError: any) {
         // If database insert fails, try to clean up the cover picture file

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { ProductCard } from "@/components/product/product-card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/select";
 import { Pagination } from "@/components/ui/pagination";
 import { HeroSlider } from "@/components/layout/hero-slider";
 import { ProductReviews } from "@/components/product/product-reviews";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Product {
   id: string;
@@ -32,7 +33,8 @@ interface Category {
   slug: string;
 }
 
-export default function ProductsPage() {
+function ProductsPageContent() {
+  const { t } = useLanguage();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -91,6 +93,7 @@ export default function ProductsPage() {
     if (max) setMaxPrice(max);
     if (sort) setSortBy(sort);
     if (featured === "true") setShowFeatured(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // Update URL when filters change
@@ -110,10 +113,6 @@ export default function ProductsPage() {
   useEffect(() => {
     setCurrentPage(1); // Reset to page 1 when filters change
   }, [selectedCategory, searchQuery, minPrice, maxPrice, sortBy, showFeatured]);
-
-  useEffect(() => {
-    fetchProducts();
-  }, [selectedCategory, searchQuery, minPrice, maxPrice, sortBy, showFeatured, currentPage]);
 
   const fetchCategories = async () => {
     try {
@@ -166,6 +165,11 @@ export default function ProductsPage() {
     }
   };
 
+  useEffect(() => {
+    fetchProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory, searchQuery, minPrice, maxPrice, sortBy, showFeatured, currentPage]);
+
   const clearFilters = () => {
     setSelectedCategory(null);
     setSearchQuery("");
@@ -184,7 +188,7 @@ export default function ProductsPage() {
       <div className="bg-brand-white min-h-screen">
         <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-medium text-brand-black">Shop</h1>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-medium text-brand-black">{t("shop.title")}</h1>
             <div className="flex items-center gap-2 sm:gap-4">
               <Button
                 variant="outline"
@@ -194,7 +198,7 @@ export default function ProductsPage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
-                Filters
+                {t("shop.filters")}
                 {hasActiveFilters && (
                   <span className="ml-1 px-2 py-0.5 text-xs font-light bg-brand-champagne text-brand-white rounded-full">
                     {[selectedCategory, searchQuery, minPrice, maxPrice, showFeatured].filter(Boolean).length}
@@ -207,7 +211,7 @@ export default function ProductsPage() {
                   onClick={clearFilters}
                   className="text-sm"
                 >
-                  Clear All
+                  {t("shop.clearAll")}
                 </Button>
               )}
             </div>
@@ -217,7 +221,7 @@ export default function ProductsPage() {
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="flex-1">
               <Input
-                placeholder="Search products..."
+                placeholder={t("shop.searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full"
@@ -229,7 +233,7 @@ export default function ProductsPage() {
                 onClick={() => setSelectedCategory(null)}
                 className={selectedCategory === null ? "bg-brand-champagne hover:bg-brand-champagne/90 text-brand-white whitespace-nowrap" : "whitespace-nowrap"}
               >
-                All
+                {t("shop.all")}
               </Button>
               {categories.map((category) => (
                 <Button
@@ -250,11 +254,11 @@ export default function ProductsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Price Range */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-brand-black">Price Range</label>
+                  <label className="text-sm font-medium text-brand-black">{t("shop.priceRange")}</label>
                   <div className="flex gap-2">
                     <Input
                       type="number"
-                      placeholder="Min"
+                      placeholder={t("shop.min")}
                       value={minPrice}
                       onChange={(e) => setMinPrice(e.target.value)}
                       min="0"
@@ -262,7 +266,7 @@ export default function ProductsPage() {
                     />
                     <Input
                       type="number"
-                      placeholder="Max"
+                      placeholder={t("shop.max")}
                       value={maxPrice}
                       onChange={(e) => setMaxPrice(e.target.value)}
                       min="0"
@@ -273,23 +277,23 @@ export default function ProductsPage() {
 
                 {/* Sort By */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-brand-black">Sort By</label>
+                  <label className="text-sm font-medium text-brand-black">{t("shop.sortBy")}</label>
                   <Select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
                   >
-                    <option value="newest">Newest First</option>
-                    <option value="oldest">Oldest First</option>
-                    <option value="price-asc">Price: Low to High</option>
-                    <option value="price-desc">Price: High to Low</option>
-                    <option value="name-asc">Name: A to Z</option>
-                    <option value="name-desc">Name: Z to A</option>
+                    <option value="newest">{t("shop.newestFirst")}</option>
+                    <option value="oldest">{t("shop.oldestFirst")}</option>
+                    <option value="price-asc">{t("shop.priceLowToHigh")}</option>
+                    <option value="price-desc">{t("shop.priceHighToLow")}</option>
+                    <option value="name-asc">{t("shop.nameAtoZ")}</option>
+                    <option value="name-desc">{t("shop.nameZtoA")}</option>
                   </Select>
                 </div>
 
                 {/* Featured Filter */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-brand-black">Options</label>
+                  <label className="text-sm font-medium text-brand-black">{t("shop.options")}</label>
                   <div className="flex items-center space-x-2 pt-2">
                     <input
                       type="checkbox"
@@ -299,14 +303,14 @@ export default function ProductsPage() {
                       className="w-4 h-4 text-brand-champagne border-brand-champagne/30 rounded focus:ring-brand-champagne focus:ring-2"
                     />
                     <label htmlFor="featured" className="text-sm font-light text-brand-black cursor-pointer">
-                      Featured Only
+                      {t("shop.featuredOnly")}
                     </label>
                   </div>
                 </div>
 
                 {/* Active Filters Summary */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-brand-black">Active Filters</label>
+                  <label className="text-sm font-medium text-brand-black">{t("shop.activeFilters")}</label>
                   <div className="flex flex-wrap gap-2 pt-2">
                     {selectedCategory && (
                       <span className="px-2 py-1 text-xs font-light bg-brand-champagne/20 text-brand-black rounded">
@@ -329,7 +333,7 @@ export default function ProductsPage() {
                       </span>
                     )}
                     {!hasActiveFilters && (
-                      <span className="text-xs font-light text-brand-champagne/60">No filters applied</span>
+                      <span className="text-xs font-light text-brand-champagne/60">{t("shop.noFiltersApplied")}</span>
                     )}
                   </div>
                 </div>
@@ -341,38 +345,38 @@ export default function ProductsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-6">
             {totalProducts > 0 && (
               <div className="text-xs sm:text-sm font-light text-brand-black">
-                Showing {((currentPage - 1) * 12) + 1} to {Math.min(currentPage * 12, totalProducts)} of {totalProducts} products
+                {t("shop.showing")} {((currentPage - 1) * 12) + 1} {t("shop.to")} {Math.min(currentPage * 12, totalProducts)} {t("shop.of")} {totalProducts} {t("shop.products")}
               </div>
             )}
             <div className="flex items-center gap-2">
-              <label className="text-xs sm:text-sm font-medium text-brand-black">Sort:</label>
+              <label className="text-xs sm:text-sm font-medium text-brand-black">{t("shop.sort")}</label>
               <Select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
                 className="w-full sm:w-48"
               >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="price-desc">Price: High to Low</option>
-                <option value="name-asc">Name: A to Z</option>
-                <option value="name-desc">Name: Z to A</option>
+                <option value="newest">{t("shop.newestFirst")}</option>
+                <option value="oldest">{t("shop.oldestFirst")}</option>
+                <option value="price-asc">{t("shop.priceLowToHigh")}</option>
+                <option value="price-desc">{t("shop.priceHighToLow")}</option>
+                <option value="name-asc">{t("shop.nameAtoZ")}</option>
+                <option value="name-desc">{t("shop.nameZtoA")}</option>
               </Select>
             </div>
           </div>
 
           {isLoading ? (
-            <div className="text-center py-12 text-brand-black font-light">Loading products...</div>
+            <div className="text-center py-12 text-brand-black font-light">{t("shop.loadingProducts")}</div>
           ) : products.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-brand-black mb-4 font-light">No products found.</p>
+              <p className="text-brand-black mb-4 font-light">{t("shop.noProductsFound")}</p>
               {hasActiveFilters && (
                 <Button
                   variant="outline"
                   onClick={clearFilters}
                   className="mt-2"
                 >
-                  Clear filters to see all products
+                  {t("shop.clearFiltersToSeeAll")}
                 </Button>
               )}
             </div>
@@ -411,6 +415,14 @@ export default function ProductsPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto px-4 py-8 text-center">Loading...</div>}>
+      <ProductsPageContent />
+    </Suspense>
   );
 }
 

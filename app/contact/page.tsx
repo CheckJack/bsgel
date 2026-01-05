@@ -1,14 +1,17 @@
 "use client";
 
 import { HeroSlider } from "@/components/layout/hero-slider";
+import { useLanguage } from "@/contexts/language-context";
 
 export default function ContactPage() {
+  const { t } = useLanguage();
+
   const slides = [
     {
       type: "image" as const,
       src: "/123_Tracey_Wide - Copy.jpg",
-      title: "Contact Us",
-      description: "We'd love to hear from you. Get in touch with our team today.",
+      title: t("contact.title"),
+      description: t("contact.description"),
     },
   ];
 
@@ -23,12 +26,12 @@ export default function ContactPage() {
           <div className="grid md:grid-cols-2 gap-8 sm:gap-12">
             {/* Contact Form */}
             <div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-4 sm:mb-6 text-brand-black">Send us a Message</h2>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-4 sm:mb-6 text-brand-black">{t("contact.sendUsMessage")}</h2>
               <div className="w-24 h-1 bg-brand-champagne mb-6 sm:mb-8"></div>
               <form className="space-y-6">
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-brand-black mb-2">
-                    Name *
+                    {t("contact.name")} *
                   </label>
                   <input
                     type="text"
@@ -36,12 +39,12 @@ export default function ContactPage() {
                     name="name"
                     required
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-champagne focus:border-brand-champagne outline-none font-light"
-                    placeholder="Your full name"
+                    placeholder={t("contact.namePlaceholder")}
                   />
                 </div>
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-brand-black mb-2">
-                    Email *
+                    {t("contact.email")} *
                   </label>
                   <input
                     type="email"
@@ -49,12 +52,12 @@ export default function ContactPage() {
                     name="email"
                     required
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-champagne focus:border-brand-champagne outline-none font-light"
-                    placeholder="your.email@example.com"
+                    placeholder={t("contact.emailPlaceholder")}
                   />
                 </div>
                 <div>
                   <label htmlFor="subject" className="block text-sm font-medium text-brand-black mb-2">
-                    Subject *
+                    {t("contact.subject")} *
                   </label>
                   <input
                     type="text"
@@ -62,12 +65,12 @@ export default function ContactPage() {
                     name="subject"
                     required
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-champagne focus:border-brand-champagne outline-none font-light"
-                    placeholder="How can we help?"
+                    placeholder={t("contact.subjectPlaceholder")}
                   />
                 </div>
                 <div>
                   <label htmlFor="message" className="block text-sm font-medium text-brand-black mb-2">
-                    Message *
+                    {t("contact.message")} *
                   </label>
                   <textarea
                     id="message"
@@ -75,63 +78,60 @@ export default function ContactPage() {
                     required
                     rows={6}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-champagne focus:border-brand-champagne outline-none font-light resize-none"
-                    placeholder="Tell us more about your inquiry..."
+                    placeholder={t("contact.messagePlaceholder")}
                   ></textarea>
                 </div>
                 <button
                   type="submit"
                   className="w-full px-8 py-3 bg-brand-black text-brand-white hover:bg-brand-champagne transition-colors font-medium rounded-lg"
                 >
-                  Send Message
+                  {t("contact.sendMessage")}
                 </button>
               </form>
             </div>
 
             {/* Contact Information */}
             <div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-4 sm:mb-6 text-brand-black">Get in Touch</h2>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-4 sm:mb-6 text-brand-black">{t("contact.getInTouch")}</h2>
               <div className="w-24 h-1 bg-brand-champagne mb-6 sm:mb-8"></div>
               <div className="space-y-6 sm:space-y-8">
                 <div>
-                  <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 text-brand-black">General Inquiries</h3>
+                  <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 text-brand-black">{t("contact.generalInquiries")}</h3>
                   <p className="text-sm sm:text-base font-light text-brand-champagne leading-relaxed">
-                    For general questions about our products, services, or training programs, 
-                    please fill out the contact form or reach out using the information below.
+                    {t("contact.generalInquiriesDesc")}
                   </p>
                 </div>
                 
                 <div>
-                  <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 text-brand-black">Customer Support</h3>
+                  <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 text-brand-black">{t("contact.customerSupport")}</h3>
                   <p className="text-sm sm:text-base font-light text-brand-champagne leading-relaxed mb-2">
-                    <strong className="text-brand-black">Email:</strong> support@biosculpture.com
+                    <strong className="text-brand-black">{t("contact.emailLabel")}</strong> support@biosculpture.com
                   </p>
                   <p className="text-sm sm:text-base font-light text-brand-champagne leading-relaxed mb-2">
-                    <strong className="text-brand-black">Phone:</strong> +1 (555) 123-4567
+                    <strong className="text-brand-black">{t("contact.phone")}</strong> +1 (555) 123-4567
                   </p>
                   <p className="text-sm sm:text-base font-light text-brand-champagne leading-relaxed">
-                    <strong className="text-brand-black">Hours:</strong> Monday - Friday, 9:00 AM - 6:00 PM EST
+                    <strong className="text-brand-black">{t("contact.hours")}</strong> {t("contact.hoursValue")}
                   </p>
                 </div>
 
                 <div>
-                  <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 text-brand-black">Training & Education</h3>
+                  <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 text-brand-black">{t("contact.trainingEducation")}</h3>
                   <p className="text-sm sm:text-base font-light text-brand-champagne leading-relaxed">
-                    Interested in our professional training programs? Contact our education team 
-                    to learn more about certification courses and workshops.
+                    {t("contact.trainingEducationDesc")}
                   </p>
                 </div>
 
                 <div>
-                  <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 text-brand-black">Find a Salon</h3>
+                  <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 text-brand-black">{t("contact.findASalon")}</h3>
                   <p className="text-sm sm:text-base font-light text-brand-champagne leading-relaxed mb-4">
-                    Looking for a Bio Sculpture salon near you? Use our salon locator to find 
-                    certified professionals in your area.
+                    {t("contact.findASalonDesc")}
                   </p>
                   <a
                     href="/salons"
                     className="inline-block px-5 sm:px-6 py-2 bg-brand-black text-brand-white hover:bg-brand-champagne transition-colors font-medium rounded text-sm sm:text-base"
                   >
-                    Find a Salon
+                    {t("contact.findASalon")}
                   </a>
                 </div>
               </div>
@@ -144,7 +144,7 @@ export default function ContactPage() {
       <section className="py-12 sm:py-16 px-4 sm:px-6 bg-brand-sweet-bianca">
         <div className="container mx-auto max-w-4xl">
           <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-3 sm:mb-4 text-brand-black">Additional Resources</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-3 sm:mb-4 text-brand-black">{t("contact.additionalResources")}</h2>
             <div className="w-24 h-1 bg-brand-champagne mx-auto"></div>
           </div>
           <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
@@ -152,27 +152,27 @@ export default function ContactPage() {
               href="/products"
               className="bg-brand-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow text-center"
             >
-              <h3 className="text-xl font-medium mb-2 text-brand-black">Browse Products</h3>
+              <h3 className="text-xl font-medium mb-2 text-brand-black">{t("contact.browseProducts")}</h3>
               <p className="font-light text-brand-champagne text-sm">
-                Explore our complete range of premium nail care products
+                {t("contact.browseProductsDesc")}
               </p>
             </a>
             <a
               href="/about"
               className="bg-brand-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow text-center"
             >
-              <h3 className="text-xl font-medium mb-2 text-brand-black">About Us</h3>
+              <h3 className="text-xl font-medium mb-2 text-brand-black">{t("contact.aboutUs")}</h3>
               <p className="font-light text-brand-champagne text-sm">
-                Learn more about our mission, values, and commitment
+                {t("contact.aboutUsDesc")}
               </p>
             </a>
             <a
               href="/diagnosis"
               className="bg-brand-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow text-center"
             >
-              <h3 className="text-xl font-medium mb-2 text-brand-black">Nail Diagnosis</h3>
+              <h3 className="text-xl font-medium mb-2 text-brand-black">{t("contact.nailDiagnosis")}</h3>
               <p className="font-light text-brand-champagne text-sm">
-                Use our tool to diagnose and understand nail conditions
+                {t("contact.nailDiagnosisDesc")}
               </p>
             </a>
           </div>

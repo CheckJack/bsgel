@@ -30,6 +30,13 @@ export default function DashboardLayout({
       // Check if user is pending certification and trying to access restricted pages
       const certification = session.user?.certification as string | undefined;
       const isPendingCertification = certification === "PROFESSIONAL_NON_CERTIFIED";
+      const isProfessional = !!certification;
+      
+      // Salon page is only for professionals (users with certification)
+      if (pathname?.startsWith("/dashboard/salon") && !isProfessional) {
+        router.push("/dashboard");
+        return;
+      }
       
       // Routes that require confirmed certification (only resources now)
       const restrictedRoutes = [

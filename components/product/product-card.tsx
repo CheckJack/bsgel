@@ -109,6 +109,8 @@ export function ProductCard({
                   fill
                   sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
                   className="object-cover"
+                  priority
+                  unoptimized={firstMedia?.startsWith('data:') || firstMedia?.startsWith('blob:') || !firstMedia?.startsWith('http')}
                 />
               )}
             </div>
@@ -124,7 +126,7 @@ export function ProductCard({
                     muted
                     playsInline
                     loop
-                    preload="metadata"
+                    preload="none"
                   />
                 ) : (
                   <Image
@@ -133,6 +135,8 @@ export function ProductCard({
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
                     className="object-cover"
+                    loading="lazy"
+                    unoptimized={secondMedia?.startsWith('data:') || secondMedia?.startsWith('blob:') || !secondMedia?.startsWith('http')}
                   />
                 )}
               </div>

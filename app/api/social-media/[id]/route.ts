@@ -122,7 +122,7 @@ export async function PUT(
 
     const post = await db.socialMediaPost.update({
       where: { id: id },
-      data: updateData,
+      data: updateData as any,
     })
 
     return NextResponse.json(post)

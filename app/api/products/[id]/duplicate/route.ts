@@ -59,7 +59,7 @@ export async function POST(
         images: originalProduct.images,
         featured: false, // Don't duplicate featured status
         categoryId: originalProduct.categoryId,
-        attributes: originalProduct.attributes,
+        attributes: originalProduct.attributes as any,
       },
       select: {
         id: true,

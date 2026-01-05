@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useCallback } from "react";
+import { useLanguage } from "@/contexts/language-context";
 
 interface AboutMegaMenuProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ interface AboutPage {
 }
 
 export function AboutMegaMenu({ isOpen, onClose, onMouseEnter }: AboutMegaMenuProps) {
+  const { t } = useLanguage();
   const [cards, setCards] = useState<MegaMenuCard[]>([]);
   const [isLoadingCards, setIsLoadingCards] = useState(true);
   const [hasFetched, setHasFetched] = useState(false);
@@ -97,23 +99,23 @@ export function AboutMegaMenu({ isOpen, onClose, onMouseEnter }: AboutMegaMenuPr
   // About pages structure
   const aboutPages: AboutPage[] = [
     { 
-      name: "Biosculpture", 
+      name: t("nav.aboutMenu.biosculpture"), 
       href: "/about/biosculpture",
       children: [
-        { name: "Concept", href: "/about/biosculpture/concept" },
-        { name: "Sustainability", href: "/about/biosculpture/sustainability" },
-        { name: "Awards", href: "/about/biosculpture/awards" }
+        { name: t("nav.aboutMenu.concept"), href: "/about/biosculpture/concept" },
+        { name: t("nav.aboutMenu.sustainability"), href: "/about/biosculpture/sustainability" },
+        { name: t("nav.aboutMenu.awards"), href: "/about/biosculpture/awards" }
       ]
     },
     {
-      name: "Contact",
+      name: t("nav.aboutMenu.contact"),
       href: "/contact",
       children: [
-        { name: "Find Salon", href: "/salons" }
+        { name: t("nav.aboutMenu.findSalon"), href: "/salons" }
       ]
     },
     {
-      name: "Blog",
+      name: t("nav.aboutMenu.blog"),
       href: "/blog"
     }
   ];
@@ -219,7 +221,7 @@ export function AboutMegaMenu({ isOpen, onClose, onMouseEnter }: AboutMegaMenuPr
                         onClick={handleLinkClick}
                         className="w-full bg-black hover:bg-gray-800 text-white py-3.5 px-4 rounded-md transition-all duration-200 font-medium text-sm text-center"
                       >
-                        Discover
+                        {t("nav.discover")}
                       </Link>
                     </div>
                   </div>
@@ -246,7 +248,7 @@ export function AboutMegaMenu({ isOpen, onClose, onMouseEnter }: AboutMegaMenuPr
                       onClick={handleLinkClick}
                       className="w-full bg-black hover:bg-gray-800 text-white py-3.5 px-4 rounded-md transition-all duration-200 font-medium text-sm text-center"
                     >
-                      Discover
+                      {t("nav.discover")}
                     </Link>
                   </div>
                 </div>
@@ -295,7 +297,7 @@ export function AboutMegaMenu({ isOpen, onClose, onMouseEnter }: AboutMegaMenuPr
                         onClick={handleLinkClick}
                         className="w-full bg-black hover:bg-gray-800 text-white py-3.5 px-4 rounded-md transition-all duration-200 font-medium text-sm text-center"
                       >
-                        Discover
+                        {t("nav.discover")}
                       </Link>
                     </div>
                   </div>
@@ -321,7 +323,7 @@ export function AboutMegaMenu({ isOpen, onClose, onMouseEnter }: AboutMegaMenuPr
                       onClick={handleLinkClick}
                       className="w-full bg-black hover:bg-gray-800 text-white py-3.5 px-4 rounded-md transition-all duration-200 font-medium text-sm text-center"
                     >
-                      Discover
+                      {t("nav.discover")}
                     </Link>
                   </div>
                 </div>

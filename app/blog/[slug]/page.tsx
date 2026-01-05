@@ -157,7 +157,7 @@ export default function BlogDetailPage() {
             {error || "Blog post not found"}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            The blog post you're looking for doesn't exist or has been removed.
+            The blog post you&apos;re looking for doesn&apos;t exist or has been removed.
           </p>
           <Link href="/blog">
             <Button>

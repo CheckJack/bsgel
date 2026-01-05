@@ -56,7 +56,7 @@ export default function SocialMediaCalendarPage() {
   const [timezone, setTimezone] = useState("Europe/Lisbon");
 
   // Generate 6 days starting from currentStartDate
-  const daysOfWeek = [];
+  const daysOfWeek: Date[] = [];
   for (let i = 0; i < 6; i++) {
     const date = new Date(currentStartDate);
     date.setDate(currentStartDate.getDate() + i);

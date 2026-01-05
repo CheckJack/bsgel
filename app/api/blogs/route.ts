@@ -87,7 +87,7 @@ export async function POST(req: Request) {
         publishedAt: status === "PUBLISHED" ? (publishedAt ? new Date(publishedAt) : new Date()) : null,
         assignedReviewerId: status === "PENDING_REVIEW" && assignedReviewerId ? assignedReviewerId : null,
         createdBy: createdBy || session.user.id,
-      },
+      } as any,
     })
 
     return NextResponse.json(blog, { status: 201 })

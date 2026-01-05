@@ -56,17 +56,24 @@ export default function SalonDetailPage() {
     setIsLoading(true);
     setError(null);
     try {
+      console.log(`[Salon Detail Page] Fetching salon with ID: ${salonId}`);
       const res = await fetch(`/api/salons/${salonId}`);
+      console.log(`[Salon Detail Page] Response status: ${res.status}`);
       if (res.ok) {
         const data = await res.json();
+        console.log(`[Salon Detail Page] Salon data received:`, data);
         setSalon(data);
       } else if (res.status === 404) {
+        const errorData = await res.json().catch(() => ({}));
+        console.log(`[Salon Detail Page] Salon not found:`, errorData);
         setError("Salon not found");
       } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error(`[Salon Detail Page] Error response:`, errorData);
         setError("Failed to load salon information");
       }
     } catch (error) {
-      console.error("Failed to fetch salon:", error);
+      console.error("[Salon Detail Page] Failed to fetch salon:", error);
       setError("Failed to load salon information");
     } finally {
       setIsLoading(false);
@@ -131,7 +138,7 @@ export default function SalonDetailPage() {
             {error || "Salon not found"}
           </h1>
           <p className="text-brand-champagne mb-6">
-            The salon you're looking for doesn't exist or has been removed.
+            The salon you&apos;re looking for doesn&apos;t exist or has been removed.
           </p>
           <Link href="/salons">
             <Button>Back to Salons</Button>
@@ -163,26 +170,34 @@ export default function SalonDetailPage() {
             <div className="flex-shrink-0">
               {salon.logo ? (
                 <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-white shadow-lg border border-gray-200 flex items-center justify-center">
-                  <img
+                  <Image
                     src={salon.logo}
                     alt={salon.name}
+                    width={192}
+                    height={192}
                     className="w-full h-full object-contain p-4"
+                    priority
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.style.display = "none";
                     }}
+                    unoptimized={salon.logo?.startsWith('data:') || salon.logo?.startsWith('blob:') || !salon.logo?.startsWith('http')}
                   />
                 </div>
               ) : salon.image ? (
                 <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-gray-100 shadow-lg">
-                  <img
+                  <Image
                     src={salon.image}
                     alt={salon.name}
+                    width={192}
+                    height={192}
                     className="w-full h-full object-cover"
+                    priority
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.style.display = "none";
                     }}
+                    unoptimized={salon.image?.startsWith('data:') || salon.image?.startsWith('blob:') || !salon.image?.startsWith('http')}
                   />
                 </div>
               ) : (
@@ -287,14 +302,18 @@ export default function SalonDetailPage() {
                       key={index}
                       className="relative aspect-square rounded-lg overflow-hidden bg-gray-100"
                     >
-                      <img
+                      <Image
                         src={img}
                         alt={`${salon.name} - Image ${index + 1}`}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
+                        fill
+                        className="object-cover hover:scale-105 transition-transform cursor-pointer"
+                        priority={index < 3}
+                        loading={index < 3 ? undefined : "lazy"}
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.style.display = "none";
                         }}
+                        unoptimized={img?.startsWith('data:') || img?.startsWith('blob:') || !img?.startsWith('http')}
                       />
                     </div>
                   ))}

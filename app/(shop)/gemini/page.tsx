@@ -8,6 +8,7 @@ import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import { NailDiagnosisModal } from "@/components/ui/nail-diagnosis-modal";
 import TextGenerateEffect from "@/components/ui/text-generate-effect";
+import { useLanguage } from "@/contexts/language-context";
 import { Pagination } from "@/components/ui/pagination";
 
 interface Product {
@@ -27,6 +28,7 @@ interface Product {
 }
 
 export default function GeminiPage() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -263,7 +265,7 @@ export default function GeminiPage() {
           <div className="container mx-auto px-4 max-w-6xl">
             <div className="text-center">
               <TextGenerateEffect
-                words="Gemini represents the dual nature of innovation and tradition in professional nail care. Our Gemini collection brings together cutting-edge technology with time-tested natural ingredients, creating products that deliver exceptional performance and lasting results. Each formulation is carefully balanced to provide the perfect harmony between strength and flexibility, durability and beauty. Experience the perfect duality of professional excellence with Gemini. #our-funds"
+                words={`${t("productPages.gemini.description")} #our-funds`}
                 className="text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl text-brand-black leading-relaxed font-normal"
                 filter={true}
                 duration={0.5}
@@ -285,16 +287,16 @@ export default function GeminiPage() {
       <section ref={productsSectionRef} className="relative w-full min-h-screen bg-brand-white py-16">
         <div className="container mx-auto px-4 max-w-7xl">
           <h2 className="text-4xl md:text-5xl font-medium mb-12 text-center text-brand-black">
-            Gemini Products
+            {t("productPages.geminiProducts")}
           </h2>
           
           {isLoading ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">Loading products...</p>
+              <p className="text-gray-600">{t("productPages.loadingProducts")}</p>
             </div>
           ) : products.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">No Gemini products found.</p>
+              <p className="text-gray-600">{t("productPages.noGeminiProducts")}</p>
             </div>
           ) : (
             <>

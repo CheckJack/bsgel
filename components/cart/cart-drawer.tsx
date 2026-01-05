@@ -82,6 +82,9 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       const fetchRecommendedProducts = async () => {
         setIsLoadingProducts(true);
         try {
+          const cartProductIds = items.map((item) => item.product.id);
+          let recommended: Product[] = [];
+
           // Get unique category IDs from cart items
           const categoryIds = Array.from(
             new Set(
@@ -91,15 +94,17 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             )
           );
 
-          const cartProductIds = items.map((item) => item.product.id);
-          let recommended: Product[] = [];
-
+          // Strategy 1: Fetch products from cart item categories
           if (categoryIds.length > 0) {
-            // Fetch products from each category and mix them
             const categoryPromises = categoryIds.map((categoryId) =>
-              fetch(`/api/products?categoryId=${categoryId}`).then((res) =>
-                res.ok ? res.json() : []
-              )
+              fetch(`/api/products?categoryId=${categoryId}&limit=20`).then(async (res) => {
+                if (res.ok) {
+                  const data = await res.json();
+                  // Handle both array and object with products property
+                  return Array.isArray(data) ? data : (data.products || []);
+                }
+                return [];
+              })
             );
 
             const categoryProductsArrays = await Promise.all(categoryPromises);
@@ -117,41 +122,77 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
               .slice(0, 4);
           }
 
-          // If we don't have enough recommendations from categories, fill with featured products
+          // Strategy 2: If we don't have enough recommendations from categories, fill with featured products
           if (recommended.length < 4) {
-            const res = await fetch("/api/products?featured=true");
-            if (res.ok) {
-              const featuredProducts = await res.json();
-              const additionalProducts = featuredProducts
-                .filter(
-                  (p: Product) =>
-                    !cartProductIds.includes(p.id) &&
-                    !recommended.some((r) => r.id === p.id)
-                )
-                .slice(0, 4 - recommended.length);
-              recommended = [...recommended, ...additionalProducts];
+            try {
+              const res = await fetch("/api/products?featured=true&limit=20");
+              if (res.ok) {
+                const data = await res.json();
+                const featuredProducts = Array.isArray(data) ? data : (data.products || []);
+                const additionalProducts = featuredProducts
+                  .filter(
+                    (p: Product) =>
+                      !cartProductIds.includes(p.id) &&
+                      !recommended.some((r) => r.id === p.id)
+                  )
+                  .slice(0, 4 - recommended.length);
+                recommended = [...recommended, ...additionalProducts];
+              }
+            } catch (error) {
+              console.error("Failed to fetch featured products:", error);
             }
           }
 
-          // Final fallback to regular products if still not enough
+          // Strategy 3: Final fallback to regular products if still not enough
           if (recommended.length < 4) {
-            const res2 = await fetch("/api/products");
-            if (res2.ok) {
-              const allProducts = await res2.json();
-              const additionalProducts = allProducts
-                .filter(
-                  (p: Product) =>
-                    !cartProductIds.includes(p.id) &&
-                    !recommended.some((r) => r.id === p.id)
-                )
-                .slice(0, 4 - recommended.length);
-              recommended = [...recommended, ...additionalProducts];
+            try {
+              const res2 = await fetch("/api/products?limit=20");
+              if (res2.ok) {
+                const data = await res2.json();
+                const allProducts = Array.isArray(data) ? data : (data.products || []);
+                const additionalProducts = allProducts
+                  .filter(
+                    (p: Product) =>
+                      !cartProductIds.includes(p.id) &&
+                      !recommended.some((r) => r.id === p.id)
+                  )
+                  .slice(0, 4 - recommended.length);
+                recommended = [...recommended, ...additionalProducts];
+              }
+            } catch (error) {
+              console.error("Failed to fetch all products:", error);
+            }
+          }
+
+          // Ensure we always have at least some recommendations (even if they're in cart, show them)
+          if (recommended.length === 0) {
+            try {
+              const res3 = await fetch("/api/products?limit=4");
+              if (res3.ok) {
+                const data = await res3.json();
+                const fallbackProducts = Array.isArray(data) ? data : (data.products || []);
+                recommended = fallbackProducts.slice(0, 4);
+              }
+            } catch (error) {
+              console.error("Failed to fetch fallback products:", error);
             }
           }
 
           setRecommendedProducts(recommended.slice(0, 4));
         } catch (error) {
           console.error("Failed to fetch recommended products:", error);
+          // Even on error, try to get some products
+          try {
+            const res = await fetch("/api/products?limit=4");
+            if (res.ok) {
+              const data = await res.json();
+              const fallbackProducts = Array.isArray(data) ? data : (data.products || []);
+              setRecommendedProducts(fallbackProducts.slice(0, 4));
+            }
+          } catch (fallbackError) {
+            console.error("Failed to fetch fallback products:", fallbackError);
+            setRecommendedProducts([]);
+          }
         } finally {
           setIsLoadingProducts(false);
         }
@@ -257,7 +298,10 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                                 src={product.image}
                                 alt={product.name}
                                 fill
+                                sizes="96px"
                                 className="object-contain rounded"
+                                loading="eager"
+                                unoptimized={product.image?.startsWith('data:') || product.image?.startsWith('blob:')}
                               />
                             </div>
                           ) : (
@@ -355,7 +399,11 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                             src={item.product.image}
                             alt={item.product.name}
                             fill
+                            sizes="80px"
                             className="object-contain rounded"
+                            priority
+                            loading="eager"
+                            unoptimized={item.product.image?.startsWith('data:') || item.product.image?.startsWith('blob:')}
                           />
                         </Link>
                       ) : (

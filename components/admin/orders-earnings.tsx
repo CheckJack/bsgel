@@ -423,7 +423,6 @@ export function OrdersEarnings() {
                     border: "1px solid #e0e0e0",
                     borderRadius: "8px",
                   }}
-                  className="dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
                 />
                 <Bar dataKey="revenue" fill="#2563eb" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="profit" fill="#60a5fa" radius={[4, 4, 0, 0]} />
