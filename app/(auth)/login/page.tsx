@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic rendering - this page uses searchParams and localStorage
+export const dynamic = 'force-dynamic';
+
 import { useState, useRef, useEffect, Suspense } from "react";
 import { signIn, getSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";

@@ -47,8 +47,9 @@ export default function CartPage() {
     (sum, item) => sum + parseFloat(item.product.price) * item.quantity,
     0
   );
-  const tax = subtotal * 0.1; // 10% tax (adjust as needed)
-  const total = subtotal + tax;
+  // Tax is calculated at checkout based on postal code
+  // Not showing tax in cart page since we don't have postal code yet
+  const total = subtotal;
 
   return (
     <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -138,9 +139,8 @@ export default function CartPage() {
                 <span>{t("cart.subtotal")}</span>
                 <span>{formatPrice(subtotal)}</span>
               </div>
-              <div className="flex justify-between text-sm sm:text-base">
-                <span>{t("cart.tax")}</span>
-                <span>{formatPrice(tax)}</span>
+              <div className="text-xs text-gray-500 italic">
+                Tax will be calculated at checkout based on your shipping address
               </div>
               <div className="border-t pt-4 flex justify-between font-bold text-base sm:text-lg">
                 <span>{t("cart.total")}</span>

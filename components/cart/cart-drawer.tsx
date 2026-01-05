@@ -230,8 +230,9 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     (sum, item) => sum + parseFloat(item.product.price) * item.quantity,
     0
   );
-  const tax = subtotal * 0.1; // 10% tax (adjust as needed)
-  const total = subtotal + tax;
+  // Tax is calculated at checkout based on postal code
+  // Not showing tax in cart drawer since we don't have postal code yet
+  const total = subtotal;
 
   return (
     <>
@@ -474,12 +475,11 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                     <span className="text-gray-600">Subtotal</span>
                     <span>{formatPrice(subtotal)}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Tax</span>
-                    <span>{formatPrice(tax)}</span>
+                  <div className="text-xs text-gray-500 italic">
+                    Tax will be calculated at checkout based on your shipping address
                   </div>
                   <div className="border-t pt-2 flex justify-between font-bold">
-                    <span>Total</span>
+                    <span>Subtotal</span>
                     <span>{formatPrice(total)}</span>
                   </div>
                 </div>

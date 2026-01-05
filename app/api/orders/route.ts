@@ -6,6 +6,7 @@ import { canUserPurchaseProduct } from "@/lib/certifications"
 import { formatPrice } from "@/lib/utils"
 import { getReferralByUserId, activateReferral } from "@/lib/affiliate"
 import { calculatePoints, awardPoints } from "@/lib/points"
+import { calculateTax } from "@/lib/tax"
 
 export async function GET(req: Request) {
   try {
@@ -201,9 +202,13 @@ export async function POST(req: Request) {
       0
     )
 
-    // Get discount from payment intent if available, or calculate it
+    // Get discount and tax info from payment intent if available, or calculate it
     let discountAmount = 0
     let appliedCouponCode = couponCode || null
+    let taxAmount = 0
+    let taxRate: number | null = null
+    let taxRegion: string | null = null
+    let postalCode: string | null = null
 
     if (paymentIntentId) {
       try {
@@ -216,13 +221,70 @@ export async function POST(req: Request) {
         if (paymentIntent.metadata.couponCode) {
           appliedCouponCode = paymentIntent.metadata.couponCode
         }
+        // Get tax info from payment intent metadata if available
+        if (paymentIntent.metadata.taxAmount) {
+          taxAmount = parseFloat(paymentIntent.metadata.taxAmount)
+        }
+        if (paymentIntent.metadata.taxRate) {
+          taxRate = parseFloat(paymentIntent.metadata.taxRate)
+        }
+        if (paymentIntent.metadata.taxRegion) {
+          taxRegion = paymentIntent.metadata.taxRegion
+        }
+        if (paymentIntent.metadata.postalCode) {
+          postalCode = paymentIntent.metadata.postalCode
+        }
       } catch (error) {
         console.error("Failed to retrieve payment intent:", error)
       }
     }
 
-    // Calculate total after discount
-    const total = Math.max(0, subtotal - discountAmount)
+    // Calculate subtotal after discount
+    const subtotalAfterDiscount = Math.max(0, subtotal - discountAmount)
+
+    // Calculate tax if not already calculated from payment intent
+    if (taxAmount === 0 || taxRate === null) {
+      // Extract postal code from shipping address if not available from payment intent
+      if (!postalCode && shippingAddress) {
+        // Try to extract postal code from shipping address string
+        // Format is typically: "Name\nEmail\nPhone\nAddress\nPostalCode City\nDistrict\nCountry"
+        const addressLines = shippingAddress.split("\n")
+        if (addressLines.length >= 5) {
+          // Postal code is typically in the 5th line (index 4) before city
+          const postalCodeLine = addressLines[4]
+          if (postalCodeLine) {
+            // Extract postal code (format: XXXX-XXX or XXXX)
+            const match = postalCodeLine.match(/\d{4}(?:-\d{3})?/)
+            if (match) {
+              postalCode = match[0]
+            }
+          }
+        }
+      }
+
+      if (postalCode) {
+        try {
+          const taxResult = await calculateTax(subtotalAfterDiscount, postalCode)
+          taxAmount = taxResult.taxAmount
+          taxRate = taxResult.taxRate
+          taxRegion = taxResult.taxRegion
+        } catch (error) {
+          console.error("Failed to calculate tax:", error)
+          // Default to 23% (Mainland Portugal) if calculation fails
+          taxAmount = subtotalAfterDiscount * 0.23
+          taxRate = 23.0
+          taxRegion = "Mainland Portugal"
+        }
+      } else {
+        // Default to 23% (Mainland Portugal) if no postal code
+        taxAmount = subtotalAfterDiscount * 0.23
+        taxRate = 23.0
+        taxRegion = "Mainland Portugal"
+      }
+    }
+
+    // Calculate total including tax
+    const total = subtotalAfterDiscount + taxAmount
 
     // Check for affiliate referral
     const referral = await getReferralByUserId(session.user.id)
@@ -259,6 +321,9 @@ export async function POST(req: Request) {
         shippingAddress: shippingAddress || null,
         paymentIntentId: paymentIntentId || null,
         affiliateReferralId,
+        taxRate: taxRate,
+        taxAmount: taxAmount,
+        taxRegion: taxRegion,
         items: {
           create: cart.items.map((item) => ({
             productId: item.productId,

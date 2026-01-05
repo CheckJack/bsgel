@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
@@ -24,6 +24,9 @@ interface Order {
   total: string;
   status: string;
   shippingAddress: string | null;
+  taxRate: number | null;
+  taxAmount: string | null;
+  taxRegion: string | null;
   createdAt: string;
   items: OrderItem[];
 }
@@ -35,13 +38,7 @@ export default function OrderConfirmationPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (params.id && session) {
-      fetchOrder();
-    }
-  }, [params.id, session]);
-
-  const fetchOrder = async () => {
+  const fetchOrder = useCallback(async () => {
     try {
       const res = await fetch(`/api/orders/${params.id}`);
       if (res.ok) {
@@ -53,7 +50,13 @@ export default function OrderConfirmationPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [params.id]);
+
+  useEffect(() => {
+    if (params.id && session) {
+      fetchOrder();
+    }
+  }, [params.id, session, fetchOrder]);
 
   if (isLoading) {
     return <div className="container mx-auto px-4 py-8 text-center">Loading...</div>;
@@ -141,9 +144,35 @@ export default function OrderConfirmationPage() {
                   </div>
                 ))}
               </div>
-              <div className="mt-4 pt-4 border-t flex justify-between font-bold text-lg">
-                <span>Total</span>
-                <span>{formatPrice(order.total)}</span>
+              <div className="mt-4 pt-4 space-y-2 border-t">
+                {/* Calculate subtotal */}
+                {(() => {
+                  const subtotal = order.items.reduce(
+                    (sum, item) => sum + parseFloat(item.price) * item.quantity,
+                    0
+                  );
+                  const taxAmount = order.taxAmount ? parseFloat(order.taxAmount) : 0;
+                  return (
+                    <>
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>Subtotal</span>
+                        <span>{formatPrice(subtotal)}</span>
+                      </div>
+                      {order.taxAmount && order.taxRate && (
+                        <div className="flex justify-between text-sm text-gray-600">
+                          <span>
+                            Tax ({order.taxRegion || `${order.taxRate}%`})
+                          </span>
+                          <span>{formatPrice(taxAmount)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                        <span>Total</span>
+                        <span>{formatPrice(order.total)}</span>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </CardContent>
           </Card>

@@ -172,6 +172,9 @@ model Order {
   shippingAddress     String?
   affiliateReferralId String? // If purchased via referral link
   affiliateReferral   AffiliateReferral? @relation(fields: [affiliateReferralId], references: [id], onDelete: SetNull)
+  taxRate             Decimal?           @db.Decimal(5, 2) // Tax rate applied (e.g., 23.00 for 23%)
+  taxAmount           Decimal?           @db.Decimal(10, 2) // Calculated tax amount
+  taxRegion           String? // Tax region name (e.g., "Mainland Portugal", "Madeira", "Azores")
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 
@@ -913,6 +916,22 @@ model TrainingBooking {
   @@index([sessionId])
   @@index([status])
   @@index([createdAt])
+}
+
+model TaxRegion {
+  id               String    @id @default(cuid())
+  name             String // e.g., "Mainland Portugal", "Madeira", "Azores"
+  taxRate          Decimal   @db.Decimal(5, 2) // Tax rate (e.g., 23.00 for 23%)
+  postalCodePatterns String[] @default([]) // e.g., ["1*", "2*", ..., "8*"] for Mainland
+  isActive         Boolean   @default(true)
+  validFrom        DateTime  @default(now())
+  validUntil       DateTime? // Nullable, for future rate changes
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([isActive])
+  @@index([validFrom])
+  @@index([validUntil])
 }
 
 model SystemSettings {

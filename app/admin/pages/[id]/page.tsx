@@ -610,7 +610,7 @@ export default function EditPagePage() {
                   {sections.trainingBanner?.image && renderSectionMedia(
                     "trainingBanner",
                     "Training Banner",
-                    sections.trainingBanner.image ? [sections.trainingBanner.image] : [],
+                    [sections.trainingBanner.image],
                     "single"
                   )}
                   {(!sections.trainingBanner?.image) && (

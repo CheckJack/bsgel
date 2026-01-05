@@ -33,7 +33,8 @@ import {
   ClipboardList,
   Star,
   Mail,
-  Calendar
+  Calendar,
+  Receipt
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -120,6 +121,12 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
               title: "Product Reviews",
               href: "/admin/reviews",
               icon: Star,
+              badge: null,
+            },
+            {
+              title: "Tax Configuration",
+              href: "/admin/tax-config",
+              icon: Receipt,
               badge: null,
             },
           ],
@@ -346,9 +353,9 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
         // If no child matches, check if it's a direct sub-path of parent (not a child's path)
         if (pathname?.startsWith(item.href + "/")) {
           // Make sure it's not matching any child's path
-          const matchesAnyChild = item.children.some((child) => 
+          const matchesAnyChild = item.children?.some((child) => 
             child.href && pathname?.startsWith(child.href + "/")
-          );
+          ) || false;
           // Only active if it's a sub-path of parent but not a child
           return !matchesAnyChild;
         }

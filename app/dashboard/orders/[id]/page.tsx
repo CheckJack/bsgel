@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +26,9 @@ interface Order {
   total: string;
   status: string;
   shippingAddress: string | null;
+  taxRate: number | null;
+  taxAmount: string | null;
+  taxRegion: string | null;
   createdAt: string;
   items: OrderItem[];
 }
@@ -39,13 +42,7 @@ export default function OrderDetailPage() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [isReordering, setIsReordering] = useState(false);
 
-  useEffect(() => {
-    if (params.id && session) {
-      fetchOrder();
-    }
-  }, [params.id, session]);
-
-  const fetchOrder = async () => {
+  const fetchOrder = useCallback(async () => {
     try {
       setIsLoading(true);
       const res = await fetch(`/api/orders/${params.id}`);
@@ -62,7 +59,13 @@ export default function OrderDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [params.id]);
+
+  useEffect(() => {
+    if (params.id && session) {
+      fetchOrder();
+    }
+  }, [params.id, session, fetchOrder]);
 
   const handleCancelOrder = async () => {
     if (!order) return;
@@ -308,9 +311,35 @@ export default function OrderDetailPage() {
                 </div>
               ))}
             </div>
-            <div className="mt-6 pt-6 border-t dark:border-gray-700 flex justify-between font-bold text-xl text-gray-900 dark:text-gray-100">
+            <div className="mt-6 pt-4 space-y-2 border-t dark:border-gray-700">
+              {/* Calculate subtotal */}
+              {(() => {
+                const subtotal = order.items.reduce(
+                  (sum, item) => sum + parseFloat(item.price) * item.quantity,
+                  0
+                );
+                const taxAmount = order.taxAmount ? parseFloat(order.taxAmount) : 0;
+                return (
+                  <>
+                    <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+                      <span>Subtotal</span>
+                      <span>{formatPrice(subtotal)}</span>
+                    </div>
+                    {order.taxAmount && order.taxRate && (
+                      <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+                        <span>
+                          Tax ({order.taxRegion || `${order.taxRate}%`})
+                        </span>
+                        <span>{formatPrice(taxAmount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-bold text-xl text-gray-900 dark:text-gray-100 pt-2 border-t dark:border-gray-700">
               <span>Total</span>
               <span>{formatPrice(order.total)}</span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>
