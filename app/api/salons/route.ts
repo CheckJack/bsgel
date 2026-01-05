@@ -15,11 +15,11 @@ export async function GET(request: Request) {
     // Build where clause for search
     const where: any = {};
 
-    // For non-admin users, only show active salons
+    // For non-admin users, only show active and approved salons (exclude pending review)
     // For admins, show all salons
     if (!isAdmin) {
       where.isActive = true;
-      // Note: status field may not exist in database, so we don't filter by it
+      where.status = { not: "PENDING_REVIEW" };
     }
 
     if (search) {
@@ -109,6 +109,18 @@ export async function POST(req: Request) {
     const userId = session?.user?.id && session.user.role !== "ADMIN" ? session.user.id : null;
     const isAdmin = session?.user?.role === "ADMIN";
 
+    // Check if user is a professional (has certification) - only for non-admin users
+    // Only professionals can create salon listings
+    if (userId && !isAdmin && session) {
+      const hasCertification = !!session.user.certification;
+      if (!hasCertification) {
+        return NextResponse.json(
+          { error: "Only professionals can create salon listings. Please contact support to get certified." },
+          { status: 403 }
+        );
+      }
+    }
+
     // Check if user already has a salon (only for non-admin users)
     if (userId) {
       const existingSalon = await db.salon.findUnique({
@@ -169,6 +181,7 @@ export async function POST(req: Request) {
     };
 
     // Prepare salon data with validation
+    // Only admins can set isBioDiamond to true - regular users cannot
     const salonData: any = {
       name: String(name).trim(),
       address: String(address).trim(),
@@ -184,7 +197,7 @@ export async function POST(req: Request) {
       images: Array.isArray(images) ? images.filter((img: any) => typeof img === "string" && img.trim() !== "").map((img: string) => sanitizeBase64(img)).filter((img: any) => img !== null) : [],
       description: toNullIfEmpty(description),
       workingHours: workingHours || null,
-      isBioDiamond: isBioDiamond ?? false,
+      isBioDiamond: isAdmin ? (isBioDiamond ?? false) : false, // Only admins can set BioDiamond
       status: salonStatus,
       userId: userId || null,
     };

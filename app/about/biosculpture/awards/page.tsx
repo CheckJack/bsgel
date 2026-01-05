@@ -86,7 +86,7 @@ export default function AwardsPage() {
               
               {/* Caption */}
               <div className="mt-6 text-xs uppercase tracking-wider text-brand-black/40">
-                Bio Sculpture BIOGEL — 2024 Readers' Choice Award Winner
+                Bio Sculpture BIOGEL — 2024 Readers&apos; Choice Award Winner
               </div>
             </div>
 
@@ -106,8 +106,8 @@ export default function AwardsPage() {
                 </p>
                 
                 <p className="text-brand-champagne font-medium">
-                  "An achievement that demonstrates unwavering professional trust 
-                  and consistent quality."
+                  &quot;An achievement that demonstrates unwavering professional trust 
+                  and consistent quality.&quot;
                 </p>
 
                 <div className="pt-6 space-y-3">
@@ -117,7 +117,7 @@ export default function AwardsPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <Star className="w-4 h-4 text-brand-champagne fill-brand-champagne" />
-                    <span className="text-sm">Readers' Choice Winner</span>
+                    <span className="text-sm">Readers&apos; Choice Winner</span>
                   </div>
                 </div>
               </div>
@@ -228,7 +228,7 @@ export default function AwardsPage() {
                   <p className="text-sm text-brand-champagne">Emerging Category • Southern Africa</p>
                 </div>
                 <blockquote className="text-xl font-light text-brand-black/60 italic border-l-2 border-brand-champagne pl-6">
-                  "A great sense of pride for my brand and hard work."
+                  &quot;A great sense of pride for my brand and hard work.&quot;
                 </blockquote>
                 <div className="flex gap-12 pt-4">
                   <div>

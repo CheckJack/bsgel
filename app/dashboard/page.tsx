@@ -28,15 +28,43 @@ export default function DashboardPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [pointsData, setPointsData] = useState<PointsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [featureSettings, setFeatureSettings] = useState({
+    rewardsEnabled: true,
+    affiliateEnabled: true,
+  });
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
     } else if (session) {
       fetchOrders();
-      fetchPointsData();
+      fetchFeatureSettings();
     }
   }, [session, status, router]);
+
+  useEffect(() => {
+    if (featureSettings.rewardsEnabled && session) {
+      fetchPointsData();
+    }
+  }, [featureSettings.rewardsEnabled, session]);
+
+  const fetchFeatureSettings = async () => {
+    try {
+      const res = await fetch("/api/admin/feature-settings");
+      if (res.ok) {
+        const data = await res.json();
+        const settings = {
+          rewardsEnabled: data.rewardsEnabled ?? true,
+          affiliateEnabled: data.affiliateEnabled ?? true,
+        };
+        setFeatureSettings(settings);
+      }
+    } catch (error) {
+      console.error("Failed to fetch feature settings:", error);
+      // Default to enabled if fetch fails
+      setFeatureSettings({ rewardsEnabled: true, affiliateEnabled: true });
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -56,6 +84,9 @@ export default function DashboardPage() {
   };
 
   const fetchPointsData = async () => {
+    if (!featureSettings.rewardsEnabled) {
+      return;
+    }
     try {
       const res = await fetch("/api/affiliate");
       if (res.ok) {
@@ -104,12 +135,14 @@ export default function DashboardPage() {
               Here&apos;s an overview of your account activity
             </p>
           </div>
-          <Link href="/dashboard/rewards" className="self-start sm:self-auto">
-            <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all text-sm sm:text-base">
-              <Award className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-              My Rewards
-            </Button>
-          </Link>
+          {featureSettings.rewardsEnabled && (
+            <Link href="/dashboard/rewards" className="self-start sm:self-auto">
+              <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all text-sm sm:text-base">
+                <Award className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                My Rewards
+              </Button>
+            </Link>
+          )}
         </div>
         {isPendingCertification && (
           <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg animate-pulse">
@@ -121,7 +154,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Rewards/Points Card - Professional Design */}
-      {pointsData && (
+      {featureSettings.rewardsEnabled && pointsData && (
         <Link href="/dashboard/rewards">
           <Card className="relative overflow-hidden border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-300 hover:shadow-xl group cursor-pointer bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950">
             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-400/10 to-indigo-400/10 rounded-full -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-500"></div>

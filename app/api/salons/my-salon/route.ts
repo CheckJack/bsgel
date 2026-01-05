@@ -17,6 +17,17 @@ export async function GET(request: Request) {
       );
     }
 
+    // Check if user is a professional (has certification)
+    // Only professionals can access salon management
+    const hasCertification = !!session.user.certification;
+    if (!hasCertification) {
+      console.log("My Salon API - Forbidden: User is not a professional");
+      return NextResponse.json(
+        { error: "This page is only available for professionals. Please contact support to get certified." },
+        { status: 403 }
+      );
+    }
+
     // Find salon by userId
     const salon = await db.salon.findUnique({
       where: { userId: session.user.id },

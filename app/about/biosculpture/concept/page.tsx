@@ -42,7 +42,7 @@ export default function ConceptPage() {
       >
         <div className="container mx-auto max-w-4xl">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium mb-8 md:mb-10 text-brand-black">
-            O que significa <span className="font-medium">"Tratar"</span>
+            O que significa <span className="font-medium">&quot;Tratar&quot;</span>
           </h2>
           <p className="text-lg md:text-xl lg:text-2xl font-light text-brand-black leading-relaxed">
             Antes de falar em cor, forma ou comprimento, a Terapeuta de unhas BIO observa a unha natural espessura, flexibilidade, quebras, descamação, manchas e até os hábitos diários da cliente.
@@ -63,7 +63,7 @@ export default function ConceptPage() {
                   O Protocolo
                 </h2>
                 <p className="text-lg md:text-xl lg:text-2xl font-light text-brand-black leading-relaxed">
-                  No Conceito BIO, o tratamento é personalizado como uma "receita" para cada unha. A profissional escolhe bases, tratamentos ETHOS e cuidados de SPA específicos para fortalecer, equilibrar ou proteger, criando uma base saudável antes de qualquer construção ou cor.
+                  No Conceito BIO, o tratamento é personalizado como uma &quot;receita&quot; para cada unha. A profissional escolhe bases, tratamentos ETHOS e cuidados de SPA específicos para fortalecer, equilibrar ou proteger, criando uma base saudável antes de qualquer construção ou cor.
                 </p>
               </div>
             </div>
@@ -133,7 +133,7 @@ export default function ConceptPage() {
         <div className="absolute inset-0 flex items-center justify-center p-4 md:p-8 lg:p-16">
           <div className="bg-[rgba(139,69,19,0.7)] md:bg-[rgba(139,69,19,0.75)] m-2 md:m-4 lg:m-6 p-12 md:p-16 lg:p-20 max-w-6xl md:max-w-7xl rounded-lg md:rounded-xl lg:rounded-2xl">
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium mb-6 md:mb-8 text-white">
-              O momento de "Embelezar"
+              O momento de &quot;Embelezar&quot;
             </h2>
             <p className="text-lg md:text-xl lg:text-2xl font-light text-white leading-relaxed">
               Só depois de a unha estar cuidada é que entra a parte estética: cor, brilho, comprimento e nail art. A construção, o alongamento e os detalhes artísticos são feitos em cima de uma base estável, o que ajuda a manter o resultado bonito durante mais tempo e reduz a necessidade de correções agressivas.

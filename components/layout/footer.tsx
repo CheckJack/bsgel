@@ -13,8 +13,10 @@ import {
   MapPin,
   Send
 } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
 
 export function Footer() {
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [subscribeStatus, setSubscribeStatus] = useState<"idle" | "success" | "error">("idle");
@@ -54,19 +56,18 @@ export function Footer() {
               />
             </Link>
             <p className="text-white/90 text-sm leading-relaxed mb-6">
-              Premium nail care products designed for professionals. 
-              Committed to healthy, ethical, and professional nail care solutions.
+              {t("footer.description")}
             </p>
             
             {/* Newsletter */}
             <div className="mb-6">
-              <h4 className="font-medium text-base mb-3">Stay Connected</h4>
+              <h4 className="font-medium text-base mb-3">{t("footer.stayConnected")}</h4>
               <form onSubmit={handleNewsletterSubmit} className="flex gap-2">
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Your email"
+                  placeholder={t("footer.yourEmail")}
                   required
                   className="flex-1 px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-md 
                            text-white placeholder:text-white/60 focus:outline-none focus:ring-2 
@@ -77,22 +78,22 @@ export function Footer() {
                   disabled={isSubscribing}
                   className="px-4 py-2 bg-white text-[#857D71] rounded-md hover:bg-white/90 
                            transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label="Subscribe to newsletter"
+                  aria-label={t("footer.subscribeToNewsletter")}
                 >
                   <Send className="h-4 w-4" />
                 </button>
               </form>
               {subscribeStatus === "success" && (
-                <p className="text-xs text-white/90 mt-2">Thank you for subscribing!</p>
+                <p className="text-xs text-white/90 mt-2">{t("footer.thankYouForSubscribing")}</p>
               )}
               {subscribeStatus === "error" && (
-                <p className="text-xs text-red-300 mt-2">Something went wrong. Please try again.</p>
+                <p className="text-xs text-red-300 mt-2">{t("footer.somethingWentWrong")}</p>
               )}
             </div>
 
             {/* Social Media */}
             <div>
-              <h4 className="font-medium text-base mb-3">Follow Us</h4>
+              <h4 className="font-medium text-base mb-3">{t("footer.followUs")}</h4>
               <div className="flex gap-3">
                 <a
                   href="https://facebook.com/biosculpture"
@@ -140,7 +141,7 @@ export function Footer() {
 
           {/* Shop Section */}
           <div>
-            <h3 className="font-medium text-base mb-4">Shop</h3>
+            <h3 className="font-medium text-base mb-4">{t("footer.shop")}</h3>
             <ul className="space-y-2.5">
               <li>
                 <Link href="/bio-gel" className="text-sm text-white/90 hover:text-white transition-colors">
@@ -169,7 +170,7 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/products" className="text-sm text-white/90 hover:text-white transition-colors">
-                  All Products
+                  {t("footer.allProducts")}
                 </Link>
               </li>
             </ul>
@@ -177,31 +178,31 @@ export function Footer() {
 
           {/* Resources Section */}
           <div>
-            <h3 className="font-medium text-base mb-4">Resources</h3>
+            <h3 className="font-medium text-base mb-4">{t("footer.resources")}</h3>
             <ul className="space-y-2.5">
               <li>
                 <Link href="/diagnosis" className="text-sm text-white/90 hover:text-white transition-colors">
-                  Nail Diagnosis
+                  {t("footer.nailDiagnosis")}
                 </Link>
               </li>
               <li>
                 <Link href="/salons" className="text-sm text-white/90 hover:text-white transition-colors">
-                  Find a Salon
+                  {t("footer.findASalon")}
                 </Link>
               </li>
               <li>
                 <Link href="/blog" className="text-sm text-white/90 hover:text-white transition-colors">
-                  Blog
+                  {t("footer.blog")}
                 </Link>
               </li>
               <li>
-                <Link href="/training" className="text-sm text-white/90 hover:text-white transition-colors">
-                  Training
+                <Link href="/about/biosculpture/training" className="text-sm text-white/90 hover:text-white transition-colors">
+                  {t("footer.training")}
                 </Link>
               </li>
               <li>
-                <Link href="/about/biosculpture/certifications" prefetch={false} className="text-sm text-white/90 hover:text-white transition-colors">
-                  Certifications
+                <Link href="/about/biosculpture/certifications" className="text-sm text-white/90 hover:text-white transition-colors">
+                  {t("footer.certifications")}
                 </Link>
               </li>
             </ul>
@@ -209,31 +210,31 @@ export function Footer() {
 
           {/* Company Section */}
           <div>
-            <h3 className="font-medium text-base mb-4">Company</h3>
+            <h3 className="font-medium text-base mb-4">{t("footer.company")}</h3>
             <ul className="space-y-2.5">
               <li>
                 <Link href="/about" className="text-sm text-white/90 hover:text-white transition-colors">
-                  About Us
+                  {t("footer.aboutUs")}
                 </Link>
               </li>
               <li>
-                <Link href="/about/biosculpture/philosophy" prefetch={false} className="text-sm text-white/90 hover:text-white transition-colors">
-                  Philosophy
+                <Link href="/about/biosculpture/philosophy" className="text-sm text-white/90 hover:text-white transition-colors">
+                  {t("footer.philosophy")}
                 </Link>
               </li>
               <li>
                 <Link href="/contact" className="text-sm text-white/90 hover:text-white transition-colors">
-                  Contact
+                  {t("footer.contact")}
                 </Link>
               </li>
               <li>
                 <Link href="/dashboard" className="text-sm text-white/90 hover:text-white transition-colors">
-                  My Account
+                  {t("footer.myAccount")}
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard/orders" className="text-sm text-white/90 hover:text-white transition-colors">
-                  Orders
+                <Link href="/orders" className="text-sm text-white/90 hover:text-white transition-colors">
+                  {t("footer.orders")}
                 </Link>
               </li>
             </ul>
@@ -241,7 +242,7 @@ export function Footer() {
 
           {/* Contact & Legal Section */}
           <div>
-            <h3 className="font-medium text-base mb-4">Get in Touch</h3>
+            <h3 className="font-medium text-base mb-4">{t("footer.getInTouch")}</h3>
             <ul className="space-y-3 mb-6">
               <li className="flex items-start gap-2">
                 <Mail className="h-4 w-4 mt-0.5 flex-shrink-0" />
@@ -269,21 +270,21 @@ export function Footer() {
               </li>
             </ul>
 
-            <h4 className="font-medium text-base mb-3">Legal</h4>
+            <h4 className="font-medium text-base mb-3">{t("footer.legal")}</h4>
             <ul className="space-y-2.5">
               <li>
-                <Link href="/privacy" prefetch={false} className="text-sm text-white/90 hover:text-white transition-colors">
-                  Privacy Policy
+                <Link href="/privacy" className="text-sm text-white/90 hover:text-white transition-colors">
+                  {t("footer.privacyPolicy")}
                 </Link>
               </li>
               <li>
-                <Link href="/terms" prefetch={false} className="text-sm text-white/90 hover:text-white transition-colors">
-                  Terms of Service
+                <Link href="/terms" className="text-sm text-white/90 hover:text-white transition-colors">
+                  {t("footer.termsOfService")}
                 </Link>
               </li>
               <li>
-                <Link href="/shipping" prefetch={false} className="text-sm text-white/90 hover:text-white transition-colors">
-                  Shipping Policy
+                <Link href="/shipping" className="text-sm text-white/90 hover:text-white transition-colors">
+                  {t("footer.shippingPolicy")}
                 </Link>
               </li>
             </ul>
@@ -297,12 +298,12 @@ export function Footer() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             {/* Copyright */}
             <p className="text-sm text-white/80 text-center md:text-left">
-              &copy; {new Date().getFullYear()} Bio Sculpture. All rights reserved.
+              &copy; {new Date().getFullYear()} Bio Sculpture. {t("footer.allRightsReserved")}
             </p>
 
             {/* Payment Methods */}
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <span className="text-xs text-white/70 mr-2">We accept:</span>
+              <span className="text-xs text-white/70 mr-2">{t("footer.weAccept")}</span>
               <div className="flex flex-wrap items-center gap-1.5">
                 <div className="bg-white rounded px-1.5 py-1">
                   <Image
@@ -311,6 +312,8 @@ export function Footer() {
                     width={32}
                     height={20}
                     className="h-4 w-auto"
+                    unoptimized
+                    priority={false}
                   />
                 </div>
                 <div className="bg-white rounded px-1.5 py-1">
@@ -320,6 +323,8 @@ export function Footer() {
                     width={32}
                     height={20}
                     className="h-4 w-auto"
+                    unoptimized
+                    priority={false}
                   />
                 </div>
                 <div className="bg-white rounded px-1.5 py-1">
@@ -329,6 +334,8 @@ export function Footer() {
                     width={32}
                     height={20}
                     className="h-4 w-auto"
+                    unoptimized
+                    priority={false}
                   />
                 </div>
                 <div className="bg-white rounded px-1.5 py-1">
@@ -338,6 +345,8 @@ export function Footer() {
                     width={32}
                     height={20}
                     className="h-4 w-auto"
+                    unoptimized
+                    priority={false}
                   />
                 </div>
                 <div className="bg-white rounded px-1.5 py-1">
@@ -347,6 +356,8 @@ export function Footer() {
                     width={32}
                     height={20}
                     className="h-4 w-auto"
+                    unoptimized
+                    priority={false}
                   />
                 </div>
                 <div className="bg-white rounded px-1.5 py-1">
@@ -356,6 +367,8 @@ export function Footer() {
                     width={32}
                     height={20}
                     className="h-4 w-auto"
+                    unoptimized
+                    priority={false}
                   />
                 </div>
               </div>

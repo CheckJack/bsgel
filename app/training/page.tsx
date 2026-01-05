@@ -9,6 +9,7 @@ import { toast } from "@/components/ui/toast";
 import { Calendar, Clock, MapPin, Users, BookOpen, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { TrainingCalendar } from "@/components/training/training-calendar";
+import { useLanguage } from "@/contexts/language-context";
 
 interface TrainingProgram {
   id: string;
@@ -58,6 +59,7 @@ interface BookingModalProps {
 }
 
 function BookingModal({ session, onClose, onBook }: BookingModalProps) {
+  const { t } = useLanguage();
   const [notes, setNotes] = useState("");
   const [isBooking, setIsBooking] = useState(false);
 
@@ -101,7 +103,7 @@ function BookingModal({ session, onClose, onBook }: BookingModalProps) {
         <CardContent className="p-6">
           <div className="flex justify-between items-start mb-6">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Book Training Session
+              {t("training.bookTrainingSession")}
             </h2>
             <button
               onClick={onClose}
@@ -141,7 +143,7 @@ function BookingModal({ session, onClose, onBook }: BookingModalProps) {
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                 <Users className="h-4 w-4" />
                 <span>
-                  {session.availableSpots} of {session.maxParticipants} spots available
+                  {session.availableSpots} de {session.maxParticipants} {t("training.spots")} disponíveis
                 </span>
               </div>
             </div>
@@ -153,7 +155,7 @@ function BookingModal({ session, onClose, onBook }: BookingModalProps) {
                 htmlFor="notes"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
               >
-                Additional Notes (Optional)
+                {t("training.additionalNotes")}
               </label>
               <textarea
                 id="notes"
@@ -161,7 +163,7 @@ function BookingModal({ session, onClose, onBook }: BookingModalProps) {
                 onChange={(e) => setNotes(e.target.value)}
                 rows={4}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Any special requirements or questions..."
+                placeholder={t("training.additionalNotesPlaceholder")}
               />
             </div>
 
@@ -173,7 +175,7 @@ function BookingModal({ session, onClose, onBook }: BookingModalProps) {
                 className="flex-1"
                 disabled={isBooking}
               >
-                Cancel
+                {t("training.cancel")}
               </Button>
               <Button
                 type="submit"
@@ -183,12 +185,12 @@ function BookingModal({ session, onClose, onBook }: BookingModalProps) {
                 {isBooking ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Booking...
+                    {t("training.booking")}
                   </>
                 ) : (
                   <>
                     <BookOpen className="h-4 w-4 mr-2" />
-                    Confirm Booking
+                    {t("training.confirmBooking")}
                   </>
                 )}
               </Button>
@@ -201,6 +203,7 @@ function BookingModal({ session, onClose, onBook }: BookingModalProps) {
 }
 
 export default function TrainingPage() {
+  const { t } = useLanguage();
   const { data: session } = useSession();
   const [programs, setPrograms] = useState<TrainingProgram[]>([]);
   const [sessions, setSessions] = useState<TrainingSession[]>([]);
@@ -280,7 +283,7 @@ export default function TrainingPage() {
 
   const handleBookSession = async (sessionId: string, notes?: string) => {
     if (!session?.user) {
-      toast("Please log in to book a training session", "error");
+      toast(t("training.pleaseLogin"), "error");
       return;
     }
 
@@ -292,18 +295,18 @@ export default function TrainingPage() {
       });
 
       if (res.ok) {
-        toast("Training session booked successfully!", "success");
+        toast(t("training.bookedSuccessfully"), "success");
         setSelectedSession(null);
         fetchSessions(selectedProgramId || undefined);
         fetchPrograms();
       } else {
         const data = await res.json();
-        toast(data.error || "Failed to book session", "error");
-        throw new Error(data.error || "Failed to book session");
+        toast(data.error || t("training.failedToBook"), "error");
+        throw new Error(data.error || t("training.failedToBook"));
       }
     } catch (error: any) {
       if (!error.message.includes("Failed to book")) {
-        toast("Failed to book session. Please try again.", "error");
+        toast(t("training.failedToBook"), "error");
       }
       throw error;
     }
@@ -313,8 +316,8 @@ export default function TrainingPage() {
     {
       type: "image" as const,
       src: "/Training_1.webp",
-      title: "Biosculpture Training",
-      description: "Professional training programs to advance your skills",
+      title: t("training.title"),
+      description: t("training.description"),
     },
   ];
 
@@ -343,12 +346,10 @@ export default function TrainingPage() {
         <section className="py-16 px-4">
           <div className="container mx-auto max-w-6xl">
             <div className="text-center mb-12">
-              <h2 className="text-4xl font-medium mb-4 text-brand-black">Training Programs</h2>
+              <h2 className="text-4xl font-medium mb-4 text-brand-black">{t("training.trainingPrograms")}</h2>
               <div className="w-24 h-1 bg-brand-champagne mx-auto mb-6"></div>
               <p className="text-lg font-light text-brand-black leading-relaxed max-w-3xl mx-auto">
-                Advance your beauty career with our comprehensive training programs. 
-                We offer world-class training across multiple locations to help you master 
-                the art of Biosculpture nail care.
+                {t("training.trainingProgramsDesc")}
               </p>
             </div>
 
@@ -359,7 +360,7 @@ export default function TrainingPage() {
             ) : programs.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-600 dark:text-gray-400">
-                  No training programs available at the moment. Please check back later.
+                  {t("training.noTrainingPrograms")}
                 </p>
               </div>
             ) : (
@@ -368,7 +369,7 @@ export default function TrainingPage() {
                   {/* Left Side - Training Programs List */}
                   <div className="p-6">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                      Training Programs
+                      {t("training.trainingPrograms")}
                     </h3>
                     <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
                       {programs.map((program) => (
@@ -414,11 +415,11 @@ export default function TrainingPage() {
                               <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                                 <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
                                   <Calendar className="h-3 w-3" />
-                                  <span>{program.upcomingSessions} available session{program.upcomingSessions !== 1 ? "s" : ""}</span>
+                                  <span>{program.upcomingSessions} {program.upcomingSessions !== 1 ? t("training.availableSessionsPlural") : t("training.availableSessions")}</span>
                                 </div>
                                 {program.includedProducts && program.includedProducts.length > 0 && (
                                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                                    {program.includedProducts.length} product{program.includedProducts.length !== 1 ? "s" : ""} included
+                                    {program.includedProducts.length} {program.includedProducts.length !== 1 ? t("training.productsIncludedPlural") : t("training.productsIncluded")}
                                   </p>
                                 )}
                               </div>
@@ -435,14 +436,14 @@ export default function TrainingPage() {
                       <div className="text-center py-12">
                         <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Select a training program to view available dates
+                          {t("training.selectProgram")}
                         </p>
                       </div>
                     ) : sessions.length === 0 ? (
                       <div className="text-center py-12">
                         <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          No upcoming sessions for this program. Please check back later.
+                          {t("training.noUpcomingSessions")}
                         </p>
                       </div>
                     ) : (
@@ -461,16 +462,16 @@ export default function TrainingPage() {
                         <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           {!selectedProgramId 
-                            ? "Select a training program"
+                            ? t("training.selectTrainingProgram")
                             : !selectedDate
-                            ? "Click on a date to view available times"
-                            : "No sessions available for this date"}
+                            ? t("training.clickDateViewTimes")
+                            : t("training.noSessionsForDate")}
                         </p>
                       </div>
                     ) : (
                       <div>
                         <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                          Select a Date & Time
+                          {t("training.selectDateTime")}
                         </h4>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                           {formatDate(sessionsForSelectedDate[0].startDate)}
@@ -515,17 +516,17 @@ export default function TrainingPage() {
                                 )}
                                 {sessionItem.format && (
                                   <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">
-                                    {sessionItem.format === "ONLINE" ? "Online" : sessionItem.format === "PRESENTIAL" ? "In-Person" : "Hybrid"}
+                                    {sessionItem.format === "ONLINE" ? t("training.online") : sessionItem.format === "PRESENTIAL" ? t("training.inPerson") : t("training.hybrid")}
                                   </span>
                                 )}
                                 <span className="flex items-center gap-1">
                                   <Users className="h-3 w-3" />
-                                  {sessionItem.availableSpots} spots
+                                  {sessionItem.availableSpots} {t("training.spots")}
                                 </span>
                               </div>
                               {sessionItem.availableSpots === 0 && (
                                 <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                                  Fully booked
+                                  {t("training.fullyBooked")}
                                 </p>
                               )}
                             </button>
@@ -535,7 +536,7 @@ export default function TrainingPage() {
                           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                             <Link href="/login" className="block">
                               <Button className="w-full" variant="outline" size="sm">
-                                Log in to Book
+                                {t("training.loginToBook")}
                               </Button>
                             </Link>
                           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ProductCard } from "@/components/product/product-card";
@@ -32,17 +32,7 @@ export default function ColorGelsPage() {
   const isInitialMount = useRef(true);
   const [shouldShowId, setShouldShowId] = useState(false);
 
-  useEffect(() => {
-    fetchColorGelProducts();
-    // Add id after component mounts to prevent browser auto-scroll
-    const timer = setTimeout(() => {
-      setShouldShowId(true);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [currentPage]);
-
-
-  const fetchColorGelProducts = async () => {
+  const fetchColorGelProducts = useCallback(async () => {
     setIsLoading(true);
     try {
       // Fetch products assigned to color-gels showcasing section with pagination
@@ -64,7 +54,16 @@ export default function ColorGelsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage]);
+
+  useEffect(() => {
+    fetchColorGelProducts();
+    // Add id after component mounts to prevent browser auto-scroll
+    const timer = setTimeout(() => {
+      setShouldShowId(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [fetchColorGelProducts]);
 
   return (
     <>

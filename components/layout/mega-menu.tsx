@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Category {
   id: string;
@@ -21,6 +22,7 @@ interface MegaMenuProps {
 }
 
 export function MegaMenu({ isOpen, onClose, onMouseEnter, onMouseLeave }: MegaMenuProps) {
+  const { t } = useLanguage();
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -105,7 +107,7 @@ export function MegaMenu({ isOpen, onClose, onMouseEnter, onMouseLeave }: MegaMe
                   )}
                   {category.quantity !== undefined && category.quantity > 0 && (
                     <p className="text-xs text-gray-500 font-medium">
-                      {category.quantity} {category.quantity === 1 ? "product" : "products"}
+                      {category.quantity} {category.quantity === 1 ? t("common.product") : t("common.products")}
                     </p>
                   )}
                 </Link>
@@ -121,7 +123,7 @@ export function MegaMenu({ isOpen, onClose, onMouseEnter, onMouseLeave }: MegaMe
                 onClick={onClose}
                 className="text-sm font-medium text-gray-700 hover:text-brand-champagne transition-colors"
               >
-                View All Products
+                {t("common.viewAllProducts")}
               </Link>
               <Link
                 href="/diagnosis"

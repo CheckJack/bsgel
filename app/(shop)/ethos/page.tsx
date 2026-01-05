@@ -9,6 +9,7 @@ import { ProductReviews } from "@/components/product/product-reviews";
 import { NailDiagnosisModal } from "@/components/ui/nail-diagnosis-modal";
 import TextGenerateEffect from "@/components/ui/text-generate-effect";
 import { Pagination } from "@/components/ui/pagination";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Product {
   id: string;
@@ -27,6 +28,7 @@ interface Product {
 }
 
 export default function EthosPage() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -43,8 +45,6 @@ export default function EthosPage() {
       type: "video" as const,
       src: "/1203 (1).mp4",
       overlayImage: "/ETHOSLOGO.png",
-      title: "Ethos",
-      description: "Discover our premium line of Ethos products",
     },
   ];
 
@@ -263,7 +263,7 @@ export default function EthosPage() {
           <div className="container mx-auto px-4 max-w-6xl">
             <div className="text-center">
               <TextGenerateEffect
-                words="Our nail care collection represents our commitment to excellence in every product we create. This line of products embodies our dedication to quality, innovation, and the artistry that defines the Ethos brand. Crafted with natural and organic ingredients, each item in our collection is carefully formulated to meet the highest standards, ensuring that professionals and enthusiasts alike can achieve exceptional results with confidence in the purity and effectiveness of our formulations. #our-funds"
+                words={`${t("productPages.ethos.description")} #our-funds`}
                 className="text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl text-brand-black leading-relaxed font-normal"
                 filter={true}
                 duration={0.5}
@@ -282,16 +282,16 @@ export default function EthosPage() {
       <section ref={productsSectionRef} className="relative w-full min-h-screen bg-brand-white py-16">
         <div className="container mx-auto px-4 max-w-7xl">
           <h2 className="text-4xl md:text-5xl font-medium mb-12 text-center text-brand-black">
-            Ethos Products
+            {t("productPages.ethosProducts")}
           </h2>
           
           {isLoading ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">Loading products...</p>
+              <p className="text-gray-600">{t("productPages.loadingProducts")}</p>
             </div>
           ) : products.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">No Ethos products found.</p>
+              <p className="text-gray-600">{t("productPages.noEthosProducts")}</p>
             </div>
           ) : (
             <>

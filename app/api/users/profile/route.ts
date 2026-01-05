@@ -99,7 +99,7 @@ export async function PATCH(req: Request) {
 
     // Update name if provided
     if (validatedData.name !== undefined) {
-      updateData.name = validatedData.name === "" ? null : validatedData.name;
+      updateData.name = validatedData.name === "" || validatedData.name === null ? undefined : validatedData.name;
     }
 
     // Update email if provided
@@ -158,7 +158,7 @@ export async function PATCH(req: Request) {
     // Update user
     const updatedUser = await db.user.update({
       where: { id: session.user.id },
-      data: updateData,
+      data: updateData as any,
       select: {
         id: true,
         email: true,

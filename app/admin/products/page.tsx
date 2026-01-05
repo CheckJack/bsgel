@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
@@ -33,7 +33,7 @@ interface Category {
   parentId?: string | null;
 }
 
-export default function AdminProductsPage() {
+function AdminProductsPageContent() {
   const { t } = useLanguage();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -416,7 +416,7 @@ export default function AdminProductsPage() {
       return;
     }
 
-    const confirmMessage = t("products.bulkDeleteConfirm", { count: String(selectedProducts.size) });
+    const confirmMessage = t("products.bulkDeleteConfirm", { count: selectedProducts.size.toString() });
     if (!confirm(confirmMessage)) {
       return;
     }
@@ -482,7 +482,7 @@ export default function AdminProductsPage() {
       link.click();
       document.body.removeChild(link);
 
-      toast(t("products.exportSuccessWithCount", { count: String(filteredProducts.length) }), "success");
+      toast(t("products.exportSuccessWithCount", { count: filteredProducts.length.toString() }), "success");
     } catch (error) {
       console.error("Failed to export products:", error);
       toast("Failed to export products", "error");
@@ -552,7 +552,7 @@ export default function AdminProductsPage() {
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="text-sm text-gray-700 dark:text-gray-300">
-                <span className="font-medium">{selectedProducts.size}</span> {t("products.title").toLowerCase()}(s) {t("table.selected", { count: String(selectedProducts.size) })}
+                <span className="font-medium">{selectedProducts.size}</span> {t("products.title").toLowerCase()}(s) {t("table.selected", { count: selectedProducts.size.toString() })}
               </div>
               <div className="flex gap-2">
                 <Button
@@ -932,7 +932,7 @@ export default function AdminProductsPage() {
               </div>
 
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                {t("products.updateSelectedProducts", { count: String(selectedProducts.size) })}
+                {t("products.updateSelectedProducts", { count: selectedProducts.size.toString() })}
               </p>
 
               <div className="flex gap-6">
@@ -1121,5 +1121,20 @@ export default function AdminProductsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AdminProductsPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-sm text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AdminProductsPageContent />
+    </Suspense>
   );
 }

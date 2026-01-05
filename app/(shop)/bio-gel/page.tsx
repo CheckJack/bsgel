@@ -3,12 +3,12 @@
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { HeroSlider } from "@/components/layout/hero-slider";
-import { IngredientSlider } from "@/components/product/ingredient-slider";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import { NailDiagnosisModal } from "@/components/ui/nail-diagnosis-modal";
 import TextGenerateEffect from "@/components/ui/text-generate-effect";
 import { Pagination } from "@/components/ui/pagination";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Product {
   id: string;
@@ -27,6 +27,7 @@ interface Product {
 }
 
 export default function BioGelPage() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -43,8 +44,6 @@ export default function BioGelPage() {
       type: "video" as const,
       src: "/hjbuy.mp4",
       overlayImage: "/biologo.png",
-      title: "BIO Gel",
-      description: "Discover our premium line of BIO Gel products",
     },
   ];
 
@@ -172,82 +171,6 @@ export default function BioGelPage() {
   };
 
 
-  // Ingredients data for the slider
-  const ingredients = [
-    {
-      id: "almond",
-      name: "Almond",
-      image: "/jojoba (13).png",
-      whyWeUseIt: "Used because it is a very gentle, well-tolerated emollient that absorbs easily into skin and nails. Softens cuticles, reduces dryness and flaking, and helps improve flexibility of the nail plate to reduce splitting.",
-      benefits: [],
-      backgroundColor: "#7b3615",
-      textColor: "#FFFFFF"
-    },
-    {
-      id: "jojoba",
-      name: "Jojoba",
-      image: "/Add a heading (13).png",
-      whyWeUseIt: "Its structure is a liquid wax ester, very similar to human sebum, so it is well tolerated and absorbs quickly without greasiness. It can carry small, oil-soluble molecules (like vitamin E) into the nail plate, improving how well conditioning ingredients are absorbed.",
-      benefits: [],
-      backgroundColor: "#ef7f28",
-      textColor: "#FFFFFF"
-    },
-    {
-      id: "avocado",
-      name: "Avocado",
-      image: "/dsd.png",
-      whyWeUseIt: "It is high in fatty acids (like oleic acid) and vitamins, especially vitamin E, which moisturise and condition dry nails and skin. Its molecules can move into the superficial nail layers and act as a \"plasticiser,\" helping nail layers slide instead of crack.",
-      benefits: [],
-      backgroundColor: "#aeb54d",
-      textColor: "#FFFFFF"
-    },
-    {
-      id: "kiwi",
-      name: "Kiwi",
-      image: "/jojoba (8).png",
-      whyWeUseIt: "Kiwi is naturally rich in vitamin C, vitamin E and antioxidants, which support skin and nail health and help protect against environmental damage. Enzymes and fruit acids from kiwi help loosen and remove dead surface cells in a mild way, preparing the nail and cuticle for better absorption of oils and treatments.",
-      benefits: [],
-      backgroundColor: "#815532",
-      textColor: "#FFFFFF"
-    },
-    {
-      id: "passion-fruit",
-      name: "Passion Fruit",
-      image: "/fawa.png",
-      whyWeUseIt: "The seed oil is rich in linoleic and oleic acids plus vitamins A and E, so it delivers nourishing, moisturising and soothing effects while staying very light in texture. In some BIO Gel products it also appears as passion fruit seed powder for mild exfoliation, helping remove dry surface cells so treatments absorb better.",
-      benefits: [],
-      backgroundColor: "#eba725",
-      textColor: "#FFFFFF"
-    },
-    {
-      id: "ginseng-root",
-      name: "Ginseng Root",
-      image: "/jojoba (6).png",
-      whyWeUseIt: "Ginseng root extract helps stimulate local micro-circulation, so more oxygen and nutrients reach the nail matrix and surrounding skin, which can support better nail growth quality. It has antioxidant and anti-inflammatory compounds (ginsenosides) that protect the nail area from oxidative stress and help calm irritation around the cuticle.",
-      benefits: [],
-      backgroundColor: "#c39f6e",
-      textColor: "#FFFFFF"
-    },
-    {
-      id: "jasmine",
-      name: "Jasmine",
-      image: "/jojoba (4).png",
-      whyWeUseIt: "Used mainly for its soothing, aromatic and conditioning properties in cuticle oils. Helps comfort sensitive cuticles, adds mild moisturising, and makes treatments feel more luxurious and spa‑like.​",
-      benefits: [],
-      backgroundColor: "#422e55",
-      textColor: "#FFFFFF"
-    },
-    {
-      id: "sunflower-seed",
-      name: "Sunflower Seed",
-      image: "/jojoba (3).png",
-      whyWeUseIt: "Used as a lightweight base oil that carries other actives and adds essential fatty acids. Moisturises without feeling greasy, supports the skin barrier around the nail, and helps protect against environmental dryness.",
-      benefits: [],
-      backgroundColor: "#351d0c",
-      textColor: "#FFFFFF",
-      imageSize: "70%"
-    }
-  ];
 
   return (
     <>
@@ -263,7 +186,7 @@ export default function BioGelPage() {
           <div className="container mx-auto px-4 sm:px-6 max-w-6xl">
             <div className="text-center">
               <TextGenerateEffect
-                words="BIO Gel represents our revolutionary approach to professional nail treatments, combining advanced gel technology with innovative cooling therapy. The treatment chills system delivers a unique therapeutic experience that soothes and revitalizes nails while providing exceptional durability and strength. Crafted for professionals who demand excellence, BIO Gel treatments deliver chip-resistant, long-lasting results that maintain their vibrant finish while nurturing your natural nails. Experience the perfect fusion of artistry, innovation, and therapeutic care with BIO Gel. #our-funds"
+                words={`${t("productPages.bioGel.description")} #our-funds`}
                 className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl text-brand-black leading-relaxed font-normal"
                 filter={true}
                 duration={0.5}
@@ -274,27 +197,21 @@ export default function BioGelPage() {
           </div>
         </div>
       </section>
-
-      {/* Natural & Organic Ingredients Section */}
-      <section className="relative w-full h-screen bg-brand-white">
-        {/* Ingredient Slider */}
-        <IngredientSlider ingredients={ingredients} />
-      </section>
       
       {/* BIO Gel Products Grid Section */}
       <section ref={productsSectionRef} className="relative w-full min-h-screen bg-brand-white py-12 sm:py-16">
         <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-medium mb-8 sm:mb-12 text-center text-brand-black">
-            BIO Gel Products
+            {t("productPages.bioGelProducts")}
           </h2>
           
           {isLoading ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">Loading products...</p>
+              <p className="text-gray-600">{t("productPages.loadingProducts")}</p>
             </div>
           ) : products.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">No BIO Gel products found.</p>
+              <p className="text-gray-600">{t("productPages.noBioGelProducts")}</p>
             </div>
           ) : (
             <>

@@ -356,7 +356,9 @@ export function IngredientSlider({ ingredients }: IngredientSliderProps) {
                       alt={currentIngredient.name}
                       fill
                       className="object-contain transition-all duration-700 ease-out"
-                      unoptimized
+                      priority={currentIndex === 0}
+                      loading={currentIndex === 0 ? undefined : "lazy"}
+                      unoptimized={currentIngredient.image?.startsWith('data:') || currentIngredient.image?.startsWith('blob:') || !currentIngredient.image?.startsWith('http')}
                       sizes="(max-width: 768px) 100vw, 50vw"
                       style={{ objectFit: 'contain' }}
                     />

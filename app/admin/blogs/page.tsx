@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Image from "next/image";
@@ -40,7 +40,7 @@ interface Blog {
 type SortField = "title" | "publishedAt" | "createdAt" | "updatedAt" | "status";
 type SortOrder = "asc" | "desc";
 
-export default function AdminBlogsPage() {
+function AdminBlogsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -851,5 +851,20 @@ export default function AdminBlogsPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function AdminBlogsPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-sm text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AdminBlogsPageContent />
+    </Suspense>
   );
 }

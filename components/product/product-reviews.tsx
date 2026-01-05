@@ -335,11 +335,6 @@ export function ProductReviews({
                   ? "No reviews yet. Be the first to review this product!" 
                   : "No reviews yet for products in this category."}
               </p>
-              {productId && (
-                <p className="text-xs text-gray-400 mt-2">
-                  Product ID: {productId} - Check browser console for debugging info
-                </p>
-              )}
             </div>
           )}
         </div>

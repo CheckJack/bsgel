@@ -46,30 +46,57 @@ function replacePlaceholders(text: string, params?: Record<string, string>): str
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>("en");
+  const [language, setLanguageState] = useState<Language>("pt");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Load language preference from localStorage
-    const savedLanguage = localStorage.getItem("language") as Language | null;
-    if (savedLanguage && (savedLanguage === "en" || savedLanguage === "pt")) {
-      setLanguageState(savedLanguage);
+    setMounted(true);
+    // Load language preference from localStorage (only on client)
+    if (typeof window !== "undefined") {
+      try {
+        const savedLanguage = localStorage.getItem("language") as Language | null;
+        if (savedLanguage && (savedLanguage === "en" || savedLanguage === "pt")) {
+          setLanguageState(savedLanguage);
+        }
+      } catch (error) {
+        console.error("Failed to load language from localStorage:", error);
+      }
     }
   }, []);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    localStorage.setItem("language", lang);
-    // Trigger a custom event to notify components of language change
-    window.dispatchEvent(new CustomEvent("languageChanged", { detail: { language: lang } }));
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("language", lang);
+        // Trigger a custom event to notify components of language change
+        window.dispatchEvent(new CustomEvent("languageChanged", { detail: { language: lang } }));
+      } catch (error) {
+        console.error("Failed to save language to localStorage:", error);
+      }
+    }
   };
 
   const t = (key: string, params?: Record<string, string>): string => {
-    const translation = getNestedValue(translations[language], key);
-    return replacePlaceholders(translation, params);
+    try {
+      const currentTranslations = translations[language] || translations.en;
+      const translation = getNestedValue(currentTranslations, key);
+      return replacePlaceholders(translation, params);
+    } catch (error) {
+      console.error("Translation error:", error, "key:", key);
+      return key; // Return the key as fallback
+    }
+  };
+
+  // Ensure context value is always defined
+  const contextValue = {
+    language,
+    setLanguage,
+    t,
   };
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={contextValue}>
       {children}
     </LanguageContext.Provider>
   );

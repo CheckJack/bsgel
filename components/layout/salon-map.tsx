@@ -34,7 +34,7 @@ export function SalonMap({ salons, onMarkerClick }: SalonMapProps) {
   const portugalCenter: [number, number] = [39.5, -8.0];
   
   // Filter salons that have valid coordinates and fix swapped coordinates
-  const salonsWithCoords = useMemo(() => {
+  const salonsWithCoords = useMemo((): SalonWithCoords[] => {
     return salons
       .map((salon) => {
         let lat = Number(salon.latitude);
@@ -80,7 +80,7 @@ export function SalonMap({ salons, onMarkerClick }: SalonMapProps) {
           longitude: lng,
         };
       })
-      .filter((salon): salon is SalonWithCoords => salon !== null);
+      .filter((salon): salon is SalonWithCoords => salon !== null && salon !== undefined);
   }, [salons]);
   
   // Debug: Log all salons and their coordinates
@@ -106,6 +106,12 @@ export function SalonMap({ salons, onMarkerClick }: SalonMapProps) {
     
     // Dynamically import Leaflet and react-leaflet only on client side
     if (typeof window !== "undefined") {
+<<<<<<< HEAD
+=======
+      // @ts-ignore - CSS imports don't need type checking
+      import("leaflet/dist/leaflet.css");
+      
+>>>>>>> 192116d7543150f73bf61ae9b455e24066713268
       Promise.all([
         import("react-leaflet"),
         import("leaflet"),
@@ -154,8 +160,9 @@ export function SalonMap({ salons, onMarkerClick }: SalonMapProps) {
             
             return null;
           };
+          FitBounds.displayName = 'FitBounds';
           
-          return () => (
+          const DynamicMapComponent = () => (
             <MapContainer
               center={portugalCenter}
               zoom={currentSalons.length > 0 ? 7 : 6}
@@ -187,6 +194,9 @@ export function SalonMap({ salons, onMarkerClick }: SalonMapProps) {
               <FitBounds />
             </MapContainer>
           );
+          DynamicMapComponent.displayName = 'DynamicMapComponent';
+          
+          return DynamicMapComponent;
         });
       }).catch((error) => {
         console.error("Failed to load map:", error);

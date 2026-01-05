@@ -185,6 +185,12 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
           badge: null,
           children: [
             {
+              title: "Feature Settings",
+              href: "/admin/feature-settings",
+              icon: SettingsIcon,
+              badge: null,
+            },
+            {
               title: "Affiliates",
               href: "/admin/affiliates",
               icon: Users,
@@ -577,7 +583,7 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
         <button
           onClick={() => {
             if (window.confirm("Are you sure you want to sign out?")) {
-              signOut({ callbackUrl: "/" });
+              signOut({ callbackUrl: "/login" });
             }
           }}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium bg-red-600 text-white transition-colors hover:bg-red-700"

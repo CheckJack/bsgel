@@ -92,7 +92,7 @@ export async function POST(req: Request) {
     }
 
     const campaign = await db.emailCampaign.create({
-      data: campaignData,
+      data: campaignData as any,
     })
 
     return NextResponse.json(campaign, { status: 201 })

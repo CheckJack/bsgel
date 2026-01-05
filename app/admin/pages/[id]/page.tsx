@@ -284,7 +284,7 @@ export default function EditPagePage() {
   const renderSectionMedia = (
     sectionKey: string,
     sectionName: string,
-    media: any[],
+    media: string | any[],
     type: "slider" | "gallery" | "single" | "categories" = "gallery"
   ) => {
     return (
@@ -293,7 +293,7 @@ export default function EditPagePage() {
           <CardTitle className="text-lg font-semibold">{sectionName}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {type === "slider" && media.length > 0 && (
+          {type === "slider" && Array.isArray(media) && media.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {media.map((slide: Slide, index: number) => (
                 <div key={index} className="relative group">
@@ -340,7 +340,7 @@ export default function EditPagePage() {
             </div>
           )}
 
-          {type === "categories" && media.length > 0 && (
+          {type === "categories" && Array.isArray(media) && media.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {media.map((category: Category, index: number) => (
                 <div key={index} className="relative group">
@@ -379,7 +379,7 @@ export default function EditPagePage() {
             </div>
           )}
 
-          {type === "gallery" && media.length > 0 && (
+          {type === "gallery" && Array.isArray(media) && media.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {media.map((url: string, index: number) => (
                 <div key={index} className="relative group">

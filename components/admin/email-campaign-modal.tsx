@@ -154,7 +154,7 @@ export function EmailCampaignModal({
         const data = await res.json();
         setPdfUrl(data.url || data.item?.url);
         // Clear HTML content when PDF is uploaded (mutually exclusive)
-        setFormData((prev) => ({ ...prev, content: "" }));
+        setFormData(prev => ({ ...prev, content: "" }));
         toast("PDF uploaded successfully. HTML content cleared.", "success");
       } else {
         const errorData = await res.json().catch(() => ({}));
