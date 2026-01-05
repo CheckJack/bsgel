@@ -16,6 +16,11 @@ interface Salon {
   isBioDiamond?: boolean;
 }
 
+interface SalonWithCoords extends Salon {
+  latitude: number;
+  longitude: number;
+}
+
 interface SalonMapProps {
   salons: Salon[];
   onMarkerClick?: (salonId: string) => void;
@@ -29,7 +34,7 @@ export function SalonMap({ salons, onMarkerClick }: SalonMapProps) {
   const portugalCenter: [number, number] = [39.5, -8.0];
   
   // Filter salons that have valid coordinates and fix swapped coordinates
-  const salonsWithCoords = useMemo(() => {
+  const salonsWithCoords = useMemo((): SalonWithCoords[] => {
     return salons
       .map((salon) => {
         let lat = Number(salon.latitude);
@@ -75,7 +80,7 @@ export function SalonMap({ salons, onMarkerClick }: SalonMapProps) {
           longitude: lng,
         };
       })
-      .filter((salon): salon is Salon => salon !== null);
+      .filter((salon): salon is SalonWithCoords => salon !== null);
   }, [salons]);
   
   // Debug: Log all salons and their coordinates
@@ -101,7 +106,7 @@ export function SalonMap({ salons, onMarkerClick }: SalonMapProps) {
     
     // Dynamically import Leaflet and react-leaflet only on client side
     if (typeof window !== "undefined") {
-      import("leaflet/dist/leaflet.css");
+      import("leaflet/dist/leaflet.css" as any);
       
       Promise.all([
         import("react-leaflet"),
@@ -150,7 +155,7 @@ export function SalonMap({ salons, onMarkerClick }: SalonMapProps) {
             return null;
           };
           
-          return () => (
+          const DynamicMap = () => (
             <MapContainer
               center={portugalCenter}
               zoom={currentSalons.length > 0 ? 7 : 6}
@@ -182,6 +187,10 @@ export function SalonMap({ salons, onMarkerClick }: SalonMapProps) {
               <FitBounds />
             </MapContainer>
           );
+          
+          DynamicMap.displayName = 'DynamicMap';
+          
+          return DynamicMap;
         });
       }).catch((error) => {
         console.error("Failed to load map:", error);

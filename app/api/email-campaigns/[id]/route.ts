@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { EmailCampaignStatus } from "@prisma/client"
 
 export async function GET(
   req: Request,
@@ -62,7 +63,7 @@ export async function PUT(
       content?: string;
       pdfUrl?: string | null;
       scheduledDate?: Date | null;
-      status?: string;
+      status?: EmailCampaignStatus;
       recipientList?: string[];
       recipientType?: string;
       assignedReviewerId?: string | null;

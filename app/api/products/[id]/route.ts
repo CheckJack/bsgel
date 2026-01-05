@@ -197,11 +197,12 @@ export async function GET(
     return NextResponse.json(serializedProduct)
   } catch (error: any) {
     console.error("Failed to fetch product:", error)
+    const { id: errorId } = await params;
     console.error("Error details:", {
       message: error?.message,
       code: error?.code,
       stack: error?.stack,
-      params: id,
+      params: errorId,
     })
     return NextResponse.json(
       { 

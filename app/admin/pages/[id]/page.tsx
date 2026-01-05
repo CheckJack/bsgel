@@ -402,11 +402,11 @@ export default function EditPagePage() {
             </div>
           )}
 
-          {type === "single" && media && (
+          {type === "single" && media && media.length > 0 && (
             <div className="relative group">
               <div className="relative aspect-video rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                 <Image
-                  src={media}
+                  src={media[0]}
                   alt={sectionName}
                   fill
                   className="object-cover"
@@ -440,7 +440,9 @@ export default function EditPagePage() {
             className="relative border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors bg-gray-50 dark:bg-gray-900"
           >
             <input
-              ref={(el) => (fileInputRefs.current[sectionKey] = el)}
+              ref={(el) => {
+                fileInputRefs.current[sectionKey] = el;
+              }}
               type="file"
               accept="image/*,video/*"
               multiple={type !== "single"}
@@ -610,7 +612,7 @@ export default function EditPagePage() {
                   {sections.trainingBanner?.image && renderSectionMedia(
                     "trainingBanner",
                     "Training Banner",
-                    sections.trainingBanner.image,
+                    [sections.trainingBanner.image],
                     "single"
                   )}
                   {(!sections.trainingBanner?.image) && (
@@ -629,7 +631,9 @@ export default function EditPagePage() {
                           className="relative border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors bg-gray-50 dark:bg-gray-900"
                         >
                           <input
-                            ref={(el) => (fileInputRefs.current["trainingBanner"] = el)}
+                            ref={(el) => {
+                              fileInputRefs.current["trainingBanner"] = el;
+                            }}
                             type="file"
                             accept="image/*"
                             onChange={(e) => {

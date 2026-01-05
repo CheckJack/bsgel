@@ -497,7 +497,6 @@ export function Navbar() {
                       newExpanded.add('about');
                       // Close Shop menu if it's open
                       setExpandedShopItems(new Set());
-                      setExpandedBrandItems(new Set());
                     }
                     setExpandedAboutItems(newExpanded);
                   }}

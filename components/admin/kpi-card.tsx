@@ -235,7 +235,7 @@ export function KPICard({
                       width={actualBarWidth}
                       height={80}
                       fill="transparent"
-                      onMouseMove={(e) => handleMouseMove(e, index)}
+                      onMouseMove={(e) => handleMouseMove(e as any, index)}
                       style={{ cursor: "pointer" }}
                     />
                   </g>
@@ -286,7 +286,7 @@ export function KPICard({
                       width={hoverWidth}
                       height={80}
                       fill="transparent"
-                      onMouseMove={(e) => handleMouseMove(e, index)}
+                      onMouseMove={(e) => handleMouseMove(e as any, index)}
                       style={{ cursor: "pointer" }}
                     />
                   </g>

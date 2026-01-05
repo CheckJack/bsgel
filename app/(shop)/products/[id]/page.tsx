@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
@@ -79,14 +79,7 @@ export default function ProductDetailPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [isLoadingRelated, setIsLoadingRelated] = useState(false);
 
-  useEffect(() => {
-    if (params.id) {
-      fetchProduct();
-      fetchRelatedProducts();
-    }
-  }, [params.id]);
-
-  const fetchProduct = async () => {
+  const fetchProduct = useCallback(async () => {
     setIsLoading(true);
     try {
       const res = await fetch(`/api/products/${params.id}`);
@@ -99,9 +92,9 @@ export default function ProductDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [params.id]);
 
-  const fetchRelatedProducts = async () => {
+  const fetchRelatedProducts = useCallback(async () => {
     setIsLoadingRelated(true);
     try {
       const res = await fetch(`/api/products/${params.id}/related`);
@@ -114,7 +107,14 @@ export default function ProductDetailPage() {
     } finally {
       setIsLoadingRelated(false);
     }
-  };
+  }, [params.id]);
+
+  useEffect(() => {
+    if (params.id) {
+      fetchProduct();
+      fetchRelatedProducts();
+    }
+  }, [params.id, fetchProduct, fetchRelatedProducts]);
 
   const handleAddToCart = async () => {
     if (!session) {

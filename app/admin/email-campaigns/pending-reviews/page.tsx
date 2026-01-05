@@ -418,8 +418,6 @@ export default function PendingReviewsPage() {
           setRejectingCampaignId(null);
         }}
         onConfirm={handleRejectConfirm}
-        title="Reject Email Campaign"
-        resourceType="campaign"
       />
     </div>
   );

@@ -91,7 +91,7 @@ export default function NewProductPage() {
         );
         if (sizeAttribute && Array.isArray(sizeAttribute.values)) {
           // Remove duplicates and set the sizes
-          const uniqueSizes = Array.from(new Set(sizeAttribute.values));
+          const uniqueSizes = Array.from(new Set(sizeAttribute.values)) as string[];
           setAvailableSizes(uniqueSizes);
         } else {
           // Fallback to empty array if no size attribute found

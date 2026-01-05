@@ -55,6 +55,12 @@ function CheckoutForm() {
   } | null>(null);
   const [couponError, setCouponError] = useState("");
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [taxInfo, setTaxInfo] = useState<{
+    taxAmount: number;
+    taxRate: number;
+    taxRegion: string;
+  } | null>(null);
+  const [isCalculatingTax, setIsCalculatingTax] = useState(false);
 
   // Load saved shipping address and update email when session loads
   useEffect(() => {
@@ -108,6 +114,59 @@ function CheckoutForm() {
     loadSavedAddress();
   }, [session]);
 
+  // Calculate tax when postal code or subtotal changes
+  useEffect(() => {
+    const calculateTaxForPostalCode = async () => {
+      const subtotal = items.reduce(
+        (sum, item) => sum + parseFloat(item.product.price) * item.quantity,
+        0
+      );
+      const discount = appliedCoupon ? parseFloat(appliedCoupon.discountAmount) : 0;
+      const subtotalAfterDiscount = Math.max(0, subtotal - discount);
+
+      // Only calculate if we have a postal code and items
+      if (!shippingAddress.postalCode || items.length === 0) {
+        setTaxInfo(null);
+        return;
+      }
+
+      // Extract postal code (handle both "XXXX-XXX" and "XXXXXXX" formats)
+      const postalCode = shippingAddress.postalCode.replace(/\D/g, "").slice(0, 4);
+      
+      if (postalCode.length < 1) {
+        setTaxInfo(null);
+        return;
+      }
+
+      setIsCalculatingTax(true);
+      try {
+        const res = await fetch("/api/tax/calculate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subtotal: subtotalAfterDiscount,
+            postalCode: shippingAddress.postalCode,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setTaxInfo(data);
+        } else {
+          console.error("Failed to calculate tax");
+          setTaxInfo(null);
+        }
+      } catch (error) {
+        console.error("Error calculating tax:", error);
+        setTaxInfo(null);
+      } finally {
+        setIsCalculatingTax(false);
+      }
+    };
+
+    calculateTaxForPostalCode();
+  }, [shippingAddress.postalCode, items, appliedCoupon]);
+
   if (isLoading) {
     return <div className="text-center py-8">Loading...</div>;
   }
@@ -127,7 +186,7 @@ function CheckoutForm() {
   );
   const discount = appliedCoupon ? parseFloat(appliedCoupon.discountAmount) : 0;
   const subtotalAfterDiscount = Math.max(0, subtotal - discount);
-  const tax = subtotalAfterDiscount * 0.1;
+  const tax = taxInfo?.taxAmount || 0;
   const total = subtotalAfterDiscount + tax;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -163,6 +222,7 @@ function CheckoutForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           shippingAddress: formattedAddress,
+          postalCode: shippingAddress.postalCode,
           couponCode: appliedCoupon?.code || null,
         }),
       });
@@ -354,13 +414,32 @@ function CheckoutForm() {
                 placeholder="XXXX-XXX"
                 value={shippingAddress.postalCode}
                 onChange={(e) => {
-                  let value = e.target.value.replace(/\D/g, "");
-                  if (value.length > 4) {
-                    value = value.slice(0, 4) + "-" + value.slice(4, 7);
+                  let input = e.target.value;
+                  
+                  // Remove everything except digits and hyphen
+                  let cleaned = input.replace(/[^\d-]/g, "");
+                  
+                  // Extract only digits to check length
+                  let digits = cleaned.replace(/-/g, "");
+                  
+                  // Limit to 7 digits maximum
+                  if (digits.length > 7) {
+                    digits = digits.slice(0, 7);
                   }
-                  handleAddressChange("postalCode", value);
+                  
+                  // Format: if we have digits, format as XXXX-XXX
+                  let formatted = "";
+                  if (digits.length === 0) {
+                    formatted = "";
+                  } else if (digits.length <= 4) {
+                    formatted = digits;
+                  } else {
+                    // Always format as XXXX-XXX when we have more than 4 digits
+                    formatted = digits.slice(0, 4) + "-" + digits.slice(4);
+                  }
+                  
+                  handleAddressChange("postalCode", formatted);
                 }}
-                maxLength={8}
                 required
               />
             </div>
@@ -502,8 +581,22 @@ function CheckoutForm() {
             </div>
           )}
           <div className="flex justify-between text-sm sm:text-base">
-            <span>Tax</span>
-            <span>{formatPrice(tax)}</span>
+            <span>
+              {isCalculatingTax ? (
+                <span className="text-gray-500">Tax (Calculating...)</span>
+              ) : taxInfo ? (
+                `Tax ${Math.round(taxInfo.taxRate)}% (${taxInfo.taxRegion})`
+              ) : (
+                "Tax"
+              )}
+            </span>
+            <span>
+              {isCalculatingTax ? (
+                <span className="text-gray-500">Calculating...</span>
+              ) : (
+                formatPrice(tax)
+              )}
+            </span>
           </div>
           <div className="border-t pt-2 flex justify-between font-bold text-base sm:text-lg">
             <span>Total</span>

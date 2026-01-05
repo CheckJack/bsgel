@@ -406,7 +406,7 @@ export default function CustomerMessagesPage() {
                         Send a New Message
                       </label>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                        This will create a new message in your conversation. To start a completely new topic, use the "New Message" button above.
+                        This will create a new message in your conversation. To start a completely new topic, use the &quot;New Message&quot; button above.
                       </p>
                       <Textarea
                         id="reply"
@@ -439,7 +439,7 @@ export default function CustomerMessagesPage() {
                 ) : (
                   <div className="text-center py-4">
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                      Waiting for admin response. You can start a new conversation using the "New Message" button above.
+                      Waiting for admin response. You can start a new conversation using the &quot;New Message&quot; button above.
                     </p>
                   </div>
                 )}

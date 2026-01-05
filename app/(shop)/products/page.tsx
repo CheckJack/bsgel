@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+// Force dynamic rendering - this page uses searchParams
+export const dynamic = 'force-dynamic';
+
+import { useEffect, useState, Suspense, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { ProductCard } from "@/components/product/product-card";
 import { Input } from "@/components/ui/input";
@@ -32,7 +35,7 @@ interface Category {
   slug: string;
 }
 
-export default function ProductsPage() {
+function ProductsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -75,47 +78,7 @@ export default function ProductsPage() {
     },
   ];
 
-  useEffect(() => {
-    fetchCategories();
-    // Read all filter params from URL on mount
-    const categoryId = searchParams.get("categoryId");
-    const search = searchParams.get("search");
-    const min = searchParams.get("minPrice");
-    const max = searchParams.get("maxPrice");
-    const sort = searchParams.get("sortBy");
-    const featured = searchParams.get("featured");
-    
-    if (categoryId) setSelectedCategory(categoryId);
-    if (search) setSearchQuery(search);
-    if (min) setMinPrice(min);
-    if (max) setMaxPrice(max);
-    if (sort) setSortBy(sort);
-    if (featured === "true") setShowFeatured(true);
-  }, [searchParams]);
-
-  // Update URL when filters change
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (selectedCategory) params.set("categoryId", selectedCategory);
-    if (searchQuery) params.set("search", searchQuery);
-    if (minPrice) params.set("minPrice", minPrice);
-    if (maxPrice) params.set("maxPrice", maxPrice);
-    if (sortBy && sortBy !== "newest") params.set("sortBy", sortBy);
-    if (showFeatured) params.set("featured", "true");
-    if (currentPage > 1) params.set("page", currentPage.toString());
-    
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [selectedCategory, searchQuery, minPrice, maxPrice, sortBy, showFeatured, currentPage, pathname, router]);
-
-  useEffect(() => {
-    setCurrentPage(1); // Reset to page 1 when filters change
-  }, [selectedCategory, searchQuery, minPrice, maxPrice, sortBy, showFeatured]);
-
-  useEffect(() => {
-    fetchProducts();
-  }, [selectedCategory, searchQuery, minPrice, maxPrice, sortBy, showFeatured, currentPage]);
-
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const res = await fetch("/api/categories");
       if (res.ok) {
@@ -126,9 +89,9 @@ export default function ProductsPage() {
       console.error("Failed to fetch categories:", error);
       setCategories([]);
     }
-  };
+  }, []);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
@@ -164,7 +127,47 @@ export default function ProductsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedCategory, searchQuery, minPrice, maxPrice, sortBy, showFeatured, currentPage]);
+
+  useEffect(() => {
+    fetchCategories();
+    // Read all filter params from URL on mount
+    const categoryId = searchParams.get("categoryId");
+    const search = searchParams.get("search");
+    const min = searchParams.get("minPrice");
+    const max = searchParams.get("maxPrice");
+    const sort = searchParams.get("sortBy");
+    const featured = searchParams.get("featured");
+    
+    if (categoryId) setSelectedCategory(categoryId);
+    if (search) setSearchQuery(search);
+    if (min) setMinPrice(min);
+    if (max) setMaxPrice(max);
+    if (sort) setSortBy(sort);
+    if (featured === "true") setShowFeatured(true);
+  }, [searchParams, fetchCategories]);
+
+  // Update URL when filters change
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (selectedCategory) params.set("categoryId", selectedCategory);
+    if (searchQuery) params.set("search", searchQuery);
+    if (minPrice) params.set("minPrice", minPrice);
+    if (maxPrice) params.set("maxPrice", maxPrice);
+    if (sortBy && sortBy !== "newest") params.set("sortBy", sortBy);
+    if (showFeatured) params.set("featured", "true");
+    if (currentPage > 1) params.set("page", currentPage.toString());
+    
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [selectedCategory, searchQuery, minPrice, maxPrice, sortBy, showFeatured, currentPage, pathname, router]);
+
+  useEffect(() => {
+    setCurrentPage(1); // Reset to page 1 when filters change
+  }, [selectedCategory, searchQuery, minPrice, maxPrice, sortBy, showFeatured]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   const clearFilters = () => {
     setSelectedCategory(null);
@@ -411,6 +414,20 @@ export default function ProductsPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={
+      <div className="bg-brand-white min-h-screen">
+        <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
+          <div className="text-center py-12 text-brand-black font-light">Loading products...</div>
+        </div>
+      </div>
+    }>
+      <ProductsPageContent />
+    </Suspense>
   );
 }
 

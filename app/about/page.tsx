@@ -229,7 +229,7 @@ export default function AboutPage() {
             <div>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-4 sm:mb-6 text-brand-black">THE BESPOKE PATH TO HEALTHY NAILS</h2>
               <p className="text-base sm:text-lg font-light text-brand-black leading-relaxed">
-                As the bespoke path to nail perfection, we are dedicated to providing nail technicians with a premium system and quality education. Through our comprehensive training programs, nail techs are equipped with the knowledge to analyse each client's unique nail type and condition, delivering prescriptive treatments that promote optimal nail health. We go beyond traditional overlays by offering techniques that create long lasting results, customised to suit the client's lifestyle. With our range of base gels, colours, top coats, and builder gels, nail techs can achieve improved natural nail condition and extended lifespan of their work.
+                As the bespoke path to nail perfection, we are dedicated to providing nail technicians with a premium system and quality education. Through our comprehensive training programs, nail techs are equipped with the knowledge to analyse each client&apos;s unique nail type and condition, delivering prescriptive treatments that promote optimal nail health. We go beyond traditional overlays by offering techniques that create long lasting results, customised to suit the client&apos;s lifestyle. With our range of base gels, colours, top coats, and builder gels, nail techs can achieve improved natural nail condition and extended lifespan of their work.
               </p>
             </div>
             <div className="relative h-[300px] sm:h-[400px] md:h-[500px]">

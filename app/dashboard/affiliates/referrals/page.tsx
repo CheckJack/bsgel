@@ -105,7 +105,7 @@ export default function ReferralsPage() {
         </Button>
         <h1 className="text-4xl font-bold mb-2">My Referrals</h1>
         <p className="text-gray-600 dark:text-gray-400">
-          View all users you've referred and their activity
+          View all users you&apos;ve referred and their activity
         </p>
       </div>
 
