@@ -201,7 +201,7 @@ export async function GET(
     return NextResponse.json(serializedProduct, { headers })
   } catch (error: any) {
     console.error("Failed to fetch product:", error)
-    const { id: errorId } = await params
+    const { id: errorId } = await params;
     console.error("Error details:", {
       message: error?.message,
       code: error?.code,

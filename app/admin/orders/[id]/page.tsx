@@ -25,6 +25,9 @@ interface Order {
   total: string;
   status: string;
   shippingAddress: string | null;
+  taxRate: number | null;
+  taxAmount: string | null;
+  taxRegion: string | null;
   createdAt: string;
   user: {
     email: string;
@@ -46,6 +49,9 @@ export default function AdminOrderDetailPage() {
     total: "1452.50",
     status: "DELIVERED",
     shippingAddress: "3517 W. Gray St. Utica, Pennsylvania 57867",
+    taxRate: 23.0,
+    taxAmount: "334.08",
+    taxRegion: "Mainland Portugal",
     createdAt: new Date("2023-11-20").toISOString(),
     user: {
       email: "kristin.watson@example.com",
@@ -136,7 +142,7 @@ export default function AdminOrderDetailPage() {
     0
   );
   const shipping = 10.0; // Fixed shipping cost
-  const tax = 5.0; // Fixed tax (GST)
+  const tax = order.taxAmount ? parseFloat(order.taxAmount) : 0;
   const total = parseFloat(order.total);
 
   // Format date
@@ -249,7 +255,10 @@ export default function AdminOrderDetailPage() {
                 <span>{formatPrice(shipping)}</span>
               </div>
               <div className="flex justify-between text-gray-700">
-                <span>Tax (GST):</span>
+                <span>
+                  Tax {order.taxRegion && `(${order.taxRegion})`}
+                  {order.taxRate && ` - ${order.taxRate}%`}
+                </span>
                 <span>{formatPrice(tax)}</span>
               </div>
               <div className="flex justify-between pt-4 border-t border-gray-200">

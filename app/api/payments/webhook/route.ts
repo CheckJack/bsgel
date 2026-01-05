@@ -7,6 +7,7 @@ import { getReferralByUserId, activateReferral } from "@/lib/affiliate"
 import { calculatePoints, awardPoints } from "@/lib/points"
 import { checkAndNotifyMilestones } from "@/lib/notifications/affiliate-milestones"
 import { autoPromoteAffiliate } from "@/lib/affiliate-tiers"
+import { calculateTax } from "@/lib/tax"
 
 export async function POST(req: Request) {
   const body = await req.text()
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
   // Handle the event
   if (event.type === "payment_intent.succeeded") {
     const paymentIntent = event.data.object as any
-    const { userId, shippingAddress, couponCode, discountAmount } = paymentIntent.metadata
+    const { userId, shippingAddress, couponCode, discountAmount, postalCode, taxAmount, taxRate, taxRegion } = paymentIntent.metadata
 
     // Get user's cart
     const cart = await db.cart.findUnique({
@@ -68,9 +69,58 @@ export async function POST(req: Request) {
 
       // Get discount from metadata or calculate from payment intent amount
       const discount = discountAmount ? parseFloat(discountAmount) : 0
-      const total = Math.max(0, subtotal - discount)
+      const subtotalAfterDiscount = Math.max(0, subtotal - discount)
       
-      // Use the actual payment amount from Stripe (which already has discount applied)
+      // Calculate tax if not already in metadata
+      let calculatedTaxAmount = 0
+      let calculatedTaxRate: number | null = null
+      let calculatedTaxRegion: string | null = null
+
+      if (taxAmount && taxRate && taxRegion) {
+        // Use tax info from payment intent metadata
+        calculatedTaxAmount = parseFloat(taxAmount)
+        calculatedTaxRate = parseFloat(taxRate)
+        calculatedTaxRegion = taxRegion
+      } else {
+        // Calculate tax based on postal code
+        let postalCodeToUse = postalCode
+
+        // Extract postal code from shipping address if not in metadata
+        if (!postalCodeToUse && shippingAddress) {
+          const addressLines = shippingAddress.split("\n")
+          if (addressLines.length >= 5) {
+            const postalCodeLine = addressLines[4]
+            if (postalCodeLine) {
+              const match = postalCodeLine.match(/\d{4}(?:-\d{3})?/)
+              if (match) {
+                postalCodeToUse = match[0]
+              }
+            }
+          }
+        }
+
+        if (postalCodeToUse) {
+          try {
+            const taxResult = await calculateTax(subtotalAfterDiscount, postalCodeToUse)
+            calculatedTaxAmount = taxResult.taxAmount
+            calculatedTaxRate = taxResult.taxRate
+            calculatedTaxRegion = taxResult.taxRegion
+          } catch (error) {
+            console.error("Failed to calculate tax:", error)
+            // Default to 23% (Mainland Portugal) if calculation fails
+            calculatedTaxAmount = subtotalAfterDiscount * 0.23
+            calculatedTaxRate = 23.0
+            calculatedTaxRegion = "Mainland Portugal"
+          }
+        } else {
+          // Default to 23% (Mainland Portugal) if no postal code
+          calculatedTaxAmount = subtotalAfterDiscount * 0.23
+          calculatedTaxRate = 23.0
+          calculatedTaxRegion = "Mainland Portugal"
+        }
+      }
+      
+      // Use the actual payment amount from Stripe (which already has discount and tax applied)
       const actualTotal = paymentIntent.amount / 100
 
       // Get user info for notification
@@ -95,6 +145,9 @@ export async function POST(req: Request) {
           shippingAddress: shippingAddress || null,
           paymentIntentId: paymentIntent.id,
           affiliateReferralId,
+          taxRate: calculatedTaxRate,
+          taxAmount: calculatedTaxAmount,
+          taxRegion: calculatedTaxRegion,
           status: "PROCESSING",
           items: {
             create: cart.items.map((item) => ({

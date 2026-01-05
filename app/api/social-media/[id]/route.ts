@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { SocialMediaPlatform, ContentType, SocialMediaPostStatus } from "@prisma/client"
 
 export async function GET(
   req: Request,
@@ -59,13 +60,13 @@ export async function PUT(
     } = body
 
     const updateData: {
-      platform?: string;
-      contentType?: string;
+      platform?: SocialMediaPlatform;
+      contentType?: ContentType;
       caption?: string;
       images?: string[];
       videos?: string[];
       scheduledDate?: Date;
-      status?: string;
+      status?: SocialMediaPostStatus;
       hashtags?: string[];
       assignedReviewerId?: string | null;
       reviewedBy?: string;

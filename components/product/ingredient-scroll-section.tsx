@@ -21,7 +21,7 @@ interface IngredientScrollSectionProps {
 export function IngredientScrollSection({ ingredients }: IngredientScrollSectionProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const sectionRefs = useRef<(HTMLElement | null)[]>([]);
 
   useEffect(() => {
     const observerOptions = {

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { stripe } from "@/lib/stripe"
 import { canUserPurchaseProduct } from "@/lib/certifications"
+import { calculateTax } from "@/lib/tax"
 
 export async function POST(req: Request) {
   try {
@@ -14,7 +15,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    const { shippingAddress, couponCode } = body
+    const { shippingAddress, postalCode, couponCode } = body
 
     // Validate input
     if (couponCode !== undefined && couponCode !== null && (typeof couponCode !== "string" || couponCode.trim().length === 0)) {
@@ -183,8 +184,34 @@ export async function POST(req: Request) {
       }
     }
 
-    // Calculate final total after discount
-    const total = Math.max(0, subtotal - discountAmount)
+    // Calculate subtotal after discount
+    const subtotalAfterDiscount = Math.max(0, subtotal - discountAmount)
+
+    // Calculate tax based on postal code
+    let taxAmount = 0
+    let taxRate = 0
+    let taxRegion = "Mainland Portugal"
+    
+    if (postalCode) {
+      try {
+        const taxResult = await calculateTax(subtotalAfterDiscount, postalCode)
+        taxAmount = taxResult.taxAmount
+        taxRate = taxResult.taxRate
+        taxRegion = taxResult.taxRegion
+      } catch (error) {
+        console.error("Failed to calculate tax:", error)
+        // Default to 23% (Mainland Portugal) if calculation fails
+        taxAmount = subtotalAfterDiscount * 0.23
+        taxRate = 23.0
+      }
+    } else {
+      // Default to 23% (Mainland Portugal) if no postal code
+      taxAmount = subtotalAfterDiscount * 0.23
+      taxRate = 23.0
+    }
+
+    // Calculate final total including tax
+    const total = subtotalAfterDiscount + taxAmount
 
     // Create Stripe Payment Intent
     const paymentIntent = await stripe.paymentIntents.create({
@@ -194,8 +221,12 @@ export async function POST(req: Request) {
         userId: session.user.id,
         cartId: cart.id,
         shippingAddress: shippingAddress || "",
+        postalCode: postalCode || "",
         couponCode: appliedCouponCode || "",
         discountAmount: discountAmount.toFixed(2),
+        taxAmount: taxAmount.toFixed(2),
+        taxRate: taxRate.toFixed(2),
+        taxRegion: taxRegion,
       },
     })
 

@@ -932,7 +932,7 @@ function AdminProductsPageContent() {
               </div>
 
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                 {t("products.updateSelectedProducts", { count: selectedProducts.size.toString() })}
+                {t("products.updateSelectedProducts", { count: selectedProducts.size.toString() })}
               </p>
 
               <div className="flex gap-6">
