@@ -124,6 +124,8 @@ export function FeaturedProducts() {
                   image={product.image}
                   images={product.images}
                   featured={product.featured}
+                  outOfStock={(product as any).outOfStock}
+                  hemaFree={(product as any).hemaFree}
                   description={product.description}
                   rating={product.rating}
                   reviewCount={product.reviewCount}

@@ -13,6 +13,8 @@ interface ProductCardProps {
   image: string | null;
   images?: string[];
   featured?: boolean;
+  outOfStock?: boolean;
+  hemaFree?: boolean;
   description?: string | null;
   rating?: number;
   reviewCount?: number;
@@ -56,6 +58,8 @@ export function ProductCard({
   image, 
   images = [], 
   featured,
+  outOfStock,
+  hemaFree,
   description,
   rating,
   reviewCount
@@ -147,9 +151,18 @@ export function ProductCard({
             <span className="text-gray-400 text-sm">No Image</span>
           </div>
         )}
-        {featured && (
-          <div className="absolute top-3 right-3 bg-brand-champagne text-white text-xs px-2 py-1 rounded z-10">
-            Featured
+        {(outOfStock || hemaFree) && (
+          <div className="absolute top-3 right-3 flex flex-col gap-1 z-10">
+            {outOfStock && (
+              <div className="bg-brand-champagne text-white text-xs px-2 py-1 rounded">
+                OUT OF STOCK
+              </div>
+            )}
+            {hemaFree && (
+              <div className="bg-brand-champagne text-white text-xs px-2 py-1 rounded">
+                HEMA FREE
+              </div>
+            )}
           </div>
         )}
       </Link>

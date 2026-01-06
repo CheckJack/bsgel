@@ -106,6 +106,8 @@ model Product {
   image              String?
   images             String[]  @default([])
   featured           Boolean   @default(false)
+  outOfStock         Boolean   @default(false)
+  hemaFree           Boolean   @default(false)
   categoryId         String?
   category           Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   attributes         Json? // Store product attributes as JSON: { "size": ["S", "M", "L"], "color": ["Red", "Blue"] }
@@ -919,15 +921,15 @@ model TrainingBooking {
 }
 
 model TaxRegion {
-  id               String    @id @default(cuid())
-  name             String // e.g., "Mainland Portugal", "Madeira", "Azores"
-  taxRate          Decimal   @db.Decimal(5, 2) // Tax rate (e.g., 23.00 for 23%)
-  postalCodePatterns String[] @default([]) // e.g., ["1*", "2*", ..., "8*"] for Mainland
-  isActive         Boolean   @default(true)
-  validFrom        DateTime  @default(now())
-  validUntil       DateTime? // Nullable, for future rate changes
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  name               String // e.g., "Mainland Portugal", "Madeira", "Azores"
+  taxRate            Decimal   @db.Decimal(5, 2) // Tax rate (e.g., 23.00 for 23%)
+  postalCodePatterns String[]  @default([]) // e.g., ["1*", "2*", ..., "8*"] for Mainland
+  isActive           Boolean   @default(true)
+  validFrom          DateTime  @default(now())
+  validUntil         DateTime? // Nullable, for future rate changes
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@index([isActive])
   @@index([validFrom])
