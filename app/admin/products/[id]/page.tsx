@@ -42,6 +42,8 @@ function EditProductPageContent() {
     categoryId: "",
     subcategoryIds: [] as string[],
     featured: false,
+    outOfStock: false,
+    hemaFree: false,
     showcasingSections: [] as string[],
   });
 
@@ -155,6 +157,8 @@ function EditProductPageContent() {
         categoryId: product.categoryId || "",
         subcategoryIds: subcategoryIds,
         featured: product.featured || false,
+        outOfStock: (product as any).outOfStock || false,
+        hemaFree: (product as any).hemaFree || false,
         showcasingSections: (product as any).showcasingSections || [],
       });
       
@@ -277,6 +281,8 @@ function EditProductPageContent() {
           categoryId: formData.categoryId || null,
           subcategoryIds: formData.subcategoryIds || [],
           featured: formData.featured,
+          outOfStock: formData.outOfStock,
+          hemaFree: formData.hemaFree,
           attributes: Object.keys(productAttributes).length > 0 ? productAttributes : null,
           showcasingSections: formData.showcasingSections || [],
         }),
@@ -490,6 +496,57 @@ function EditProductPageContent() {
                 <label htmlFor="featured" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Featured Product
                 </label>
+              </div>
+
+              {/* Product Tags - Only one can be selected */}
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                  Product Tag
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Select only one tag for this product
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      id="tag-none"
+                      name="productTag"
+                      checked={!formData.outOfStock && !formData.hemaFree}
+                      onChange={() => setFormData({ ...formData, outOfStock: false, hemaFree: false })}
+                      className="h-4 w-4"
+                    />
+                    <label htmlFor="tag-none" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      None
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      id="outOfStock"
+                      name="productTag"
+                      checked={formData.outOfStock}
+                      onChange={() => setFormData({ ...formData, outOfStock: true, hemaFree: false })}
+                      className="h-4 w-4"
+                    />
+                    <label htmlFor="outOfStock" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Out of Stock
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      id="hemaFree"
+                      name="productTag"
+                      checked={formData.hemaFree}
+                      onChange={() => setFormData({ ...formData, outOfStock: false, hemaFree: true })}
+                      className="h-4 w-4"
+                    />
+                    <label htmlFor="hemaFree" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      HEMA Free
+                    </label>
+                  </div>
+                </div>
               </div>
 
               {/* Showcasing Sections */}

@@ -95,6 +95,8 @@ export async function GET(req: Request) {
           image: true,
           images: true,
           featured: true,
+          outOfStock: true,
+          hemaFree: true,
           categoryId: true,
           createdAt: true,
           updatedAt: true,
@@ -230,7 +232,7 @@ export async function GET(req: Request) {
         console.log("Prisma query failed, using raw SQL fallback");
         let sqlQuery = `
           SELECT 
-            p.id, p.name, p.description, p.price, p.image, p.images, p.featured, p."categoryId",
+              p.id, p.name, p.description, p.price, p.image, p.images, p.featured, p."outOfStock", p."hemaFree", p."categoryId",
             p."createdAt", p."updatedAt",
             c.id as category_id, c.name as category_name
           FROM "Product" p
@@ -297,6 +299,8 @@ export async function GET(req: Request) {
           image: row.image,
           images: Array.isArray(row.images) ? row.images : (row.images ? [row.images] : []),
           featured: row.featured,
+          outOfStock: row.outOfStock || false,
+          hemaFree: row.hemaFree || false,
           categoryId: row.categoryId,
           createdAt: row.createdAt,
           updatedAt: row.updatedAt,

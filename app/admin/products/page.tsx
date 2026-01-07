@@ -54,6 +54,8 @@ function AdminProductsPageContent() {
     categoryId: "",
     subcategoryIds: [] as string[],
     featured: "",
+    outOfStock: "",
+    hemaFree: "",
     price: "",
     discountPercentage: "",
     showcasingSections: [] as string[],
@@ -350,6 +352,23 @@ function AdminProductsPageContent() {
       updates.featured = bulkEditData.featured === "true";
     }
 
+    // Handle product tags - only one can be set at a time
+    if (bulkEditData.outOfStock !== "") {
+      updates.outOfStock = bulkEditData.outOfStock === "true";
+      // If setting outOfStock, ensure hemaFree is false
+      if (bulkEditData.outOfStock === "true") {
+        updates.hemaFree = false;
+      }
+    }
+
+    if (bulkEditData.hemaFree !== "") {
+      updates.hemaFree = bulkEditData.hemaFree === "true";
+      // If setting hemaFree, ensure outOfStock is false
+      if (bulkEditData.hemaFree === "true") {
+        updates.outOfStock = false;
+      }
+    }
+
     if (bulkEditData.price !== "") {
       const price = parseFloat(bulkEditData.price);
       if (isNaN(price) || price < 0) {
@@ -396,7 +415,7 @@ function AdminProductsPageContent() {
         toast(t("products.bulkEditSuccessWithCount", { count: data.count }), "success");
         setShowBulkEditModal(false);
         setSelectedProducts(new Set());
-        setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", price: "", discountPercentage: "", showcasingSections: [] });
+        setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", outOfStock: "", hemaFree: "", price: "", discountPercentage: "", showcasingSections: [] });
         fetchProducts();
       } else {
         const error = await res.json();
@@ -923,7 +942,7 @@ function AdminProductsPageContent() {
                 <button
                   onClick={() => {
                     setShowBulkEditModal(false);
-                    setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", price: "", discountPercentage: "", showcasingSections: [] });
+                    setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", outOfStock: "", hemaFree: "", price: "", discountPercentage: "", showcasingSections: [] });
                   }}
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 >
@@ -1009,6 +1028,34 @@ function AdminProductsPageContent() {
                       <option value="">{t("products.noChange")}</option>
                       <option value="true">{t("products.featured")}</option>
                       <option value="false">{t("products.notFeatured")}</option>
+                    </select>
+                  </div>
+
+                  {/* Product Tag - Only one can be selected */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Product Tag
+                    </label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                      Select only one tag (will clear the other tag)
+                    </p>
+                    <select
+                      value={bulkEditData.outOfStock === "true" ? "outOfStock" : bulkEditData.hemaFree === "true" ? "hemaFree" : ""}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === "outOfStock") {
+                          setBulkEditData({ ...bulkEditData, outOfStock: "true", hemaFree: "false" });
+                        } else if (value === "hemaFree") {
+                          setBulkEditData({ ...bulkEditData, outOfStock: "false", hemaFree: "true" });
+                        } else {
+                          setBulkEditData({ ...bulkEditData, outOfStock: "", hemaFree: "" });
+                        }
+                      }}
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">{t("products.noChange")}</option>
+                      <option value="outOfStock">Out of Stock</option>
+                      <option value="hemaFree">HEMA Free</option>
                     </select>
                   </div>
                 </div>
@@ -1108,7 +1155,7 @@ function AdminProductsPageContent() {
                   variant="outline"
                   onClick={() => {
                     setShowBulkEditModal(false);
-                    setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", price: "", discountPercentage: "", showcasingSections: [] });
+                    setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", outOfStock: "", hemaFree: "", price: "", discountPercentage: "", showcasingSections: [] });
                   }}
                   disabled={isBulkEditing}
                   className="flex-1"

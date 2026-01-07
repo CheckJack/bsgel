@@ -49,6 +49,24 @@ export async function PATCH(req: Request) {
       updateData.featured = Boolean(updates.featured)
     }
 
+    // Handle outOfStock status - mutually exclusive with hemaFree
+    if (updates.outOfStock !== undefined) {
+      updateData.outOfStock = Boolean(updates.outOfStock)
+      // If setting outOfStock to true, ensure hemaFree is false
+      if (updates.outOfStock === true) {
+        updateData.hemaFree = false
+      }
+    }
+
+    // Handle hemaFree status - mutually exclusive with outOfStock
+    if (updates.hemaFree !== undefined) {
+      updateData.hemaFree = Boolean(updates.hemaFree)
+      // If setting hemaFree to true, ensure outOfStock is false
+      if (updates.hemaFree === true) {
+        updateData.outOfStock = false
+      }
+    }
+
     // Handle price (if provided)
     if (updates.price !== undefined && updates.price !== null && updates.price !== "") {
       updateData.price = parseFloat(updates.price)
@@ -105,6 +123,20 @@ export async function PATCH(req: Request) {
         
         // Copy non-relation fields (skip discountPercentage and showcasingSections as they don't exist)
         if (updateData.featured !== undefined) productUpdate.featured = updateData.featured
+        if (updateData.outOfStock !== undefined) {
+          productUpdate.outOfStock = updateData.outOfStock
+          // Ensure mutual exclusivity
+          if (updateData.outOfStock === true) {
+            productUpdate.hemaFree = false
+          }
+        }
+        if (updateData.hemaFree !== undefined) {
+          productUpdate.hemaFree = updateData.hemaFree
+          // Ensure mutual exclusivity
+          if (updateData.hemaFree === true) {
+            productUpdate.outOfStock = false
+          }
+        }
         if (updateData.price !== undefined) productUpdate.price = updateData.price
         // discountPercentage and showcasingSections don't exist in database
         // if (updateData.discountPercentage !== undefined) productUpdate.discountPercentage = updateData.discountPercentage
