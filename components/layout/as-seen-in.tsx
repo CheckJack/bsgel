@@ -1,8 +1,10 @@
 "use client";
 
 import Image from "next/image";
+import { useLanguage } from "@/contexts/language-context";
 
 export function AsSeenIn() {
+  const { t } = useLanguage();
   const logos = [
     { src: "/vogue.avif", alt: "Vogue" },
     { src: "/Sheerluxe.avif", alt: "Sheerluxe" },
@@ -17,7 +19,7 @@ export function AsSeenIn() {
       <div className="w-full px-4 sm:px-6 md:px-8">
         {/* AS SEEN IN Title - Centered */}
         <h2 className="text-center text-sm sm:text-base md:text-lg font-medium text-black uppercase tracking-wide mb-6 sm:mb-8 md:mb-12">
-          AS SEEN IN
+          {t("products.asSeenIn")}
         </h2>
 
         {/* Logos Row - Horizontal, Evenly Spaced */}

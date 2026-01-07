@@ -9,6 +9,7 @@ import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/contexts/cart-context";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useLanguage } from "@/contexts/language-context";
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
   const { items, isLoading, updateQuantity, removeItem, itemCount, addItem } = useCart();
+  const { t } = useLanguage();
   const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [showRecommendations, setShowRecommendations] = useState(false);
@@ -325,7 +327,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                               }}
                               className="text-xs text-gray-600 hover:text-brand-black underline cursor-pointer"
                             >
-                              Add to Cart
+                              {t("products.addToCart")}
                             </button>
                           </div>
                         </Link>
@@ -338,7 +340,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 <div className="p-6 border-t bg-white">
                   <Link href="/products" onClick={onClose}>
                     <Button variant="outline" className="w-full">
-                      View All Products
+                      {t("common.viewAllProducts")}
                     </Button>
                   </Link>
                 </div>

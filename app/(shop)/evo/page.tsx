@@ -42,7 +42,7 @@ export default function EvoPage() {
       src: "/Lavender Base (2).mp4",
       overlayImage: "/EVOLOGO.png",
       title: "Evo",
-      description: "Discover our premium line of Evo products",
+      description: t("productPages.evo.heroDescription"),
     },
   ];
 

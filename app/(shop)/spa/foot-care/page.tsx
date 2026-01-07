@@ -7,6 +7,7 @@ import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import TextGenerateEffect from "@/components/ui/text-generate-effect";
 import { Pagination } from "@/components/ui/pagination";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Product {
   id: string;
@@ -25,6 +26,7 @@ interface Product {
 }
 
 export default function FootCarePage() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -130,19 +132,19 @@ export default function FootCarePage() {
             <div className="max-w-2xl">
               <div className="text-white space-y-1">
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  Discover our premium Foot Care
+                  {t("productPagesExtended.footCare.hero.line1")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  collection. Specialized treatments
+                  {t("productPagesExtended.footCare.hero.line2")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  and creams designed to address
+                  {t("productPagesExtended.footCare.hero.line3")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  common foot concerns with deep
+                  {t("productPagesExtended.footCare.hero.line4")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  hydration and spa-like luxury.
+                  {t("productPagesExtended.footCare.hero.line5")}
                 </p>
               </div>
               
@@ -159,7 +161,7 @@ export default function FootCarePage() {
                 }}
               >
                 <button className="px-5 py-2 md:px-6 md:py-2.5 border-2 border-white text-white font-normal text-sm md:text-base hover:bg-white/10 transition-colors">
-                  SHOP NOW
+                  {t("hero.shopNow")}
                 </button>
               </Link>
             </div>
@@ -177,7 +179,7 @@ export default function FootCarePage() {
           <div className="container mx-auto px-4 max-w-6xl">
             <div className="text-center">
               <TextGenerateEffect
-                words="Foot Care is essential for maintaining healthy, soft, and well-groomed feet that complete your overall wellness routine. Our Foot Care collection offers specialized treatments, creams, and exfoliants designed to address common foot concerns like dryness, rough skin, and calluses. Formulated with nourishing natural ingredients, these products provide deep hydration, gentle exfoliation, and lasting comfort. Transform your foot care routine into a luxurious spa experience with our premium Foot Care products designed to keep your feet looking and feeling their absolute best. #our-funds"
+                words={`${t("productPagesExtended.footCare.description")} #our-funds`}
                 className="text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl text-brand-black leading-relaxed font-normal"
                 filter={true}
                 duration={0.5}
@@ -193,16 +195,16 @@ export default function FootCarePage() {
       <section {...(shouldShowId && { id: "products" })} ref={productsSectionRef} className="relative w-full min-h-screen bg-brand-white pt-24 pb-16">
         <div className="container mx-auto px-4 max-w-7xl">
           <h2 className="text-4xl md:text-5xl font-medium mb-12 text-center text-brand-black">
-            Foot Care Products
+            {t("products.footCareProducts")}
           </h2>
           
           {isLoading ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">Loading products...</p>
+              <p className="text-gray-600">{t("products.loadingProducts")}</p>
             </div>
           ) : products.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">No Foot Care products found.</p>
+              <p className="text-gray-600">{t("products.noFootCareProducts")}</p>
             </div>
           ) : (
             <>

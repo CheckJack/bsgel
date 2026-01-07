@@ -13,6 +13,7 @@ import { useCart } from "@/contexts/cart-context";
 import { useRouter } from "next/navigation";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Product {
   id: string;
@@ -72,6 +73,7 @@ export default function ProductDetailPage() {
   const { data: session } = useSession();
   const { addItem } = useCart();
   const router = useRouter();
+  const { t } = useLanguage();
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [quantity, setQuantity] = useState(1);
@@ -280,7 +282,7 @@ export default function ProductDetailPage() {
                     onClick={handleAddToCart}
                     disabled={isAdding}
                   >
-                    {isAdding ? "Adding..." : "Add to Cart"}
+                    {isAdding ? t("products.adding") : t("products.addToCart")}
                   </Button>
                   <div className="flex flex-wrap items-center justify-center gap-2 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-100">
                     <Image

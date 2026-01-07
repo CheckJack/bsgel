@@ -8,6 +8,7 @@ interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   t: (key: string, params?: Record<string, string>) => string;
+  tArray: (key: string) => string[];
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -32,6 +33,22 @@ function getNestedValue(obj: any, path: string): string {
   }
   
   return typeof value === "string" ? value : path;
+}
+
+// Helper function to get nested translation value as array
+function getNestedArray(obj: any, path: string): string[] {
+  const keys = path.split(".");
+  let value = obj;
+  
+  for (const key of keys) {
+    if (value && typeof value === "object" && key in value) {
+      value = value[key];
+    } else {
+      return []; // Return empty array if not found
+    }
+  }
+  
+  return Array.isArray(value) ? value : [];
 }
 
 // Helper function to replace placeholders
@@ -88,11 +105,22 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const tArray = (key: string): string[] => {
+    try {
+      const currentTranslations = translations[language] || translations.en;
+      return getNestedArray(currentTranslations, key);
+    } catch (error) {
+      console.error("Translation array error:", error, "key:", key);
+      return []; // Return empty array as fallback
+    }
+  };
+
   // Ensure context value is always defined
   const contextValue = {
     language,
     setLanguage,
     t,
+    tArray,
   };
 
   return (

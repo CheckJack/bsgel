@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SalonMap } from "@/components/layout/salon-map";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Salon {
   id: string;
@@ -41,6 +42,7 @@ interface Salon {
 export default function SalonDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { t } = useLanguage();
   const salonId = params.id as string;
   const [salon, setSalon] = useState<Salon | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,15 +68,15 @@ export default function SalonDetailPage() {
       } else if (res.status === 404) {
         const errorData = await res.json().catch(() => ({}));
         console.log(`[Salon Detail Page] Salon not found:`, errorData);
-        setError("Salon not found");
+        setError(t("findSalon.salonNotFound"));
       } else {
         const errorData = await res.json().catch(() => ({}));
         console.error(`[Salon Detail Page] Error response:`, errorData);
-        setError("Failed to load salon information");
+        setError(t("findSalon.failedToLoad"));
       }
     } catch (error) {
       console.error("[Salon Detail Page] Failed to fetch salon:", error);
-      setError("Failed to load salon information");
+      setError(t("findSalon.failedToLoad"));
     } finally {
       setIsLoading(false);
     }
@@ -82,7 +84,7 @@ export default function SalonDetailPage() {
 
   const formatWorkingHours = (workingHours: any): string => {
     if (!workingHours || typeof workingHours !== "object") {
-      return "Contact for hours";
+      return t("findSalon.contactForHours");
     }
 
     const days = [
@@ -95,13 +97,13 @@ export default function SalonDetailPage() {
       "sunday",
     ];
     const dayNames: { [key: string]: string } = {
-      monday: "Monday",
-      tuesday: "Tuesday",
-      wednesday: "Wednesday",
-      thursday: "Thursday",
-      friday: "Friday",
-      saturday: "Saturday",
-      sunday: "Sunday",
+      monday: t("findSalon.dayNamesFull.monday"),
+      tuesday: t("findSalon.dayNamesFull.tuesday"),
+      wednesday: t("findSalon.dayNamesFull.wednesday"),
+      thursday: t("findSalon.dayNamesFull.thursday"),
+      friday: t("findSalon.dayNamesFull.friday"),
+      saturday: t("findSalon.dayNamesFull.saturday"),
+      sunday: t("findSalon.dayNamesFull.sunday"),
     };
 
     const hoursList: string[] = [];
@@ -112,11 +114,11 @@ export default function SalonDetailPage() {
           `${dayNames[day]}: ${dayData.open || "?"} - ${dayData.close || "?"}`
         );
       } else if (dayData?.closed) {
-        hoursList.push(`${dayNames[day]}: Closed`);
+        hoursList.push(`${dayNames[day]}: ${t("findSalon.closed")}`);
       }
     });
 
-    return hoursList.length > 0 ? hoursList.join("\n") : "Contact for hours";
+    return hoursList.length > 0 ? hoursList.join("\n") : t("findSalon.contactForHours");
   };
 
   if (isLoading) {
@@ -124,7 +126,7 @@ export default function SalonDetailPage() {
       <div className="min-h-screen bg-brand-white flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-champagne"></div>
-          <p className="mt-4 text-brand-champagne">Loading salon information...</p>
+          <p className="mt-4 text-brand-champagne">{t("findSalon.loadingSalonInfo")}</p>
         </div>
       </div>
     );
@@ -135,13 +137,13 @@ export default function SalonDetailPage() {
       <div className="min-h-screen bg-brand-white flex items-center justify-center px-4">
         <div className="text-center max-w-md">
           <h1 className="text-2xl font-medium text-brand-black mb-4">
-            {error || "Salon not found"}
+            {error || t("findSalon.salonNotFound")}
           </h1>
           <p className="text-brand-champagne mb-6">
-            The salon you&apos;re looking for doesn&apos;t exist or has been removed.
+            {t("findSalon.salonNotFoundDesc")}
           </p>
           <Link href="/salons">
-            <Button>Back to Salons</Button>
+            <Button>{t("findSalon.backToSalons")}</Button>
           </Link>
         </div>
       </div>
@@ -158,7 +160,7 @@ export default function SalonDetailPage() {
           className="text-brand-champagne hover:text-brand-black"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Salons
+          {t("findSalon.backToSalons")}
         </Button>
       </div>
 
@@ -217,7 +219,7 @@ export default function SalonDetailPage() {
                   {salon.isBioDiamond && (
                     <div className="inline-flex items-center gap-2 bg-brand-champagne text-white px-4 py-2 rounded-full text-sm font-medium">
                       <Sparkles className="h-4 w-4" />
-                      Bio Diamond Salon
+                      {t("findSalon.bioDiamondSalon")}
                     </div>
                   )}
                 </div>
@@ -252,7 +254,7 @@ export default function SalonDetailPage() {
                     className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-brand-champagne hover:text-brand-black"
                   >
                     <Mail className="h-4 w-4" />
-                    Email
+                    {t("findSalon.email")}
                   </a>
                 )}
                 {salon.website && (
@@ -263,7 +265,7 @@ export default function SalonDetailPage() {
                     className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-brand-champagne hover:text-brand-black"
                   >
                     <Globe className="h-4 w-4" />
-                    Website
+                    {t("findSalon.website")}
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 )}
@@ -282,7 +284,7 @@ export default function SalonDetailPage() {
             {salon.description && (
               <div>
                 <h2 className="text-2xl font-medium text-brand-black mb-4">
-                  About
+                  {t("findSalon.about")}
                 </h2>
                 <p className="text-gray-700 leading-relaxed whitespace-pre-line">
                   {salon.description}
@@ -294,7 +296,7 @@ export default function SalonDetailPage() {
             {salon.images && salon.images.length > 0 && (
               <div>
                 <h2 className="text-2xl font-medium text-brand-black mb-4">
-                  Gallery
+                  {t("findSalon.gallery")}
                 </h2>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {salon.images.map((img, index) => (
@@ -330,7 +332,7 @@ export default function SalonDetailPage() {
                 <div className="flex items-center gap-2 mb-4">
                   <Clock className="h-5 w-5 text-brand-champagne" />
                   <h3 className="text-xl font-medium text-brand-black">
-                    Opening Hours
+                    {t("findSalon.openingHours")}
                   </h3>
                 </div>
                 <div className="text-sm text-gray-700 whitespace-pre-line">
