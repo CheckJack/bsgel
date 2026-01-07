@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Question {
   id: string;
@@ -185,9 +186,85 @@ const questions: Question[] = [
 
 export default function NailDiagnosisPage() {
   const router = useRouter();
+  const { t, tArray } = useLanguage();
   const [hasStarted, setHasStarted] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+
+  // Map questions to translations
+  const getQuestionTranslation = (questionId: string): string => {
+    const translations: Record<string, string> = {
+      "condition-1": t("nailDiagnosis.questions.strength"),
+      "condition-2": t("nailDiagnosis.questions.peeling"),
+      "condition-3": t("nailDiagnosis.questions.discoloration"),
+      "condition-4": t("nailDiagnosis.questions.cuticles"),
+      "condition-5": t("nailDiagnosis.questions.ridges"),
+      "habits-1": t("nailDiagnosis.questions.polishFrequency"),
+      "habits-2": t("nailDiagnosis.questions.biting"),
+      "habits-3": t("nailDiagnosis.questions.cuticleCare"),
+      "habits-4": t("nailDiagnosis.questions.polishRemoval"),
+      "habits-5": t("nailDiagnosis.questions.moisturizing"),
+      "appearance-1": t("nailDiagnosis.questions.nailShape"),
+      "appearance-2": t("nailDiagnosis.questions.growthRate"),
+      "appearance-3": t("nailDiagnosis.questions.lifting"),
+    };
+    return translations[questionId] || questions.find(q => q.id === questionId)?.question || "";
+  };
+
+  const getOptionTranslation = (value: string): string => {
+    const translations: Record<string, string> = {
+      "strong": t("nailDiagnosis.answers.strong"),
+      "moderate": t("nailDiagnosis.answers.moderatelyStrong"),
+      "weak": t("nailDiagnosis.answers.weak"),
+      "brittle": t("nailDiagnosis.answers.brittle"),
+      "never": t("nailDiagnosis.answers.never"),
+      "rarely": t("nailDiagnosis.answers.rarely"),
+      "sometimes": t("nailDiagnosis.answers.sometimes"),
+      "often": t("nailDiagnosis.answers.often"),
+      "none": t("nailDiagnosis.answers.noDiscoloration"),
+      "yellow": t("nailDiagnosis.answers.yellowTint"),
+      "white": t("nailDiagnosis.answers.whiteSpots"),
+      "dark": t("nailDiagnosis.answers.darkSpots"),
+      "healthy": t("nailDiagnosis.answers.healthyCuticles"),
+      "dry": t("nailDiagnosis.answers.dryCuticles"),
+      "overgrown": t("nailDiagnosis.answers.overgrown"),
+      "damaged": t("nailDiagnosis.answers.damagedCuticles"),
+      "smooth": t("nailDiagnosis.answers.smooth"),
+      "vertical": t("nailDiagnosis.answers.verticalRidges"),
+      "horizontal": t("nailDiagnosis.answers.horizontalRidges"),
+      "bumps": t("nailDiagnosis.answers.bumps"),
+      "rarely-year": t("nailDiagnosis.answers.rarelyYear"),
+      "weekly": t("nailDiagnosis.answers.weekly"),
+      "daily": t("nailDiagnosis.answers.daily"),
+      "oil": t("nailDiagnosis.answers.useCuticleOil"),
+      "push": t("nailDiagnosis.answers.pushBack"),
+      "cut": t("nailDiagnosis.answers.cutCuticles"),
+      "nothing": t("nailDiagnosis.answers.nothingCuticles"),
+      "acetone-free": t("nailDiagnosis.answers.acetoneFree"),
+      "acetone": t("nailDiagnosis.answers.acetoneBased"),
+      "peel": t("nailDiagnosis.answers.peelOff"),
+      "no-polish": t("nailDiagnosis.answers.noPolish"),
+      "few-times": t("nailDiagnosis.answers.fewTimesWeek"),
+      "once-week": t("nailDiagnosis.answers.onceWeek"),
+      "rarely-never": t("nailDiagnosis.answers.rarelyNever"),
+      "square": t("nailDiagnosis.answers.square"),
+      "round": t("nailDiagnosis.answers.round"),
+      "oval": t("nailDiagnosis.answers.oval"),
+      "almond": t("nailDiagnosis.answers.almond"),
+      "fast": t("nailDiagnosis.answers.veryFast"),
+      "normal": t("nailDiagnosis.answers.normal"),
+      "slow": t("nailDiagnosis.answers.slow"),
+      "very-slow": t("nailDiagnosis.answers.verySlow"),
+    };
+    return translations[value] || value;
+  };
+
+  const getCategoryTranslation = (category: string): string => {
+    if (category === "condition") return t("nailDiagnosis.categories.condition");
+    if (category === "habits") return t("nailDiagnosis.categories.habits");
+    if (category === "appearance") return t("nailDiagnosis.categories.appearance");
+    return "";
+  };
 
   const currentQuestion = questions[currentStep];
   const isLastQuestion = currentStep === questions.length - 1;
@@ -291,78 +368,42 @@ export default function NailDiagnosisPage() {
       severity = "severe";
       description =
         "Your nails show significant signs of damage, brittleness, and dehydration. They require intensive care and treatment to restore their health.";
-      recommendations = [
-        "Use a strengthening treatment daily",
-        "Apply cuticle oil 2-3 times per day",
-        "Avoid harsh nail polish removers",
-        "Stop biting or picking at nails",
-        "Use a protective base coat before polish",
-        "Consider taking a break from nail polish for 2-3 weeks",
-        "Moisturize hands and nails multiple times daily",
-      ];
+      recommendations = tArray("nailDiagnosis.results.recommendations.severelyDamaged");
       productCategories = ["strengthening", "cuticle-care", "moisturizing", "treatment"];
     } else if (totalScore >= 7 || drynessScore >= 4) {
       condition = "Dry and Brittle Nails";
       severity = "moderate";
       description =
         "Your nails are showing signs of dryness, brittleness, and need better hydration and care. With proper treatment, they can improve significantly.";
-      recommendations = [
-        "Apply cuticle oil daily",
-        "Use a hydrating nail treatment",
-        "Moisturize hands regularly",
-        "Avoid acetone-based removers",
-        "Use a strengthening base coat",
-        "Don&apos;t cut cuticles, push them back gently",
-      ];
+      recommendations = tArray("nailDiagnosis.results.recommendations.dryAndBrittle");
       productCategories = ["cuticle-care", "moisturizing", "strengthening", "treatment"];
     } else if (brittleScore >= 3 || damageScore >= 3) {
       condition = "Weak Nails Needing Strength";
       severity = "moderate";
       description =
         "Your nails need strengthening and protection. They&apos;re showing early signs of weakness that can be addressed with proper care.";
-      recommendations = [
-        "Use a strengthening treatment",
-        "Apply a protective base coat",
-        "Be gentle when removing polish",
-        "Keep nails trimmed to prevent breakage",
-        "Use cuticle oil regularly",
-      ];
+      recommendations = tArray("nailDiagnosis.results.recommendations.weakNails");
       productCategories = ["strengthening", "treatment", "base-coat"];
     } else if (drynessScore >= 3) {
       condition = "Dry Nails and Cuticles";
       severity = "mild";
       description =
         "Your nails and cuticles need more hydration. Regular moisturizing and cuticle care will improve their condition.";
-      recommendations = [
-        "Apply cuticle oil daily",
-        "Moisturize hands after washing",
-        "Use a hydrating hand cream",
-        "Avoid harsh soaps and chemicals",
-      ];
+      recommendations = tArray("nailDiagnosis.results.recommendations.dryNails");
       productCategories = ["cuticle-care", "moisturizing"];
     } else if (growthScore >= 2) {
       condition = "Slow Nail Growth";
       severity = "mild";
       description =
         "Your nails are healthy but growing slowly. A growth treatment can help accelerate nail growth and improve overall nail health.";
-      recommendations = [
-        "Use a nail growth treatment",
-        "Maintain a balanced diet",
-        "Keep nails well-moisturized",
-        "Protect nails from excessive water exposure",
-      ];
+      recommendations = tArray("nailDiagnosis.results.recommendations.slowNailGrowth");
       productCategories = ["growth", "treatment"];
     } else {
       condition = "Generally Healthy Nails";
       severity = "mild";
       description =
         "Your nails are in good condition! Continue with your current care routine and consider preventive products to maintain their health.";
-      recommendations = [
-        "Continue regular moisturizing",
-        "Use a protective base coat when wearing polish",
-        "Maintain cuticle care routine",
-        "Protect nails from harsh chemicals",
-      ];
+      recommendations = tArray("nailDiagnosis.results.recommendations.generallyHealthy");
       productCategories = ["preventive", "base-coat", "cuticle-care"];
     }
 
@@ -409,9 +450,9 @@ export default function NailDiagnosisPage() {
             <div className="w-full">
               <Card className="border-0 shadow-none">
                 <CardHeader>
-                  <CardTitle className="text-2xl">Welcome to Your Nail Diagnosis</CardTitle>
+                  <CardTitle className="text-2xl">{t("nailDiagnosis.welcome.title")}</CardTitle>
                   <CardDescription>
-                    We&apos;ll ask you a few questions about your nails to provide personalized recommendations
+                    {t("nailDiagnosis.welcome.description")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -421,9 +462,9 @@ export default function NailDiagnosisPage() {
                         1
                       </div>
                       <div>
-                        <h3 className="font-semibold mb-1">Answer Questions</h3>
+                        <h3 className="font-semibold mb-1">{t("nailDiagnosis.welcome.answerQuestions")}</h3>
                         <p className="text-sm text-gray-600">
-                          We&apos;ll ask about your nail condition, care habits, and appearance
+                          {t("nailDiagnosis.welcome.answerQuestionsDesc")}
                         </p>
                       </div>
                     </div>
@@ -432,9 +473,9 @@ export default function NailDiagnosisPage() {
                         2
                       </div>
                       <div>
-                        <h3 className="font-semibold mb-1">Get Your Diagnosis</h3>
+                        <h3 className="font-semibold mb-1">{t("nailDiagnosis.welcome.getDiagnosis")}</h3>
                         <p className="text-sm text-gray-600">
-                          Receive a detailed analysis of your nail health and condition
+                          {t("nailDiagnosis.welcome.getDiagnosisDesc")}
                         </p>
                       </div>
                     </div>
@@ -443,9 +484,9 @@ export default function NailDiagnosisPage() {
                         3
                       </div>
                       <div>
-                        <h3 className="font-semibold mb-1">Product Recommendations</h3>
+                        <h3 className="font-semibold mb-1">{t("nailDiagnosis.welcome.productRecommendations")}</h3>
                         <p className="text-sm text-gray-600">
-                          Discover products tailored to your specific nail care needs
+                          {t("nailDiagnosis.welcome.productRecommendationsDesc")}
                         </p>
                       </div>
                     </div>
@@ -457,12 +498,12 @@ export default function NailDiagnosisPage() {
                       className="w-full"
                       size="lg"
                     >
-                      Start Diagnosis
+                      {t("nailDiagnosis.welcome.startDiagnosis")}
                     </Button>
                   </div>
 
                   <p className="text-xs text-gray-500 text-center">
-                    This will take approximately {Math.ceil(questions.length * 0.5)} minutes
+                    {t("nailDiagnosis.welcome.timeEstimate")}
                   </p>
                 </CardContent>
               </Card>
@@ -499,17 +540,15 @@ export default function NailDiagnosisPage() {
                 />
               </div>
               <p className="text-sm text-gray-500">
-                Question {currentStep + 1} of {questions.length}
+                {t("nailDiagnosis.buttons.questionProgress").replace("{current}", String(currentStep + 1)).replace("{total}", String(questions.length))}
               </p>
             </div>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl">{currentQuestion.question}</CardTitle>
+                <CardTitle className="text-2xl">{getQuestionTranslation(currentQuestion.id)}</CardTitle>
                 <CardDescription>
-                  {currentQuestion.category === "condition" && "About your nail condition"}
-                  {currentQuestion.category === "habits" && "About your nail care habits"}
-                  {currentQuestion.category === "appearance" && "About your nail appearance"}
+                  {getCategoryTranslation(currentQuestion.category)}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -532,7 +571,7 @@ export default function NailDiagnosisPage() {
                             : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                         }`}
                       >
-                        {option.label}
+                        {getOptionTranslation(option.value)}
                       </button>
                     );
                   })}
@@ -544,7 +583,7 @@ export default function NailDiagnosisPage() {
                     disabled={currentStep === 0}
                     variant="outline"
                   >
-                    Back
+                    {t("nailDiagnosis.buttons.back")}
                   </Button>
                   <Button
                     onClick={handleNext}
@@ -554,7 +593,7 @@ export default function NailDiagnosisPage() {
                         (answers[currentQuestion.id] as string[]).length === 0)
                     }
                   >
-                    {isLastQuestion ? "Get Diagnosis" : "Next"}
+                    {isLastQuestion ? t("nailDiagnosis.buttons.getDiagnosis") : t("nailDiagnosis.buttons.next")}
                   </Button>
                 </div>
               </CardContent>

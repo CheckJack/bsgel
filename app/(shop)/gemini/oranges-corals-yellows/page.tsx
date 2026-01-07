@@ -7,6 +7,7 @@ import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import TextGenerateEffect from "@/components/ui/text-generate-effect";
 import { Pagination } from "@/components/ui/pagination";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Product {
   id: string;
@@ -25,6 +26,7 @@ interface Product {
 }
 
 export default function OrangesCoralsYellowsPage() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -129,19 +131,19 @@ export default function OrangesCoralsYellowsPage() {
             <div className="max-w-2xl">
               <div className="text-white space-y-1">
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  Discover our vibrant collection
+                  {t("productPagesExtended.geminiOranges.hero.line1")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  of Orange, Coral, and Yellow
+                  {t("productPagesExtended.geminiOranges.hero.line2")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  shades in the Gemini collection.
+                  {t("productPagesExtended.geminiOranges.hero.line3")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  From sunny yellows to vibrant
+                  {t("productPagesExtended.geminiOranges.hero.line4")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  corals, warmth and energy.
+                  {t("productPagesExtended.geminiOranges.hero.line5")}
                 </p>
               </div>
               
@@ -158,7 +160,7 @@ export default function OrangesCoralsYellowsPage() {
                 }}
               >
                 <button className="px-5 py-2 md:px-6 md:py-2.5 border-2 border-white text-white font-normal text-sm md:text-base hover:bg-white/10 transition-colors">
-                  SHOP NOW
+                  {t("hero.shopNow")}
                 </button>
               </Link>
             </div>
@@ -175,7 +177,7 @@ export default function OrangesCoralsYellowsPage() {
           <div className="container mx-auto px-4 max-w-6xl">
             <div className="text-center">
               <TextGenerateEffect
-                words="Oranges, Corals, and Yellows bring warmth and energy to our Gemini collection. From sunny yellows to vibrant corals and rich oranges, these shades capture the essence of summer and add a cheerful pop of color to any look. Each gel delivers bright, saturated color with excellent coverage and long-lasting wear. Whether you prefer a soft peach, a bold tangerine, or a sunny yellow, our collection offers vibrant options that radiate positivity and style. #our-funds"
+                words={`${t("productPagesExtended.geminiOranges.description")} #our-funds`}
                 className="text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl text-brand-black leading-relaxed font-normal"
                 filter={true}
                 duration={0.5}
@@ -190,16 +192,16 @@ export default function OrangesCoralsYellowsPage() {
       <section {...(shouldShowId && { id: "products" })} ref={productsSectionRef} className="relative w-full min-h-screen bg-brand-white pt-24 pb-16">
         <div className="container mx-auto px-4 max-w-7xl">
           <h2 className="text-4xl md:text-5xl font-medium mb-12 text-center text-brand-black">
-            Orange, Coral & Yellow Shades
+            {t("nav.shopMenu.orangesCoralsYellows")}
           </h2>
           
           {isLoading ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">Loading products...</p>
+              <p className="text-gray-600">{t("products.loadingProducts")}</p>
             </div>
           ) : products.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">No products found.</p>
+              <p className="text-gray-600">{t("products.noProductsFound")}</p>
             </div>
           ) : (
             <>

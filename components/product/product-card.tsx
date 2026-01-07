@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Star } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
+import { useLanguage } from "@/contexts/language-context";
 
 interface ProductCardProps {
   id: string;
@@ -64,6 +65,7 @@ export function ProductCard({
   rating,
   reviewCount
 }: ProductCardProps) {
+  const { t } = useLanguage();
   const [isHovered, setIsHovered] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   
@@ -148,19 +150,19 @@ export function ProductCard({
           </>
         ) : (
           <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-            <span className="text-gray-400 text-sm">No Image</span>
+            <span className="text-gray-400 text-sm">{t("products.noImage")}</span>
           </div>
         )}
         {(outOfStock || hemaFree) && (
           <div className="absolute top-3 right-3 flex flex-col gap-1 z-10">
             {outOfStock && (
               <div className="bg-brand-champagne text-white text-xs px-2 py-1 rounded">
-                OUT OF STOCK
+                {t("products.outOfStock")}
               </div>
             )}
             {hemaFree && (
               <div className="bg-brand-champagne text-white text-xs px-2 py-1 rounded">
-                HEMA FREE
+                {t("products.hemaFree")}
               </div>
             )}
           </div>
@@ -182,12 +184,12 @@ export function ProductCard({
             <div className="flex items-center gap-2">
               {rating !== undefined && rating > 0 && <StarRating rating={rating} />}
               {reviewCount !== undefined && reviewCount > 0 && (
-                <span className="text-sm text-gray-600">{reviewCount} {reviewCount === 1 ? 'review' : 'reviews'}</span>
+                <span className="text-sm text-gray-600">{reviewCount} {reviewCount === 1 ? t("products.review") : t("products.reviews")}</span>
               )}
             </div>
           ) : null}
           <span className="text-[18px] font-semibold text-black">
-            {price ? formatPrice(price) : "Price on request"}
+            {price ? formatPrice(price) : t("products.priceOnRequest")}
           </span>
         </div>
 
@@ -216,7 +218,7 @@ export function ProductCard({
                 window.location.href = `/products/${id}`;
               }}
             >
-              Add to cart
+              {t("products.addToCart")}
             </button>
           </Link>
         </div>

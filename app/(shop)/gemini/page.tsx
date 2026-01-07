@@ -46,7 +46,7 @@ export default function GeminiPage() {
       src: "/Lavender Base (2).mp4",
       overlayImage: "/geminilogo.png",
       title: "Gemini",
-      description: "Discover our premium line of Gemini products",
+      description: t("productPages.gemini.heroDescription"),
     },
   ];
 

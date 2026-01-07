@@ -7,6 +7,7 @@ import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import TextGenerateEffect from "@/components/ui/text-generate-effect";
 import { Pagination } from "@/components/ui/pagination";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Product {
   id: string;
@@ -25,6 +26,7 @@ interface Product {
 }
 
 export default function RedsPage() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -130,19 +132,19 @@ export default function RedsPage() {
             <div className="max-w-2xl">
               <div className="text-white space-y-1">
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  Discover our vibrant collection
+                  {t("productPagesExtended.geminiReds.hero.line1")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  of Red shades in the Gemini
+                  {t("productPagesExtended.geminiReds.hero.line2")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  collection. From classic crimson
+                  {t("productPagesExtended.geminiReds.hero.line3")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  to deep burgundy, our red gels
+                  {t("productPagesExtended.geminiReds.hero.line4")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  deliver timeless elegance.
+                  {t("productPagesExtended.geminiReds.hero.line5")}
                 </p>
               </div>
               
@@ -159,7 +161,7 @@ export default function RedsPage() {
                 }}
               >
                 <button className="px-5 py-2 md:px-6 md:py-2.5 border-2 border-white text-white font-normal text-sm md:text-base hover:bg-white/10 transition-colors">
-                  SHOP NOW
+                  {t("hero.shopNow")}
                 </button>
               </Link>
             </div>
@@ -176,7 +178,7 @@ export default function RedsPage() {
           <div className="container mx-auto px-4 max-w-6xl">
             <div className="text-center">
               <TextGenerateEffect
-                words="Reds represent timeless elegance and bold confidence in our Gemini collection. From classic crimson to deep burgundy, our red shades deliver vibrant, long-lasting color that makes a statement. Each red gel is formulated with the same premium ingredients and professional-grade performance that defines the Gemini line. Whether you prefer a bright cherry red or a sophisticated wine shade, our red collection offers the perfect hue for every occasion. #our-funds"
+                words={`${t("productPagesExtended.geminiReds.description")} #our-funds`}
                 className="text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl text-brand-black leading-relaxed font-normal"
                 filter={true}
                 duration={0.5}
@@ -191,16 +193,16 @@ export default function RedsPage() {
       <section ref={productsSectionRef} {...(shouldShowId && { id: "products" })} className="relative w-full min-h-screen bg-brand-white pt-24 pb-16">
         <div className="container mx-auto px-4 max-w-7xl">
           <h2 className="text-4xl md:text-5xl font-medium mb-12 text-center text-brand-black">
-            Red Shades
+            {t("nav.shopMenu.reds")}
           </h2>
           
           {isLoading ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">Loading products...</p>
+              <p className="text-gray-600">{t("products.loadingProducts")}</p>
             </div>
           ) : products.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">No red products found.</p>
+              <p className="text-gray-600">{t("products.noProductsFound")}</p>
             </div>
           ) : (
             <>

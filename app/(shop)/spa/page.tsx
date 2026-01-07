@@ -42,7 +42,7 @@ export default function SpaPage() {
       src: "/Lavender Base (2).mp4",
       overlayImage: "/SPALOGO.png",
       title: "SPA",
-      description: "Discover our premium line of SPA products",
+      description: t("productPages.spa.heroDescription"),
     },
   ];
 

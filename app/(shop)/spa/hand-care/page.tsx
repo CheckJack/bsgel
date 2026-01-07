@@ -7,6 +7,7 @@ import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import TextGenerateEffect from "@/components/ui/text-generate-effect";
 import { Pagination } from "@/components/ui/pagination";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Product {
   id: string;
@@ -25,6 +26,7 @@ interface Product {
 }
 
 export default function HandCarePage() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -130,19 +132,19 @@ export default function HandCarePage() {
             <div className="max-w-2xl">
               <div className="text-white space-y-1">
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  Discover our premium Hand Care
+                  {t("productPagesExtended.handCare.hero.line1")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  collection. Luxurious creams and
+                  {t("productPagesExtended.handCare.hero.line2")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  treatments that deeply hydrate,
+                  {t("productPagesExtended.handCare.hero.line3")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  protect, and rejuvenate your hands
+                  {t("productPagesExtended.handCare.hero.line4")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  with spa-like luxury.
+                  {t("productPagesExtended.handCare.hero.line5")}
                 </p>
               </div>
               
@@ -159,7 +161,7 @@ export default function HandCarePage() {
                 }}
               >
                 <button className="px-5 py-2 md:px-6 md:py-2.5 border-2 border-white text-white font-normal text-sm md:text-base hover:bg-white/10 transition-colors">
-                  SHOP NOW
+                  {t("hero.shopNow")}
                 </button>
               </Link>
             </div>
@@ -177,7 +179,7 @@ export default function HandCarePage() {
           <div className="container mx-auto px-4 max-w-6xl">
             <div className="text-center">
               <TextGenerateEffect
-                words="Hand Care is essential for maintaining soft, supple hands that complement beautiful nails. Our Hand Care collection offers luxurious creams, lotions, and treatments that deeply hydrate, protect, and rejuvenate your hands. Formulated with nourishing natural ingredients, these products address dryness, roughness, and signs of aging while providing a spa-like experience. Transform your daily hand care routine into a moment of self-care with our premium Hand Care products designed to keep your hands looking and feeling their absolute best. #our-funds"
+                words={`${t("productPagesExtended.handCare.description")} #our-funds`}
                 className="text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl text-brand-black leading-relaxed font-normal"
                 filter={true}
                 duration={0.5}
@@ -193,16 +195,16 @@ export default function HandCarePage() {
       <section {...(shouldShowId && { id: "products" })} ref={productsSectionRef} className="relative w-full min-h-screen bg-brand-white pt-24 pb-16">
         <div className="container mx-auto px-4 max-w-7xl">
           <h2 className="text-4xl md:text-5xl font-medium mb-12 text-center text-brand-black">
-            Hand Care Products
+            {t("products.handCareProducts")}
           </h2>
           
           {isLoading ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">Loading products...</p>
+              <p className="text-gray-600">{t("products.loadingProducts")}</p>
             </div>
           ) : products.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">No Hand Care products found.</p>
+              <p className="text-gray-600">{t("products.noHandCareProducts")}</p>
             </div>
           ) : (
             <>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/product/product-card";
+import { useLanguage } from "@/contexts/language-context";
 import { 
   CheckCircle2, 
   AlertCircle, 
@@ -90,11 +91,63 @@ const getSeverityConfig = (severity: "mild" | "moderate" | "severe") => {
 
 export default function DiagnosisResultsPage() {
   const router = useRouter();
+  const { t, tArray } = useLanguage();
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
   const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+
+  // Translate condition name
+  const translateCondition = (condition: string): string => {
+    const conditionMap: Record<string, string> = {
+      "Severely Damaged Nails": t("nailDiagnosis.results.severelyDamaged"),
+      "Dry and Brittle Nails": t("nailDiagnosis.results.dryAndBrittle"),
+      "Weak Nails Needing Strength": t("nailDiagnosis.results.weakNails"),
+      "Dry Nails and Cuticles": t("nailDiagnosis.results.dryNails"),
+      "Slow Nail Growth": t("nailDiagnosis.results.slowNailGrowth"),
+      "Generally Healthy Nails": t("nailDiagnosis.results.generallyHealthy"),
+    };
+    return conditionMap[condition] || condition;
+  };
+
+  // Translate condition description
+  const translateDescription = (condition: string, description: string): string => {
+    const descMap: Record<string, string> = {
+      "Severely Damaged Nails": t("nailDiagnosis.results.severelyDamagedDesc"),
+      "Dry and Brittle Nails": t("nailDiagnosis.results.dryAndBrittleDesc"),
+      "Weak Nails Needing Strength": t("nailDiagnosis.results.weakNailsDesc"),
+      "Dry Nails and Cuticles": t("nailDiagnosis.results.dryNailsDesc"),
+      "Slow Nail Growth": t("nailDiagnosis.results.slowNailGrowthDesc"),
+      "Generally Healthy Nails": t("nailDiagnosis.results.generallyHealthyDesc"),
+    };
+    return descMap[condition] || description;
+  };
+
+  // Translate recommendations based on condition type
+  const translateRecommendations = (condition: string): string[] => {
+    const recMap: Record<string, string> = {
+      "Severely Damaged Nails": "severelyDamaged",
+      "Dry and Brittle Nails": "dryAndBrittle",
+      "Weak Nails Needing Strength": "weakNails",
+      "Dry Nails and Cuticles": "dryNails",
+      "Slow Nail Growth": "slowNailGrowth",
+      "Generally Healthy Nails": "generallyHealthy",
+    };
+    const key = recMap[condition];
+    if (key) {
+      return tArray(`nailDiagnosis.results.recommendations.${key}`);
+    }
+    // Fallback to stored recommendations if condition not found
+    return diagnosis?.recommendations || [];
+  };
+
+  // Translate severity label
+  const translateSeverity = (severity: string): string => {
+    if (severity === "severe") return t("nailDiagnosis.results.severeCondition");
+    if (severity === "moderate") return t("nailDiagnosis.results.moderateCondition");
+    return t("nailDiagnosis.results.mildCondition");
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -194,7 +247,7 @@ export default function DiagnosisResultsPage() {
       <div className="min-h-screen flex items-center justify-center bg-brand-white">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-black mb-4"></div>
-          <div className="text-lg font-heading font-medium text-brand-black">Loading your diagnosis...</div>
+          <div className="text-lg font-heading font-medium text-brand-black">{t("nailDiagnosis.results.loadingDiagnosis")}</div>
         </div>
       </div>
     );
@@ -224,12 +277,12 @@ export default function DiagnosisResultsPage() {
             <h1 className={`text-4xl lg:text-6xl font-heading font-medium mb-6 text-brand-black transition-all duration-700 ${
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}>
-              Your Nail Diagnosis
+              {t("nailDiagnosis.results.title")}
             </h1>
             <p className={`text-lg lg:text-xl font-sans font-light text-brand-champagne max-w-2xl mx-auto transition-all duration-700 delay-100 ${
               mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}>
-              Based on your responses, here&apos;s your personalized nail care analysis
+              {t("nailDiagnosis.results.subtitle")}
             </p>
           </div>
 
@@ -245,13 +298,13 @@ export default function DiagnosisResultsPage() {
                   </div>
                   <div className="flex-1">
                     <CardTitle className="text-3xl lg:text-4xl font-heading font-medium text-brand-black mb-3">
-                      {diagnosis.condition}
+                      {translateCondition(diagnosis.condition)}
                     </CardTitle>
                     <div className="flex flex-wrap items-center gap-3 mb-4">
                       <span
                         className={`inline-flex items-center px-5 py-2 rounded-full text-sm font-heading font-medium ${severityConfig.badgeBg} ${severityConfig.badgeText} shadow-sm`}
                       >
-                        {diagnosis.severity.charAt(0).toUpperCase() + diagnosis.severity.slice(1)} Condition
+                        {translateSeverity(diagnosis.severity)}
                       </span>
                       <span className="text-sm font-sans font-light text-brand-champagne">
                         {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
@@ -260,7 +313,7 @@ export default function DiagnosisResultsPage() {
                     {/* Progress Indicator */}
                     <div className="mt-4">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-sans font-light text-brand-champagne">Overall Health Score</span>
+                        <span className="text-xs font-sans font-light text-brand-champagne">{t("nailDiagnosis.results.overallHealthScore")}</span>
                         <span className="text-xs font-heading font-medium text-brand-black">{severityProgress}%</span>
                       </div>
                       <div className="w-full h-2 bg-brand-sweet-bianca rounded-full overflow-hidden">
@@ -294,7 +347,7 @@ export default function DiagnosisResultsPage() {
             </CardHeader>
             <CardContent>
               <p className="text-brand-black text-lg lg:text-xl font-sans font-light leading-relaxed">
-                {diagnosis.description}
+                {translateDescription(diagnosis.condition, diagnosis.description)}
               </p>
             </CardContent>
           </Card>
@@ -311,16 +364,16 @@ export default function DiagnosisResultsPage() {
             </div>
             <div>
               <h2 className="text-3xl lg:text-5xl font-heading font-medium text-brand-black mb-2">
-                Personalized Recommendations
+                {t("nailDiagnosis.results.personalizedRecommendations")}
               </h2>
               <p className="text-brand-champagne font-sans font-light">
-                Tailored care steps to improve your nail health
+                {t("nailDiagnosis.results.recommendationsSubtitle")}
               </p>
             </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6">
-            {diagnosis.recommendations.map((rec, index) => (
+            {translateRecommendations(diagnosis.condition).map((rec, index) => (
               <Card 
                 key={index} 
                 className="group border border-brand-champagne/20 hover:border-brand-champagne/40 hover:shadow-xl transition-all duration-300 bg-brand-white"
@@ -349,10 +402,10 @@ export default function DiagnosisResultsPage() {
               </div>
               <div>
                 <h2 className="text-3xl lg:text-5xl font-heading font-medium text-brand-black mb-2">
-                  Recommended Products
+                  {t("nailDiagnosis.results.recommendedProducts")}
                 </h2>
                 <p className="text-brand-champagne font-sans font-light">
-                  Curated selections for your specific needs
+                  {t("nailDiagnosis.results.productsSubtitle")}
                 </p>
               </div>
             </div>
@@ -361,7 +414,7 @@ export default function DiagnosisResultsPage() {
               variant="outline"
               className="hidden sm:flex items-center gap-2 border-brand-champagne/30 hover:bg-brand-champagne/10 font-heading"
             >
-              View All
+              {t("nailDiagnosis.results.viewAll")}
               <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
@@ -369,14 +422,14 @@ export default function DiagnosisResultsPage() {
           {isLoadingProducts ? (
             <div className="text-center py-20">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-black mb-4"></div>
-              <div className="text-lg font-sans font-light text-brand-champagne">Loading recommended products...</div>
+              <div className="text-lg font-sans font-light text-brand-champagne">{t("nailDiagnosis.results.loadingProducts")}</div>
             </div>
           ) : recommendedProducts.length === 0 ? (
             <Card className="border-2 border-dashed border-brand-champagne/30 bg-brand-sweet-bianca/20">
               <CardContent className="py-20 text-center">
                 <ShoppingBag className="w-20 h-20 text-brand-champagne/40 mx-auto mb-6" />
                 <p className="text-brand-champagne mb-8 text-lg font-sans font-light">
-                  No specific products found. Check out our full product range!
+                  {t("nailDiagnosis.results.noProductsFound")}
                 </p>
                 <Button 
                   onClick={() => router.push("/products")} 
@@ -384,7 +437,7 @@ export default function DiagnosisResultsPage() {
                   className="gap-2 bg-brand-black hover:bg-brand-champagne font-heading"
                 >
                   <ShoppingBag className="w-5 h-5" />
-                  View All Products
+                  {t("nailDiagnosis.results.viewAllProducts")}
                 </Button>
               </CardContent>
             </Card>
@@ -417,7 +470,7 @@ export default function DiagnosisResultsPage() {
                   variant="outline"
                   className="gap-2 border-brand-champagne/30 hover:bg-brand-champagne/10 font-heading"
                 >
-                  View All Products
+                  {t("nailDiagnosis.results.viewAllProducts")}
                   <ArrowRight className="w-5 h-5" />
                 </Button>
               </div>
@@ -433,7 +486,7 @@ export default function DiagnosisResultsPage() {
                 <TrendingUp className="w-6 h-6 text-brand-white" />
               </div>
               <CardTitle className="text-2xl lg:text-3xl font-heading font-medium text-brand-black">
-                Quick Tips for Better Nail Health
+                {t("nailDiagnosis.results.quickTips")}
               </CardTitle>
             </div>
           </CardHeader>
@@ -444,9 +497,9 @@ export default function DiagnosisResultsPage() {
                   <Shield className="w-6 h-6 text-brand-champagne" />
                 </div>
                 <div>
-                  <h4 className="font-heading font-medium mb-2 text-brand-black">Protect Your Nails</h4>
+                  <h4 className="font-heading font-medium mb-2 text-brand-black">{t("nailDiagnosis.results.protectNails")}</h4>
                   <p className="text-sm font-sans font-light text-brand-champagne leading-relaxed">
-                    Use gloves when doing household chores and avoid using nails as tools.
+                    {t("nailDiagnosis.results.protectNailsDesc")}
                   </p>
                 </div>
               </div>
@@ -455,9 +508,9 @@ export default function DiagnosisResultsPage() {
                   <Droplets className="w-6 h-6 text-brand-champagne" />
                 </div>
                 <div>
-                  <h4 className="font-heading font-medium mb-2 text-brand-black">Stay Hydrated</h4>
+                  <h4 className="font-heading font-medium mb-2 text-brand-black">{t("nailDiagnosis.results.stayHydrated")}</h4>
                   <p className="text-sm font-sans font-light text-brand-champagne leading-relaxed">
-                    Keep your nails and cuticles moisturized daily with quality oils and creams.
+                    {t("nailDiagnosis.results.stayHydratedDesc")}
                   </p>
                 </div>
               </div>
@@ -466,9 +519,9 @@ export default function DiagnosisResultsPage() {
                   <Heart className="w-6 h-6 text-brand-champagne" />
                 </div>
                 <div>
-                  <h4 className="font-heading font-medium mb-2 text-brand-black">Be Gentle</h4>
+                  <h4 className="font-heading font-medium mb-2 text-brand-black">{t("nailDiagnosis.results.beGentle")}</h4>
                   <p className="text-sm font-sans font-light text-brand-champagne leading-relaxed">
-                    Avoid harsh chemicals and be gentle when removing polish or shaping nails.
+                    {t("nailDiagnosis.results.beGentleDesc")}
                   </p>
                 </div>
               </div>
@@ -484,7 +537,7 @@ export default function DiagnosisResultsPage() {
                 <Target className="w-6 h-6 text-brand-white" />
               </div>
               <CardTitle className="text-2xl lg:text-3xl font-heading font-medium text-brand-black">
-                Your Action Plan
+                {t("nailDiagnosis.results.actionPlan")}
               </CardTitle>
             </div>
           </CardHeader>
@@ -494,27 +547,27 @@ export default function DiagnosisResultsPage() {
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-brand-champagne/10 mb-4">
                   <Calendar className="w-6 h-6 text-brand-champagne" />
                 </div>
-                <h4 className="font-heading font-medium mb-2 text-brand-black">Week 1-2</h4>
+                <h4 className="font-heading font-medium mb-2 text-brand-black">{t("nailDiagnosis.results.week1to2")}</h4>
                 <p className="text-sm font-sans font-light text-brand-champagne">
-                  Start with daily moisturizing and cuticle care routine
+                  {t("nailDiagnosis.results.week1to2Desc")}
                 </p>
               </div>
               <div className="text-center p-6 rounded-xl bg-brand-white border border-brand-champagne/20">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-brand-champagne/10 mb-4">
                   <Zap className="w-6 h-6 text-brand-champagne" />
                 </div>
-                <h4 className="font-heading font-medium mb-2 text-brand-black">Week 3-4</h4>
+                <h4 className="font-heading font-medium mb-2 text-brand-black">{t("nailDiagnosis.results.week3to4")}</h4>
                 <p className="text-sm font-sans font-light text-brand-champagne">
-                  Incorporate strengthening treatments and protective base coats
+                  {t("nailDiagnosis.results.week3to4Desc")}
                 </p>
               </div>
               <div className="text-center p-6 rounded-xl bg-brand-white border border-brand-champagne/20">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-brand-champagne/10 mb-4">
                   <Award className="w-6 h-6 text-brand-champagne" />
                 </div>
-                <h4 className="font-heading font-medium mb-2 text-brand-black">Month 2+</h4>
+                <h4 className="font-heading font-medium mb-2 text-brand-black">{t("nailDiagnosis.results.month2Plus")}</h4>
                 <p className="text-sm font-sans font-light text-brand-champagne">
-                  Maintain routine and enjoy healthier, stronger nails
+                  {t("nailDiagnosis.results.month2PlusDesc")}
                 </p>
               </div>
             </div>
@@ -530,7 +583,7 @@ export default function DiagnosisResultsPage() {
             className="w-full sm:w-auto gap-2 border-brand-champagne/30 hover:bg-brand-champagne/10 font-heading"
           >
             <RotateCcw className="w-5 h-5" />
-            Take Diagnosis Again
+            {t("nailDiagnosis.results.takeDiagnosisAgain")}
           </Button>
           <Button 
             onClick={() => router.push("/products")} 
@@ -538,7 +591,7 @@ export default function DiagnosisResultsPage() {
             className="w-full sm:w-auto gap-2 bg-brand-black hover:bg-brand-champagne font-heading transition-colors duration-300"
           >
             <ShoppingBag className="w-5 h-5" />
-            Shop Products
+            {t("nailDiagnosis.results.shopProducts")}
           </Button>
         </div>
       </div>
