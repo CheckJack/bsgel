@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Review {
   id: string;
@@ -131,6 +132,7 @@ export function ProductReviews({
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const { data: session } = useSession();
   const router = useRouter();
+  const { t } = useLanguage();
   const reviewsPerPage = 5;
 
   useEffect(() => {
@@ -332,8 +334,8 @@ export function ProductReviews({
             <div className="text-center py-4">
               <p className="text-gray-600">
                 {productId 
-                  ? "No reviews yet. Be the first to review this product!" 
-                  : "No reviews yet for products in this category."}
+                  ? t("products.noReviewsYetProduct")
+                  : t("products.noReviewsYet")}
               </p>
             </div>
           )}

@@ -80,14 +80,14 @@ export function ProductShowcase({ products }: ProductShowcaseProps) {
             <>
               <button
                 onClick={goToPrevious}
-                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-6 z-30 bg-white/90 hover:bg-white rounded-full p-2 md:p-3 shadow-lg hover:shadow-xl transition-all duration-300 group"
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 sm:-translate-x-4 md:-translate-x-6 z-30 bg-white/90 hover:bg-white active:bg-white rounded-full p-2 md:p-3 shadow-lg hover:shadow-xl transition-all duration-300 group touch-manipulation min-w-[44px] min-h-[44px]"
                 aria-label="Previous slide"
               >
                 <ChevronLeft className="w-5 h-5 md:w-6 md:h-6 text-brand-black group-hover:text-brand-champagne transition-colors" />
               </button>
               <button
                 onClick={goToNext}
-                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-6 z-30 bg-white/90 hover:bg-white rounded-full p-2 md:p-3 shadow-lg hover:shadow-xl transition-all duration-300 group"
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 sm:translate-x-4 md:translate-x-6 z-30 bg-white/90 hover:bg-white active:bg-white rounded-full p-2 md:p-3 shadow-lg hover:shadow-xl transition-all duration-300 group touch-manipulation min-w-[44px] min-h-[44px]"
                 aria-label="Next slide"
               >
                 <ChevronRight className="w-5 h-5 md:w-6 md:h-6 text-brand-black group-hover:text-brand-champagne transition-colors" />
@@ -208,10 +208,10 @@ export function ProductShowcase({ products }: ProductShowcaseProps) {
                 <button
                   key={index}
                   onClick={() => setCurrentIndex(index)}
-                  className={`transition-all duration-300 rounded-full ${
+                  className={`transition-all duration-300 rounded-full touch-manipulation min-w-[20px] min-h-[20px] ${
                     currentIndex === index
                       ? "w-8 h-2 bg-brand-champagne"
-                      : "w-2 h-2 bg-gray-300 hover:bg-gray-400"
+                      : "w-2 h-2 bg-gray-300 hover:bg-gray-400 active:bg-gray-500"
                   }`}
                   aria-label={`Go to slide ${index + 1}`}
                 />

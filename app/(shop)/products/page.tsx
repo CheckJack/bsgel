@@ -190,12 +190,12 @@ function ProductsPageContent() {
 
   return (
     <>
-      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-[400px]" />
+      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-[300px] sm:h-[400px] md:h-[500px]" />
       <div className="bg-brand-white min-h-screen">
-        <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-medium text-brand-black">{t("shop.title")}</h1>
-            <div className="flex items-center gap-2 sm:gap-4">
+        <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-12">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6 md:mb-8">
+            <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-medium text-brand-black">{t("shop.title")}</h1>
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
               <Button
                 variant="outline"
                 onClick={() => setShowFilters(!showFilters)}
@@ -224,16 +224,16 @@ function ProductsPageContent() {
           </div>
 
           {/* Search and Category Filter */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div className="flex-1">
               <Input
                 placeholder={t("shop.searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full"
+                className="w-full text-sm sm:text-base"
               />
             </div>
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+            <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
               <Button
                 variant={selectedCategory === null ? "default" : "outline"}
                 onClick={() => setSelectedCategory(null)}
@@ -256,8 +256,8 @@ function ProductsPageContent() {
 
           {/* Advanced Filters Panel */}
           {showFilters && (
-            <div className="bg-brand-white border border-brand-champagne/30 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-brand-white border border-brand-champagne/30 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 md:mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 {/* Price Range */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-brand-black">{t("shop.priceRange")}</label>
@@ -348,7 +348,7 @@ function ProductsPageContent() {
           )}
 
           {/* Sort and Results Count - Always Visible */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-4 sm:mb-6">
             {totalProducts > 0 && (
               <div className="text-xs sm:text-sm font-light text-brand-black">
                 {t("shop.showing")} {((currentPage - 1) * 12) + 1} {t("shop.to")} {Math.min(currentPage * 12, totalProducts)} {t("shop.of")} {totalProducts} {t("shop.products")}
@@ -388,7 +388,7 @@ function ProductsPageContent() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
                 {products.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -398,6 +398,8 @@ function ProductsPageContent() {
                     image={product.image}
                     images={product.images}
                     featured={product.featured}
+                    outOfStock={(product as any).outOfStock}
+                    hemaFree={(product as any).hemaFree}
                     description={product.description}
                     rating={product.rating}
                     reviewCount={product.reviewCount}

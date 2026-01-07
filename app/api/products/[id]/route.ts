@@ -24,6 +24,8 @@ export async function GET(
           image: true,
           images: true,
           featured: true,
+          outOfStock: true,
+          hemaFree: true,
           categoryId: true,
           attributes: true,
           createdAt: true,
@@ -67,6 +69,8 @@ export async function GET(
             image: row.image,
             images: row.images || [],
             featured: row.featured,
+            outOfStock: row.outOfStock || false,
+            hemaFree: row.hemaFree || false,
             categoryId: row.categoryId,
             attributes: row.attributes,
             showcasingSections: [], // Field doesn't exist in database
@@ -111,7 +115,7 @@ export async function GET(
           console.log("Select query failed, using raw SQL");
           const result = await db.$queryRaw`
             SELECT 
-              p.id, p.name, p.description, p.price, p.image, p.images, p.featured, p."categoryId", p.attributes,
+              p.id, p.name, p.description, p.price, p.image, p.images, p.featured, p."outOfStock", p."hemaFree", p."categoryId", p.attributes,
               p."createdAt", p."updatedAt",
               c.id as "category_id", c.name as "category_name", c.slug as "category_slug"
             FROM "Product" p
@@ -130,6 +134,8 @@ export async function GET(
             image: row.image,
             images: row.images || [],
             featured: row.featured,
+            outOfStock: row.outOfStock || false,
+            hemaFree: row.hemaFree || false,
             categoryId: row.categoryId,
             attributes: row.attributes,
             showcasingSections: [], // Field doesn't exist in database
@@ -244,6 +250,8 @@ export async function PATCH(
             image: true,
             images: true,
             featured: true,
+            outOfStock: true,
+            hemaFree: true,
             categoryId: true,
             attributes: true,
             createdAt: true,
@@ -268,7 +276,7 @@ export async function PATCH(
     }
 
     const body = await req.json()
-    const { name, description, price, image, images, categoryId, subcategoryIds, featured, attributes, showcasingSections } = body
+    const { name, description, price, image, images, categoryId, subcategoryIds, featured, outOfStock, hemaFree, attributes, showcasingSections } = body
 
     // Prepare the data object, handling attributes properly
     if (name !== undefined) updateData.name = name
@@ -277,6 +285,21 @@ export async function PATCH(
     if (image !== undefined) updateData.image = image
     if (images !== undefined) updateData.images = images
     if (featured !== undefined) updateData.featured = featured
+    // Product tags are mutually exclusive - only one can be set at a time
+    if (outOfStock !== undefined) {
+      updateData.outOfStock = outOfStock
+      // If setting outOfStock to true, ensure hemaFree is false
+      if (outOfStock === true) {
+        updateData.hemaFree = false
+      }
+    }
+    if (hemaFree !== undefined) {
+      updateData.hemaFree = hemaFree
+      // If setting hemaFree to true, ensure outOfStock is false
+      if (hemaFree === true) {
+        updateData.outOfStock = false
+      }
+    }
     // showcasingSections field doesn't exist in database, skip it
     // if (showcasingSections !== undefined) updateData.showcasingSections = showcasingSections || []
     
@@ -333,6 +356,8 @@ export async function PATCH(
           image: true,
           images: true,
           featured: true,
+          outOfStock: true,
+          hemaFree: true,
           categoryId: true,
           attributes: true,
           createdAt: true,
@@ -363,6 +388,8 @@ export async function PATCH(
             image: true,
             images: true,
             featured: true,
+            outOfStock: true,
+            hemaFree: true,
             categoryId: true,
             attributes: true,
             createdAt: true,

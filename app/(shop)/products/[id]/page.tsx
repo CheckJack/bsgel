@@ -13,6 +13,7 @@ import { useCart } from "@/contexts/cart-context";
 import { useRouter } from "next/navigation";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Product {
   id: string;
@@ -72,6 +73,7 @@ export default function ProductDetailPage() {
   const { data: session } = useSession();
   const { addItem } = useCart();
   const router = useRouter();
+  const { t } = useLanguage();
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [quantity, setQuantity] = useState(1);
@@ -154,10 +156,10 @@ export default function ProductDetailPage() {
 
   return (
     <div className="bg-brand-white min-h-screen">
-      <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16">
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 md:gap-12 lg:gap-16">
           {/* Left Side - All Images in Square Format (Scrollable) */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {images.length > 0 ? (
               images.map((image, index) => (
                 <div key={index} className="relative aspect-square bg-[#F5F3F0] rounded-lg overflow-hidden">
@@ -280,7 +282,7 @@ export default function ProductDetailPage() {
                     onClick={handleAddToCart}
                     disabled={isAdding}
                   >
-                    {isAdding ? "Adding..." : "Add to Cart"}
+                    {isAdding ? t("products.adding") : t("products.addToCart")}
                   </Button>
                   <div className="flex flex-wrap items-center justify-center gap-2 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-100">
                     <Image

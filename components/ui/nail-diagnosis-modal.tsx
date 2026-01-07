@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { X } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
 
 interface NailDiagnosisModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface NailDiagnosisModalProps {
 
 export function NailDiagnosisModal({ isOpen, onClose, onParticipate }: NailDiagnosisModalProps) {
   const router = useRouter();
+  const { t } = useLanguage();
   const [isVisible, setIsVisible] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
 
@@ -90,21 +92,19 @@ export function NailDiagnosisModal({ isOpen, onClose, onParticipate }: NailDiagn
           <div className="space-y-4 md:space-y-6 pt-8">
             {/* Heading - Jost Medium (500) */}
             <h2 className="text-2xl md:text-3xl font-heading font-medium text-left leading-tight">
-              Find out more about
-              <br />
-              your nail type
+              {t("nailDiagnosis.modal.title")}
             </h2>
 
             {/* Body Text - Jost Light (300) */}
             <div className="space-y-3 text-left">
               <p className="text-sm md:text-base font-light leading-relaxed">
-                Did you know there are several different nail types? Just like your hair and skin, each type has its own characteristics and needs!
+                {t("nailDiagnosis.modal.description1")}
               </p>
               <p className="text-sm md:text-base font-light leading-relaxed">
-                Understanding your nail type is the first step towards achieving healthier, stronger nails. Our comprehensive diagnostic tool will help you identify your specific nail characteristics and provide personalized recommendations.
+                {t("nailDiagnosis.modal.description2")}
               </p>
               <p className="text-sm md:text-base font-light leading-relaxed">
-                Let us help you find your nail type with our Diagnostic tool and discover the best care routine tailored just for you!
+                {t("nailDiagnosis.modal.description3")}
               </p>
             </div>
           </div>
@@ -115,7 +115,7 @@ export function NailDiagnosisModal({ isOpen, onClose, onParticipate }: NailDiagn
               onClick={handleParticipate}
               className="w-full bg-brand-black hover:bg-gray-800 text-brand-white font-medium py-3 rounded-lg text-base"
             >
-              Participate
+              {t("nailDiagnosis.modal.participate")}
             </Button>
           </div>
         </div>

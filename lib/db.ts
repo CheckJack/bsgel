@@ -4,6 +4,12 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
+// Force a fresh Prisma Client instance to pick up schema changes
+if (process.env.NODE_ENV !== 'production' && globalForPrisma.prisma) {
+  // Clear the cached instance in development to pick up schema changes
+  globalForPrisma.prisma = undefined
+}
+
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({

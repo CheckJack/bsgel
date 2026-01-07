@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { SalonMap } from "@/components/layout/salon-map";
 import { Search, MapPin, Phone, Mail, Globe, Clock, Sparkles, X } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Salon {
   id: string;
@@ -28,6 +29,7 @@ interface Salon {
 
 export default function FindSalonPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [salons, setSalons] = useState<Salon[]>([]);
   const [filteredSalons, setFilteredSalons] = useState<Salon[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -113,18 +115,18 @@ export default function FindSalonPage() {
 
   const formatWorkingHours = (workingHours: any): string => {
     if (!workingHours || typeof workingHours !== "object") {
-      return "Contact for hours";
+      return t("findSalon.contactForHours");
     }
 
     const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
     const dayNames: { [key: string]: string } = {
-      monday: "Mon",
-      tuesday: "Tue",
-      wednesday: "Wed",
-      thursday: "Thu",
-      friday: "Fri",
-      saturday: "Sat",
-      sunday: "Sun",
+      monday: t("findSalon.dayNames.monday"),
+      tuesday: t("findSalon.dayNames.tuesday"),
+      wednesday: t("findSalon.dayNames.wednesday"),
+      thursday: t("findSalon.dayNames.thursday"),
+      friday: t("findSalon.dayNames.friday"),
+      saturday: t("findSalon.dayNames.saturday"),
+      sunday: t("findSalon.dayNames.sunday"),
     };
 
     const hoursList: string[] = [];
@@ -135,7 +137,7 @@ export default function FindSalonPage() {
       }
     });
 
-    return hoursList.length > 0 ? hoursList.join(", ") : "Contact for hours";
+    return hoursList.length > 0 ? hoursList.join(", ") : t("findSalon.contactForHours");
   };
 
   const clearFilters = () => {
@@ -153,12 +155,11 @@ export default function FindSalonPage() {
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-6 sm:mb-8">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-medium mb-3 sm:mb-4 text-brand-black">
-              Find Your Salon
+              {t("findSalon.title")}
             </h1>
             <div className="w-24 h-1 bg-brand-champagne mx-auto mb-4 sm:mb-6"></div>
             <p className="text-base sm:text-lg font-light text-brand-champagne max-w-2xl mx-auto px-4">
-              Discover Bio Sculpture salons near you. Search by location, name, or filter by Bio
-              Diamond salons.
+              {t("findSalon.description")}
             </p>
           </div>
 
@@ -169,7 +170,7 @@ export default function FindSalonPage() {
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <input
                 type="text"
-                placeholder="Search by salon name, address, or city..."
+                placeholder={t("findSalon.searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-champagne focus:border-transparent text-brand-black"
@@ -186,7 +187,7 @@ export default function FindSalonPage() {
                   onChange={(e) => setSelectedCity(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-champagne focus:border-transparent text-brand-black bg-white appearance-none cursor-pointer"
                 >
-                  <option value="">All Cities</option>
+                  <option value="">{t("findSalon.allCities")}</option>
                   {cities.map((city) => (
                     <option key={city} value={city}>
                       {city}
@@ -205,7 +206,7 @@ export default function FindSalonPage() {
                 />
                 <Sparkles className="h-4 w-4 text-brand-champagne" />
                 <span className="text-sm text-brand-black whitespace-nowrap">
-                  Bio Diamond Only
+                  {t("findSalon.bioDiamondOnly")}
                 </span>
               </label>
 
@@ -216,7 +217,7 @@ export default function FindSalonPage() {
                   className="flex items-center gap-2 px-4 py-2 text-sm text-brand-black hover:text-brand-champagne transition-colors ml-auto"
                 >
                   <X className="h-4 w-4" />
-                  Clear Filters
+                  {t("findSalon.clearFilters")}
                 </button>
               )}
             </div>
@@ -224,11 +225,12 @@ export default function FindSalonPage() {
             {/* Results Count */}
             <div className="text-sm text-brand-champagne">
               {isLoading ? (
-                "Loading salons..."
+                t("findSalon.loadingSalons")
               ) : (
                 <>
-                  Found <span className="font-medium">{filteredSalons.length}</span> salon
-                  {filteredSalons.length !== 1 ? "s" : ""}
+                  {filteredSalons.length === 1 
+                    ? t("findSalon.foundSalons", { count: String(filteredSalons.length) })
+                    : t("findSalon.foundSalonsPlural", { count: String(filteredSalons.length) })}
                 </>
               )}
             </div>
@@ -241,21 +243,21 @@ export default function FindSalonPage() {
         {isLoading ? (
           <div className="text-center py-20">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-champagne"></div>
-            <p className="mt-4 text-brand-champagne">Loading salons...</p>
+            <p className="mt-4 text-brand-champagne">{t("findSalon.loadingSalons")}</p>
           </div>
         ) : filteredSalons.length === 0 ? (
           <div className="text-center py-20">
             <MapPin className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-2xl font-medium text-brand-black mb-2">No salons found</h3>
+            <h3 className="text-2xl font-medium text-brand-black mb-2">{t("findSalon.noSalonsFound")}</h3>
             <p className="text-brand-champagne mb-6">
-              Try adjusting your search or filters to find more results.
+              {t("findSalon.noSalonsFoundDesc")}
             </p>
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
                 className="px-6 py-2 bg-brand-black text-brand-white rounded-lg hover:bg-brand-champagne transition-colors"
               >
-                Clear All Filters
+                {t("findSalon.clearAllFilters")}
               </button>
             )}
           </div>
@@ -299,6 +301,7 @@ function SalonCard({
   isSelected: boolean;
 }) {
   const router = useRouter();
+  const { t } = useLanguage();
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Don't navigate if clicking on a link (phone, email, website)
@@ -336,7 +339,7 @@ function SalonCard({
           {salon.isBioDiamond && (
             <div className="absolute top-2 right-2 bg-brand-champagne text-white px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
               <Sparkles className="h-3 w-3" />
-              Bio Diamond
+              {t("findSalon.bioDiamondSalon")}
             </div>
           )}
         </div>
@@ -399,7 +402,7 @@ function SalonCard({
               className="flex items-center gap-2 text-sm text-brand-champagne hover:text-brand-black transition-colors"
             >
               <Globe className="h-4 w-4" />
-              Visit Website
+              {t("findSalon.visitWebsite")}
             </a>
           )}
         </div>
