@@ -170,25 +170,25 @@ export function ProductCard({
       </Link>
 
       {/* Product Details - Clean, minimal design matching reference */}
-      <div className="px-6 pt-6 pb-6 bg-white flex flex-col flex-1">
+      <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-4 sm:pb-6 bg-white flex flex-col flex-1">
         {/* Product Heading - Main title */}
-        <Link href={`/products/${id}`} className="mb-3 group">
-          <h2 className="text-lg font-medium text-black leading-tight group-hover:text-brand-champagne transition-colors">
+        <Link href={`/products/${id}`} className="mb-2 sm:mb-3 group">
+          <h2 className="text-base sm:text-lg font-medium text-black leading-tight group-hover:text-brand-champagne transition-colors line-clamp-2">
             {name}
           </h2>
         </Link>
 
         {/* Rating, Review Count, and Price */}
-        <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3 sm:mb-4">
           {(rating !== undefined && rating > 0) || (reviewCount !== undefined && reviewCount > 0) ? (
             <div className="flex items-center gap-2">
               {rating !== undefined && rating > 0 && <StarRating rating={rating} />}
               {reviewCount !== undefined && reviewCount > 0 && (
-                <span className="text-sm text-gray-600">{reviewCount} {reviewCount === 1 ? t("products.review") : t("products.reviews")}</span>
+                <span className="text-xs sm:text-sm text-gray-600">{reviewCount} {reviewCount === 1 ? t("products.review") : t("products.reviews")}</span>
               )}
             </div>
           ) : null}
-          <span className="text-[18px] font-semibold text-black">
+          <span className="text-base sm:text-[18px] font-semibold text-black">
             {price ? formatPrice(price) : t("products.priceOnRequest")}
           </span>
         </div>
@@ -212,7 +212,7 @@ export function ProductCard({
           {/* Full-width Add to Cart button - Black */}
           <Link href={`/products/${id}`} className="block">
             <button 
-              className="w-full bg-black hover:bg-gray-800 text-white py-3.5 px-4 rounded-md transition-all duration-200 font-medium text-sm"
+              className="w-full bg-black hover:bg-gray-800 active:bg-gray-900 text-white py-3 sm:py-3.5 px-4 rounded-md transition-all duration-200 font-medium text-sm touch-manipulation min-h-[44px]"
               onClick={(e) => {
                 e.preventDefault();
                 window.location.href = `/products/${id}`;

@@ -350,22 +350,22 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         )}
 
         {/* Cart Container */}
-        <div className="h-full w-full max-w-md bg-white shadow-2xl">
+        <div className="h-full w-full max-w-full sm:max-w-md bg-white shadow-2xl">
         <div className="flex flex-col h-full">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-2xl font-bold text-brand-black m-0">Your Cart</h2>
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b">
+              <h2 className="text-xl sm:text-2xl font-bold text-brand-black m-0">Your Cart</h2>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 hover:bg-gray-100 active:bg-gray-200 rounded-full transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
                 aria-label="Close cart"
               >
-                <X className="h-6 w-6" />
+                <X className="h-5 w-5 sm:h-6 sm:w-6" />
               </button>
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               {isSessionLoading || isLoading ? (
                 <div className="text-center py-8 text-gray-600">Loading cart...</div>
               ) : !session ? (
@@ -433,16 +433,16 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-7 w-7"
+                            className="h-8 w-8 sm:h-7 sm:w-7 touch-manipulation"
                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
                           >
                             -
                           </Button>
-                          <span className="w-6 text-center text-sm">{item.quantity}</span>
+                          <span className="w-8 sm:w-6 text-center text-sm">{item.quantity}</span>
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-7 w-7"
+                            className="h-8 w-8 sm:h-7 sm:w-7 touch-manipulation"
                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
                           >
                             +
@@ -471,22 +471,22 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
             {/* Footer with Summary */}
             {isCartReady && session && itemCount > 0 && (
-              <div className="border-t p-6 bg-gray-50 space-y-4">
+              <div className="border-t p-4 sm:p-6 bg-gray-50 space-y-3 sm:space-y-4">
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs sm:text-sm">
                     <span className="text-gray-600">Subtotal</span>
                     <span>{formatPrice(subtotal)}</span>
                   </div>
                   <div className="text-xs text-gray-500 italic">
                     Tax will be calculated at checkout based on your shipping address
                   </div>
-                  <div className="border-t pt-2 flex justify-between font-bold">
+                  <div className="border-t pt-2 flex justify-between font-bold text-sm sm:text-base">
                     <span>Subtotal</span>
                     <span>{formatPrice(total)}</span>
                   </div>
                 </div>
                 <Button
-                  className="w-full"
+                  className="w-full touch-manipulation min-h-[44px]"
                   size="lg"
                   onClick={() => {
                     onClose();
@@ -496,7 +496,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                   Proceed to Checkout
                 </Button>
                 <Link href="/cart" onClick={onClose}>
-                  <Button variant="outline" className="w-full">
+                  <Button variant="outline" className="w-full touch-manipulation min-h-[44px]">
                     View Full Cart
                   </Button>
                 </Link>

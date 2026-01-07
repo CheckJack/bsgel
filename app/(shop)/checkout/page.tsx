@@ -647,9 +647,9 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 sm:mb-8">{t("checkout.title")}</h1>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+    <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6 md:py-8">
+      <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6 md:mb-8">{t("checkout.title")}</h1>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
         {/* Left Container - Checkout Information */}
         <div className="lg:pr-8 order-2 lg:order-1">
           <Elements stripe={stripePromise}>
@@ -659,7 +659,7 @@ export default function CheckoutPage() {
 
         {/* Right Container - Product Photos and Info */}
         <div className="lg:pl-8 order-1 lg:order-2">
-          <Card className="sticky top-20 lg:top-24">
+          <Card className="lg:sticky lg:top-20 lg:top-24">
             <CardHeader>
               <CardTitle className="text-lg sm:text-xl">{t("checkout.orderItems")}</CardTitle>
             </CardHeader>

@@ -156,10 +156,10 @@ export default function ProductDetailPage() {
 
   return (
     <div className="bg-brand-white min-h-screen">
-      <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16">
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 md:gap-12 lg:gap-16">
           {/* Left Side - All Images in Square Format (Scrollable) */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {images.length > 0 ? (
               images.map((image, index) => (
                 <div key={index} className="relative aspect-square bg-[#F5F3F0] rounded-lg overflow-hidden">
