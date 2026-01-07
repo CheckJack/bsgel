@@ -229,8 +229,8 @@ export default function FindSalonPage() {
               ) : (
                 <>
                   {filteredSalons.length === 1 
-                    ? t("findSalon.foundSalons", { count: filteredSalons.length })
-                    : t("findSalon.foundSalonsPlural", { count: filteredSalons.length })}
+                    ? t("findSalon.foundSalons", { count: String(filteredSalons.length) })
+                    : t("findSalon.foundSalonsPlural", { count: String(filteredSalons.length) })}
                 </>
               )}
             </div>
