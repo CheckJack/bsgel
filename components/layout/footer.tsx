@@ -41,11 +41,11 @@ export function Footer() {
   return (
     <footer className="bg-black text-white mt-auto">
       {/* Main Footer Content */}
-      <div className="container mx-auto px-4 py-12 lg:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8 lg:gap-12">
+      <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 lg:py-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 sm:gap-8 lg:gap-12">
           
           {/* Brand Section */}
-          <div className="lg:col-span-2">
+          <div className="sm:col-span-2 lg:col-span-2">
             <Link href="/" className="inline-block mb-4">
               <Image
                 src="/logo.png"
@@ -294,8 +294,8 @@ export function Footer() {
 
       {/* Bottom Bar */}
       <div className="border-t border-white/20">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
             {/* Copyright */}
             <p className="text-sm text-white/80 text-center md:text-left">
               &copy; {new Date().getFullYear()} Bio Sculpture. {t("footer.allRightsReserved")}
@@ -303,8 +303,8 @@ export function Footer() {
 
             {/* Payment Methods */}
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <span className="text-xs text-white/70 mr-2">{t("footer.weAccept")}</span>
-              <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-white/70 mr-1 sm:mr-2">{t("footer.weAccept")}</span>
+              <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
                 <div className="bg-white rounded px-1.5 py-1">
                   <Image
                     src="/visa-65d650f7.svg"

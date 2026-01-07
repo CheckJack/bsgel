@@ -37,6 +37,7 @@ export const en = {
     info: "Information",
     noImage: "No Image",
     errorOccurred: "An error occurred. Please try again.",
+    tryAgain: "Try Again",
     product: "product",
     products: "products",
     viewAllProducts: "View All Products",
@@ -186,6 +187,8 @@ export const en = {
     selectAtLeastOneField: "Please select at least one field to update",
     bulkEditSuccessWithCount: "Successfully updated {count} product(s)",
     holdCtrlToSelectMultiple: "Hold Ctrl/Cmd to select multiple",
+    addToCart: "Add to cart",
+    adding: "Adding...",
     treatmentGelProducts: "Treatment Gel Products",
     colorGelProducts: "Color Gel Products",
     handCareProducts: "Hand Care Products",
@@ -663,7 +666,7 @@ export const en = {
     },
     // About menu items
     aboutMenu: {
-      biosculpture: "Biosculpture",
+      biosculpture: "Concept",
       concept: "Concept",
       sustainability: "Sustainability",
       awards: "Awards",
@@ -1088,11 +1091,26 @@ export const en = {
   productPagesExtended: {
     treatmentGels: {
       hero: {
-        line1: "Professional, health-focused",
-        line2: "builder and base gels that",
-        line3: "strengthen, shape and protect",
-        line4: "the natural nail while providing",
-        line5: "a long-lasting and glossy finish.",
+        line1: "Professional treatment gels designed",
+        line2: "to strengthen, repair and protect",
+        line3: "your natural nails. Formulated with",
+        line4: "nourishing ingredients that promote",
+        line5: "healthy nail growth and durability.",
+      },
+      description: "Treatment Gels are the foundation of healthy, beautiful nails. Our professional-grade treatment gels are specifically formulated to strengthen weak or damaged nails, promote healthy growth, and provide essential protection. These specialized gels combine therapeutic benefits with base coat functionality, ensuring your nails receive nourishment from the very first layer. Perfect for clients with brittle nails, nail damage, or those seeking to improve their natural nail health, our Treatment Gels offer long-lasting protection while supporting the natural nail structure.",
+      benefits: {
+        title: "Why Choose Treatment Gels?",
+        benefit1: "Strengthens weak and damaged nails",
+        benefit2: "Promotes healthy nail growth",
+        benefit3: "Provides long-lasting protection",
+        benefit4: "Professional-grade formulation",
+        benefit5: "Nourishes and conditions nails",
+        benefit6: "Ideal base for color application",
+      },
+      videoSection: {
+        title: "Professional Treatment Solutions",
+        description: "Discover our complete range of treatment gels designed for nail health and beauty",
+        cta: "Shop Treatment Gels",
       },
     },
     colorGels: {
@@ -1102,6 +1120,12 @@ export const en = {
         line3: "strengthen, shape and protect",
         line4: "the natural nail while providing",
         line5: "a long-lasting and glossy finish.",
+      },
+      description: "Color Gels showcase the vibrant spectrum of our BIO Gel collection, offering an extensive palette of stunning shades that combine brilliant color with professional-grade performance. Each gel is formulated with advanced technology and nourishing ingredients, ensuring your nails not only look beautiful but also remain healthy. From classic neutrals to bold statement colors, our Color Gels provide long-lasting, chip-resistant finishes that maintain their vibrant intensity. Express your style with confidence, knowing that each application supports the health of your natural nails.",
+      videoSection: {
+        title: "Professional Color Solutions",
+        description: "Discover our complete range of color gels designed for vibrant, long-lasting nail beauty",
+        cta: "Shop Color Gels",
       },
     },
     handCare: {
@@ -1113,6 +1137,11 @@ export const en = {
         line5: "with spa-like luxury.",
       },
       description: "Hand care is essential for maintaining soft and smooth hands that complement beautiful nails. Our Hand Care collection offers luxurious creams, lotions and treatments that deeply hydrate, protect and rejuvenate your hands. Formulated with nourishing natural ingredients, these products address dryness, roughness and signs of aging while providing a spa-like experience. Transform your daily hand care routine into a moment of self-care with our premium Hand Care products designed to keep your hands looking and feeling their best.",
+      videoSection: {
+        title: "Premium Hand Care Solutions",
+        description: "Discover our complete range of hand care products designed for soft, smooth, and beautiful hands",
+        cta: "Shop Hand Care",
+      },
     },
     footCare: {
       hero: {
@@ -1123,6 +1152,11 @@ export const en = {
         line5: "deep hydration and spa-like luxury.",
       },
       description: "Foot care is essential for maintaining healthy, soft and well-groomed feet that complete your overall wellness routine. Our Foot Care collection offers specialized treatments, creams and exfoliants designed to address common foot concerns such as dryness, rough skin and calluses. Formulated with nourishing natural ingredients, these products provide deep hydration, gentle exfoliation and lasting comfort. Transform your foot care routine into a luxurious spa experience with our premium Foot Care products designed to keep your feet looking and feeling their best.",
+      videoSection: {
+        title: "Premium Foot Care Solutions",
+        description: "Discover our complete range of foot care products designed for healthy, soft, and well-groomed feet",
+        cta: "Shop Foot Care",
+      },
     },
     evoColourGels: {
       hero: {
@@ -1133,6 +1167,11 @@ export const en = {
         line5: "shades and professional performance.",
       },
       description: "Colour Gels showcase the vibrant spectrum of our EVO collection, offering an extensive palette of stunning shades that combine brilliant color with professional-grade performance. Each gel is formulated with advanced technology and nourishing ingredients, ensuring your nails not only look beautiful but also remain healthy. From classic neutrals to bold statement colors, our Colour Gels provide long-lasting, chip-resistant finishes that maintain their vibrant intensity. Express your style with confidence, knowing that each application supports the health of your natural nails.",
+      videoSection: {
+        title: "Vibrant EVO Colour Collection",
+        description: "Discover our complete range of EVO colour gels designed for vibrant, long-lasting nail beauty",
+        cta: "Shop EVO Colour Gels",
+      },
     },
     evoTreatmentBaseGels: {
       hero: {
@@ -1143,6 +1182,11 @@ export const en = {
         line5: "benefits with treatment and performance.",
       },
       description: "Treatment Base Gels are the foundation of a perfect EVO manicure, providing essential therapeutic benefits while creating the ideal base for color application. These specialized gels combine treatment properties with base coat functionality, ensuring your nails receive nourishment and protection from the very first layer. Formulated with strengthening and conditioning ingredients, our Treatment Base Gels help improve nail health, prevent staining and prolong the longevity of your manicure. Experience the perfect combination of treatment and performance with our premium Treatment Base Gels.",
+      videoSection: {
+        title: "Professional EVO Treatment Solutions",
+        description: "Discover our complete range of EVO treatment base gels designed for nail health and beauty",
+        cta: "Shop EVO Treatment Gels",
+      },
     },
     evoTopCoats: {
       hero: {
@@ -1153,6 +1197,11 @@ export const en = {
         line5: "locks in color and durability.",
       },
       description: "Top Coats are the finishing touch that transforms your EVO nail art into a masterpiece of durability and shine. Our EVO Top Coats provide a high-gloss protective seal that locks in color, prevents chipping and extends the life of your manicure. Formulated with the same nourishing ingredients as our gel collection, these top coats not only protect but also condition your nails. Experience the perfect balance between professional performance and natural care, ensuring your nails remain beautiful and healthy with every application.",
+      videoSection: {
+        title: "Premium EVO Top Coat Solutions",
+        description: "Discover our complete range of EVO top coats designed for durability and shine",
+        cta: "Shop EVO Top Coats",
+      },
     },
     geminiReds: {
       hero: {
@@ -1163,6 +1212,11 @@ export const en = {
         line5: "gels provide timeless elegance.",
       },
       description: "Reds represent timeless elegance and bold confidence in our Gemini collection. From classic crimson to deep burgundy, our red tones provide vibrant and long-lasting color that makes a statement. Each red gel is formulated with the same premium ingredients and professional-grade performance that defines the Gemini line. Whether you prefer a bright cherry red or a sophisticated wine shade, our red collection offers the perfect tone for every occasion.",
+      videoSection: {
+        title: "Vibrant Red Collection",
+        description: "Discover our complete range of red gels designed for timeless elegance and bold confidence",
+        cta: "Shop Red Gels",
+      },
     },
     geminiPinks: {
       hero: {
@@ -1173,6 +1227,11 @@ export const en = {
         line5: "gels provide timeless elegance.",
       },
       description: "Pinks offer a delicate balance of femininity and sophistication in our Gemini collection. From soft rose to vibrant fuchsia, our pink tones provide versatile options for every style and occasion. Each pink gel provides smooth application and long-lasting wear, maintaining its beautiful shade throughout your manicure. Whether you prefer a subtle blush or a bold magenta, our pink collection offers the perfect tone to express your personality.",
+      videoSection: {
+        title: "Vibrant Pink Collection",
+        description: "Discover our complete range of pink gels designed for femininity and sophistication",
+        cta: "Shop Pink Gels",
+      },
     },
     geminiNudes: {
       hero: {
@@ -1183,6 +1242,11 @@ export const en = {
         line5: "rich chocolate tones, timeless elegance.",
       },
       description: "Nudes, neutrals and browns represent timeless sophistication and versatility in our Gemini collection. From barely-there beiges to rich chocolate tones, these shades offer elegant options for every professional setting and personal style. Each gel provides natural-looking coverage with long-lasting wear, perfect for those who prefer understated elegance. Whether you choose a soft nude, a warm taupe or a deep brown, our collection ensures your nails look polished and refined.",
+      videoSection: {
+        title: "Elegant Nudes Collection",
+        description: "Discover our complete range of nude, neutral and brown gels designed for timeless sophistication",
+        cta: "Shop Nude Gels",
+      },
     },
     geminiOranges: {
       hero: {
@@ -1193,6 +1257,11 @@ export const en = {
         line5: "vibrant corals, warmth and energy.",
       },
       description: "Oranges, corals and yellows bring warmth and energy to our Gemini collection. From sunny yellows to vibrant corals and rich oranges, these tones capture the essence of summer and add a cheerful pop of color to any look. Each gel provides bright and saturated color with excellent coverage and long-lasting wear. Whether you prefer a soft peach, a bold tangerine or a sunny yellow, our collection offers vibrant options that radiate positivity and style.",
+      videoSection: {
+        title: "Vibrant Oranges Collection",
+        description: "Discover our complete range of orange, coral and yellow gels designed for warmth and energy",
+        cta: "Shop Orange Gels",
+      },
     },
   },
 };

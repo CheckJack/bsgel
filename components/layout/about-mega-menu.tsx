@@ -102,7 +102,6 @@ export function AboutMegaMenu({ isOpen, onClose, onMouseEnter }: AboutMegaMenuPr
       name: t("nav.aboutMenu.biosculpture"), 
       href: "/about/biosculpture",
       children: [
-        { name: t("nav.aboutMenu.concept"), href: "/about/biosculpture/concept" },
         { name: t("nav.aboutMenu.sustainability"), href: "/about/biosculpture/sustainability" },
         { name: t("nav.aboutMenu.awards"), href: "/about/biosculpture/awards" }
       ]

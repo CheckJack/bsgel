@@ -151,7 +151,7 @@ export function Navbar() {
         setAboutMegaMenuOpen(false);
       }}
     >
-      <div className="w-full px-6 md:px-12 lg:px-16 py-3 md:py-4 relative overflow-visible">
+      <div className="w-full px-4 sm:px-6 md:px-12 lg:px-16 py-3 md:py-4 relative overflow-visible">
         <div className="flex items-center justify-between relative overflow-visible">
           {/* Left - Logo and Mobile Menu Button */}
           <div className="flex items-center gap-3 lg:gap-6">
@@ -191,7 +191,7 @@ export function Navbar() {
           </div>
 
           {/* Right - Navigation and Actions */}
-          <div className="flex items-center gap-3 lg:gap-6 overflow-visible">
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-6 overflow-visible">
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-3 lg:gap-6">
             <div 
@@ -251,10 +251,10 @@ export function Navbar() {
             {/* Search Icon */}
             <button
               onClick={() => setSearchDrawerOpen(true)}
-              className="text-brand-white hover:text-brand-sweet-bianca transition-colors flex-shrink-0"
+              className="text-brand-white hover:text-brand-sweet-bianca transition-colors flex-shrink-0 touch-manipulation"
               aria-label="Search products"
             >
-              <Search className="h-6 w-6" />
+              <Search className="h-5 w-5 sm:h-6 sm:w-6" />
             </button>
 
             {/* Notifications - Only show for logged-in users */}
@@ -315,13 +315,13 @@ export function Navbar() {
 
             <button
               onClick={() => setCartDrawerOpen(true)}
-              className="relative text-brand-white hover:text-brand-sweet-bianca transition-colors flex-shrink-0"
+              className="relative text-brand-white hover:text-brand-sweet-bianca transition-colors flex-shrink-0 touch-manipulation"
               aria-label="Open cart"
             >
-              <ShoppingCart className="h-6 w-6" />
+              <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6" />
               {itemCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-brand-sweet-bianca text-brand-black text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                  {itemCount}
+                <span className="absolute -top-2 -right-2 bg-brand-sweet-bianca text-brand-black text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium min-w-[20px]">
+                  {itemCount > 99 ? '99+' : itemCount}
                 </span>
               )}
             </button>
@@ -522,13 +522,6 @@ export function Navbar() {
                       className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
                     >
                       {t("nav.aboutMenu.biosculpture")}
-                    </Link>
-                    <Link
-                      href="/about/biosculpture/concept"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
-                    >
-                      {t("nav.aboutMenu.concept")}
                     </Link>
                     <Link
                       href="/about/biosculpture/sustainability"

@@ -23,6 +23,13 @@ export const metadata: Metadata = {
   description: "Shop premium Bio Sculpture nail products and treatments",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

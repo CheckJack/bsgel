@@ -35,6 +35,8 @@ export const pt = {
     error: "Erro",
     warning: "Aviso",
     info: "Informação",
+    errorOccurred: "Ocorreu um erro. Por favor, tente novamente.",
+    tryAgain: "Tentar Novamente",
     product: "produto",
     products: "produtos",
     viewAllProducts: "Ver Todos os Produtos",
@@ -646,7 +648,7 @@ export const pt = {
     },
     // About menu items
     aboutMenu: {
-      biosculpture: "Biosculpture",
+      biosculpture: "Conceito",
       concept: "Conceito",
       sustainability: "Sustentabilidade",
       awards: "Prémios",
@@ -1127,11 +1129,26 @@ export const pt = {
   productPagesExtended: {
     treatmentGels: {
       hero: {
-        line1: "Profissionais, focados na saúde",
-        line2: "géis construtores e de base que",
-        line3: "fortalecem, moldam e protegem",
-        line4: "a unha natural enquanto proporcionam",
-        line5: "um acabamento duradouro e brilhante.",
+        line1: "Géis de tratamento profissionais",
+        line2: "concebidos para fortalecer, reparar",
+        line3: "e proteger as suas unhas naturais.",
+        line4: "Formulados com ingredientes nutritivos",
+        line5: "que promovem crescimento saudável.",
+      },
+      description: "Os Géis de Tratamento são a base de unhas saudáveis e bonitas. Os nossos géis de tratamento de grau profissional são especificamente formulados para fortalecer unhas fracas ou danificadas, promover crescimento saudável e proporcionar proteção essencial. Estes géis especializados combinam benefícios terapêuticos com funcionalidade de camada base, garantindo que as suas unhas recebem nutrição desde a primeira camada. Perfeitos para clientes com unhas frágeis, danos nas unhas ou aqueles que procuram melhorar a saúde das suas unhas naturais, os nossos Géis de Tratamento oferecem proteção duradoura enquanto apoiam a estrutura natural da unha.",
+      benefits: {
+        title: "Por Que Escolher Géis de Tratamento?",
+        benefit1: "Fortalecer unhas fracas e danificadas",
+        benefit2: "Promover crescimento saudável das unhas",
+        benefit3: "Proporcionar proteção duradoura",
+        benefit4: "Formulação de grau profissional",
+        benefit5: "Nutre e condiciona as unhas",
+        benefit6: "Base ideal para aplicação de cor",
+      },
+      videoSection: {
+        title: "Soluções de Tratamento Profissional",
+        description: "Descubra a nossa gama completa de géis de tratamento concebidos para a saúde e beleza das unhas",
+        cta: "Comprar Géis de Tratamento",
       },
     },
     colorGels: {
@@ -1141,6 +1158,12 @@ export const pt = {
         line3: "fortalecem, moldam e protegem",
         line4: "a unha natural enquanto proporcionam",
         line5: "um acabamento duradouro e brilhante.",
+      },
+      description: "Os Géis de Cor mostram o espetro vibrante da nossa coleção BIO Gel, oferecendo uma paleta extensa de tons deslumbrantes que combinam cor brilhante com desempenho de grau profissional. Cada gel é formulado com tecnologia avançada e ingredientes nutritivos, garantindo que as suas unhas não só ficam bonitas mas também permanecem saudáveis. Desde neutros clássicos a cores de declaração ousadas, os nossos Géis de Cor proporcionam acabamentos duradouros e resistentes a lascas que mantêm a sua intensidade vibrante. Exprima o seu estilo com confiança, sabendo que cada aplicação apoia a saúde das suas unhas naturais.",
+      videoSection: {
+        title: "Soluções de Cor Profissionais",
+        description: "Descubra a nossa gama completa de géis de cor concebidos para beleza vibrante e duradoura das unhas",
+        cta: "Comprar Géis de Cor",
       },
     },
     handCare: {
@@ -1152,6 +1175,11 @@ export const pt = {
         line5: "com luxo tipo spa.",
       },
       description: "Os cuidados das mãos são essenciais para manter mãos macias e suaves que complementam unhas bonitas. A nossa coleção de Cuidados das Mãos oferece cremes, loções e tratamentos luxuosos que hidratam profundamente, protegem e rejuvenescem as suas mãos. Formulados com ingredientes naturais nutritivos, estes produtos abordam a secura, aspereza e sinais de envelhecimento enquanto proporcionam uma experiência tipo spa. Transforme a sua rotina diária de cuidados das mãos num momento de autocuidado com os nossos produtos premium de Cuidados das Mãos concebidos para manter as suas mãos com o melhor aspeto e sensação possível.",
+      videoSection: {
+        title: "Soluções Premium de Cuidados das Mãos",
+        description: "Descubra a nossa gama completa de produtos de cuidados das mãos concebidos para mãos macias, suaves e bonitas",
+        cta: "Comprar Cuidados das Mãos",
+      },
     },
     footCare: {
       hero: {
@@ -1162,6 +1190,11 @@ export const pt = {
         line5: "hidratação profunda e luxo tipo spa.",
       },
       description: "Os cuidados dos pés são essenciais para manter pés saudáveis, macios e bem cuidados que completam a sua rotina geral de bem-estar. A nossa coleção de Cuidados dos Pés oferece tratamentos, cremes e esfoliantes especializados concebidos para abordar preocupações comuns dos pés como secura, pele áspera e calos. Formulados com ingredientes naturais nutritivos, estes produtos proporcionam hidratação profunda, esfoliação suave e conforto duradouro. Transforme a sua rotina de cuidados dos pés numa experiência spa luxuosa com os nossos produtos premium de Cuidados dos Pés concebidos para manter os seus pés com o melhor aspeto e sensação possível.",
+      videoSection: {
+        title: "Soluções Premium de Cuidados dos Pés",
+        description: "Descubra a nossa gama completa de produtos de cuidados dos pés concebidos para pés saudáveis, macios e bem cuidados",
+        cta: "Comprar Cuidados dos Pés",
+      },
     },
     evoColourGels: {
       hero: {
@@ -1172,6 +1205,11 @@ export const pt = {
         line5: "deslumbrantes e desempenho profissional.",
       },
       description: "Os Géis de Cor mostram o espetro vibrante da nossa coleção EVO, oferecendo uma paleta extensa de tons deslumbrantes que combinam cor brilhante com desempenho de grau profissional. Cada gel é formulado com tecnologia avançada e ingredientes nutritivos, garantindo que as suas unhas não só ficam bonitas mas também permanecem saudáveis. Desde neutros clássicos a cores de declaração ousadas, os nossos Géis de Cor proporcionam acabamentos duradouros e resistentes a lascas que mantêm a sua intensidade vibrante. Exprima o seu estilo com confiança, sabendo que cada aplicação apoia a saúde das suas unhas naturais.",
+      videoSection: {
+        title: "Coleção de Cor EVO Vibrante",
+        description: "Descubra a nossa gama completa de géis de cor EVO concebidos para beleza vibrante e duradoura das unhas",
+        cta: "Comprar Géis de Cor EVO",
+      },
     },
     evoTreatmentBaseGels: {
       hero: {
@@ -1182,6 +1220,11 @@ export const pt = {
         line5: "essenciais com tratamento e desempenho.",
       },
       description: "Os Géis Base de Tratamento são a base de uma manicure EVO perfeita, proporcionando benefícios terapêuticos essenciais enquanto criam a base ideal para a aplicação de cor. Estes géis especializados combinam propriedades de tratamento com funcionalidade de camada base, garantindo que as suas unhas recebem nutrição e proteção desde a primeira camada. Formulados com ingredientes de fortalecimento e condicionamento, os nossos Géis Base de Tratamento ajudam a melhorar a saúde das unhas, previnem manchas e prolongam a longevidade da sua manicure. Experimente a combinação perfeita de tratamento e desempenho com os nossos Géis Base de Tratamento premium.",
+      videoSection: {
+        title: "Soluções de Tratamento EVO Profissionais",
+        description: "Descubra a nossa gama completa de géis base de tratamento EVO concebidos para a saúde e beleza das unhas",
+        cta: "Comprar Géis de Tratamento EVO",
+      },
     },
     evoTopCoats: {
       hero: {
@@ -1192,6 +1235,11 @@ export const pt = {
         line5: "bloqueia a cor e a durabilidade.",
       },
       description: "As Camadas Superiores são o toque final que transforma a sua arte de unhas EVO numa obra-prima de durabilidade e brilho. As nossas Camadas Superiores EVO proporcionam um selo protetor de alto brilho que bloqueia a cor, previne lascas e prolonga a vida da sua manicure. Formuladas com os mesmos ingredientes nutritivos da nossa coleção de gel, estas camadas superiores não só protegem como também condicionam as suas unhas. Experimente o equilíbrio perfeito entre desempenho profissional e cuidado natural, garantindo que as suas unhas permanecem bonitas e saudáveis com cada aplicação.",
+      videoSection: {
+        title: "Soluções Premium de Camada Superior EVO",
+        description: "Descubra a nossa gama completa de camadas superiores EVO concebidas para durabilidade e brilho",
+        cta: "Comprar Camadas Superiores EVO",
+      },
     },
     geminiReds: {
       hero: {
@@ -1202,6 +1250,11 @@ export const pt = {
         line5: "vermelhos proporcionam elegância atemporal.",
       },
       description: "Os vermelhos representam elegância atemporal e confiança ousada na nossa coleção Gemini. Do carmesim clássico ao bordeaux profundo, os nossos tons vermelhos proporcionam cor vibrante e duradoura que faz uma declaração. Cada gel vermelho é formulado com os mesmos ingredientes premium e desempenho de grau profissional que define a linha Gemini. Quer prefira um vermelho cereja brilhante ou um tom de vinho sofisticado, a nossa coleção vermelha oferece o tom perfeito para cada ocasião.",
+      videoSection: {
+        title: "Coleção Vermelha Vibrante",
+        description: "Descubra a nossa gama completa de géis vermelhos concebidos para elegância atemporal e confiança ousada",
+        cta: "Comprar Géis Vermelhos",
+      },
     },
     geminiPinks: {
       hero: {
@@ -1212,6 +1265,11 @@ export const pt = {
         line5: "rosa proporcionam elegância atemporal.",
       },
       description: "Os rosas oferecem um equilíbrio delicado de feminilidade e sofisticação na nossa coleção Gemini. Da rosa suave ao fúcsia vibrante, os nossos tons rosa proporcionam opções versáteis para cada estilo e ocasião. Cada gel rosa proporciona aplicação suave e desgaste duradouro, mantendo o seu belo tom ao longo da sua manicure. Quer prefira um blush subtil ou um magenta ousado, a nossa coleção rosa oferece o tom perfeito para expressar a sua personalidade.",
+      videoSection: {
+        title: "Coleção Rosa Vibrante",
+        description: "Descubra a nossa gama completa de géis rosa concebidos para feminilidade e sofisticação",
+        cta: "Comprar Géis Rosa",
+      },
     },
     geminiNudes: {
       hero: {
@@ -1222,6 +1280,11 @@ export const pt = {
         line5: "tons de chocolate ricos, elegância atemporal.",
       },
       description: "Os nudes, neutros e castanhos representam sofisticação atemporal e versatilidade na nossa coleção Gemini. Dos beiges quase imperceptíveis aos tons de chocolate ricos, estes tons oferecem opções elegantes para cada ambiente profissional e estilo pessoal. Cada gel proporciona cobertura de aspeto natural com desgaste duradouro, perfeito para aqueles que preferem elegância discreta. Quer escolha um nude suave, um taupe quente ou um castanho profundo, a nossa coleção garante que as suas unhas parecem polidas e refinadas.",
+      videoSection: {
+        title: "Coleção Nude Elegante",
+        description: "Descubra a nossa gama completa de géis nude, neutros e castanhos concebidos para sofisticação atemporal",
+        cta: "Comprar Géis Nude",
+      },
     },
     geminiOranges: {
       hero: {
@@ -1232,6 +1295,11 @@ export const pt = {
         line5: "corais vibrantes, calor e energia.",
       },
       description: "Os laranjas, corais e amarelos trazem calor e energia para a nossa coleção Gemini. Dos amarelos solares aos corais vibrantes e laranjas ricas, estes tons capturam a essência do verão e adicionam um toque alegre de cor a qualquer visual. Cada gel proporciona cor brilhante e saturada com excelente cobertura e desgaste duradouro. Quer prefira um pêssego suave, uma tangerina ousada ou um amarelo solar, a nossa coleção oferece opções vibrantes que irradiam positividade e estilo.",
+      videoSection: {
+        title: "Coleção Laranja Vibrante",
+        description: "Descubra a nossa gama completa de géis laranja, coral e amarelo concebidos para calor e energia",
+        cta: "Comprar Géis Laranja",
+      },
     },
   },
 };

@@ -228,14 +228,14 @@ export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDar
         <>
           <button
             onClick={prevSlide}
-            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-all opacity-70 group-hover:opacity-100 hover:opacity-100"
+            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/50 hover:bg-black/70 active:bg-black/80 text-white flex items-center justify-center transition-all opacity-70 group-hover:opacity-100 hover:opacity-100 touch-manipulation min-w-[44px] min-h-[44px]"
             aria-label="Previous slide"
           >
             <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
           <button
             onClick={nextSlide}
-            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-all opacity-70 group-hover:opacity-100 hover:opacity-100 animate-pulse"
+            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/50 hover:bg-black/70 active:bg-black/80 text-white flex items-center justify-center transition-all opacity-70 group-hover:opacity-100 hover:opacity-100 animate-pulse touch-manipulation min-w-[44px] min-h-[44px]"
             aria-label="Next slide"
           >
             <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -250,10 +250,10 @@ export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDar
             <button
               key={index}
               onClick={() => goToSlide(index)}
-              className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-all ${
+              className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-all touch-manipulation min-w-[20px] min-h-[20px] ${
                 index === currentSlide
                   ? "bg-brand-white w-6 sm:w-8"
-                  : "bg-white/50 hover:bg-white/75"
+                  : "bg-white/50 hover:bg-white/75 active:bg-white/90"
               }`}
               aria-label={`Go to slide ${index + 1}`}
             />

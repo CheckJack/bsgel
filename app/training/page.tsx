@@ -340,15 +340,15 @@ export default function TrainingPage() {
 
   return (
     <>
-      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-screen" />
+      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-[50vh] md:h-[60vh]" />
       <div className="min-h-screen bg-brand-white">
         {/* Main Content Section */}
-        <section className="py-16 px-4">
+        <section className="py-8 md:py-12 px-4">
           <div className="container mx-auto max-w-6xl">
-            <div className="text-center mb-12">
-              <h2 className="text-4xl font-medium mb-4 text-brand-black">{t("training.trainingPrograms")}</h2>
-              <div className="w-24 h-1 bg-brand-champagne mx-auto mb-6"></div>
-              <p className="text-lg font-light text-brand-black leading-relaxed max-w-3xl mx-auto">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl md:text-4xl font-medium mb-3 text-brand-black">{t("training.trainingPrograms")}</h2>
+              <div className="w-24 h-1 bg-brand-champagne mx-auto mb-4"></div>
+              <p className="text-base md:text-lg font-light text-brand-black leading-relaxed max-w-3xl mx-auto">
                 {t("training.trainingProgramsDesc")}
               </p>
             </div>
