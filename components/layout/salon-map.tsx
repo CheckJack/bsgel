@@ -106,9 +106,6 @@ export function SalonMap({ salons, onMarkerClick }: SalonMapProps) {
     
     // Dynamically import Leaflet and react-leaflet only on client side
     if (typeof window !== "undefined") {
-      // @ts-ignore - CSS imports don't need type checking
-      import("leaflet/dist/leaflet.css");
-      
       Promise.all([
         import("react-leaflet"),
         import("leaflet"),

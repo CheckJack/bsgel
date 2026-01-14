@@ -230,7 +230,8 @@ function AdminProductsPageContent() {
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch("/api/products");
+      // Request all products with a high limit for admin panel
+      const res = await fetch("/api/products?limit=10000");
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: "Unknown error" }));

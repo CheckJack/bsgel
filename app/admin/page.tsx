@@ -30,7 +30,7 @@ export default function AdminDashboardPage() {
     try {
       setIsLoading(true);
       const [productsRes, ordersRes] = await Promise.all([
-        fetch("/api/products"),
+        fetch("/api/products?limit=10000"),
         fetch("/api/orders"),
       ]);
 
@@ -49,9 +49,12 @@ export default function AdminDashboardPage() {
         const productsData = await productsRes.json();
         const ordersData = await ordersRes.json();
         
-        // Handle different response formats
+        // Handle different response formats - use pagination.total if available for accurate count
         const products = Array.isArray(productsData) ? productsData : (productsData.products || []);
         const orders = Array.isArray(ordersData) ? ordersData : (ordersData.orders || []);
+        
+        // Use pagination.total if available, otherwise count the array
+        const totalProducts = productsData.pagination?.total ?? (Array.isArray(products) ? products.length : 0);
 
         const totalRevenue = Array.isArray(orders) ? orders.reduce(
           (sum: number, order: any) => sum + parseFloat(order.total?.toString() || '0'),
@@ -61,9 +64,9 @@ export default function AdminDashboardPage() {
           (order: any) => order.status === "PENDING" || order.status === "PROCESSING"
         ).length : 0;
 
-        console.log("✅ Stats fetched:", { products: products.length, orders: orders.length });
+        console.log("✅ Stats fetched:", { products: totalProducts, orders: orders.length });
         setStats({
-          totalProducts: Array.isArray(products) ? products.length : 0,
+          totalProducts,
           totalOrders: Array.isArray(orders) ? orders.length : 0,
           totalRevenue,
           pendingOrders,

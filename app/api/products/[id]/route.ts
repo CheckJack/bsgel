@@ -28,6 +28,7 @@ export async function GET(
           hemaFree: true,
           categoryId: true,
           attributes: true,
+          showcasingSections: true,
           createdAt: true,
           updatedAt: true,
           category: {
@@ -39,10 +40,9 @@ export async function GET(
           },
         },
       });
-      // Add subcategories as empty array since it doesn't exist in schema
+      // Add defaults for fields that might not exist in database
       if (product) {
         (product as any).subcategories = [];
-        (product as any).showcasingSections = [];
       }
     } catch (error: any) {
       // If schema doesn't match, use raw SQL to only get fields that exist
@@ -73,7 +73,7 @@ export async function GET(
             hemaFree: row.hemaFree || false,
             categoryId: row.categoryId,
             attributes: row.attributes,
-            showcasingSections: [], // Field doesn't exist in database
+            showcasingSections: row.showcasingSections || [],
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
             category: row.category_id ? {
@@ -97,8 +97,11 @@ export async function GET(
               image: true,
               images: true,
               featured: true,
+              outOfStock: true,
+              hemaFree: true,
               categoryId: true,
               attributes: true,
+              showcasingSections: true,
               createdAt: true,
               updatedAt: true,
               category: {
@@ -116,7 +119,7 @@ export async function GET(
           const result = await db.$queryRaw`
             SELECT 
               p.id, p.name, p.description, p.price, p.image, p.images, p.featured, p."outOfStock", p."hemaFree", p."categoryId", p.attributes,
-              p."createdAt", p."updatedAt",
+              p."showcasingSections", p."createdAt", p."updatedAt",
               c.id as "category_id", c.name as "category_name", c.slug as "category_slug"
             FROM "Product" p
             LEFT JOIN "Category" c ON p."categoryId" = c.id
@@ -138,7 +141,7 @@ export async function GET(
             hemaFree: row.hemaFree || false,
             categoryId: row.categoryId,
             attributes: row.attributes,
-            showcasingSections: [], // Field doesn't exist in database
+            showcasingSections: row.showcasingSections || [],
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
             category: row.category_id ? {
@@ -206,13 +209,13 @@ export async function GET(
 
     return NextResponse.json(serializedProduct, { headers })
   } catch (error: any) {
+    const { id: productId } = await params
     console.error("Failed to fetch product:", error)
-    const { id: errorId } = await params;
     console.error("Error details:", {
       message: error?.message,
       code: error?.code,
       stack: error?.stack,
-      params: errorId,
+      params: productId,
     })
     return NextResponse.json(
       { 
@@ -250,8 +253,6 @@ export async function PATCH(
             image: true,
             images: true,
             featured: true,
-            outOfStock: true,
-            hemaFree: true,
             categoryId: true,
             attributes: true,
             createdAt: true,
@@ -305,15 +306,15 @@ export async function PATCH(
     if (image !== undefined) updateData.image = image
     if (images !== undefined) updateData.images = images
     if (featured !== undefined) updateData.featured = featured
-    // Product tags work independently
+    // Product tags are mutually exclusive - only one can be set at a time
+    // Only add these fields if columns exist in database (will be removed if they don't exist)
     if (outOfStock !== undefined) {
       updateData.outOfStock = outOfStock
     }
     if (hemaFree !== undefined) {
       updateData.hemaFree = hemaFree
     }
-    // showcasingSections field doesn't exist in database, skip it
-    // if (showcasingSections !== undefined) updateData.showcasingSections = showcasingSections || []
+    if (showcasingSections !== undefined) updateData.showcasingSections = Array.isArray(showcasingSections) ? showcasingSections : []
     
     // Handle categoryId using relation syntax (required for updates in some Prisma versions)
     if (categoryId !== undefined) {
@@ -371,8 +372,6 @@ export async function PATCH(
                 name: true,
                 description: true,
                 price: true,
-                salePrice: true,
-                discountPercentage: true,
                 image: true,
                 images: true,
                 featured: true,
@@ -397,8 +396,6 @@ export async function PATCH(
               name: updateDataScalars.name ?? currentProduct.name,
               description: updateDataScalars.description ?? currentProduct.description,
               price: updateDataScalars.price ?? currentProduct.price,
-              salePrice: currentProduct.salePrice, // Keep existing salePrice
-              discountPercentage: currentProduct.discountPercentage, // Keep existing discountPercentage
               image: updateDataScalars.image ?? currentProduct.image,
               images: updateDataScalars.images ?? currentProduct.images,
               featured: updateDataScalars.featured ?? currentProduct.featured,
@@ -406,7 +403,7 @@ export async function PATCH(
               hemaFree: updateDataScalars.hemaFree ?? currentProduct.hemaFree,
               categoryId: categoryId !== undefined ? (categoryId || null) : currentProduct.categoryId,
               attributes: updateDataScalars.attributes ?? currentProduct.attributes,
-              showcasingSections: currentProduct.showcasingSections,
+              showcasingSections: updateDataScalars.showcasingSections ?? currentProduct.showcasingSections,
             };
             
             // Create new product with new ID (only scalar fields, no relation syntax)
@@ -466,6 +463,7 @@ export async function PATCH(
               hemaFree: true,
               categoryId: true,
               attributes: true,
+              showcasingSections: true,
               createdAt: true,
               updatedAt: true,
               category: {
@@ -502,6 +500,7 @@ export async function PATCH(
               hemaFree: true,
               categoryId: true,
               attributes: true,
+              showcasingSections: true,
               createdAt: true,
               updatedAt: true,
               category: {
@@ -513,42 +512,78 @@ export async function PATCH(
               },
             },
           });
-          // Add subcategories as empty array since it doesn't exist in schema
+          // Add defaults for fields that might not exist in database
           (product as any).subcategories = [];
         } catch (error: any) {
-          // If schema hasn't been migrated yet, remove subcategories from update and retry
-          if (error?.message?.includes("subcategories") || error?.code === "P2021" || error?.code === "P2009" || error?.code === "P2014") {
-            const { subcategories, ...dataWithoutSubcategories } = updateDataWithoutId;
-            product = await db.product.update({
-              where: { id: id },
-              data: dataWithoutSubcategories,
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            price: true,
-            image: true,
-            images: true,
-            featured: true,
-            outOfStock: true,
-            hemaFree: true,
-            categoryId: true,
-            attributes: true,
-            createdAt: true,
-            updatedAt: true,
-            category: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-              },
-            },
-          },
-        });
-        (product as any).subcategories = [];
-      } else {
-        throw error;
-      }
+          // If schema hasn't been migrated yet, remove fields that don't exist and retry
+          if (error?.message?.includes("subcategories") || error?.message?.includes("outOfStock") || error?.message?.includes("hemaFree") || error?.message?.includes("showcasingSections") || error?.code === "P2021" || error?.code === "P2022" || error?.code === "P2009" || error?.code === "P2014") {
+            // Remove fields that don't exist in database
+            const { subcategories, outOfStock, hemaFree, showcasingSections, ...dataWithoutMissingFields } = updateDataWithoutId;
+            try {
+              product = await db.product.update({
+                where: { id: id },
+                data: dataWithoutMissingFields,
+                select: {
+                  id: true,
+                  name: true,
+                  description: true,
+                  price: true,
+                  image: true,
+                  images: true,
+                  featured: true,
+                  outOfStock: true,
+                  hemaFree: true,
+                  categoryId: true,
+                  attributes: true,
+                  showcasingSections: true,
+                  createdAt: true,
+                  updatedAt: true,
+                  category: {
+                    select: {
+                      id: true,
+                      name: true,
+                      slug: true,
+                    },
+                  },
+                },
+              });
+              // Add defaults for missing fields
+              (product as any).subcategories = [];
+            } catch (retryError: any) {
+              // If still failing, try with even fewer fields
+              const { attributes, ...dataMinimal } = dataWithoutMissingFields;
+              product = await db.product.update({
+                where: { id: id },
+                data: dataMinimal,
+                select: {
+                  id: true,
+                  name: true,
+                  description: true,
+                  price: true,
+                  image: true,
+                  images: true,
+                  featured: true,
+                  outOfStock: true,
+                  hemaFree: true,
+                  categoryId: true,
+                  attributes: true,
+                  showcasingSections: true,
+                  createdAt: true,
+                  updatedAt: true,
+                  category: {
+                    select: {
+                      id: true,
+                      name: true,
+                      slug: true,
+                    },
+                  },
+                },
+              });
+              (product as any).subcategories = [];
+            }
+          } else {
+            throw error;
+          }
         }
       }
     } else {
@@ -571,6 +606,7 @@ export async function PATCH(
             hemaFree: true,
             categoryId: true,
             attributes: true,
+            showcasingSections: true,
             createdAt: true,
             updatedAt: true,
             category: {
@@ -582,39 +618,75 @@ export async function PATCH(
             },
           },
         });
-        // Add subcategories as empty array since it doesn't exist in schema
+        // Add defaults for fields that might not exist in database
         (product as any).subcategories = [];
       } catch (error: any) {
-        // If schema hasn't been migrated yet, remove subcategories from update and retry
-        if (error?.message?.includes("subcategories") || error?.code === "P2021" || error?.code === "P2009" || error?.code === "P2014") {
-          const { subcategories, ...dataWithoutSubcategories } = updateDataWithoutId;
-          product = await db.product.update({
-            where: { id: id },
-            data: dataWithoutSubcategories,
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              price: true,
-              image: true,
-              images: true,
-              featured: true,
-              outOfStock: true,
-              hemaFree: true,
-              categoryId: true,
-              attributes: true,
-              createdAt: true,
-              updatedAt: true,
-              category: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
+        // If schema hasn't been migrated yet, remove fields that don't exist and retry
+        if (error?.message?.includes("subcategories") || error?.message?.includes("outOfStock") || error?.message?.includes("hemaFree") || error?.message?.includes("showcasingSections") || error?.code === "P2021" || error?.code === "P2022" || error?.code === "P2009" || error?.code === "P2014") {
+          // Remove fields that don't exist in database
+          const { subcategories, outOfStock, hemaFree, showcasingSections, ...dataWithoutMissingFields } = updateDataWithoutId;
+          try {
+            product = await db.product.update({
+              where: { id: id },
+              data: dataWithoutMissingFields,
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                price: true,
+                image: true,
+                images: true,
+                featured: true,
+                outOfStock: true,
+                hemaFree: true,
+                categoryId: true,
+                attributes: true,
+                showcasingSections: true,
+                createdAt: true,
+                updatedAt: true,
+                category: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                  },
                 },
               },
-            },
-          });
-          (product as any).subcategories = [];
+            });
+            // Add defaults for missing fields
+            (product as any).subcategories = [];
+          } catch (retryError: any) {
+            // If still failing, try with even fewer fields
+            const { attributes, ...dataMinimal } = dataWithoutMissingFields;
+            product = await db.product.update({
+              where: { id: id },
+              data: dataMinimal,
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                price: true,
+                image: true,
+                images: true,
+                featured: true,
+                outOfStock: true,
+                hemaFree: true,
+                categoryId: true,
+                attributes: true,
+                showcasingSections: true,
+                createdAt: true,
+                updatedAt: true,
+                category: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                  },
+                },
+              },
+            });
+            (product as any).subcategories = [];
+          }
         } else {
           throw error;
         }

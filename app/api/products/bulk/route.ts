@@ -49,12 +49,14 @@ export async function PATCH(req: Request) {
       updateData.featured = Boolean(updates.featured)
     }
 
-    // Handle outOfStock status - tags work independently
+    // Handle outOfStock status - mutually exclusive with hemaFree
+    // Only add if columns exist (will be removed if they don't exist in error handler)
     if (updates.outOfStock !== undefined) {
       updateData.outOfStock = Boolean(updates.outOfStock)
     }
 
-    // Handle hemaFree status - tags work independently
+    // Handle hemaFree status - mutually exclusive with outOfStock
+    // Only add if columns exist (will be removed if they don't exist in error handler)
     if (updates.hemaFree !== undefined) {
       updateData.hemaFree = Boolean(updates.hemaFree)
     }
@@ -128,10 +130,25 @@ export async function PATCH(req: Request) {
         
         // Update product with non-relation fields first
         if (Object.keys(productUpdate).length > 0) {
-          await db.product.update({
-            where: { id },
-            data: productUpdate,
-          })
+          try {
+            await db.product.update({
+              where: { id },
+              data: productUpdate,
+            })
+          } catch (error: any) {
+            // If columns don't exist, remove them and retry
+            if (error?.message?.includes("outOfStock") || error?.message?.includes("hemaFree") || error?.code === "P2022") {
+              const { outOfStock, hemaFree, ...productUpdateWithoutMissing } = productUpdate;
+              if (Object.keys(productUpdateWithoutMissing).length > 0) {
+                await db.product.update({
+                  where: { id },
+                  data: productUpdateWithoutMissing,
+                })
+              }
+            } else {
+              throw error;
+            }
+          }
         }
 
         // Handle category relation
@@ -170,19 +187,50 @@ export async function PATCH(req: Request) {
       })
     } else {
       // For non-relation updates, we can use updateMany for better performance
-      const result = await db.product.updateMany({
-        where: {
-          id: {
-            in: productIds,
+      try {
+        const result = await db.product.updateMany({
+          where: {
+            id: {
+              in: productIds,
+            },
           },
-        },
-        data: updateData,
-      })
+          data: updateData,
+        })
 
-      return NextResponse.json({
-        message: "Products updated successfully",
-        count: result.count,
-      })
+        return NextResponse.json({
+          message: "Products updated successfully",
+          count: result.count,
+        })
+      } catch (error: any) {
+        // If columns don't exist, remove them and retry
+        if (error?.message?.includes("outOfStock") || error?.message?.includes("hemaFree") || error?.code === "P2022") {
+          const { outOfStock, hemaFree, ...updateDataWithoutMissing } = updateData;
+          if (Object.keys(updateDataWithoutMissing).length > 0) {
+            const result = await db.product.updateMany({
+              where: {
+                id: {
+                  in: productIds,
+                },
+              },
+              data: updateDataWithoutMissing,
+            })
+            return NextResponse.json({
+              message: "Products updated successfully (some fields skipped due to missing columns)",
+              count: result.count,
+            })
+          } else {
+            return NextResponse.json(
+              {
+                error: "No valid updates provided (all fields require missing database columns)",
+                details: "The outOfStock and hemaFree columns do not exist in the database. Please run migrations.",
+              },
+              { status: 400 }
+            )
+          }
+        } else {
+          throw error;
+        }
+      }
     }
   } catch (error: any) {
     console.error("Failed to bulk update products:", error)

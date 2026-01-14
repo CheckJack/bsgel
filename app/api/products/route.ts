@@ -39,12 +39,12 @@ export async function GET(req: Request) {
       where.featured = true
     }
 
-    // showcasingSections field doesn't exist in database, skip filter
-    // if (showcasingSection) {
-    //   where.showcasingSections = {
-    //     has: showcasingSection
-    //   }
-    // }
+    // Filter by showcasing section
+    if (showcasingSection) {
+      where.showcasingSections = {
+        has: showcasingSection
+      }
+    }
 
     // Price range filter
     if (minPrice || maxPrice) {
@@ -99,6 +99,7 @@ export async function GET(req: Request) {
           hemaFree: true,
           categoryId: true,
           attributes: true,
+          showcasingSections: true,
           createdAt: true,
           updatedAt: true,
           category: {
@@ -173,7 +174,10 @@ export async function GET(req: Request) {
             image: true,
             images: true,
             featured: true,
+            outOfStock: true,
+            hemaFree: true,
             categoryId: true,
+            showcasingSections: true,
             createdAt: true,
             updatedAt: true,
             category: {
@@ -231,9 +235,12 @@ export async function GET(req: Request) {
       } catch (fallbackError: any) {
         // If Prisma still fails (e.g., missing columns), use raw SQL
         console.log("Prisma query failed, using raw SQL fallback");
+        // Use raw SQL but only select columns that definitely exist
+        // Don't select outOfStock, hemaFree, or showcasingSections if they might not exist
+        // We'll set them to defaults in the mapping
         let sqlQuery = `
           SELECT 
-              p.id, p.name, p.description, p.price, p.image, p.images, p.featured, p."outOfStock", p."hemaFree", p."categoryId",
+              p.id, p.name, p.description, p.price, p.image, p.images, p.featured, p."categoryId",
             p."createdAt", p."updatedAt",
             c.id as category_id, c.name as category_name
           FROM "Product" p
@@ -259,7 +266,9 @@ export async function GET(req: Request) {
           sqlQuery += ` AND p.featured = true`;
         }
 
-        // showcasingSections field doesn't exist in database, skip filter
+        // Filter by showcasing section (only if column exists - skip if it doesn't)
+        // Note: This filter will be skipped if showcasingSections column doesn't exist
+        // The query will still work but won't filter by showcasing section
         // if (showcasingSection) {
         //   sqlQuery += ` AND $${paramIndex} = ANY(p."showcasingSections")`;
         //   params.push(showcasingSection);
@@ -292,6 +301,7 @@ export async function GET(req: Request) {
         const rawProducts = await db.$queryRawUnsafe(sqlQuery, ...params) as any[];
         
         // Transform raw SQL results to match expected format
+        // Set defaults for columns that might not exist in database
         products = rawProducts.map((row: any) => ({
           id: row.id,
           name: row.name,
@@ -300,9 +310,10 @@ export async function GET(req: Request) {
           image: row.image,
           images: Array.isArray(row.images) ? row.images : (row.images ? [row.images] : []),
           featured: row.featured,
-          outOfStock: row.outOfStock || false,
-          hemaFree: row.hemaFree || false,
+          outOfStock: false, // Default since column might not exist
+          hemaFree: false, // Default since column might not exist
           categoryId: row.categoryId,
+          showcasingSections: [], // Default since column might not exist
           createdAt: row.createdAt,
           updatedAt: row.updatedAt,
           category: row.category_id ? {
@@ -380,6 +391,12 @@ export async function GET(req: Request) {
 
       if (featured === "true") {
         countQuery += ` AND p.featured = true`;
+      }
+
+      if (showcasingSection) {
+        countQuery += ` AND $${paramIndex} = ANY(p."showcasingSections")`;
+        countParams.push(showcasingSection);
+        paramIndex++;
       }
 
       if (minPrice) {
@@ -485,8 +502,7 @@ export async function POST(req: Request) {
       outOfStock: outOfStock === true,
       hemaFree: hemaFree === true,
       attributes: attributes || null,
-      // showcasingSections field doesn't exist in database, skip it
-      // showcasingSections: Array.isArray(showcasingSections) ? showcasingSections : [],
+      showcasingSections: Array.isArray(showcasingSections) ? showcasingSections : [],
     };
 
     // If an ID is provided, use it (validate it's a non-empty string)

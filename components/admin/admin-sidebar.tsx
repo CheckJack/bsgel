@@ -376,8 +376,16 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
     let activeDropdownTitle: string | null = null;
     navSections.forEach((section) => {
       section.items.forEach((item) => {
-        if (item.children && isItemActive(item)) {
-          activeDropdownTitle = item.title;
+        if (item.children) {
+          // Check if any child matches the current pathname
+          const hasActiveChild = item.children.some((child) => {
+            if (!child.href) return false;
+            return pathname === child.href || pathname?.startsWith(child.href + "/");
+          });
+          
+          if (hasActiveChild || isItemActive(item)) {
+            activeDropdownTitle = item.title;
+          }
         }
       });
     });

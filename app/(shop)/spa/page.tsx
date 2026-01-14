@@ -243,6 +243,8 @@ export default function SpaPage() {
                   image={product.image}
                   images={product.images}
                   featured={product.featured}
+                  outOfStock={(product as any).outOfStock}
+                  hemaFree={(product as any).hemaFree}
                   rating={product.rating}
                   reviewCount={product.reviewCount}
                 />

@@ -544,6 +544,8 @@ export default function ProductDetailPage() {
                   image={relatedProduct.image}
                   images={relatedProduct.images || []}
                   description={relatedProduct.description}
+                  outOfStock={(relatedProduct as any).outOfStock}
+                  hemaFree={(relatedProduct as any).hemaFree}
                   rating={relatedProduct.rating}
                   reviewCount={relatedProduct.reviewCount}
                 />
