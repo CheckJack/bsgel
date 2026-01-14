@@ -11,7 +11,7 @@ export default function SustainabilityPage() {
     {
       id: "onde-tudo-ganha-forma",
       label: "Onde tudo ganha forma",
-      content: "No coração da África do Sul, a nossa fábrica de 3000 m² foi pensada para unir inovação, natureza e responsabilidade. Rodeada por paisagens abertas, é aqui que cada frasco BIO nasce num ambiente tranquilo, controlado e alinhado com padrões internacionais de qualidade.",
+      content: "No coração da África do Sul, a nossa unidade de produção de 3000 m² foi concebida para ser um modelo de eco-eficiência. Rodeada por paisagens naturais, é neste ambiente tranquilo e rigorosamente controlado que cada produto BIO ganha vida.",
       media: {
         type: "video",
         src: "/fsfadfsvgsz.mp4"
@@ -19,8 +19,8 @@ export default function SustainabilityPage() {
     },
     {
       id: "construida-eco-eficiente",
-      label: "Construída para ser eco‑eficiente",
-      content: "O edifício é ambientalmente responsável, com sistemas de ventilação climatizada, aproveitamento máximo de luz natural e reservatório de água auto‑sustentável. Estas escolhas reduzem o consumo energético e o desperdício de recursos, tornando cada etapa de produção mais leve para o planeta.",
+      label: "Eco-eficiência",
+      content: "Infraestruturas pensadas para reduzir o impacto ambiental.",
       media: {
         type: "video",
         src: "/fsfsfsfsdszxc.mp4"
@@ -28,8 +28,8 @@ export default function SustainabilityPage() {
     },
     {
       id: "energia-sol",
-      label: "Energia do sol, para unhas mais conscientes",
-      content: "O telhado da fábrica em \"sunny South Africa\" está equipado com painéis solares que alimentam grande parte da produção com energia limpa. Ao transformar sol em energia, diminuímos a pegada de carbono dos nossos produtos e aproximamos a beleza profissional de um futuro mais sustentável.",
+      label: "Energia Solar",
+      content: "Aproveitamos a força do sol para uma produção mais consciente.",
       media: {
         type: "video",
         src: "/fsfadfsvgszdssf.mp4"
@@ -37,8 +37,8 @@ export default function SustainabilityPage() {
     },
     {
       id: "certificacoes",
-      label: "Certificações que garantem confiança",
-      content: "A fábrica BIO SCULPTURE é certificada segundo as normas ISO 22716 (Boas Práticas de Fabrico) e gerida sob um sistema de qualidade ISO 9001, auditado regularmente. Estas certificações asseguram processos rigorosos, seguros e consistentes, reforçando o compromisso \"Healthy | Ethical | Professional\" em cada produto que sai da nossa linha.",
+      label: "Certificações Globais",
+      content: "Padrões internacionais que garantem a confiança de profissionais em todo o mundo. Aqui, a inovação técnica e a responsabilidade ecológica unem-se para criar a beleza do futuro.",
       media: {
         type: "video",
         src: "/fsfadfssvgszdssf.mp4"
@@ -61,9 +61,9 @@ export default function SustainabilityPage() {
         {/* Text Overlay - Bottom Left - Aligned with Logo */}
         <div className="absolute bottom-12 md:bottom-16 lg:bottom-20 left-0 right-0 z-10 px-6 md:px-12 lg:px-16">
           <p className="text-white text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-light leading-relaxed">
-            Energia limpa<br />
-            fórmulas conscientes<br />
-            beleza responsável.
+            Bio Sculpture:<br />
+            Ciência Ética,<br />
+            Beleza Sustentável.
           </p>
         </div>
 
@@ -77,9 +77,14 @@ export default function SustainabilityPage() {
       {/* Text Section - Centered */}
       <section className="relative w-full min-h-[70vh] md:min-h-[80vh] flex items-center justify-center py-20 md:py-28 bg-brand-white">
         <div className="w-full px-6 md:px-12 lg:px-16">
-          <p className="text-center text-2xl md:text-3xl lg:text-4xl font-light text-brand-black leading-relaxed max-w-7xl mx-auto">
-            BIO Sculpture trabalha todos os dias para reduzir o impacto ambiental dos seus produtos, desde a fábrica até à reciclagem das embalagens no salão.​ Com fórmulas vegan e 10‑Free, uma fábrica energeticamente eficiente e escolhas responsáveis de packaging, a marca procura alinhar beleza, saúde e respeito pelo planeta.​
-          </p>
+          <div className="text-center max-w-7xl mx-auto space-y-6">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-light text-brand-black leading-relaxed">
+              BIO Sculpture: O nosso compromisso com o futuro.
+            </h2>
+            <p className="text-xl md:text-2xl lg:text-3xl font-light text-brand-black leading-relaxed">
+              Trabalhamos diariamente para reduzir o impacto ambiental de cada produto — da nossa fábrica energéticamente eficiente até à reciclagem das embalagens no salão. Com fórmulas vegan e 10-Free, aliamos escolhas responsáveis de packaging dos 3 R's (Reduzir, Reutilizar e Reciclar) a um rigoroso respeito pela saúde e pelo planeta.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -87,9 +92,12 @@ export default function SustainabilityPage() {
       <section className="relative w-full bg-[#1a3a2a]">
         {/* Full Width Heading Container */}
         <div className="w-full px-6 md:px-12 lg:px-16 pt-32 md:pt-40 pb-0">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-light text-white leading-relaxed whitespace-nowrap">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-light text-white leading-relaxed mb-4">
             A Nossa Fábrica, o Nosso Planeta
           </h2>
+          <p className="text-xl md:text-2xl lg:text-3xl font-light text-white/80 leading-relaxed">
+            Onde a inovação encontra a natureza.
+          </p>
         </div>
 
         {/* Two Column Container - Accordion and Image */}
@@ -161,11 +169,13 @@ export default function SustainabilityPage() {
           {/* Section Heading */}
           <div className="mb-16 md:mb-20">
             <h2 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-light text-brand-black leading-relaxed mb-6">
-              Fórmulas & Ingredientes
+              Fórmulas & Ingredientes: A Vanguarda da Saúde
             </h2>
-            <p className="text-xl md:text-2xl font-light text-brand-black/80 max-w-4xl">
-              Cada produto BIO SCULPTURE é formulado com cuidado, transparência e compromisso com a saúde. 
-              As nossas fórmulas são desenvolvidas para garantir beleza profissional sem comprometer o bem-estar.
+            <p className="text-xl md:text-2xl font-light text-brand-black/80 max-w-4xl mb-4">
+              Cada produto BIO SCULPTURE é o resultado de um compromisso absoluto com a saúde e a transparência. Integramos as fórmulas mais revolucionárias da indústria cosmética, desenvolvidas para garantir uma performance profissional sem precedentes, sem nunca comprometer o bem-estar da unha natural.
+            </p>
+            <p className="text-lg md:text-xl font-light text-brand-black/70 max-w-4xl">
+              Fórmulas puras, tecnologia de ponta e ética inabalável.
             </p>
           </div>
 
@@ -179,10 +189,10 @@ export default function SustainabilityPage() {
                 </div>
               </div>
               <h3 className="text-2xl md:text-3xl font-light text-brand-black mb-4">
-                10-Free & Non-Toxic
+                Segurança 10-Free
               </h3>
               <p className="text-lg font-light text-brand-black/70 leading-relaxed">
-                Fórmulas livres de 10 ingredientes nocivos, garantindo segurança e qualidade sem comprometer o desempenho.
+                Fórmula non-toxic que elimina os 10 ingredientes mais nocivos, garantindo total integridade e segurança para a cliente.
               </p>
             </div>
 
@@ -197,7 +207,7 @@ export default function SustainabilityPage() {
                 100% Vegan
               </h3>
               <p className="text-lg font-light text-brand-black/70 leading-relaxed">
-                Todos os nossos produtos são formulados sem qualquer ingrediente de origem animal.
+                Fórmulas totalmente isentas de ingredientes de origem animal.
               </p>
             </div>
 
@@ -212,7 +222,7 @@ export default function SustainabilityPage() {
                 Cruelty-Free
               </h3>
               <p className="text-lg font-light text-brand-black/70 leading-relaxed">
-                Nunca testamos os nossos produtos em animais. Beleza consciente e ética.
+                Sem testes em animais. Beleza ética e consciente.
               </p>
             </div>
 
@@ -227,7 +237,7 @@ export default function SustainabilityPage() {
                 Healthy
               </h3>
               <p className="text-lg font-light text-brand-black/70 leading-relaxed">
-                Fórmulas pensadas para a saúde das unhas, promovendo fortalecimento e proteção natural.
+                Fórmulas que fortalecem e protegem a saúde da unha natural.
               </p>
             </div>
 
@@ -242,7 +252,7 @@ export default function SustainabilityPage() {
                 TPO-Free
               </h3>
               <p className="text-lg font-light text-brand-black/70 leading-relaxed">
-                Fórmulas sem TPO (óxido de trifenilfosfina), protegendo a saúde das unhas e da pele circundante.
+                Fórmulas sem TPO, protegendo a saúde da unha e da pele circundante.
               </p>
             </div>
 
@@ -257,7 +267,7 @@ export default function SustainabilityPage() {
                 HEMA-Free
               </h3>
               <p className="text-lg font-light text-brand-black/70 leading-relaxed">
-                Sem HEMA (metacrilato de 2-hidroxietilo), reduzindo o risco de sensibilização e alergias.
+                Algumas gamas formuladas sem HEMA, minimizando o risco de sensibilização e alergias.
               </p>
             </div>
           </div>

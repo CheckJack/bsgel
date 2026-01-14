@@ -22,8 +22,8 @@ export default function BiosculpturePage() {
         <div className="absolute bottom-12 md:bottom-16 lg:bottom-20 left-0 right-0 z-10">
           <div className="container mx-auto px-4">
             <p className="text-white text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-light leading-relaxed">
-              Primeiro tratar<br />
-              e depois embelezar.
+              Primeiro Tratar,<br />
+              Depois Embelezar
             </p>
           </div>
         </div>
@@ -45,7 +45,7 @@ export default function BiosculpturePage() {
             O que significa <span className="font-medium">&quot;Tratar&quot;</span>
           </h2>
           <p className="text-lg md:text-xl lg:text-2xl font-light text-brand-black leading-relaxed">
-            Antes de falar em cor, forma ou comprimento, a Terapeuta de unhas BIO observa a unha natural espessura, flexibilidade, quebras, descamação, manchas e até os hábitos diários da cliente.
+            Antes da estética, a Terapeuta BIO analisa a fundo a unha natural - da flexibilidade, às quebras, à descamação e manchas, aos hábitos diários. No conceito Bio Sculpture, o compromisso é claro: primeiro tratar, depois embelezar.
           </p>
         </div>
       </section>
@@ -60,10 +60,10 @@ export default function BiosculpturePage() {
             <div className="px-4 md:px-8 lg:px-16 flex items-center">
               <div>
                 <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium mb-6 md:mb-8 text-brand-black">
-                  O Protocolo
+                  O Diagnóstico BIO: Tratamento por Prescrição
                 </h2>
                 <p className="text-lg md:text-xl lg:text-2xl font-light text-brand-black leading-relaxed">
-                  No Conceito BIO, o tratamento é personalizado como uma &quot;receita&quot; para cada unha. A profissional escolhe bases, tratamentos ETHOS e cuidados de SPA específicos para fortalecer, equilibrar ou proteger, criando uma base saudável antes de qualquer construção ou cor.
+                  No Conceito BIO, o tratamento é uma &quot;receita&quot; exclusiva para cada cliente. A profissional prescreve Bases personalizadas, tratamentos ETHOS e cuidados SPA específicos para fortalecer, equilibrar ou proteger a queratina. O resultado é uma base perfeitamente saudável antes de qualquer construção ou cor.
                 </p>
               </div>
             </div>
@@ -103,10 +103,10 @@ export default function BiosculpturePage() {
             <div className="px-4 md:px-8 lg:px-16 flex items-center">
               <div>
                 <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium mb-6 md:mb-8 text-brand-black">
-                  De Tratamento
+                  Cuidados de Tratamento
                 </h2>
                 <p className="text-lg md:text-xl lg:text-2xl font-light text-brand-black leading-relaxed">
-                  Produtos que hidratam, endurecem ou amaciam as unhas, sempre com fórmulas veganas e sem ingredientes agressivos, pensados para manter a integridade da unha natural. O resultado é uma estrutura confortável e segura, ideal para quem usa gel com frequência ou tem unhas naturalmente sensíveis.
+                  Soluções concebidas para hidratar, fortalecer ou suavizar as unhas, através de fórmulas veganas e livres de ingredientes agressivos. Estes produtos garantem a integridade da unha natural, proporcionando uma estrutura saudável e segura — a escolha ideal para quem utiliza gel regularmente ou possui unhas sensíveis.
                 </p>
               </div>
             </div>
@@ -133,10 +133,10 @@ export default function BiosculpturePage() {
         <div className="absolute inset-0 flex items-center justify-center p-4 md:p-8 lg:p-16">
           <div className="bg-[rgba(139,69,19,0.7)] md:bg-[rgba(139,69,19,0.75)] m-2 md:m-4 lg:m-6 p-12 md:p-16 lg:p-20 max-w-6xl md:max-w-7xl rounded-lg md:rounded-xl lg:rounded-2xl">
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium mb-6 md:mb-8 text-white">
-              O momento de &quot;Embelezar&quot;
+              A Fase de &quot;Embelezar&quot;
             </h2>
             <p className="text-lg md:text-xl lg:text-2xl font-light text-white leading-relaxed">
-              Só depois de a unha estar cuidada é que entra a parte estética: cor, brilho, comprimento e nail art. A construção, o alongamento e os detalhes artísticos são feitos em cima de uma base estável, o que ajuda a manter o resultado bonito durante mais tempo e reduz a necessidade de correções agressivas.
+              Com a saúde da unha assegurada, passamos à estética: cor, brilho e design. A construção, o alongamento e a nail art são aplicados sobre uma base estável e tratada. Esta abordagem garante um acabamento perfeito e duradouro, minimizando a necessidade de intervenções agressivas e preservando sempre a beleza natural.
             </p>
           </div>
         </div>

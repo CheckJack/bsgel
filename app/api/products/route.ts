@@ -98,6 +98,7 @@ export async function GET(req: Request) {
           outOfStock: true,
           hemaFree: true,
           categoryId: true,
+          attributes: true,
           createdAt: true,
           updatedAt: true,
           category: {
@@ -447,7 +448,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    const { name, description, price, image, images, categoryId, subcategoryIds, featured, attributes, showcasingSections } = body
+    const { id, name, description, price, image, images, categoryId, subcategoryIds, featured, attributes, showcasingSections } = body
 
     // Validate required fields
     if (!name || typeof name !== "string" || name.trim().length === 0) {
@@ -485,6 +486,25 @@ export async function POST(req: Request) {
       // showcasingSections field doesn't exist in database, skip it
       // showcasingSections: Array.isArray(showcasingSections) ? showcasingSections : [],
     };
+
+    // If an ID is provided, use it (validate it's a non-empty string)
+    if (id && typeof id === "string" && id.trim().length > 0) {
+      const trimmedId = id.trim();
+      
+      // Check if the ID already exists
+      const existingProduct = await db.product.findUnique({
+        where: { id: trimmedId },
+      });
+      
+      if (existingProduct) {
+        return NextResponse.json(
+          { error: "A product with this ID already exists. Please use a different ID." },
+          { status: 400 }
+        );
+      }
+      
+      productData.id = trimmedId;
+    }
     
     // Handle multiple subcategories
     if (subcategoryIds && Array.isArray(subcategoryIds) && subcategoryIds.length > 0) {

@@ -14,6 +14,13 @@ import { useRouter } from "next/navigation";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import { useLanguage } from "@/contexts/language-context";
+import DOMPurify from "isomorphic-dompurify";
+
+interface AttributeValue {
+  value: string;
+  price?: number | null;
+  images?: string[];
+}
 
 interface Product {
   id: string;
@@ -22,6 +29,7 @@ interface Product {
   price: string;
   image: string | null;
   images: string[];
+  attributes?: Record<string, AttributeValue[] | string[]>;
   category: {
     id: string;
     name: string;
@@ -80,6 +88,9 @@ export default function ProductDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [isLoadingRelated, setIsLoadingRelated] = useState(false);
+  const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
+  const [displayPrice, setDisplayPrice] = useState<string>("0");
+  const [displayImages, setDisplayImages] = useState<string[]>([]);
 
   const fetchProduct = useCallback(async () => {
     setIsLoading(true);
@@ -88,6 +99,30 @@ export default function ProductDetailPage() {
       if (res.ok) {
         const data = await res.json();
         setProduct(data);
+        
+        // Initialize selected attributes and display values
+        if (data.attributes && typeof data.attributes === 'object') {
+          const attrs = data.attributes as Record<string, any>;
+          const initialSelections: Record<string, string> = {};
+          
+          // For each attribute category, select the first value by default
+          Object.entries(attrs).forEach(([category, values]) => {
+            if (Array.isArray(values) && values.length > 0) {
+              const firstValue = typeof values[0] === 'string' ? values[0] : values[0].value;
+              if (firstValue) {
+                initialSelections[category] = firstValue;
+              }
+            }
+          });
+          
+          setSelectedAttributes(initialSelections);
+          updateDisplayValues(data, initialSelections);
+        } else {
+          // No attributes, use base price and backup images
+          setDisplayPrice(data.price || "0");
+          const backupImages = data.image ? [data.image, ...(data.images || [])] : (data.images || []);
+          setDisplayImages(backupImages);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch product:", error);
@@ -95,6 +130,68 @@ export default function ProductDetailPage() {
       setIsLoading(false);
     }
   }, [params.id]);
+
+  const updateDisplayValues = (productData: Product, selections: Record<string, string>) => {
+    // Get backup images (main product images)
+    const backupImages = productData.image ? [productData.image, ...(productData.images || [])] : (productData.images || []);
+    
+    if (!productData.attributes || typeof productData.attributes !== 'object') {
+      setDisplayPrice(productData.price || "0");
+      setDisplayImages(backupImages);
+      return;
+    }
+
+    const attrs = productData.attributes as Record<string, any>;
+    let price = productData.price || "0";
+    let attributeImages: string[] = [];
+
+    // Get values for selected attributes - prioritize size attribute
+    Object.entries(selections).forEach(([category, selectedValue]) => {
+      const categoryValues = attrs[category];
+      if (Array.isArray(categoryValues)) {
+        const selectedAttr = categoryValues.find((v: any) => {
+          const value = typeof v === 'string' ? v : v.value;
+          return value === selectedValue;
+        });
+
+        if (selectedAttr) {
+          // If it's the new format with price and images
+          if (typeof selectedAttr === 'object' && selectedAttr.price !== undefined) {
+            // For size attribute, use its price
+            if (category.toLowerCase() === 'size') {
+              if (selectedAttr.price !== null && selectedAttr.price !== 0) {
+                price = selectedAttr.price.toString();
+              }
+            }
+            // Collect images from all selected attributes (prioritize size)
+            if (selectedAttr.images && selectedAttr.images.length > 0) {
+              if (category.toLowerCase() === 'size') {
+                // Size images go first
+                attributeImages = [...selectedAttr.images, ...attributeImages];
+              } else {
+                // Other attribute images go after size
+                attributeImages = [...attributeImages, ...selectedAttr.images];
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Combine: attribute-specific images first, then backup images
+    const allImages = [...attributeImages, ...backupImages];
+
+    setDisplayPrice(price);
+    setDisplayImages(allImages);
+  };
+
+  const handleAttributeSelect = (category: string, value: string) => {
+    const newSelections = { ...selectedAttributes, [category]: value };
+    setSelectedAttributes(newSelections);
+    if (product) {
+      updateDisplayValues(product, newSelections);
+    }
+  };
 
   const fetchRelatedProducts = useCallback(async () => {
     setIsLoadingRelated(true);
@@ -146,7 +243,7 @@ export default function ProductDetailPage() {
     return <div className="container mx-auto px-4 py-8 text-center">Product not found</div>;
   }
 
-  const images = product.image ? [product.image, ...product.images] : product.images;
+  const images = displayImages.length > 0 ? displayImages : (product.image ? [product.image, ...product.images] : product.images);
 
   // Function to detect if a URL is a video
   const isVideo = (url: string) => {
@@ -230,9 +327,80 @@ export default function ProductDetailPage() {
 
               {/* Description */}
               {product.description && (
-                <p className="text-sm sm:text-base text-gray-700 mb-6 sm:mb-8 whitespace-pre-line leading-relaxed">
-                  {product.description}
-                </p>
+                <div 
+                  className="text-sm sm:text-base text-gray-700 mb-6 sm:mb-8 leading-relaxed prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(product.description, {
+                      ALLOWED_TAGS: [
+                        "p",
+                        "br",
+                        "strong",
+                        "em",
+                        "u",
+                        "s",
+                        "h1",
+                        "h2",
+                        "h3",
+                        "h4",
+                        "h5",
+                        "h6",
+                        "ul",
+                        "ol",
+                        "li",
+                        "blockquote",
+                        "a",
+                        "img",
+                        "code",
+                        "pre",
+                        "hr",
+                        "div",
+                        "span",
+                        "mark",
+                      ],
+                      ALLOWED_ATTR: ["href", "src", "alt", "class", "target", "rel"],
+                    }),
+                  }}
+                />
+              )}
+
+              {/* Attributes Selection */}
+              {product.attributes && typeof product.attributes === 'object' && Object.keys(product.attributes).length > 0 && (
+                <div className="mb-6 space-y-4">
+                  {Object.entries(product.attributes).map(([category, values]) => {
+                    if (!Array.isArray(values) || values.length === 0) return null;
+                    
+                    const selectedValue = selectedAttributes[category] || (typeof values[0] === 'string' ? values[0] : values[0].value);
+                    
+                    return (
+                      <div key={category}>
+                        <label className="block text-sm font-medium text-brand-black mb-2 capitalize">
+                          {category}:
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {values.map((attr: any) => {
+                            const value = typeof attr === 'string' ? attr : attr.value;
+                            const isSelected = selectedValue === value;
+                            
+                            return (
+                              <button
+                                key={value}
+                                type="button"
+                                onClick={() => handleAttributeSelect(category, value)}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium border-2 transition-colors ${
+                                  isSelected
+                                    ? "border-brand-champagne bg-brand-champagne/10 text-brand-black"
+                                    : "border-gray-300 text-gray-700 hover:border-brand-champagne"
+                                }`}
+                              >
+                                {value}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
 
               {/* Price and Add to Cart Section */}
@@ -273,7 +441,7 @@ export default function ProductDetailPage() {
                   <div className="flex items-center justify-between mb-4 sm:mb-6 pt-4 sm:pt-6 border-t border-gray-100">
                     <span className="text-base sm:text-lg font-medium text-brand-black">Total:</span>
                     <span className="text-2xl sm:text-3xl font-semibold text-brand-black">
-                      {formatPrice(parseFloat(product.price) * quantity)}
+                      {formatPrice(parseFloat(displayPrice) * quantity)}
                     </span>
                   </div>
                   <Button

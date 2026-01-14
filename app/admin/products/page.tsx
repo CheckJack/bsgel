@@ -12,6 +12,12 @@ import { toast } from "@/components/ui/toast";
 import { Search, Lightbulb, ChevronLeft, ChevronRight, X, Download, Copy, Filter } from "lucide-react";
 import { useLanguage } from "@/contexts/language-context";
 
+interface AttributeValue {
+  value: string;
+  price?: number;
+  images?: string[];
+}
+
 interface Product {
   id: string;
   name: string;
@@ -20,6 +26,7 @@ interface Product {
   discountPercentage?: number | null;
   featured: boolean;
   image: string | null;
+  attributes?: Record<string, AttributeValue[] | string[]>;
   createdAt: string;
   category: {
     id: string;
@@ -721,6 +728,9 @@ function AdminProductsPageContent() {
                     {t("products.productId")}
                   </th>
                   <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    Attributes
+                  </th>
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     {t("products.price")}
                   </th>
                   <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
@@ -735,7 +745,7 @@ function AdminProductsPageContent() {
                 {paginatedProducts.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="px-6 py-12 text-center text-gray-500 dark:text-gray-400"
                     >
                       {t("products.noProducts")}
@@ -795,6 +805,54 @@ function AdminProductsPageContent() {
                           <span className="text-xs sm:text-sm text-gray-900 dark:text-gray-100">
                             {getShortProductId(product.id)}
                           </span>
+                        </td>
+
+                        {/* Attributes */}
+                        <td className="px-3 sm:px-6 py-3 sm:py-4">
+                          {product.attributes && Object.keys(product.attributes).length > 0 ? (
+                            <div className="space-y-2 max-w-xs">
+                              {Object.entries(product.attributes).map(([category, values]) => {
+                                // Handle both old format (string[]) and new format (AttributeValue[])
+                                const attributeValues = Array.isArray(values) 
+                                  ? values.map((v: any) => 
+                                      typeof v === 'string' 
+                                        ? { value: v, price: null, images: [] }
+                                        : v
+                                    )
+                                  : [];
+                                
+                                return (
+                                  <div key={category} className="text-xs">
+                                    <span className="font-semibold text-gray-700 dark:text-gray-300 capitalize">
+                                      {category}:
+                                    </span>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {attributeValues.map((attr: AttributeValue, idx: number) => (
+                                        <div
+                                          key={idx}
+                                          className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-gray-700 dark:text-gray-300"
+                                        >
+                                          <span>{attr.value}</span>
+                                          {attr.price !== null && attr.price !== undefined && attr.price !== 0 && (
+                                            <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                              ({formatPrice(attr.price.toString())})
+                                            </span>
+                                          )}
+                                          {attr.images && attr.images.length > 0 && (
+                                            <span className="text-green-600 dark:text-green-400" title={`${attr.images.length} image(s)`}>
+                                              📷
+                                            </span>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400 dark:text-gray-500">No attributes</span>
+                          )}
                         </td>
 
                         {/* Price */}

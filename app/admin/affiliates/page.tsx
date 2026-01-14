@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+export const dynamic = 'force-dynamic';
+
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -39,12 +41,7 @@ export default function AdminAffiliatesPage() {
     totalPointsRedeemed: 0,
   });
 
-  useEffect(() => {
-    fetchAffiliates();
-    fetchStats();
-  }, [currentPage, statusFilter]);
-
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const [affiliatesRes, transactionsRes] = await Promise.all([
         fetch("/api/admin/affiliates"),
@@ -82,9 +79,9 @@ export default function AdminAffiliatesPage() {
     } catch (error) {
       console.error("Failed to fetch stats:", error);
     }
-  };
+  }, []);
 
-  const fetchAffiliates = async () => {
+  const fetchAffiliates = useCallback(async () => {
     try {
       setIsLoading(true);
       const status = statusFilter === "all" ? null : statusFilter;
@@ -101,7 +98,12 @@ export default function AdminAffiliatesPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage, statusFilter, searchQuery]);
+
+  useEffect(() => {
+    fetchAffiliates();
+    fetchStats();
+  }, [fetchAffiliates, fetchStats]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -113,7 +115,7 @@ export default function AdminAffiliatesPage() {
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery]);
+  }, [searchQuery, currentPage, fetchAffiliates]);
 
   const handleToggleStatus = async (affiliate: Affiliate) => {
     try {

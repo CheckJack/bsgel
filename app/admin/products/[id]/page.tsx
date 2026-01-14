@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { X, Upload } from "lucide-react";
 
 interface Category {
@@ -28,6 +29,17 @@ interface Attribute {
   values: string[];
 }
 
+interface AttributeValue {
+  value: string;
+  price?: number | null;
+  images?: string[];
+}
+
+interface AttributeImagePreview {
+  url: string;
+  file?: File;
+}
+
 function EditProductPageContent() {
   const params = useParams();
   const router = useRouter();
@@ -35,6 +47,7 @@ function EditProductPageContent() {
   const searchParams = useSearchParams();
   const [categories, setCategories] = useState<Category[]>([]);
   const [formData, setFormData] = useState({
+    id: "",
     name: "",
     description: "",
     price: "",
@@ -63,7 +76,7 @@ function EditProductPageContent() {
   ];
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [attributes, setAttributes] = useState<Attribute[]>([]);
-  const [productAttributes, setProductAttributes] = useState<Record<string, string[]>>({});
+  const [productAttributes, setProductAttributes] = useState<Record<string, AttributeValue[]>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [error, setError] = useState("");
@@ -112,13 +125,14 @@ function EditProductPageContent() {
     setIsFetching(true);
     setError("");
     try {
-      if (!params.id) {
+      const productId = typeof params.id === 'string' ? params.id : params.id?.[0];
+      if (!productId) {
         setError("Product ID is missing");
         setIsFetching(false);
         return;
       }
 
-      const res = await fetch(`/api/products/${params.id}`);
+      const res = await fetch(`/api/products/${productId}`);
       const data = await res.json();
       
       if (!res.ok) {
@@ -150,6 +164,7 @@ function EditProductPageContent() {
       }
       
       setFormData({
+        id: product.id || "",
         name: product.name || "",
         description: product.description || "",
         price: priceString,
@@ -177,9 +192,33 @@ function EditProductPageContent() {
       }
       setImages(existingImages);
 
-      // Load existing attributes
+      // Load existing attributes - handle both old format (string[]) and new format (AttributeValue[])
       if (product.attributes && typeof product.attributes === 'object') {
-        setProductAttributes(product.attributes as Record<string, string[]>);
+        const attrs = product.attributes as Record<string, any>;
+        const convertedAttrs: Record<string, AttributeValue[]> = {};
+        
+        Object.entries(attrs).forEach(([category, values]) => {
+          if (Array.isArray(values)) {
+            // Check if it's old format (string[]) or new format (AttributeValue[])
+            if (values.length > 0 && typeof values[0] === 'string') {
+              // Old format: convert to new format
+              convertedAttrs[category] = values.map((v: string) => ({
+                value: v,
+                price: null,
+                images: [],
+              }));
+            } else {
+              // New format: use as is
+              convertedAttrs[category] = values.map((v: any) => ({
+                value: v.value || v,
+                price: v.price !== undefined ? v.price : null,
+                images: v.images || [],
+              }));
+            }
+          }
+        });
+        
+        setProductAttributes(convertedAttrs);
       }
     } catch (error: any) {
       console.error("Failed to fetch product:", error);
@@ -228,9 +267,16 @@ function EditProductPageContent() {
   const handleAttributeToggle = (category: string, value: string) => {
     setProductAttributes((prev) => {
       const currentValues = prev[category] || [];
-      const newValues = currentValues.includes(value)
-        ? currentValues.filter((v) => v !== value)
-        : [...currentValues, value];
+      const existingIndex = currentValues.findIndex((v) => v.value === value);
+      
+      let newValues: AttributeValue[];
+      if (existingIndex >= 0) {
+        // Remove attribute value
+        newValues = currentValues.filter((v) => v.value !== value);
+      } else {
+        // Add attribute value with default structure
+        newValues = [...currentValues, { value, price: null, images: [] }];
+      }
       
       if (newValues.length === 0) {
         const { [category]: _, ...rest } = prev;
@@ -238,6 +284,70 @@ function EditProductPageContent() {
       }
       
       return { ...prev, [category]: newValues };
+    });
+  };
+
+  const handleAttributePriceChange = (category: string, value: string, price: string) => {
+    setProductAttributes((prev) => {
+      const currentValues = prev[category] || [];
+      const updatedValues = currentValues.map((attr) =>
+        attr.value === value
+          ? { ...attr, price: price === '' ? null : parseFloat(price) || null }
+          : attr
+      );
+      return { ...prev, [category]: updatedValues };
+    });
+  };
+
+  const handleAttributeImageUpload = async (
+    category: string,
+    value: string,
+    files: FileList | null
+  ) => {
+    if (!files || files.length === 0) return;
+
+    const imagePromises = Array.from(files).map((file) => {
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve(reader.result as string);
+        };
+        reader.onerror = () => {
+          reject(new Error("Failed to read image file"));
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    try {
+      const imageUrls = await Promise.all(imagePromises);
+      setProductAttributes((prev) => {
+        const currentValues = prev[category] || [];
+        const updatedValues = currentValues.map((attr) =>
+          attr.value === value
+            ? { ...attr, images: [...(attr.images || []), ...imageUrls] }
+            : attr
+        );
+        return { ...prev, [category]: updatedValues };
+      });
+    } catch (error) {
+      console.error("Failed to upload attribute images:", error);
+      setError("Failed to upload images. Please try again.");
+    }
+  };
+
+  const handleAttributeImageRemove = (category: string, value: string, imageIndex: number) => {
+    setProductAttributes((prev) => {
+      const currentValues = prev[category] || [];
+      const updatedValues = currentValues.map((attr) =>
+        attr.value === value
+          ? {
+              ...attr,
+              images: (attr.images || []).filter((_, idx) => idx !== imageIndex),
+            }
+          : attr
+      );
+      return { ...prev, [category]: updatedValues };
     });
   };
 
@@ -269,13 +379,34 @@ function EditProductPageContent() {
 
       const imageUrls = await Promise.all(imagePromises);
 
-      const res = await fetch(`/api/products/${params.id}`, {
+      // Calculate base price from first size attribute if available
+      let basePrice = 0;
+      if (productAttributes && Object.keys(productAttributes).length > 0) {
+        const sizeAttr = productAttributes['size'] || productAttributes['Size'];
+        if (sizeAttr && sizeAttr.length > 0 && sizeAttr[0].price !== null && sizeAttr[0].price !== undefined) {
+          basePrice = sizeAttr[0].price;
+        }
+      }
+
+      // Always include ID for edit - it should always be present
+      const productId = formData.id.trim();
+      const currentProductId = typeof params.id === 'string' ? params.id : params.id[0];
+      
+      // Ensure ID is present
+      if (!productId) {
+        setError("Product ID is required. Please enter a valid ID.");
+        setIsLoading(false);
+        return;
+      }
+      
+      const res = await fetch(`/api/products/${currentProductId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+          id: productId, // Always send the ID from the form
           name: formData.name,
           description: formData.description || null,
-          price: parseFloat(formData.price),
+          price: basePrice,
           image: imageUrls[0] || null,
           images: imageUrls.slice(1),
           categoryId: formData.categoryId || null,
@@ -289,6 +420,15 @@ function EditProductPageContent() {
       });
 
       if (res.ok) {
+        // If ID changed, we need to update the URL
+        const responseData = await res.json();
+        const currentIdForRedirect = typeof params.id === 'string' ? params.id : params.id?.[0];
+        if (responseData.id && currentIdForRedirect && responseData.id !== currentIdForRedirect) {
+          // ID changed - redirect to new ID
+          router.push(`/admin/products/${responseData.id}`);
+          return;
+        }
+        
         // Preserve query parameters (filters, pagination, etc.) when redirecting back
         const queryParams = new URLSearchParams();
         const search = searchParams.get("search");
@@ -361,11 +501,36 @@ function EditProductPageContent() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column - Product Details */}
-        <div className="space-y-6">
-          <Card className="bg-white dark:bg-gray-800">
-            <CardContent className="p-6 space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Information Section */}
+        <Card className="bg-white dark:bg-gray-800">
+          <CardHeader>
+            <CardTitle className="text-xl">Basic Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Product ID */}
+              <div>
+                <label
+                  htmlFor="id"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                >
+                  Product ID
+                </label>
+                <Input
+                  id="id"
+                  placeholder="Product ID"
+                  value={formData.id}
+                  onChange={(e) =>
+                    setFormData({ ...formData, id: e.target.value })
+                  }
+                  className="w-full font-mono text-sm"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Edit any part of the product ID as needed. Ensure the ID is unique. If changed, you'll be redirected to the new ID.
+                </p>
+              </div>
+
               {/* Product Name */}
               <div>
                 <label htmlFor="name" className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
@@ -379,226 +544,232 @@ function EditProductPageContent() {
                   className="w-full"
                 />
               </div>
+            </div>
 
-              {/* Description */}
-              <div>
-                <label htmlFor="description" className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-                  Description
-                </label>
-                <textarea
-                  id="description"
-                  className="flex min-h-[120px] w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
+            {/* Description */}
+            <div>
+              <label htmlFor="description" className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                Description
+              </label>
+              <RichTextEditor
+                content={formData.description}
+                onChange={(html) => setFormData({ ...formData, description: html })}
+                placeholder="Enter product description... Use the toolbar to format your text."
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                Use the toolbar above to format your description with headings, lists, links, images, and more.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
-              {/* Price */}
-              <div>
-                <label htmlFor="price" className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-                  Price <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  required
-                  className="w-full"
-                />
-              </div>
+        {/* Category & Organization Section */}
+        <Card className="bg-white dark:bg-gray-800">
+          <CardHeader>
+            <CardTitle className="text-xl">Category & Organization</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Category */}
+            <div>
+              <label htmlFor="categoryId" className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                Category
+              </label>
+              <select
+                id="categoryId"
+                className="flex h-10 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={formData.categoryId}
+                onChange={(e) => setFormData({ ...formData, categoryId: e.target.value, subcategoryIds: [] })}
+              >
+                <option value="">No Category</option>
+                {categories.filter((cat) => !cat.parentId).map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-              {/* Category */}
-              <div>
-                <label htmlFor="categoryId" className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-                  Category
-                </label>
-                <select
-                  id="categoryId"
-                  className="flex h-10 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={formData.categoryId}
-                  onChange={(e) => setFormData({ ...formData, categoryId: e.target.value, subcategoryIds: [] })}
-                >
-                  <option value="">No Category</option>
-                  {categories.filter((cat) => !cat.parentId).map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Subcategories */}
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-                  Subcategories (Optional)
-                </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Select one or more subcategories for this product
-                </p>
-                <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-3 bg-white dark:bg-gray-800">
-                  {categories.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">No categories available</p>
-                  ) : (
-                    (() => {
-                      // Filter to only show actual subcategories (categories with parentId)
-                      const subcategories = categories.filter((cat) => cat.parentId);
-                      return subcategories.length === 0 ? (
-                        <p className="text-sm text-gray-500 dark:text-gray-400">No subcategories available. Create subcategories in the Categories section first.</p>
-                      ) : (
-                        subcategories.map((category) => (
-                          <label
-                            key={category.id}
-                            className="flex items-center gap-2 py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={formData.subcategoryIds.includes(category.id)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setFormData({
-                                    ...formData,
-                                    subcategoryIds: [...formData.subcategoryIds, category.id],
-                                  });
-                                } else {
-                                  setFormData({
-                                    ...formData,
-                                    subcategoryIds: formData.subcategoryIds.filter((id) => id !== category.id),
-                                  });
-                                }
-                              }}
-                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                            />
-                            <span className="text-sm text-gray-900 dark:text-gray-100">{category.name}</span>
-                          </label>
-                        ))
-                      );
-                    })()
-                  )}
-                </div>
-                {formData.subcategoryIds.length > 0 && (
-                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    {formData.subcategoryIds.length} subcategor{formData.subcategoryIds.length === 1 ? "y" : "ies"} selected
-                  </p>
+            {/* Subcategories */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                Subcategories (Optional)
+              </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Select one or more subcategories for this product
+              </p>
+              <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-3 bg-white dark:bg-gray-800">
+                {categories.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No categories available</p>
+                ) : (
+                  (() => {
+                    // Filter to only show actual subcategories (categories with parentId)
+                    const subcategories = categories.filter((cat) => cat.parentId);
+                    return subcategories.length === 0 ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">No subcategories available. Create subcategories in the Categories section first.</p>
+                    ) : (
+                      subcategories.map((category) => (
+                        <label
+                          key={category.id}
+                          className="flex items-center gap-2 py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.subcategoryIds.includes(category.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData({
+                                  ...formData,
+                                  subcategoryIds: [...formData.subcategoryIds, category.id],
+                                });
+                              } else {
+                                setFormData({
+                                  ...formData,
+                                  subcategoryIds: formData.subcategoryIds.filter((id) => id !== category.id),
+                                });
+                              }
+                            }}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                          />
+                          <span className="text-sm text-gray-900 dark:text-gray-100">{category.name}</span>
+                        </label>
+                      ))
+                    );
+                  })()
                 )}
               </div>
-
-              {/* Featured */}
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="featured"
-                  checked={formData.featured}
-                  onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
-                  className="h-4 w-4"
-                />
-                <label htmlFor="featured" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Featured Product
-                </label>
-              </div>
-
-              {/* Product Tags - Only one can be selected */}
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-                  Product Tag
-                </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Select only one tag for this product
+              {formData.subcategoryIds.length > 0 && (
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  {formData.subcategoryIds.length} subcategor{formData.subcategoryIds.length === 1 ? "y" : "ies"} selected
                 </p>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
+              )}
+            </div>
+
+            {/* Showcasing Sections */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                Showcasing Sections
+              </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Select which showcasing pages this product should appear on
+              </p>
+              <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-3 bg-white dark:bg-gray-800">
+                {showcasingSections.map((section) => (
+                  <label
+                    key={section.value}
+                    className="flex items-center gap-2 py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+                  >
                     <input
-                      type="radio"
-                      id="tag-none"
-                      name="productTag"
-                      checked={!formData.outOfStock && !formData.hemaFree}
-                      onChange={() => setFormData({ ...formData, outOfStock: false, hemaFree: false })}
-                      className="h-4 w-4"
+                      type="checkbox"
+                      checked={formData.showcasingSections.includes(section.value)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData({
+                            ...formData,
+                            showcasingSections: [...formData.showcasingSections, section.value],
+                          });
+                        } else {
+                          setFormData({
+                            ...formData,
+                            showcasingSections: formData.showcasingSections.filter((id) => id !== section.value),
+                          });
+                        }
+                      }}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                     />
-                    <label htmlFor="tag-none" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      None
-                    </label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      id="outOfStock"
-                      name="productTag"
-                      checked={formData.outOfStock}
-                      onChange={() => setFormData({ ...formData, outOfStock: true, hemaFree: false })}
-                      className="h-4 w-4"
-                    />
-                    <label htmlFor="outOfStock" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Out of Stock
-                    </label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      id="hemaFree"
-                      name="productTag"
-                      checked={formData.hemaFree}
-                      onChange={() => setFormData({ ...formData, outOfStock: false, hemaFree: true })}
-                      className="h-4 w-4"
-                    />
-                    <label htmlFor="hemaFree" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      HEMA Free
-                    </label>
-                  </div>
+                    <span className="text-sm text-gray-900 dark:text-gray-100">{section.label}</span>
+                  </label>
+                ))}
+              </div>
+              {formData.showcasingSections.length > 0 && (
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  {formData.showcasingSections.length} section{formData.showcasingSections.length === 1 ? "" : "s"} selected
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Product Settings Section */}
+        <Card className="bg-white dark:bg-gray-800">
+          <CardHeader>
+            <CardTitle className="text-xl">Product Settings</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Featured */}
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="featured"
+                checked={formData.featured}
+                onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+                className="h-4 w-4"
+              />
+              <label htmlFor="featured" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Featured Product
+              </label>
+            </div>
+
+            {/* Product Tags - Only one can be selected */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                Product Tag
+              </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Select only one tag for this product
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    id="tag-none"
+                    name="productTag"
+                    checked={!formData.outOfStock && !formData.hemaFree}
+                    onChange={() => setFormData({ ...formData, outOfStock: false, hemaFree: false })}
+                    className="h-4 w-4"
+                  />
+                  <label htmlFor="tag-none" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    None
+                  </label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    id="outOfStock"
+                    name="productTag"
+                    checked={formData.outOfStock}
+                    onChange={() => setFormData({ ...formData, outOfStock: true, hemaFree: false })}
+                    className="h-4 w-4"
+                  />
+                  <label htmlFor="outOfStock" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Out of Stock
+                  </label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    id="hemaFree"
+                    name="productTag"
+                    checked={formData.hemaFree}
+                    onChange={() => setFormData({ ...formData, outOfStock: false, hemaFree: true })}
+                    className="h-4 w-4"
+                  />
+                  <label htmlFor="hemaFree" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    HEMA Free
+                  </label>
                 </div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
 
-              {/* Showcasing Sections */}
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-                  Showcasing Sections
-                </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Select which showcasing pages this product should appear on
-                </p>
-                <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-3 bg-white dark:bg-gray-800">
-                  {showcasingSections.map((section) => (
-                    <label
-                      key={section.value}
-                      className="flex items-center gap-2 py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={formData.showcasingSections.includes(section.value)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFormData({
-                              ...formData,
-                              showcasingSections: [...formData.showcasingSections, section.value],
-                            });
-                          } else {
-                            setFormData({
-                              ...formData,
-                              showcasingSections: formData.showcasingSections.filter((id) => id !== section.value),
-                            });
-                          }
-                        }}
-                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                      />
-                      <span className="text-sm text-gray-900 dark:text-gray-100">{section.label}</span>
-                    </label>
-                  ))}
-                </div>
-                {formData.showcasingSections.length > 0 && (
-                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    {formData.showcasingSections.length} section{formData.showcasingSections.length === 1 ? "" : "s"} selected
-                  </p>
-                )}
-              </div>
-
-              {/* Attributes Section */}
-              <div>
-                <label className="block text-sm font-medium mb-4 text-gray-700 dark:text-gray-300">
-                  Product Attributes
-                </label>
-                {attributes.length > 0 ? (
-                  <div className="space-y-4">
+        {/* Attributes Section */}
+        <Card className="bg-white dark:bg-gray-800">
+          <CardHeader>
+            <CardTitle className="text-xl">Product Attributes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {attributes.length > 0 ? (
+                  <div className="space-y-6">
                     {attributes.map((attribute) => {
                       const selectedValues = productAttributes[attribute.category] || [];
                       return (
@@ -606,9 +777,9 @@ function EditProductPageContent() {
                           <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 capitalize">
                             {attribute.category}
                           </h4>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-2 mb-4">
                             {attribute.values.map((value) => {
-                              const isSelected = selectedValues.includes(value);
+                              const isSelected = selectedValues.some((attr) => attr.value === value);
                               return (
                                 <button
                                   key={value}
@@ -625,35 +796,128 @@ function EditProductPageContent() {
                               );
                             })}
                           </div>
+                          
+                          {/* Selected Attributes with Price and Images */}
                           {selectedValues.length > 0 && (
-                            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                              Selected: {selectedValues.join(", ")}
-                            </p>
+                            <div className="mt-4 space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                              {selectedValues.map((attrValue, idx) => (
+                                <div
+                                  key={idx}
+                                  className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 space-y-3"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <h5 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                      {attrValue.value}
+                                    </h5>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAttributeToggle(attribute.category, attrValue.value)}
+                                      className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-xs"
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                  
+                                  {/* Price Input */}
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                      Price {attribute.category.toLowerCase() === 'size' ? <span className="text-red-500">*</span> : '(optional)'}
+                                    </label>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      value={attrValue.price !== null && attrValue.price !== undefined ? attrValue.price : ''}
+                                      onChange={(e) =>
+                                        handleAttributePriceChange(attribute.category, attrValue.value, e.target.value)
+                                      }
+                                      placeholder="0.00"
+                                      required={attribute.category.toLowerCase() === 'size'}
+                                      className="w-full text-sm"
+                                    />
+                                  </div>
+                                  
+                                  {/* Images for this attribute value */}
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                      Images (at least one for sizes)
+                                    </label>
+                                    <div className="grid grid-cols-3 gap-2 mb-2">
+                                      {attrValue.images && attrValue.images.length > 0 ? (
+                                        attrValue.images.map((imgUrl, imgIdx) => (
+                                          <div
+                                            key={imgIdx}
+                                            className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700"
+                                          >
+                                            <Image
+                                              src={imgUrl}
+                                              alt={`${attrValue.value} image ${imgIdx + 1}`}
+                                              fill
+                                              sizes="(max-width: 768px) 33vw, 10vw"
+                                              className="object-cover"
+                                            />
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                handleAttributeImageRemove(attribute.category, attrValue.value, imgIdx)
+                                              }
+                                              className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors text-xs"
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </button>
+                                          </div>
+                                        ))
+                                      ) : null}
+                                      {(!attrValue.images || attrValue.images.length < 10) && (
+                                        <label className="relative aspect-square rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors bg-gray-50 dark:bg-gray-700">
+                                          <input
+                                            type="file"
+                                            accept="image/*"
+                                            multiple
+                                            onChange={(e) =>
+                                              handleAttributeImageUpload(attribute.category, attrValue.value, e.target.files)
+                                            }
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                          />
+                                          <Upload className="h-5 w-5 text-gray-400 dark:text-gray-500 mb-1" />
+                                          <span className="text-xs text-gray-500 dark:text-gray-400 text-center px-1">
+                                            Add Image
+                                          </span>
+                                        </label>
+                                      )}
+                                    </div>
+                                    {attrValue.images && attrValue.images.length > 0 && (
+                                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        {attrValue.images.length} image{attrValue.images.length !== 1 ? 's' : ''} uploaded
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           )}
                         </div>
                       );
                     })}
                   </div>
-                ) : (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    No attributes available. Please add attributes in the Attributes section.
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No attributes available. Please add attributes in the Attributes section.
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
-        {/* Right Column - Media */}
-        <div className="flex flex-col h-full">
-          <div className="space-y-6 flex-1">
-            {/* Upload Images */}
-            <Card className="bg-white dark:bg-gray-800">
-              <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                  Upload images
-                </h3>
-                <div className="grid grid-cols-3 gap-4 mb-4">
+        {/* Media Section */}
+        <Card className="bg-white dark:bg-gray-800">
+          <CardHeader>
+            <CardTitle className="text-xl">Product Media</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              These images will appear for all product attributes. Attribute-specific images (set above) will appear first, followed by these backup images.
+            </p>
+            <div className="grid grid-cols-3 gap-4 mb-4">
                   {/* Display up to 3 images in slots */}
                   {Array.from({ length: 3 }).map((_, index) => {
                     const image = images[index];
@@ -735,36 +999,34 @@ function EditProductPageContent() {
                     </div>
                   </div>
                 )}
-                <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-                  Images and videos are optional. Pay attention to the quality of the media you add, comply with the background color standards. Media must be in certain dimensions. Notice that the product shows all the details. The first image/video will be displayed initially, and on hover it will fade to the next media item.
-                </p>
-                {images.length > 0 && (
-                  <p className="mt-2 text-xs font-medium text-gray-700 dark:text-gray-300">
-                    {images.length} media file{images.length !== 1 ? 's' : ''} uploaded
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+            <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+              Images and videos are optional. Pay attention to the quality of the media you add, comply with the background color standards. Media must be in certain dimensions. Notice that the product shows all the details. The first image/video will be displayed initially, and on hover it will fade to the next media item.
+            </p>
+            {images.length > 0 && (
+              <p className="mt-2 text-xs font-medium text-gray-700 dark:text-gray-300">
+                {images.length} media file{images.length !== 1 ? 's' : ''} uploaded
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* Action Buttons - At the bottom */}
-          <div className="flex flex-row gap-3 mt-6">
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
-            >
-              {isLoading ? "Updating..." : "Update Product"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.back()}
-              className="flex-1 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium"
-            >
-              Cancel
-            </Button>
-          </div>
+        {/* Action Buttons */}
+        <div className="flex flex-row gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+          >
+            {isLoading ? "Updating..." : "Update Product"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.back()}
+            className="flex-1 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium"
+          >
+            Cancel
+          </Button>
         </div>
       </form>
     </div>

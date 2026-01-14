@@ -154,3 +154,13 @@ export function closeLoadingToast(toastId: string): void {
   // Future implementation if needed
 }
 
+/**
+ * Strips HTML tags from a string and returns plain text
+ * Works on both client and server
+ */
+export function stripHtml(html: string | null | undefined): string {
+  if (!html) return "";
+  // Remove HTML tags using regex (works on both client and server)
+  return html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+}
+

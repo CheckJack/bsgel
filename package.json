@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3001",
+    "dev:clean": "rm -rf .next && next dev -p 3001",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
     "start:prod": "NODE_ENV=production next start -H 0.0.0.0 -p ${PORT:-3000}",

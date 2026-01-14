@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Ingredient {
   id: string;
@@ -19,6 +20,7 @@ interface IngredientSliderProps {
 }
 
 export function IngredientSlider({ ingredients }: IngredientSliderProps) {
+  const { t } = useLanguage();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationDirection, setAnimationDirection] = useState<'left' | 'right'>('right');
@@ -388,23 +390,60 @@ export function IngredientSlider({ ingredients }: IngredientSliderProps) {
                 </div>
 
                 {/* Why We Use It */}
-                {currentIngredient.whyWeUseIt && (
-                  <div className="overflow-hidden">
-                    <div 
-                      className="transform transition-all duration-700 delay-100"
-                      style={{ 
-                        animation: isAnimating ? 'fadeInUp 0.7s ease-out 0.2s both' : 'none'
-                      }}
-                    >
-                      <h4 className="text-xl md:text-2xl font-medium mb-3" style={{ color: textColor }}>
-                        Why We Use It
-                      </h4>
-                      <p className="text-base md:text-lg leading-relaxed" style={{ color: textColor }}>
-                        {currentIngredient.whyWeUseIt}
-                      </p>
+                {currentIngredient.whyWeUseIt && (() => {
+                  // Parse text to separate intro from bullet points
+                  const text = currentIngredient.whyWeUseIt;
+                  const bulletRegex = /•\s*([^•]+)/g;
+                  const bullets: string[] = [];
+                  let match;
+                  let lastIndex = 0;
+                  
+                  while ((match = bulletRegex.exec(text)) !== null) {
+                    bullets.push(match[1].trim());
+                    lastIndex = match.index + match[0].length;
+                  }
+                  
+                  const introText = bullets.length > 0 
+                    ? text.substring(0, text.indexOf('•')).trim()
+                    : text;
+                  
+                  return (
+                    <div className="overflow-hidden">
+                      <div 
+                        className="transform transition-all duration-700 delay-100"
+                        style={{ 
+                          animation: isAnimating ? 'fadeInUp 0.7s ease-out 0.2s both' : 'none'
+                        }}
+                      >
+                        <h4 className="text-xl md:text-2xl font-medium mb-3" style={{ color: textColor }}>
+                          {t("ingredients.whyWeUseIt")}
+                        </h4>
+                        {introText && (
+                          <p className="text-base md:text-lg leading-relaxed mb-3" style={{ color: textColor }}>
+                            {introText}
+                          </p>
+                        )}
+                        {bullets.length > 0 && (
+                          <ul className="space-y-2">
+                            {bullets.map((bullet, index) => (
+                              <li 
+                                key={index} 
+                                className="text-base md:text-lg flex items-start"
+                                style={{ 
+                                  color: textColor,
+                                  animation: isAnimating ? `fadeInUp 0.5s ease-out ${0.3 + index * 0.1}s both` : 'none'
+                                }}
+                              >
+                                <span className="mr-3" style={{ color: isDarkBackground ? textColor : "#857D71" }}>•</span>
+                                <span>{bullet}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Benefits */}
                 {currentIngredient.benefits && currentIngredient.benefits.length > 0 && (
@@ -416,7 +455,7 @@ export function IngredientSlider({ ingredients }: IngredientSliderProps) {
                       }}
                     >
                       <h4 className="text-xl md:text-2xl font-medium mb-3" style={{ color: textColor }}>
-                        Benefits
+                        {t("ingredients.benefits")}
                       </h4>
                       <ul className="space-y-2">
                         {currentIngredient.benefits.map((benefit, index) => (
