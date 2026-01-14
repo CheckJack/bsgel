@@ -225,7 +225,7 @@ export default function AboutPage() {
       {/* Bespoke Path Section */}
       <section className="pt-12 sm:pt-16 pb-20 sm:pb-32 px-4 sm:px-6">
         <div className="container mx-auto w-full">
-          <div className="grid md:grid-cols-2 gap-8 sm:gap-12 items-center px-4 sm:px-6 md:px-8">
+          <div className="grid md:grid-cols-2 gap-8 sm:gap-12 items-center">
             <div>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-4 sm:mb-6 text-brand-black">{t("about.bespokePath")}</h2>
               <p className="text-base sm:text-lg font-light text-brand-black leading-relaxed">
@@ -250,9 +250,9 @@ export default function AboutPage() {
       <RotatingWordsSection />
 
       {/* Story Section */}
-      <section className="pt-20 sm:pt-32 pb-20 sm:pb-32 px-4 sm:px-6">
+      <section className="pt-12 sm:pt-16 pb-20 sm:pb-32 px-4 sm:px-6">
         <div className="container mx-auto w-full">
-          <div className="grid md:grid-cols-2 gap-8 sm:gap-12 items-center px-4 sm:px-6 md:px-8">
+          <div className="grid md:grid-cols-2 gap-8 sm:gap-12 items-center">
             <div className="relative order-2 md:order-1 h-[300px] sm:h-[400px] md:h-[500px]">
               <Image 
                 src="/306_Sunset_Red_Hands.jpg" 
@@ -301,10 +301,10 @@ export default function AboutPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
             <a
-              href="/salons"
+              href="/contact"
               className="px-6 sm:px-8 py-2.5 sm:py-3 bg-brand-black text-brand-white border-2 border-brand-black hover:bg-brand-white hover:text-brand-black transition-colors font-medium rounded text-sm sm:text-base"
             >
-              {t("about.findASalon")}
+              {t("about.sendMessage")}
             </a>
             <a
               href="/products"

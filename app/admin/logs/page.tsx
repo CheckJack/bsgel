@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+export const dynamic = 'force-dynamic';
+
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import {
   FileText,
@@ -283,7 +285,7 @@ export default function AdminLogsPage() {
 
   const [showFilters, setShowFilters] = useState(false);
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -310,13 +312,13 @@ export default function AdminLogsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.page, pagination.limit, filters]);
 
   useEffect(() => {
     if (session?.user?.role === "ADMIN") {
       fetchLogs();
     }
-  }, [session, pagination.page, filters]);
+  }, [session, fetchLogs]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));

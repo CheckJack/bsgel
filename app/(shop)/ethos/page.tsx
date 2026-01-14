@@ -175,73 +175,64 @@ export default function EthosPage() {
   // Ingredients data for the slider
   const ingredients = [
     {
-      id: "almond",
-      name: "Almond",
-      image: "/jojoba (13).png",
-      whyWeUseIt: "Used because it is a very gentle, well-tolerated emollient that absorbs easily into skin and nails. Softens cuticles, reduces dryness and flaking, and helps improve flexibility of the nail plate to reduce splitting.",
-      benefits: [],
-      backgroundColor: "#7b3615",
-      textColor: "#FFFFFF"
-    },
-    {
       id: "jojoba",
-      name: "Jojoba",
+      name: "A Jojoba: Ciência e Nutrição",
       image: "/Add a heading (13).png",
-      whyWeUseIt: "Its structure is a liquid wax ester, very similar to human sebum, so it is well tolerated and absorbs quickly without greasiness. It can carry small, oil-soluble molecules (like vitamin E) into the nail plate, improving how well conditioning ingredients are absorbed.",
+      whyWeUseIt: "Porque a utilizamos? A sua estrutura de cera líquida é muito semelhante aos óleos naturais da pele, sendo por isso perfeitamente tolerada e absorvida sem deixar resíduos oleosos. Actua como um veículo de precisão, transportando nutrientes essenciais (como a Vitamina E) para o interior da placa ungueal, potenciando a saúde e regeneração da unha.",
       benefits: [],
       backgroundColor: "#ef7f28",
       textColor: "#FFFFFF"
     },
     {
+      id: "almond",
+      name: "Amêndoa: Nutrição e Cuidado",
+      image: "/jojoba (13).png",
+      whyWeUseIt: "Porque a utilizamos? Rica em vitaminas e zinco, proporciona um tratamento completo: • Fortalecimento: Unhas mais fortes e protegidas contra a quebra precoce. • Hidratação: Suaviza e amacia as cutículas para uma excelente aparência. • Nutrição: Estimula o colagénio e a queratina, essenciais na saúde natural.",
+      benefits: [],
+      backgroundColor: "#7b3615",
+      textColor: "#FFFFFF"
+    },
+    {
       id: "avocado",
-      name: "Avocado",
+      name: "Abacate: Saúde e Resistência",
       image: "/dsd.png",
-      whyWeUseIt: "It is high in fatty acids (like oleic acid) and vitamins, especially vitamin E, which moisturise and condition dry nails and skin. Its molecules can move into the superficial nail layers and act as a \"plasticiser,\" helping nail layers slide instead of crack.",
+      whyWeUseIt: "Porque o utilizamos? Rico em biotina e vitaminas, oferece cuidados essenciais: • Fortalecimento: Unhas mais resistentes e protegidas contra a quebra. • Hidratação: Nutre profundamente as cutículas, prevenindo o ressecamento.",
       benefits: [],
       backgroundColor: "#aeb54d",
       textColor: "#FFFFFF"
     },
     {
       id: "kiwi",
-      name: "Kiwi",
+      name: "Kiwi: Vitalidade e Crescimento",
       image: "/jojoba (8).png",
-      whyWeUseIt: "Kiwi is naturally rich in vitamin C, vitamin E and antioxidants, which support skin and nail health and help protect against environmental damage. Enzymes and fruit acids from kiwi help loosen and remove dead surface cells in a mild way, preparing the nail and cuticle for better absorption of oils and treatments.",
+      whyWeUseIt: "Porque o utilizamos? Uma fonte poderosa de vitaminas e minerais para a regeneração da unha: • Fortalecimento: Nutrientes ativos que previnem a quebra e a fragilidade. • Crescimento: Estimula um desenvolvimento mais rápido, saudável e uniforme. • Resistência: Potencia o colagénio natural para unhas mais flexíveis e robustas.",
       benefits: [],
       backgroundColor: "#815532",
       textColor: "#FFFFFF"
     },
     {
       id: "passion-fruit",
-      name: "Passion Fruit",
+      name: "Maracujá: Nutrição e Vitalidade",
       image: "/fawa.png",
-      whyWeUseIt: "The seed oil is rich in linoleic and oleic acids plus vitamins A and E, so it delivers nourishing, moisturising and soothing effects while staying very light in texture. In some Ethos products it also appears as passion fruit seed powder for mild exfoliation, helping remove dry surface cells so treatments absorb better.",
+      whyWeUseIt: "Porque o utilizamos? O óleo e as sementes de maracujá para um cuidado completo: • Fortalecimento: Nutre e hidrata unhas e cutículas, prevenindo a quebra. • Renovação: Remove células mortas e restaura a camada lipídica da pele. • Saúde: Mantém as cutículas macias, bem cuidadas e com um brilho natural.",
       benefits: [],
       backgroundColor: "#eba725",
       textColor: "#FFFFFF"
     },
     {
-      id: "ginseng-root",
-      name: "Ginseng Root",
-      image: "/jojoba (6).png",
-      whyWeUseIt: "Ginseng root extract helps stimulate local micro-circulation, so more oxygen and nutrients reach the nail matrix and surrounding skin, which can support better nail growth quality. It has antioxidant and anti-inflammatory compounds (ginsenosides) that protect the nail area from oxidative stress and help calm irritation around the cuticle.",
-      benefits: [],
-      backgroundColor: "#c39f6e",
-      textColor: "#FFFFFF"
-    },
-    {
       id: "jasmine",
-      name: "Jasmine",
+      name: "Lavanda: Purificação e Crescimento",
       image: "/jojoba (4).png",
-      whyWeUseIt: "Used mainly for its soothing, aromatic and conditioning properties in cuticle oils. Helps comfort sensitive cuticles, adds mild moisturising, and makes treatments feel more luxurious and spa‑like.​",
+      whyWeUseIt: "Porque a utilizamos? Propriedades terapêuticas que equilibram a saúde e o bem-estar das unhas: • Proteção: Ação antisséptica e anti-inflamatória que previne infeções e acalma a pele. • Circulação: Estimula o fluxo sanguíneo local, promovendo um crescimento saudável. • Vitalidade: Contribui para unhas mais flexíveis, saudáveis e com brilho natural.",
       benefits: [],
       backgroundColor: "#422e55",
       textColor: "#FFFFFF"
     },
     {
       id: "sunflower-seed",
-      name: "Sunflower Seed",
+      name: "Girassol: Regeneração e Defesa",
       image: "/jojoba (3).png",
-      whyWeUseIt: "Used as a lightweight base oil that carries other actives and adds essential fatty acids. Moisturises without feeling greasy, supports the skin barrier around the nail, and helps protect against environmental dryness.",
+      whyWeUseIt: "Porque o utilizamos? Um aliado poderoso na reparação profunda e proteção da unha natural: • Fortalecimento: Nutre a estrutura da unha, prevenindo quebras e rachaduras. • Ação Antifúngica: Ajuda no combate a fungos e micoses (onicomicose). • Regeneração: Repara as unhas e mantém as cutículas suaves e saudáveis.",
       benefits: [],
       backgroundColor: "#351d0c",
       textColor: "#FFFFFF",

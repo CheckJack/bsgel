@@ -130,7 +130,7 @@ export default function MegaMenuCardsPage() {
     return null;
   };
 
-  const handleImageChange = (menuType: MenuType, position: number, file: File | null) => {
+  const handleImageChange = (menuType: MenuType, position: number, file: File | null, fileInputRef?: React.RefObject<HTMLInputElement>) => {
     const key = `${menuType}_${position}`;
     
     if (file) {
@@ -138,6 +138,10 @@ export default function MegaMenuCardsPage() {
       if (validationError) {
         setError(validationError);
         toast(validationError, "error");
+        // Reset file input on validation error
+        if (fileInputRef?.current) {
+          fileInputRef.current.value = '';
+        }
         return;
       }
       setError(null);
@@ -146,36 +150,63 @@ export default function MegaMenuCardsPage() {
       const isVideo = file.type.startsWith('video/');
       const mediaType = isVideo ? "VIDEO" : "IMAGE";
       
-      // Clean up previous preview URL if it exists
-      const prevPreviewUrl = formData[key]?.previewUrl;
-      if (prevPreviewUrl && prevPreviewUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(prevPreviewUrl);
-      }
+      // Create preview URL immediately
+      const previewUrl = URL.createObjectURL(file);
       
-      setFormData((prev) => ({
-        ...prev,
-        [key]: {
-          ...prev[key],
-          imageFile: file,
-          previewUrl: file ? URL.createObjectURL(file) : prev[key]?.previewUrl || null,
-          mediaType: mediaType,
-        },
-      }));
-    } else {
-      // Clean up previous preview URL if it exists
-      const prevPreviewUrl = formData[key]?.previewUrl;
-      if (prevPreviewUrl && prevPreviewUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(prevPreviewUrl);
-      }
-      
-      setFormData((prev) => ({
-        ...prev,
-        [key]: {
-          ...prev[key],
+      // Ensure formData[key] exists before updating
+      setFormData((prev) => {
+        // Clean up previous preview URL if it exists
+        const prevPreviewUrl = prev[key]?.previewUrl;
+        if (prevPreviewUrl && prevPreviewUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(prevPreviewUrl);
+        }
+        
+        // Ensure we have a base object to update
+        const currentData = prev[key] || {
+          imageUrl: "",
+          linkUrl: "",
           imageFile: null,
           previewUrl: null,
-        },
-      }));
+          mediaType: "IMAGE",
+        };
+        
+        return {
+          ...prev,
+          [key]: {
+            ...currentData,
+            imageFile: file,
+            previewUrl: previewUrl,
+            mediaType: mediaType,
+          },
+        };
+      });
+    } else {
+      // Update state and clean up previous preview URL
+      setFormData((prev) => {
+        // Clean up previous preview URL if it exists
+        const prevPreviewUrl = prev[key]?.previewUrl;
+        if (prevPreviewUrl && prevPreviewUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(prevPreviewUrl);
+        }
+        
+        // Ensure we have a base object to update
+        const currentData = prev[key] || {
+          imageUrl: "",
+          linkUrl: "",
+          imageFile: null,
+          previewUrl: null,
+          mediaType: "IMAGE",
+        };
+        
+        return {
+          ...prev,
+          [key]: {
+            ...currentData,
+            imageFile: null,
+            previewUrl: null,
+          },
+        };
+      });
     }
   };
 
@@ -436,6 +467,10 @@ export default function MegaMenuCardsPage() {
     const card = getCard(menuType, position);
     const key = `${menuType}_${position}`;
     const fileInputRef = useRef<HTMLInputElement>(null);
+    // Local state for immediate preview updates
+    const [localPreview, setLocalPreview] = useState<string | null>(null);
+    const [localMediaType, setLocalMediaType] = useState<"IMAGE" | "VIDEO">("IMAGE");
+    
     const data = formData[key] || {
       imageUrl: card?.imageUrl || "",
       linkUrl: card?.linkUrl || "",
@@ -445,8 +480,9 @@ export default function MegaMenuCardsPage() {
     };
 
     const isEditing = editingCard === key;
-    const displayMedia = data.previewUrl || data.imageUrl;
-    const mediaType = data.mediaType || card?.mediaType || "IMAGE";
+    // Use local preview if available, otherwise use formData
+    const displayMedia = localPreview || data.previewUrl || data.imageUrl;
+    const mediaType = localMediaType || data.mediaType || card?.mediaType || "IMAGE";
     const isVideo = mediaType === "VIDEO";
     const savingKey = `${menuType}_${position}`;
     const isSavingCard = isSaving[savingKey] || false;
@@ -458,20 +494,43 @@ export default function MegaMenuCardsPage() {
       data.mediaType !== (card?.mediaType || "IMAGE")
     );
 
+    // Sync local preview with formData when formData updates
+    useEffect(() => {
+      // Clear local preview when formData has a non-blob URL (server URL after save)
+      // This ensures we use the server URL instead of the local blob URL
+      if (data.previewUrl && !data.previewUrl.startsWith('blob:') && localPreview) {
+        if (localPreview.startsWith('blob:')) {
+          URL.revokeObjectURL(localPreview);
+        }
+        setLocalPreview(null);
+      }
+    }, [data.previewUrl, localPreview]);
+
     const handleUploadClick = () => {
+      // Set editing mode first
+      setEditingCard(key);
       // Reset the file input value to ensure onChange fires even if the same file is selected
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      fileInputRef.current?.click();
-      setEditingCard(key);
+      // Trigger file input click immediately
+      requestAnimationFrame(() => {
+        fileInputRef.current?.click();
+      });
     };
 
     const handleCancel = () => {
-      // Clean up preview URL if it's a blob URL
+      // Clean up preview URLs (both local and formData)
+      if (localPreview && localPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(localPreview);
+      }
       if (data.previewUrl && data.previewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(data.previewUrl);
       }
+      
+      // Reset local preview state
+      setLocalPreview(null);
+      setLocalMediaType("IMAGE");
       
       // Reset file input
       if (fileInputRef.current) {
@@ -591,8 +650,19 @@ export default function MegaMenuCardsPage() {
                   accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/ogg,video/quicktime"
                   onChange={(e) => {
                     const file = e.target.files?.[0] || null;
-                    handleImageChange(menuType, position, file);
-                    setEditingCard(key);
+                    if (file) {
+                      // Ensure editing mode is set
+                      setEditingCard(key);
+                      
+                      // Create preview immediately for instant feedback
+                      const isVideo = file.type.startsWith('video/');
+                      const previewUrl = URL.createObjectURL(file);
+                      setLocalPreview(previewUrl);
+                      setLocalMediaType(isVideo ? "VIDEO" : "IMAGE");
+                      
+                      // Process the file (this will update formData)
+                      handleImageChange(menuType, position, file, fileInputRef);
+                    }
                   }}
                   className="hidden"
                   aria-label="Upload media file"
@@ -612,10 +682,18 @@ export default function MegaMenuCardsPage() {
                     type="button"
                     variant="outline"
                     onClick={() => {
+                      // Clean up local preview
+                      if (localPreview && localPreview.startsWith('blob:')) {
+                        URL.revokeObjectURL(localPreview);
+                      }
+                      setLocalPreview(null);
+                      setLocalMediaType("IMAGE");
+                      
+                      // Clean up formData preview
                       if (data.previewUrl && data.previewUrl.startsWith('blob:')) {
                         URL.revokeObjectURL(data.previewUrl);
                       }
-                      handleImageChange(menuType, position, null);
+                      handleImageChange(menuType, position, null, fileInputRef);
                       setEditingCard(key);
                     }}
                     aria-label="Remove media"

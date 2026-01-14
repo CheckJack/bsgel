@@ -157,13 +157,37 @@ export default function AdminCategoriesPage() {
       });
 
       if (res.ok) {
+        // Optimistically remove the category from the UI immediately
+        setCategories((prev) => prev.filter((category) => category.id !== id));
+        
+        // Update pagination and handle page adjustment if needed
+        setPagination((prev) => {
+          const newTotal = prev.total - 1;
+          const newTotalPages = Math.ceil(newTotal / entriesPerPage);
+          
+          // If current page becomes empty and not the first page, go to previous page
+          if (newTotalPages > 0 && currentPage > newTotalPages) {
+            setCurrentPage(newTotalPages);
+          }
+          
+          return {
+            ...prev,
+            total: newTotal,
+            totalPages: newTotalPages,
+          };
+        });
+        
         toast(t("categories.deleteSuccessWithName", { name }), "success");
-        fetchCategories();
+        
+        // Remove from selected categories
         setSelectedCategories((prev) => {
           const newSet = new Set(prev);
           newSet.delete(id);
           return newSet;
         });
+        
+        // Refresh categories to ensure everything is in sync
+        fetchCategories();
       } else {
         const data = await res.json();
         toast(data.error || t("categories.deleteError"), "error");

@@ -276,7 +276,27 @@ export async function PATCH(
     }
 
     const body = await req.json()
-    const { name, description, price, image, images, categoryId, subcategoryIds, featured, outOfStock, hemaFree, attributes, showcasingSections } = body
+    const { id: newId, name, description, price, image, images, categoryId, subcategoryIds, featured, outOfStock, hemaFree, attributes, showcasingSections } = body
+
+    // Handle ID change - must check for duplicates first
+    if (newId !== undefined && typeof newId === "string" && newId.trim().length > 0) {
+      const trimmedNewId = newId.trim();
+      
+      // Only check for duplicates if the ID is actually changing
+      if (trimmedNewId !== id) {
+        // Check if the new ID already exists
+        const existingProduct = await db.product.findUnique({
+          where: { id: trimmedNewId },
+        });
+        
+        if (existingProduct) {
+          return NextResponse.json(
+            { error: "A product with this ID already exists. Please use a different ID." },
+            { status: 400 }
+          );
+        }
+      }
+    }
 
     // Prepare the data object, handling attributes properly
     if (name !== undefined) updateData.name = name
@@ -344,42 +364,172 @@ export async function PATCH(
     console.log("Updating product with data:", JSON.stringify(updateData, null, 2))
 
     let product;
-    try {
-      product = await db.product.update({
-        where: { id: id },
-        data: updateData,
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          price: true,
-          image: true,
-          images: true,
-          featured: true,
-          outOfStock: true,
-          hemaFree: true,
-          categoryId: true,
-          attributes: true,
-          createdAt: true,
-          updatedAt: true,
-          category: {
+    
+    // Handle ID change separately using a transaction
+    if (newId !== undefined && typeof newId === "string" && newId.trim().length > 0) {
+      const trimmedNewId = newId.trim();
+      if (trimmedNewId !== id) {
+        // ID is changing - need to use raw SQL to update ID and all foreign key references
+        try {
+          await db.$transaction(async (tx) => {
+            // First, get the current product data (only scalar fields, no relations)
+            const currentProduct = await tx.product.findUnique({
+              where: { id },
+              select: {
+                name: true,
+                description: true,
+                price: true,
+                salePrice: true,
+                discountPercentage: true,
+                image: true,
+                images: true,
+                featured: true,
+                outOfStock: true,
+                hemaFree: true,
+                categoryId: true,
+                attributes: true,
+                showcasingSections: true,
+              },
+            });
+            
+            if (!currentProduct) {
+              throw new Error("Product not found");
+            }
+            
+            // Prepare product data, excluding relation syntax from updateData
+            const { category: categoryRelation, subcategories: subcategoriesRelation, ...updateDataScalars } = updateData;
+            
+            // Merge current product with updated scalar fields (only scalar fields, no relations)
+            const newProductData: any = {
+              id: trimmedNewId,
+              name: updateDataScalars.name ?? currentProduct.name,
+              description: updateDataScalars.description ?? currentProduct.description,
+              price: updateDataScalars.price ?? currentProduct.price,
+              salePrice: currentProduct.salePrice, // Keep existing salePrice
+              discountPercentage: currentProduct.discountPercentage, // Keep existing discountPercentage
+              image: updateDataScalars.image ?? currentProduct.image,
+              images: updateDataScalars.images ?? currentProduct.images,
+              featured: updateDataScalars.featured ?? currentProduct.featured,
+              outOfStock: updateDataScalars.outOfStock ?? currentProduct.outOfStock,
+              hemaFree: updateDataScalars.hemaFree ?? currentProduct.hemaFree,
+              categoryId: categoryId !== undefined ? (categoryId || null) : currentProduct.categoryId,
+              attributes: updateDataScalars.attributes ?? currentProduct.attributes,
+              showcasingSections: currentProduct.showcasingSections,
+            };
+            
+            // Create new product with new ID (only scalar fields, no relation syntax)
+            await tx.product.create({
+              data: newProductData,
+            });
+            
+            // Update all foreign key references
+            // Update CartItem
+            await tx.cartItem.updateMany({
+              where: { productId: id },
+              data: { productId: trimmedNewId },
+            });
+            
+            // Update OrderItem
+            await tx.orderItem.updateMany({
+              where: { productId: id },
+              data: { productId: trimmedNewId },
+            });
+            
+            // Update ProductReview
+            await tx.productReview.updateMany({
+              where: { productId: id },
+              data: { productId: trimmedNewId },
+            });
+            
+            // Update ProductSubcategory
+            await tx.productSubcategory.updateMany({
+              where: { productId: id },
+              data: { productId: trimmedNewId },
+            });
+            
+            // Update TrainingProgramProduct
+            await tx.trainingProgramProduct.updateMany({
+              where: { productId: id },
+              data: { productId: trimmedNewId },
+            });
+            
+            // Delete old product
+            await tx.product.delete({
+              where: { id },
+            });
+          });
+          
+          // Fetch the updated product with new ID
+          product = await db.product.findUnique({
+            where: { id: trimmedNewId },
             select: {
               id: true,
               name: true,
-              slug: true,
+              description: true,
+              price: true,
+              image: true,
+              images: true,
+              featured: true,
+              outOfStock: true,
+              hemaFree: true,
+              categoryId: true,
+              attributes: true,
+              createdAt: true,
+              updatedAt: true,
+              category: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                },
+              },
             },
-          },
-        },
-      });
-      // Add subcategories as empty array since it doesn't exist in schema
-      (product as any).subcategories = [];
-    } catch (error: any) {
-      // If schema hasn't been migrated yet, remove subcategories from update and retry
-      if (error?.message?.includes("subcategories") || error?.code === "P2021" || error?.code === "P2009" || error?.code === "P2014") {
-        const { subcategories, ...dataWithoutSubcategories } = updateData;
-        product = await db.product.update({
-          where: { id: id },
-          data: dataWithoutSubcategories,
+          });
+          (product as any).subcategories = [];
+        } catch (txError: any) {
+          console.error("Transaction error updating product ID:", txError);
+          throw new Error(`Failed to update product ID: ${txError.message}`);
+        }
+      } else {
+        // ID not changing, do regular update
+        // Remove ID from updateData if present
+        const { id: _, ...updateDataWithoutId } = updateData;
+        try {
+          product = await db.product.update({
+            where: { id: id },
+            data: updateDataWithoutId,
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              price: true,
+              image: true,
+              images: true,
+              featured: true,
+              outOfStock: true,
+              hemaFree: true,
+              categoryId: true,
+              attributes: true,
+              createdAt: true,
+              updatedAt: true,
+              category: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                },
+              },
+            },
+          });
+          // Add subcategories as empty array since it doesn't exist in schema
+          (product as any).subcategories = [];
+        } catch (error: any) {
+          // If schema hasn't been migrated yet, remove subcategories from update and retry
+          if (error?.message?.includes("subcategories") || error?.code === "P2021" || error?.code === "P2009" || error?.code === "P2014") {
+            const { subcategories, ...dataWithoutSubcategories } = updateDataWithoutId;
+            product = await db.product.update({
+              where: { id: id },
+              data: dataWithoutSubcategories,
           select: {
             id: true,
             name: true,
@@ -407,6 +557,81 @@ export async function PATCH(
       } else {
         throw error;
       }
+        }
+      }
+    } else {
+      // No ID provided in request, do regular update
+      // Remove ID from updateData if present
+      const { id: _, ...updateDataWithoutId } = updateData;
+      try {
+        product = await db.product.update({
+          where: { id: id },
+          data: updateDataWithoutId,
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            price: true,
+            image: true,
+            images: true,
+            featured: true,
+            outOfStock: true,
+            hemaFree: true,
+            categoryId: true,
+            attributes: true,
+            createdAt: true,
+            updatedAt: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        });
+        // Add subcategories as empty array since it doesn't exist in schema
+        (product as any).subcategories = [];
+      } catch (error: any) {
+        // If schema hasn't been migrated yet, remove subcategories from update and retry
+        if (error?.message?.includes("subcategories") || error?.code === "P2021" || error?.code === "P2009" || error?.code === "P2014") {
+          const { subcategories, ...dataWithoutSubcategories } = updateDataWithoutId;
+          product = await db.product.update({
+            where: { id: id },
+            data: dataWithoutSubcategories,
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              price: true,
+              image: true,
+              images: true,
+              featured: true,
+              outOfStock: true,
+              hemaFree: true,
+              categoryId: true,
+              attributes: true,
+              createdAt: true,
+              updatedAt: true,
+              category: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                },
+              },
+            },
+          });
+          (product as any).subcategories = [];
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    // Ensure product was created/updated
+    if (!product) {
+      throw new Error("Failed to update product - product is null");
     }
 
     // Serialize Decimal fields to strings for JSON response

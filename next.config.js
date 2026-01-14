@@ -29,8 +29,14 @@ const nextConfig = {
   
   // Security headers for production
   async headers() {
+    // Only apply security headers in production
+    if (process.env.NODE_ENV !== 'production') {
+      return []
+    }
+    
     return [
       {
+        // Apply headers to all paths except Next.js internal paths
         source: '/:path*',
         headers: [
           {

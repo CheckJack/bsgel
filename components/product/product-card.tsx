@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Star } from "lucide-react";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, stripHtml } from "@/lib/utils";
 import { useLanguage } from "@/contexts/language-context";
 
 interface ProductCardProps {
@@ -203,7 +203,7 @@ export function ProductCard({
         {/* Description */}
         {description && (
           <p className="text-sm text-gray-600 mb-6 line-clamp-2 leading-relaxed">
-            {description}
+            {stripHtml(description)}
           </p>
         )}
 

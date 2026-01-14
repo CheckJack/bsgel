@@ -190,6 +190,8 @@ export const pt = {
     bulkDeleteConfirm: "Tem a certeza de que deseja eliminar {count} produto(s)? Esta ação não pode ser desfeita.",
     bulkDeleteSuccessWithCount: "Eliminados com sucesso {count} produto(s)",
     exportSuccessWithCount: "Exportados {count} produtos para CSV",
+    addToCart: "Adicionar ao carrinho",
+    adding: "A adicionar...",
     // Product pages
     asSeenIn: "VISTO EM",
     noReviewsYet: "Ainda não há avaliações para produtos nesta categoria.",
@@ -518,24 +520,24 @@ export const pt = {
 
   // About page
   about: {
-    mission: "Concentrando-se exclusivamente em sistemas de gel e cuidados relacionados com unhas desde a sua fundação em 1988. Bio Sculpture tornou-se uma potência global através do seu extenso portfólio de marcas. Os produtos estão disponíveis para uso profissional e de consumidor. Bio Sculpture adere a uma estratégia estrita de exclusividade de canal com produtos profissionais (Biogel, Evo e Bi-olygel) que são vendidos a técnicos de unhas Bio Sculpture certificados e formados. Os produtos de retalho (Spa, Ethos e Gemini Nail Polish) são vendidos a consumidores de retalho. Bio Sculpture é vendido em mais de 40 países.",
+    mission: "Especializada exclusivamente em sistemas de gel, cuidados de unhas e pele desde a sua fundação em 1988, a Bio Sculpture afirmou-se como uma referência global através da sua vasta gama de produtos. A marca disponibiliza soluções tanto para o mercado profissional como para o cliente final. A Bio Sculpture segue uma estratégia rigorosa de exclusividade: a linha profissional Biogel exige formação e certificação específicas da Bio Sculpture e Verniz de Gel Evo requer certificação geral na área da estética/verniz gel (não é necessária formação exclusiva da marca). Já a linha de venda direta (Spa, Bases de tratamento Ethos e Verniz Clássico Gemini) está disponível para o público em geral. Atualmente, a Bio Sculpture está presente em mais de 40 países.",
     ourProductLines: "As Nossas Linhas de Produtos",
-    bespokePath: "O CAMINHO PERSONALIZADO PARA UNHAS SAUDÁVEIS",
-    bespokePathDesc: "Como o caminho personalizado para a perfeição das unhas, estamos dedicados a fornecer aos técnicos de unhas um sistema premium e educação de qualidade. Através dos nossos programas de formação abrangentes, os técnicos de unhas são equipados com o conhecimento para analisar o tipo e condição únicos das unhas de cada cliente, fornecendo tratamentos prescritivos que promovem a saúde ótima das unhas. Vamos além das sobreposições tradicionais, oferecendo técnicas que criam resultados duradouros, personalizados para se adequar ao estilo de vida do cliente. Com a nossa gama de géis base, cores, camadas superiores e géis construtores, os técnicos de unhas podem alcançar uma condição melhorada das unhas naturais e uma vida útil estendida do seu trabalho.",
+    bespokePath: "A Ciência das Unhas Saudáveis: O Valor da Formação Certificada",
+    bespokePathDesc: "Na Bio Sculpture, acreditamos que a estética nunca deve comprometer a saúde. Desde 1988, a nossa missão tem sido o desenvolvimento de sistemas de gel de alta performance, fundamentados em estudos científicos e na preservação da unha natural. No entanto, a eficácia dos nossos produtos atinge o seu potencial máximo apenas quando aliada ao conhecimento técnico de excelência. É aqui que a formação certificada se torna o diferencial do seu sucesso. Com a Bio Sculpture, abraça uma metodologia que coloca a integridade da cliente em primeiro lugar. Os nossos sistemas não são apenas produtos, são de precisão que exigem compreensão técnica sobre a anatomia da unha e a química dos materiais. Através das nossas formações, os profissionais valorizam o serviço de uma simples aplicação de gel para um verdadeiro tratamento de saúde e beleza. Valorize a sua Carreira Adquira confiança necessária para diagnosticar, tratar e fidelizar clientes que procuram resultados superiores. Em Portugal, a Bio Sculpture continua a ser o parceiro de eleição para quem escolhe a ciência e a ética como bases da sua profissão. Dê o próximo passo na sua carreira. Descubra os nossos Cursos de Formação Bio Sculpture e torne-se um especialista em unhas saudáveis.",
     ourStory: "A NOSSA HISTÓRIA",
-    ourStory1: "Bio Sculpture tem sido um nome confiável em cuidados profissionais de unhas há anos, construindo uma reputação de qualidade, inovação e compromisso com práticas saudáveis de unhas. A nossa jornada começou com uma crença simples: que unhas bonitas e unhas saudáveis não são mutuamente exclusivas.",
-    ourStory2: "Hoje, continuamos a liderar a indústria com a nossa gama de produtos premium, incluindo Bio Sculpture, Biogel, Evo, Bi-olygel, Ethos, Gemini e Spa. Cada marca no nosso portfólio é cuidadosamente criada para atender às diversas necessidades dos profissionais de unhas e dos seus clientes.",
-    ourStory3: "Os nossos programas de formação abrangentes capacitam os técnicos de unhas com o conhecimento e as habilidades necessárias para se destacarem no seu ofício, enquanto o nosso compromisso com práticas éticas garante que cada produto que criamos está alinhado com os nossos valores de saúde, sustentabilidade e profissionalismo.",
+    ourStory1: "A Nossa Identidade: Qualidade, Saúde e Inovação A Bio Sculpture é, há décadas, um nome de confiança no setor profissional de unhas, consolidando uma reputação pautada pela qualidade, inovação e pelo compromisso inabalável com a saúde da unha natural. A nossa história começou com uma premissa simples: beleza e saúde não têm de ser mútuamente exclusivas.",
+    ourStory2: "A Bio Sculpture lidera o setor com um portefólio premium que inclui Gel Biogel, Verniz de Gel Evo, Tratamentos Ethos, Verniz Gemini e a linha Spa. Cada gama é desenvolvida para atender às necessidades dos profissionais e clientes.",
+    ourStory3: "Os programas de formação capacitam os profissionais com as competências necessárias para atingir a excelência no seu trabalho. O compromisso com práticas éticas garante que cada produto reflete os valores de saúde, sustentabilidade e profissionalismo.",
     getInTouch: "Entre em Contacto",
-    getInTouchDesc: "Tem perguntas ou quer saber mais sobre os nossos produtos e programas de formação?",
-    findASalon: "Encontrar um Salão",
+    getInTouchDesc: "Tem dúvidas ou pretende saber mais sobre os nossos produtos e formações? Fale connosco",
+    sendMessage: "Envie Mensagem",
     exploreProducts: "Explorar Produtos",
   },
 
   // Contact page
   contact: {
     title: "Contacte-nos",
-    description: "Adoraríamos ouvir de si. Entre em contacto com a nossa equipa hoje.",
+    description: "Estamos aqui para apoiar o seu percurso profissional.",
     sendUsMessage: "Envie-nos uma Mensagem",
     name: "Nome",
     namePlaceholder: "O seu nome completo",
@@ -547,17 +549,17 @@ export const pt = {
     messagePlaceholder: "Conte-nos mais sobre a sua consulta...",
     sendMessage: "Enviar Mensagem",
     getInTouch: "Entre em Contacto",
-    generalInquiries: "Consultas Gerais",
-    generalInquiriesDesc: "Para perguntas gerais sobre os nossos produtos, serviços ou programas de formação, por favor preencha o formulário de contacto ou entre em contacto usando as informações abaixo.",
-    customerSupport: "Apoio ao Cliente",
+    generalInquiries: "Informações",
+    generalInquiriesDesc: "Esclareça as suas dúvidas sobre a gama profissional e os nossos programas de formação. Utilize o formulário ou contacto directo.",
+    customerSupport: "Suporte ao Cliente",
     emailLabel: "Email:",
     phone: "Telefone:",
     hours: "Horário:",
-    hoursValue: "Segunda - Sexta, 9:00 - 18:00",
-    trainingEducation: "Formação e Educação",
-    trainingEducationDesc: "Interessado nos nossos programas de formação profissional? Contacte a nossa equipa de educação para saber mais sobre cursos de certificação e workshops.",
-    findASalon: "Encontrar um Salão",
-    findASalonDesc: "À procura de um salão Bio Sculpture perto de si? Use o nosso localizador de salões para encontrar profissionais certificados na sua área.",
+    hoursValue: "Segunda - Sexta, 10:00 - 17:00",
+    trainingEducation: "Educação com Certificação",
+    trainingEducationDesc: "Domine a metodologia Bio Sculpture. Oferecemos programas especializados para técnicas avançadas, workshops e percursos formativos para quem deseja iniciar uma carreira de sucesso no setor.",
+    findASalon: "Salões Certificados",
+    findASalonDesc: "Procura um profissional Bio Sculpture perto de si? Utilize o nosso localizador para encontrar salões certificados na sua área",
     additionalResources: "Recursos Adicionais",
     browseProducts: "Navegar Produtos",
     browseProductsDesc: "Explore a nossa gama completa de produtos premium de cuidados de unhas",
@@ -569,10 +571,10 @@ export const pt = {
 
   // Training page
   training: {
-    title: "Formação Biosculpture",
-    description: "Programas de formação profissional para avançar as suas habilidades",
-    trainingPrograms: "Programas de Formação",
-    trainingProgramsDesc: "Avance na sua carreira de beleza com os nossos programas de formação abrangentes. Oferecemos formação de classe mundial em várias localizações para o ajudar a dominar a arte dos cuidados de unhas Biosculpture.",
+    title: "Formação Bio Sculpture",
+    description: "Especialize-se com a Bio Sculpture e Atinja a Excelência Profissional.",
+    trainingPrograms: "Programas de Formação: Evolua a sua Carreira",
+    trainingProgramsDesc: "Impulsione o seu percurso no setor da estética nas unhas com os nossos programas de formação. Oferecemos certificações de referência, concebidas para que domine a ciência e a arte com o sistema Bio Sculpture.",
     noTrainingPrograms: "Nenhum programa de formação disponível no momento. Por favor, volte mais tarde.",
     selectProgram: "Selecione um programa de formação para ver datas disponíveis",
     noUpcomingSessions: "Nenhuma sessão futura para este programa. Por favor, volte mais tarde.",
@@ -605,23 +607,23 @@ export const pt = {
   // Product pages
   productPages: {
     spa: {
-      description: "SPA representa o nosso compromisso com experiências luxuosas e terapêuticas de cuidados de unhas. A nossa coleção SPA combina ingredientes naturais premium com formulações avançadas para proporcionar um tratamento verdadeiramente indulgente que mimifica tanto as unhas como as cutículas. Cada produto na nossa linha SPA é projetado para transformar a sua rotina de cuidados de unhas numa experiência tipo spa, proporcionando hidratação profunda, esfoliação suave e nutrição duradoura. Experimente a combinação perfeita de relaxamento e resultados com a nossa coleção SPA.",
-      heroDescription: "Descubra a nossa linha premium de produtos SPA",
+      description: "A gama SPA reflete o nosso compromisso com cuidados terapêuticos e sensoriais. Combinamos ingredientes naturais premium com fórmulas avançadas para proporcionar tratamentos que nutrem e regeneram profundamente as unhas, cutículas e pele. Cada produto foi desenvolvido para transformar a sua rotina, oferecendo hidratação intensa, esfoliação suave e nutrição duradoura. Descubra o equilíbrio perfeito entre um momento de relaxamento e resultados visíveis.",
+      heroDescription: "Ritual de Cuidado e Bem-Estar",
     },
     ethos: {
-      description: "A nossa coleção de cuidados de unhas representa o nosso compromisso com a excelência em cada produto que criamos. Esta linha de produtos incorpora a nossa dedicação à qualidade, inovação e à arte que define a marca Ethos. Criados com ingredientes naturais e orgânicos, cada item na nossa coleção é cuidadosamente formulado para atender aos mais altos padrões, garantindo que profissionais e entusiastas possam alcançar resultados excecionais com confiança na pureza e eficácia das nossas formulações.",
+      description: "A gama Ethos personifica o nosso compromisso com a excelência e a inovação. Formulada com ingredientes naturais e orgânicos, cada solução é rigorosamente desenvolvida para garantir a máxima eficácia e saúde da unha natural.",
       heroDescription: "Descubra a nossa linha premium de produtos Ethos",
     },
     evo: {
-      description: "EVO representa a nossa dedicação à inovação e excelência em cuidados de unhas profissionais. A nossa linha EVO combina tecnologia avançada com ingredientes de qualidade para criar um sistema de gel colorido que oferece resultados duradouros e vibrantes. Cada produto na nossa coleção EVO é formulado para proporcionar cobertura perfeita, brilho excecional e durabilidade incomparável, permitindo que os profissionais de unhas criem obras de arte que resistem ao teste do tempo.",
-      heroDescription: "Descubra a nossa linha premium de produtos Evo",
+      description: "A gama verniz de gel EVO materializa a nossa dedicação à tecnologia avançada no cuidado profissional de unhas. Um sistema de verniz de gel que combina ingredientes de qualidade superior com resultados vibrantes e duradouros. Cada produto garante uma cobertura perfeita, um brilho excecional e uma durabilidade incomparável. O verniz de gel EVO liberta o profissional para criar obras de arte que resistem ao teste do tempo.",
+      heroDescription: "Verniz de Gel EVO: Inovação e Excelência",
     },
     gemini: {
-      description: "Gemini representa a nossa abordagem inovadora aos cuidados de unhas, combinando cor e tratamento numa solução elegante e eficaz. A nossa linha Gemini oferece um sistema de gel de fórmula dupla que não apenas embeleza, mas também nutre e fortalece as unhas naturais. Cada produto na nossa coleção Gemini é projetado para proporcionar resultados visuais impressionantes enquanto promove a saúde e o bem-estar das unhas, criando um equilíbrio perfeito entre estética e cuidado.",
-      heroDescription: "Descubra a nossa linha premium de produtos Gemini",
+      description: "A linha Gemini oferece uma nova abordagem para a beleza das unhas, combinando cor com ginseng, aloé vera e limão. A fórmula nutre e fortalece as unhas naturais, proporcionando resultados visuais impressionantes e promovendo a saúde e o bem-estar das unhas, equilibrando estética e cuidado.",
+      heroDescription: "GEMINI",
     },
     bioGel: {
-      description: "Bio Gel representa a essência dos cuidados profissionais de unhas, oferecendo um sistema premium que combina qualidade superior com resultados excecionais. A nossa linha Bio Gel é formulada com os mais altos padrões de excelência, proporcionando aos técnicos de unhas as ferramentas necessárias para criar trabalhos duradouros e bonitos. Cada produto na nossa coleção Bio Gel é projetado para promover a saúde das unhas enquanto oferece resultados visuais impressionantes, estabelecendo um novo padrão na indústria de cuidados de unhas.",
+      description: "O Biogel é a essência do cuidado de unhas premium. Um sistema que une qualidade superior a resultados excecionais, fornecendo aos profissionais os produtos para resultados de durabilidade incomparável e estética avançada. Cada produto da nossa gama Biogel é desenvolvido para promover a saúde da unha natural e entregar um resultado visual impressionante, estabelecendo o padrão de referência na indústria de produtos.",
       heroDescription: "Descubra a nossa linha premium de produtos Bio Gel",
     },
     bioGelProducts: "Produtos BIO Gel",
@@ -1079,11 +1081,6 @@ export const pt = {
     bioDiamondSalon: "Salão Bio Diamond",
   },
 
-  // Ingredient Slider
-  ingredients: {
-    whyWeUseIt: "Por Que Usamos",
-  },
-
   // Hero Sections
   hero: {
     shopNow: "COMPRAR AGORA",
@@ -1123,13 +1120,13 @@ export const pt = {
   productPagesExtended: {
     treatmentGels: {
       hero: {
-        line1: "Géis de tratamento profissionais",
-        line2: "concebidos para fortalecer, reparar",
-        line3: "e proteger as suas unhas naturais.",
-        line4: "Formulados com ingredientes nutritivos",
-        line5: "que promovem crescimento saudável.",
+        line1: "Qualidade e Inovação: Géis profissionais que fortalecem e protegem a unha natural. Fórmulas nutritivas para uma saúde e crescimento duradouros.",
+        line2: "",
+        line3: "",
+        line4: "",
+        line5: "",
       },
-      description: "Os Géis de Tratamento são a base de unhas saudáveis e bonitas. Os nossos géis de tratamento de grau profissional são especificamente formulados para fortalecer unhas fracas ou danificadas, promover crescimento saudável e proporcionar proteção essencial. Estes géis especializados combinam benefícios terapêuticos com funcionalidade de camada base, garantindo que as suas unhas recebem nutrição desde a primeira camada. Perfeitos para clientes com unhas frágeis, danos nas unhas ou aqueles que procuram melhorar a saúde das suas unhas naturais, os nossos Géis de Tratamento oferecem proteção duradoura enquanto apoiam a estrutura natural da unha.",
+      description: "A base para unhas saudáveis e bonitas. Os nossos Géis de Tratamento de grau médico fortalecem, reparam e protegem, promovendo um crescimento natural. Fórmulas especializadas que combinam benefícios terapêuticos e funcionais, nutrindo a unha desde a primeira camada. Perfeitos para unhas frágeis ou danificadas, oferecendo proteção duradoura e apoiando a estrutura natural da unha.",
       benefits: {
         title: "Por Que Escolher Géis de Tratamento?",
         benefit1: "Fortalecer unhas fracas e danificadas",
@@ -1147,13 +1144,13 @@ export const pt = {
     },
     colorGels: {
       hero: {
-        line1: "Profissionais, focados na saúde",
-        line2: "géis construtores e de base que",
-        line3: "fortalecem, moldam e protegem",
-        line4: "a unha natural enquanto proporcionam",
-        line5: "um acabamento duradouro e brilhante.",
+        line1: "Uma marca focada na saúde, com géis de alta performance que fortalecem, moldam e protegem a unha natural. Inovação e qualidade com um acabamento duradouro e saudável.",
+        line2: "",
+        line3: "",
+        line4: "",
+        line5: "",
       },
-      description: "Os Géis de Cor mostram o espetro vibrante da nossa coleção BIO Gel, oferecendo uma paleta extensa de tons deslumbrantes que combinam cor brilhante com desempenho de grau profissional. Cada gel é formulado com tecnologia avançada e ingredientes nutritivos, garantindo que as suas unhas não só ficam bonitas mas também permanecem saudáveis. Desde neutros clássicos a cores de declaração ousadas, os nossos Géis de Cor proporcionam acabamentos duradouros e resistentes a lascas que mantêm a sua intensidade vibrante. Exprima o seu estilo com confiança, sabendo que cada aplicação apoia a saúde das suas unhas naturais.",
+      description: "Explore o espetro científico da nossa gama Bio Gel. Tecnologia avançada nas cores deslumbrantes que combinam desempenho profissional com ingredientes nutritivos, garantindo unhas bonitas e saudáveis. Acabamentos duradouros e resistentes a lascas que expressam o seu estilo com total confiança e qualidade Bio Sculpture.",
       videoSection: {
         title: "Soluções de Cor Profissionais",
         description: "Descubra a nossa gama completa de géis de cor concebidos para beleza vibrante e duradoura das unhas",
@@ -1192,11 +1189,11 @@ export const pt = {
     },
     evoColourGels: {
       hero: {
-        line1: "Descubra a nossa coleção vibrante",
-        line2: "de Géis de Cor. Mostrando o",
-        line3: "espetro vibrante da nossa coleção EVO com",
-        line4: "uma paleta extensa de tons",
-        line5: "deslumbrantes e desempenho profissional.",
+        line1: "Descubra a nossa gama completa de Colour Gel, concebidos para uma beleza vibrante e duradoura das unhas.",
+        line2: "",
+        line3: "",
+        line4: "",
+        line5: "",
       },
       description: "Os Géis de Cor mostram o espetro vibrante da nossa coleção EVO, oferecendo uma paleta extensa de tons deslumbrantes que combinam cor brilhante com desempenho de grau profissional. Cada gel é formulado com tecnologia avançada e ingredientes nutritivos, garantindo que as suas unhas não só ficam bonitas mas também permanecem saudáveis. Desde neutros clássicos a cores de declaração ousadas, os nossos Géis de Cor proporcionam acabamentos duradouros e resistentes a lascas que mantêm a sua intensidade vibrante. Exprima o seu estilo com confiança, sabendo que cada aplicação apoia a saúde das suas unhas naturais.",
       videoSection: {
@@ -1207,13 +1204,13 @@ export const pt = {
     },
     evoTreatmentBaseGels: {
       hero: {
-        line1: "Descubra a nossa coleção premium",
-        line2: "de Géis Base de Tratamento.",
-        line3: "A base de uma manicure EVO perfeita,",
-        line4: "proporcionando benefícios terapêuticos",
-        line5: "essenciais com tratamento e desempenho.",
+        line1: "Descubra a nossa gama com fórmulas avançadas com base na ciência de verniz de gel EVO, bases e construtores de nutrição e durabilidade.",
+        line2: "",
+        line3: "",
+        line4: "",
+        line5: "",
       },
-      description: "Os Géis Base de Tratamento são a base de uma manicure EVO perfeita, proporcionando benefícios terapêuticos essenciais enquanto criam a base ideal para a aplicação de cor. Estes géis especializados combinam propriedades de tratamento com funcionalidade de camada base, garantindo que as suas unhas recebem nutrição e proteção desde a primeira camada. Formulados com ingredientes de fortalecimento e condicionamento, os nossos Géis Base de Tratamento ajudam a melhorar a saúde das unhas, previnem manchas e prolongam a longevidade da sua manicure. Experimente a combinação perfeita de tratamento e desempenho com os nossos Géis Base de Tratamento premium.",
+      description: "Verniz de gel EVO, proporciona benefícios de nutrição respeitando a unha natural — essenciais na saúde da unha, aliada à beleza com excelente desempenho. Paleta extensa de tons deslumbrantes com desempenho de grau médico. Tecnologia avançada para unhas bonitas e saudáveis. Acabamentos duradouros e resistentes a lascas.",
       videoSection: {
         title: "Soluções de Tratamento EVO Profissionais",
         description: "Descubra a nossa gama completa de géis base de tratamento EVO concebidos para a saúde e beleza das unhas",
@@ -1222,13 +1219,13 @@ export const pt = {
     },
     evoTopCoats: {
       hero: {
-        line1: "Descubra a nossa coleção premium",
-        line2: "de Camadas Superiores. O toque final",
-        line3: "que transforma a sua arte de unhas EVO com",
-        line4: "um selo protetor de alto brilho que",
-        line5: "bloqueia a cor e a durabilidade.",
+        line1: "O toque final que transforma cada aplicação numa obra-prima de brilho. Com selo de alto brilho que protege a cor e prolonga a vida da manicure, proteção ativa como barreira resistente.",
+        line2: "",
+        line3: "",
+        line4: "",
+        line5: "",
       },
-      description: "As Camadas Superiores são o toque final que transforma a sua arte de unhas EVO numa obra-prima de durabilidade e brilho. As nossas Camadas Superiores EVO proporcionam um selo protetor de alto brilho que bloqueia a cor, previne lascas e prolonga a vida da sua manicure. Formuladas com os mesmos ingredientes nutritivos da nossa coleção de gel, estas camadas superiores não só protegem como também condicionam as suas unhas. Experimente o equilíbrio perfeito entre desempenho profissional e cuidado natural, garantindo que as suas unhas permanecem bonitas e saudáveis com cada aplicação.",
+      description: "Previne lascas e danos, fórmula nutritiva que condiciona as unhas com ingredientes de cuidado natural, e desempenho profissional que oferece o equilíbrio perfeito entre beleza e saúde.",
       videoSection: {
         title: "Soluções Premium de Camada Superior EVO",
         description: "Descubra a nossa gama completa de camadas superiores EVO concebidas para durabilidade e brilho",
@@ -1295,6 +1292,12 @@ export const pt = {
         cta: "Comprar Géis Laranja",
       },
     },
+  },
+
+  // Ingredients
+  ingredients: {
+    whyWeUseIt: "Porque a utilizamos?",
+    benefits: "Benefícios",
   },
 };
 

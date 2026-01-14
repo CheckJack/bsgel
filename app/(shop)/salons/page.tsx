@@ -1,7 +1,10 @@
 "use client";
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { SalonMap } from "@/components/layout/salon-map";
 import { Search, MapPin, Phone, Mail, Globe, Clock, Sparkles, X } from "lucide-react";
 import { useLanguage } from "@/contexts/language-context";
@@ -327,9 +330,11 @@ function SalonCard({
       {/* Salon Image */}
       {salon.image && (
         <div className="relative h-48 w-full overflow-hidden bg-gray-100">
-          <img
+          <Image
             src={salon.image}
             alt={salon.name}
+            width={800}
+            height={400}
             className="w-full h-full object-cover"
             onError={(e) => {
               const target = e.target as HTMLImageElement;

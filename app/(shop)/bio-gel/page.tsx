@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import Image from "next/image";
 import { HeroSlider } from "@/components/layout/hero-slider";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";

@@ -18,11 +18,11 @@ export default function ContactPage() {
   return (
     <>
       <HeroSlider slides={slides} autoPlayInterval={5000} className="h-[400px]" />
-      <div className="min-h-screen bg-brand-white">
+      <div className="min-h-screen bg-brand-white flex flex-col">
 
       {/* Contact Information Section */}
-      <section className="py-12 sm:py-16 px-4 sm:px-6">
-        <div className="container mx-auto max-w-6xl">
+      <section className="flex-1 flex items-center py-16 sm:py-20 md:py-32 px-4 sm:px-6">
+        <div className="container mx-auto max-w-6xl w-full">
           <div className="grid md:grid-cols-2 gap-8 sm:gap-12">
             {/* Contact Form */}
             <div>
@@ -136,45 +136,6 @@ export default function ContactPage() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Additional Resources Section */}
-      <section className="py-12 sm:py-16 px-4 sm:px-6 bg-brand-sweet-bianca">
-        <div className="container mx-auto max-w-4xl">
-          <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-3 sm:mb-4 text-brand-black">{t("contact.additionalResources")}</h2>
-            <div className="w-24 h-1 bg-brand-champagne mx-auto"></div>
-          </div>
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-            <a
-              href="/products"
-              className="bg-brand-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow text-center"
-            >
-              <h3 className="text-xl font-medium mb-2 text-brand-black">{t("contact.browseProducts")}</h3>
-              <p className="font-light text-brand-champagne text-sm">
-                {t("contact.browseProductsDesc")}
-              </p>
-            </a>
-            <a
-              href="/about"
-              className="bg-brand-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow text-center"
-            >
-              <h3 className="text-xl font-medium mb-2 text-brand-black">{t("contact.aboutUs")}</h3>
-              <p className="font-light text-brand-champagne text-sm">
-                {t("contact.aboutUsDesc")}
-              </p>
-            </a>
-            <a
-              href="/diagnosis"
-              className="bg-brand-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow text-center"
-            >
-              <h3 className="text-xl font-medium mb-2 text-brand-black">{t("contact.nailDiagnosis")}</h3>
-              <p className="font-light text-brand-champagne text-sm">
-                {t("contact.nailDiagnosisDesc")}
-              </p>
-            </a>
           </div>
         </div>
       </section>

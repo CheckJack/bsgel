@@ -6,7 +6,8 @@ import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { X, Upload } from "lucide-react";
 
 interface Category {
@@ -27,6 +28,7 @@ export default function NewProductPage() {
   const { data: session } = useSession();
   const [categories, setCategories] = useState<Category[]>([]);
   const [formData, setFormData] = useState({
+    id: "",
     name: "",
     description: "",
     price: "",
@@ -53,12 +55,32 @@ export default function NewProductPage() {
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [availableSizes, setAvailableSizes] = useState<string[]>([]);
+  const [sizePrices, setSizePrices] = useState<Record<string, string>>({});
+  const [sizeImages, setSizeImages] = useState<Record<string, string[]>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Generate ID helper function
+  const generateId = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    // Fallback for older browsers
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
   useEffect(() => {
+    // Generate a default product ID only on initial mount
+    if (!formData.id) {
+      setFormData(prev => ({ ...prev, id: generateId() }));
+    }
     fetchCategories();
     fetchSizeAttributes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchCategories = async () => {
@@ -124,12 +146,43 @@ export default function NewProductPage() {
     });
   };
 
-  const handleSizeToggle = (size: string) => {
-    setSelectedSizes((prev) =>
-      prev.includes(size)
-        ? prev.filter((s) => s !== size)
-        : [...prev, size]
-    );
+  const handleSizePriceChange = (size: string, price: string) => {
+    setSizePrices((prev) => ({ ...prev, [size]: price }));
+  };
+
+  const handleSizeImageUpload = async (size: string, files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const imagePromises = Array.from(files).map((file) => {
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve(reader.result as string);
+        };
+        reader.onerror = () => {
+          reject(new Error("Failed to read image file"));
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    try {
+      const imageUrls = await Promise.all(imagePromises);
+      setSizeImages((prev) => ({
+        ...prev,
+        [size]: [...(prev[size] || []), ...imageUrls],
+      }));
+    } catch (error) {
+      console.error("Failed to upload size images:", error);
+      setError("Failed to upload images. Please try again.");
+    }
+  };
+
+  const handleSizeImageRemove = (size: string, imageIndex: number) => {
+    setSizeImages((prev) => ({
+      ...prev,
+      [size]: (prev[size] || []).filter((_, idx) => idx !== imageIndex),
+    }));
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -157,9 +210,21 @@ export default function NewProductPage() {
       return;
     }
 
-    if (formData.description.length > 100) {
-      setError("Description cannot exceed 100 characters");
+    // Validate that selected sizes have prices and images
+    if (selectedSizes.length === 0) {
+      setError("Please select at least one size");
       return;
+    }
+
+    for (const size of selectedSizes) {
+      if (!sizePrices[size] || parseFloat(sizePrices[size]) <= 0) {
+        setError(`Please enter a valid price for size: ${size}`);
+        return;
+      }
+      if (!sizeImages[size] || sizeImages[size].length === 0) {
+        setError(`Please add at least one image for size: ${size}`);
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -187,13 +252,35 @@ export default function NewProductPage() {
 
       const imageUrls = await Promise.all(imagePromises);
 
-      // Convert selected sizes to attributes format
-      const attributes = selectedSizes.length > 0 ? { size: selectedSizes } : null;
+      // Convert selected sizes to new attributes format with prices and images
+      const attributes = selectedSizes.length > 0 
+        ? { 
+            size: selectedSizes.map((size) => ({
+              value: size,
+              price: parseFloat(sizePrices[size]),
+              images: sizeImages[size] || [],
+            }))
+          } 
+        : null;
 
+      // Use the first size's price as the base price (for compatibility)
+      const basePrice = selectedSizes.length > 0 ? parseFloat(sizePrices[selectedSizes[0]]) : 0;
+
+      // Always include ID - it should always be set (auto-generated on mount)
+      const productId = formData.id.trim();
+      
+      // Ensure ID is present (should always be the case due to useEffect)
+      if (!productId) {
+        setError("Product ID is required. Please ensure an ID is generated.");
+        setIsLoading(false);
+        return;
+      }
+      
       const productData = {
+        id: productId, // Always include ID
         name: formData.name,
         description: formData.description || null,
-        price: parseFloat(formData.price),
+        price: basePrice,
         image: imageUrls[0] || null,
         images: imageUrls.slice(1),
         categoryId: formData.categoryId || null,
@@ -253,11 +340,36 @@ export default function NewProductPage() {
         </div>
       )}
 
-      <form onSubmit={(e) => handleSubmit(e, "add")} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column - Product Details */}
-        <div className="space-y-6">
-          <Card className="bg-white">
-            <CardContent className="p-6 space-y-6">
+      <form onSubmit={(e) => handleSubmit(e, "add")} className="space-y-6">
+        {/* Basic Information Section */}
+        <Card className="bg-white dark:bg-gray-800">
+          <CardHeader>
+            <CardTitle className="text-xl">Basic Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Product ID */}
+              <div>
+                <label
+                  htmlFor="id"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                >
+                  Product ID
+                </label>
+                <Input
+                  id="id"
+                  placeholder="Product ID will be auto-generated"
+                  value={formData.id}
+                  onChange={(e) =>
+                    setFormData({ ...formData, id: e.target.value })
+                  }
+                  className="w-full font-mono text-sm"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  A unique ID is automatically generated. You can edit any part of it as needed.
+                </p>
+              </div>
+
               {/* Product Name */}
               <div>
                 <label
@@ -286,193 +398,172 @@ export default function NewProductPage() {
                   </p>
                 )}
               </div>
+            </div>
 
-              {/* Category */}
-              <div>
-                <label
-                  htmlFor="categoryId"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
-                  Category <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="categoryId"
-                  className="flex h-10 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={formData.categoryId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, categoryId: e.target.value, subcategoryIds: [] })
-                  }
-                  required
-                >
-                  <option value="">Choose category</option>
-                  {categories.filter((cat) => !cat.parentId).map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Description */}
+            <div>
+              <label
+                htmlFor="description"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Description <span className="text-red-500">*</span>
+              </label>
+              <RichTextEditor
+                content={formData.description}
+                onChange={(html) => setFormData({ ...formData, description: html })}
+                placeholder="Enter product description... Use the toolbar to format your text."
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                Use the toolbar above to format your description with headings, lists, links, images, and more.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
-              {/* Subcategories */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Subcategories (Optional)
-                </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Select one or more subcategories for this product
-                </p>
-                <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-3 bg-white dark:bg-gray-800">
-                  {categories.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">No categories available</p>
-                  ) : (
-                    (() => {
-                      // Filter to only show actual subcategories (categories with parentId)
-                      const subcategories = categories.filter((cat) => cat.parentId);
-                      return subcategories.length === 0 ? (
-                        <p className="text-sm text-gray-500 dark:text-gray-400">No subcategories available. Create subcategories in the Categories section first.</p>
-                      ) : (
-                        subcategories.map((category) => (
-                          <label
-                            key={category.id}
-                            className="flex items-center gap-2 py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={formData.subcategoryIds.includes(category.id)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setFormData({
-                                    ...formData,
-                                    subcategoryIds: [...formData.subcategoryIds, category.id],
-                                  });
-                                } else {
-                                  setFormData({
-                                    ...formData,
-                                    subcategoryIds: formData.subcategoryIds.filter((id) => id !== category.id),
-                                  });
-                                }
-                              }}
-                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                            />
-                            <span className="text-sm text-gray-900 dark:text-gray-100">{category.name}</span>
-                          </label>
-                        ))
-                      );
-                    })()
-                  )}
-                </div>
-                {formData.subcategoryIds.length > 0 && (
-                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    {formData.subcategoryIds.length} subcategor{formData.subcategoryIds.length === 1 ? "y" : "ies"} selected
-                  </p>
+        {/* Category & Organization Section */}
+        <Card className="bg-white dark:bg-gray-800">
+          <CardHeader>
+            <CardTitle className="text-xl">Category & Organization</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Category */}
+            <div>
+              <label
+                htmlFor="categoryId"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Category <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="categoryId"
+                className="flex h-10 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={formData.categoryId}
+                onChange={(e) =>
+                  setFormData({ ...formData, categoryId: e.target.value, subcategoryIds: [] })
+                }
+                required
+              >
+                <option value="">Choose category</option>
+                {categories.filter((cat) => !cat.parentId).map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Subcategories */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Subcategories (Optional)
+              </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Select one or more subcategories for this product
+              </p>
+              <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-3 bg-white dark:bg-gray-800">
+                {categories.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No categories available</p>
+                ) : (
+                  (() => {
+                    // Filter to only show actual subcategories (categories with parentId)
+                    const subcategories = categories.filter((cat) => cat.parentId);
+                    return subcategories.length === 0 ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">No subcategories available. Create subcategories in the Categories section first.</p>
+                    ) : (
+                      subcategories.map((category) => (
+                        <label
+                          key={category.id}
+                          className="flex items-center gap-2 py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.subcategoryIds.includes(category.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData({
+                                  ...formData,
+                                  subcategoryIds: [...formData.subcategoryIds, category.id],
+                                });
+                              } else {
+                                setFormData({
+                                  ...formData,
+                                  subcategoryIds: formData.subcategoryIds.filter((id) => id !== category.id),
+                                });
+                              }
+                            }}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                          />
+                          <span className="text-sm text-gray-900 dark:text-gray-100">{category.name}</span>
+                        </label>
+                      ))
+                    );
+                  })()
                 )}
               </div>
-
-              {/* Description */}
-              <div>
-                <label
-                  htmlFor="description"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
-                  Description <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  id="description"
-                  placeholder="Description"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  maxLength={100}
-                  required
-                  className="flex min-h-[120px] w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Do not exceed 100 characters when entering the product name.
+              {formData.subcategoryIds.length > 0 && (
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  {formData.subcategoryIds.length} subcategor{formData.subcategoryIds.length === 1 ? "y" : "ies"} selected
                 </p>
-                {formData.description.length > 0 && (
-                  <p className="mt-1 text-xs text-gray-400">
-                    {formData.description.length}/100 characters
-                  </p>
-                )}
-              </div>
+              )}
+            </div>
 
-              {/* Price */}
-              <div>
-                <label
-                  htmlFor="price"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
-                  Price <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={formData.price}
-                  onChange={(e) =>
-                    setFormData({ ...formData, price: e.target.value })
-                  }
-                  required
-                />
+            {/* Showcasing Sections */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Showcasing Sections
+              </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Select which showcasing pages this product should appear on
+              </p>
+              <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-3 bg-white dark:bg-gray-800">
+                {showcasingSections.map((section) => (
+                  <label
+                    key={section.value}
+                    className="flex items-center gap-2 py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.showcasingSections.includes(section.value)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData({
+                            ...formData,
+                            showcasingSections: [...formData.showcasingSections, section.value],
+                          });
+                        } else {
+                          setFormData({
+                            ...formData,
+                            showcasingSections: formData.showcasingSections.filter((id) => id !== section.value),
+                          });
+                        }
+                      }}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    />
+                    <span className="text-sm text-gray-900 dark:text-gray-100">{section.label}</span>
+                  </label>
+                ))}
               </div>
-
-              {/* Showcasing Sections */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Showcasing Sections
-                </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Select which showcasing pages this product should appear on
+              {formData.showcasingSections.length > 0 && (
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  {formData.showcasingSections.length} section{formData.showcasingSections.length === 1 ? "" : "s"} selected
                 </p>
-                <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-3 bg-white dark:bg-gray-800">
-                  {showcasingSections.map((section) => (
-                    <label
-                      key={section.value}
-                      className="flex items-center gap-2 py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={formData.showcasingSections.includes(section.value)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFormData({
-                              ...formData,
-                              showcasingSections: [...formData.showcasingSections, section.value],
-                            });
-                          } else {
-                            setFormData({
-                              ...formData,
-                              showcasingSections: formData.showcasingSections.filter((id) => id !== section.value),
-                            });
-                          }
-                        }}
-                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                      />
-                      <span className="text-sm text-gray-900 dark:text-gray-100">{section.label}</span>
-                    </label>
-                  ))}
-                </div>
-                {formData.showcasingSections.length > 0 && (
-                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    {formData.showcasingSections.length} section{formData.showcasingSections.length === 1 ? "" : "s"} selected
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Right Column - Media & Size */}
-        <div className="flex flex-col h-full">
-          <div className="space-y-6 flex-1">
-            {/* Upload Images */}
-            <Card className="bg-white dark:bg-gray-800">
-              <CardContent className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Upload images
-              </h3>
+        {/* Media & Variants Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+          {/* Media Section */}
+          <Card className="bg-white dark:bg-gray-800">
+            <CardHeader>
+              <CardTitle className="text-xl">Product Media</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                These images will appear for all product attributes. Attribute-specific images (set below) will appear first, followed by these backup images.
+              </p>
               <div className="grid grid-cols-3 gap-4 mb-4">
                 {/* Display up to 3 images in slots */}
                 {Array.from({ length: 3 }).map((_, index) => {
@@ -569,44 +660,42 @@ export default function NewProductPage() {
             </CardContent>
           </Card>
 
-          {/* Add Size */}
+          {/* Sizes & Pricing Section */}
           <Card className="bg-white dark:bg-gray-800">
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Add size
-              </h3>
+            <CardHeader>
+              <CardTitle className="text-xl">Sizes & Pricing</CardTitle>
+            </CardHeader>
+            <CardContent>
               {availableSizes.length > 0 ? (
                 <>
-                  <div className="mb-4">
-                    <select
-                      value={selectedSize}
-                      onChange={(e) => {
-                        const size = e.target.value;
-                        if (size && !selectedSizes.includes(size)) {
-                          setSelectedSizes([...selectedSizes, size]);
-                          setSelectedSize("");
-                        } else {
-                          setSelectedSize(size);
-                        }
-                      }}
-                      className="flex h-10 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select a size</option>
-                      {availableSizes.map((size) => (
-                        <option key={size} value={size}>
-                          {size}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 mb-4">
                     {availableSizes.map((size) => {
                       const isSelected = selectedSizes.includes(size);
                       return (
                         <button
                           key={size}
                           type="button"
-                          onClick={() => handleSizeToggle(size)}
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedSizes(selectedSizes.filter((s) => s !== size));
+                              // Remove price and images for this size
+                              setSizePrices((prev) => {
+                                const updated = { ...prev };
+                                delete updated[size];
+                                return updated;
+                              });
+                              setSizeImages((prev) => {
+                                const updated = { ...prev };
+                                delete updated[size];
+                                return updated;
+                              });
+                            } else {
+                              setSelectedSizes([...selectedSizes, size]);
+                              // Initialize price and images for this size
+                              setSizePrices((prev) => ({ ...prev, [size]: "" }));
+                              setSizeImages((prev) => ({ ...prev, [size]: [] }));
+                            }
+                          }}
                           className={`px-4 py-2 rounded-lg text-sm font-medium border-2 transition-colors ${
                             isSelected
                               ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50"
@@ -618,6 +707,109 @@ export default function NewProductPage() {
                       );
                     })}
                   </div>
+                  <div className="space-y-4">
+                    {selectedSizes.map((size) => (
+                    <div
+                      key={size}
+                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                          {size}
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedSizes(selectedSizes.filter((s) => s !== size));
+                            setSizePrices((prev) => {
+                              const updated = { ...prev };
+                              delete updated[size];
+                              return updated;
+                            });
+                            setSizeImages((prev) => {
+                              const updated = { ...prev };
+                              delete updated[size];
+                              return updated;
+                            });
+                          }}
+                          className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-xs"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      
+                      {/* Price Input */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Price <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={sizePrices[size] || ""}
+                          onChange={(e) => handleSizePriceChange(size, e.target.value)}
+                          placeholder="0.00"
+                          required
+                          className="w-full text-sm"
+                        />
+                      </div>
+                      
+                      {/* Images for this size */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Images (at least one required)
+                        </label>
+                        <div className="grid grid-cols-3 gap-2 mb-2">
+                          {sizeImages[size] && sizeImages[size].length > 0 ? (
+                            sizeImages[size].map((imgUrl, imgIdx) => (
+                              <div
+                                key={imgIdx}
+                                className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700"
+                              >
+                                <Image
+                                  src={imgUrl}
+                                  alt={`${size} image ${imgIdx + 1}`}
+                                  fill
+                                  sizes="(max-width: 768px) 33vw, 10vw"
+                                  className="object-cover"
+                                  unoptimized={imgUrl?.startsWith('data:') || imgUrl?.startsWith('blob:')}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleSizeImageRemove(size, imgIdx)}
+                                  className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors text-xs"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))
+                          ) : null}
+                          {(!sizeImages[size] || sizeImages[size].length < 10) && (
+                            <label className="relative aspect-square rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors bg-gray-50 dark:bg-gray-700">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={(e) => handleSizeImageUpload(size, e.target.files)}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              />
+                              <Upload className="h-5 w-5 text-gray-400 dark:text-gray-500 mb-1" />
+                              <span className="text-xs text-gray-500 dark:text-gray-400 text-center px-1">
+                                Add Image
+                              </span>
+                            </label>
+                          )}
+                        </div>
+                        {sizeImages[size] && sizeImages[size].length > 0 && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {sizeImages[size].length} image{sizeImages[size].length !== 1 ? 's' : ''} uploaded
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  </div>
                 </>
               ) : (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -626,36 +818,35 @@ export default function NewProductPage() {
               )}
             </CardContent>
           </Card>
-          </div>
+        </div>
 
-          {/* Action Buttons - At the bottom */}
-          <div className="flex flex-row gap-3 mt-6">
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
-            >
-              {isLoading ? "Creating..." : "Add product"}
-            </Button>
-            <Button
-              type="button"
-              onClick={(e) => handleSubmit(e, "save")}
-              disabled={isLoading}
-              variant="outline"
-              className="flex-1 border-2 border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 font-medium"
-            >
-              Save product
-            </Button>
-            <Button
-              type="button"
-              onClick={(e) => handleSubmit(e, "schedule")}
-              disabled={isLoading}
-              variant="outline"
-              className="flex-1 border-2 border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 font-medium"
-            >
-              Schedule
-            </Button>
-          </div>
+        {/* Action Buttons */}
+        <div className="flex flex-row gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+          >
+            {isLoading ? "Creating..." : "Add Product"}
+          </Button>
+          <Button
+            type="button"
+            onClick={(e) => handleSubmit(e, "save")}
+            disabled={isLoading}
+            variant="outline"
+            className="flex-1 border-2 border-blue-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 font-medium"
+          >
+            Save as Draft
+          </Button>
+          <Button
+            type="button"
+            onClick={(e) => handleSubmit(e, "schedule")}
+            disabled={isLoading}
+            variant="outline"
+            className="flex-1 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium"
+          >
+            Cancel
+          </Button>
         </div>
       </form>
     </div>

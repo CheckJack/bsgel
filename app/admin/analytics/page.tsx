@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+export const dynamic = 'force-dynamic';
+
+import { useEffect, useState, useCallback } from "react";
 import { KPICard } from "@/components/admin/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -74,7 +76,7 @@ export default function AnalyticsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState("30");
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/analytics?period=${period}`);
@@ -90,11 +92,11 @@ export default function AnalyticsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [period]);
 
   useEffect(() => {
     fetchAnalytics();
-  }, [period]);
+  }, [fetchAnalytics]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {
