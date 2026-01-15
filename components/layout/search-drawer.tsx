@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, stripHtml } from "@/lib/utils";
 import { X, Search, Loader2 } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useLanguage } from "@/contexts/language-context";
@@ -231,7 +231,7 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                           )}
                           {product.description && (
                             <p className="text-sm text-gray-300 line-clamp-2 mb-2 flex-1">
-                              {product.description}
+                              {stripHtml(product.description)}
                             </p>
                           )}
                           <p className="text-lg font-bold text-white">

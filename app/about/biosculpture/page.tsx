@@ -6,17 +6,19 @@ import Image from "next/image";
 export default function BiosculpturePage() {
   return (
     <>
-      {/* Hero Video Section */}
+      {/* Hero Image Section */}
       <div className="relative w-full h-[calc(100vh-60px)] md:h-[calc(100vh-70px)] overflow-hidden">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-        >
-          <source src="/Primeiro tratar e depois embelezar..mp4" type="video/mp4" />
-        </video>
+        <div className="absolute inset-0 w-full h-full">
+          <Image
+            src="/Add a heading (16).png"
+            alt="Bio Sculpture Concept"
+            fill
+            className="object-cover"
+            priority
+            unoptimized
+            sizes="100vw"
+          />
+        </div>
         
         {/* Text Overlay - Bottom Left - Aligned with Logo */}
         <div className="absolute bottom-12 md:bottom-16 lg:bottom-20 left-0 right-0 z-10">

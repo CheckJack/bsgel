@@ -62,6 +62,7 @@ export const en = {
     currentLanguage: "Current: {language}. Click to switch.",
     english: "English",
     portuguese: "Portuguese",
+    freeShippingBanner: "Enjoy free shipping on all orders above 150€ - No minimum order fee, fast and reliable delivery to your doorstep",
   },
 
   // Sidebar
@@ -854,6 +855,9 @@ export const en = {
   // Hero Sections
   hero: {
     shopNow: "SHOP NOW",
+    becomeTherapist: "Become A",
+    becomeTherapistLine2: "BIO Sculpture Nail Therapist",
+    learnMore: "LEARN MORE",
   },
 
   // Find Salon

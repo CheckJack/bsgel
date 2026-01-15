@@ -61,6 +61,7 @@ export const pt = {
     currentLanguage: "Atual: {language}. Clique para mudar.",
     english: "Inglês",
     portuguese: "Português",
+    freeShippingBanner: "Aproveite o envio grátis em todas as encomendas acima de 150€ - Sem taxa mínima de encomenda, entrega rápida e fiável à sua porta",
   },
 
   // Sidebar
@@ -1084,6 +1085,9 @@ export const pt = {
   // Hero Sections
   hero: {
     shopNow: "COMPRAR AGORA",
+    becomeTherapist: "Torne-se uma Terapeuta",
+    becomeTherapistLine2: "de Unhas BIO Sculpture",
+    learnMore: "SABER MAIS",
     treatmentGels: {
       line1: "Profissionais, focados na saúde",
       line2: "géis construtores e de base que",

@@ -35,6 +35,8 @@ export default function NewProductPage() {
     categoryId: "",
     subcategoryIds: [] as string[],
     showcasingSections: [] as string[],
+    outOfStock: false,
+    hemaFree: false,
   });
 
   // Available showcasing sections
@@ -286,6 +288,8 @@ export default function NewProductPage() {
         categoryId: formData.categoryId || null,
         subcategoryIds: formData.subcategoryIds || [],
         featured: false,
+        outOfStock: formData.outOfStock,
+        hemaFree: formData.hemaFree,
         attributes,
         showcasingSections: formData.showcasingSections || [],
       };
@@ -548,6 +552,42 @@ export default function NewProductPage() {
                   {formData.showcasingSections.length} section{formData.showcasingSections.length === 1 ? "" : "s"} selected
                 </p>
               )}
+            </div>
+
+            {/* Product Tags - Independent checkboxes */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                Product Tags
+              </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Select tags for this product. Tags work independently and can be combined.
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="new-outOfStock"
+                    checked={formData.outOfStock}
+                    onChange={(e) => setFormData({ ...formData, outOfStock: e.target.checked })}
+                    className="h-4 w-4"
+                  />
+                  <label htmlFor="new-outOfStock" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Out of Stock
+                  </label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="new-hemaFree"
+                    checked={formData.hemaFree}
+                    onChange={(e) => setFormData({ ...formData, hemaFree: e.target.checked })}
+                    className="h-4 w-4"
+                  />
+                  <label htmlFor="new-hemaFree" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    HEMA Free
+                  </label>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

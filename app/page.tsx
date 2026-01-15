@@ -15,13 +15,16 @@ export default function Home() {
   const slides = [
     {
       type: "video" as const,
-      src: "/moodywo4.mp4",
-      overlayImage: "/MoodyJewels.png",
+      src: "/csavasvsa.mp4",
+      title: t("hero.becomeTherapist"),
+      titleLine2: t("hero.becomeTherapistLine2"),
+      buttonText: t("hero.learnMore"),
+      buttonLink: "/training",
     },
     {
       type: "video" as const,
-      src: "/buildervid.mp4",
-      overlayImage: "/builderg.png",
+      src: "/moodywo4.mp4",
+      overlayImage: "/MoodyJewels.png",
     },
   ];
 
