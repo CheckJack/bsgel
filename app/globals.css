@@ -227,8 +227,51 @@ button, a, input[type="button"], input[type="submit"], [role="button"] {
 .ProseMirror ul,
 .ProseMirror ol {
   padding-left: 1.625em;
-  margin-top: 1.25em;
-  margin-bottom: 1.25em;
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+}
+
+/* Reduce top margin when list immediately follows a paragraph */
+.ProseMirror p + ul,
+.ProseMirror p + ol {
+  margin-top: 0.25em;
+}
+
+/* Reduce bottom margin when paragraph immediately follows a list */
+.ProseMirror ul + p,
+.ProseMirror ol + p {
+  margin-top: 0.25em;
+}
+
+/* Remove margin from empty paragraphs that are adjacent to lists */
+.ProseMirror p:empty + ul,
+.ProseMirror p:empty + ol,
+.ProseMirror ul + p:empty,
+.ProseMirror ol + p:empty {
+  margin-top: 0;
+  margin-bottom: 0;
+  height: 0;
+  min-height: 0;
+}
+
+/* Handle whitespace-only paragraphs (common when deleting content) */
+.ProseMirror p:has(br:only-child),
+.ProseMirror p:has(:empty:only-child) {
+  min-height: 0.5em;
+}
+
+/* Make empty paragraphs between lists and text easier to select and delete */
+.ProseMirror p:empty {
+  min-height: 1em;
+  position: relative;
+}
+
+.ProseMirror p:empty::before {
+  content: '';
+  display: inline-block;
+  width: 100%;
+  height: 1px;
+  background-color: transparent;
 }
 
 .ProseMirror ul {
@@ -260,12 +303,116 @@ button, a, input[type="button"], input[type="submit"], [role="button"] {
   align-items: flex-start;
 }
 
-/* Product Description List Styles (for prose context) */
+/* Product Description Styles (for prose context) - Match .ProseMirror exactly */
 .prose ul,
 .prose ol {
   padding-left: 1.625em;
-  margin-top: 1.25em;
-  margin-bottom: 1.25em;
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+}
+
+/* Reduce top margin when list immediately follows a paragraph */
+.prose p + ul,
+.prose p + ol {
+  margin-top: 0.25em;
+}
+
+/* Reduce bottom margin when paragraph immediately follows a list */
+.prose ul + p,
+.prose ol + p {
+  margin-top: 0.25em;
+}
+
+/* Remove margin from empty paragraphs that are adjacent to lists */
+.prose p:empty + ul,
+.prose p:empty + ol,
+.prose ul + p:empty,
+.prose ol + p:empty {
+  margin-top: 0;
+  margin-bottom: 0;
+  height: 0;
+  min-height: 0;
+}
+
+/* Handle whitespace-only paragraphs (common when deleting content) */
+.prose p:has(br:only-child),
+.prose p:has(:empty:only-child) {
+  min-height: 0.5em;
+}
+
+/* Make empty paragraphs between lists and text easier to select and delete */
+.prose p:empty {
+  min-height: 1em;
+  position: relative;
+}
+
+.prose p:empty::before {
+  content: '';
+  display: inline-block;
+  width: 100%;
+  height: 1px;
+  background-color: transparent;
+}
+
+.prose ul {
+  list-style-type: disc;
+}
+
+.prose ol {
+  list-style-type: decimal;
+}
+
+.prose li {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  padding-left: 0.25em;
+}
+
+.prose ul > li,
+.prose ol > li {
+  display: list-item;
+}
+
+/* Reduce spacing when lists are adjacent to paragraphs */
+.prose p + ul,
+.prose p + ol {
+  margin-top: 0.25em;
+}
+
+.prose ul + p,
+.prose ol + p {
+  margin-top: 0.25em;
+}
+
+/* Remove margin from empty paragraphs adjacent to lists */
+.prose p:empty + ul,
+.prose p:empty + ol,
+.prose ul + p:empty,
+.prose ol + p:empty {
+  margin-top: 0;
+  margin-bottom: 0;
+  height: 0;
+  min-height: 0;
+}
+
+/* Handle whitespace-only paragraphs */
+.prose p:has(br:only-child),
+.prose p:has(:empty:only-child) {
+  min-height: 0.5em;
+}
+
+/* Make empty paragraphs between lists and text easier to select and delete */
+.prose p:empty {
+  min-height: 1em;
+  position: relative;
+}
+
+.prose p:empty::before {
+  content: '';
+  display: inline-block;
+  width: 100%;
+  height: 1px;
+  background-color: transparent;
 }
 
 .prose ul {
@@ -772,6 +919,15 @@ div[class*="slider"] img {
 }
 
 @theme inline {
+@keyframes marquee-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
   @keyframes noise-animation {
   0% {
     transform: translate(0, 0);

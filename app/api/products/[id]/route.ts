@@ -305,20 +305,12 @@ export async function PATCH(
     if (image !== undefined) updateData.image = image
     if (images !== undefined) updateData.images = images
     if (featured !== undefined) updateData.featured = featured
-    // Product tags are mutually exclusive - only one can be set at a time
+    // Product tags work independently
     if (outOfStock !== undefined) {
       updateData.outOfStock = outOfStock
-      // If setting outOfStock to true, ensure hemaFree is false
-      if (outOfStock === true) {
-        updateData.hemaFree = false
-      }
     }
     if (hemaFree !== undefined) {
       updateData.hemaFree = hemaFree
-      // If setting hemaFree to true, ensure outOfStock is false
-      if (hemaFree === true) {
-        updateData.outOfStock = false
-      }
     }
     // showcasingSections field doesn't exist in database, skip it
     // if (showcasingSections !== undefined) updateData.showcasingSections = showcasingSections || []

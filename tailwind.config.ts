@@ -21,6 +21,7 @@ const config: Config = {
           white: "#FFFFFF",
           black: "#000000",
           champagne: "#857D71", // Pantone 8003c
+          "champagne-dark": "#5D5850", // Darker shade of champagne
           "sweet-bianca": "#EED9DE", // Pantone 705c
         },
         pink: {
@@ -32,6 +33,7 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-jost)", "Tahoma", "Calibri", "Arial", "sans-serif"],
         heading: ["var(--font-jost)", "Tahoma", "Calibri", "Arial", "sans-serif"],
+        futura: ["Futura", "Futura-Medium", "Futura Md BT", "var(--font-jost)", "Tahoma", "Calibri", "Arial", "sans-serif"],
       },
       keyframes: {
         scalePulse: {
@@ -62,6 +64,10 @@ const config: Config = {
           "90%": { opacity: "1" },
           "100%": { transform: "translateX(-50%) translateY(calc(100vh + 100px)) rotate(360deg)", opacity: "0" },
         },
+        marqueeScroll: {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
+        },
       },
       animation: {
         scalePulse: "scalePulse 2s ease-in-out infinite",
@@ -70,6 +76,7 @@ const config: Config = {
         progress: "progress 1.5s ease-in-out infinite",
         float: "float 3s ease-in-out infinite",
         fall: "fall 3s linear infinite",
+        marqueeScroll: "marqueeScroll 20s linear infinite",
       },
     },
   },

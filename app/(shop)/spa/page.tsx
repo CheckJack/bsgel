@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { HeroSlider } from "@/components/layout/hero-slider";
+import { IngredientSlider } from "@/components/product/ingredient-slider";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import { NailDiagnosisModal } from "@/components/ui/nail-diagnosis-modal";
@@ -38,8 +39,7 @@ export default function SpaPage() {
   const slides = [
     {
       type: "video" as const,
-      src: "/Lavender Base (2).mp4",
-      overlayImage: "/SPALOGO.png",
+      src: "/GDSDSDSBDSBDS.mp4",
       title: "SPA",
       description: t("productPages.spa.heroDescription"),
     },
@@ -155,11 +155,42 @@ export default function SpaPage() {
     }
   };
 
-
+  // Ingredients data for the slider
+  const ingredients = [
+    {
+      id: "cocoa-butter",
+      name: "Manteiga de Cacau",
+      image: "/DSGVSDVDSXZVXZB (1).png",
+      whyWeUseIt: "A Manteiga de Cacau (Theobroma Cacao Seed Butter) é um hidratante natural poderoso para a pele, rico em antioxidantes e ácidos gordos, que nutre profundamente, melhora a elasticidade, protege contra a desidratação e ajuda a regenerar.",
+      benefits: [],
+      backgroundColor: "#7b3615",
+      textColor: "#FFFFFF"
+    },
+    {
+      id: "coconut-oil",
+      name: "Óleo de Coco",
+      image: "/DSGGDSDGS.png",
+      whyWeUseIt: "O óleo de coco é um excelente hidratante natural, ideal para peles secas, maduras e irritadas, pois suaviza, acalma e nutre profundamente.",
+      benefits: [],
+      backgroundColor: "#8B6F47",
+      textColor: "#FFFFFF",
+      imageSize: "100%"
+    },
+    {
+      id: "shea-butter",
+      name: "Manteiga de Karité",
+      image: "/VDDSVDS.png",
+      whyWeUseIt: "A manteiga de karité oferece hidratação profunda e duradoura, nutrindo intensamente a pele e as cutículas. Rica em vitaminas A, E e F, que ajuda na regeneração e reparação da pele, melhora a elasticidade e cria uma proteção natural contra agressões externas.",
+      benefits: [],
+      backgroundColor: "#6B4E3D",
+      textColor: "#FFFFFF",
+      imageSize: "120%"
+    }
+  ];
 
   return (
     <>
-      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-screen" showDarkOverlay={false} scrollControlled={true} />
+      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-screen" showDarkOverlay={false} scrollControlled={false} />
       
       {/* Text Section with Scroll-Triggered Highlighting */}
       <section 
@@ -182,6 +213,9 @@ export default function SpaPage() {
           </div>
         </div>
       </section>
+
+      {/* Natural & Organic Ingredients Section */}
+      <IngredientSlider ingredients={ingredients} />
 
       {/* SPA Products Grid Section */}
       <section ref={productsSectionRef} className="relative w-full min-h-screen bg-brand-white py-16">

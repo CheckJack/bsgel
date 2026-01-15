@@ -317,7 +317,7 @@ export default function TrainingPage() {
   const slides = [
     {
       type: "image" as const,
-      src: "/Training_1.webp",
+      src: "/gdsgsgs.png",
       title: t("training.title"),
       description: t("training.description"),
     },

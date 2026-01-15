@@ -448,7 +448,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    const { id, name, description, price, image, images, categoryId, subcategoryIds, featured, attributes, showcasingSections } = body
+    const { id, name, description, price, image, images, categoryId, subcategoryIds, featured, outOfStock, hemaFree, attributes, showcasingSections } = body
 
     // Validate required fields
     if (!name || typeof name !== "string" || name.trim().length === 0) {
@@ -482,6 +482,8 @@ export async function POST(req: Request) {
       images: Array.isArray(images) ? images : [],
       categoryId: categoryId || null,
       featured: featured === true,
+      outOfStock: outOfStock === true,
+      hemaFree: hemaFree === true,
       attributes: attributes || null,
       // showcasingSections field doesn't exist in database, skip it
       // showcasingSections: Array.isArray(showcasingSections) ? showcasingSections : [],

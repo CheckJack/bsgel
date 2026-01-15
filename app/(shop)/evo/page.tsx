@@ -37,10 +37,9 @@ export default function EvoPage() {
 
   const slides = [
     {
-      type: "video" as const,
-      src: "/Lavender Base (2).mp4",
-      overlayImage: "/EVOLOGO.png",
-      title: "Evo",
+      type: "image" as const,
+      src: "/vsavsvavb.png",
+      title: "EVO",
       description: t("productPages.evo.heroDescription"),
     },
   ];
@@ -93,31 +92,6 @@ export default function EvoPage() {
     };
   }, []);
 
-  // Scroll detection for text highlighting
-  useEffect(() => {
-    let scrollTimeout: NodeJS.Timeout;
-    let isScrollingActive = false;
-
-    const handleScroll = () => {
-      if (!isScrollingActive) {
-        setIsScrolling(true);
-        isScrollingActive = true;
-      }
-
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        setIsScrolling(false);
-        isScrollingActive = false;
-      }, 150);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      clearTimeout(scrollTimeout);
-    };
-  }, []);
 
   const fetchEvoProducts = async () => {
     setIsLoading(true);
@@ -159,7 +133,7 @@ export default function EvoPage() {
 
   return (
     <>
-      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-screen" showDarkOverlay={false} scrollControlled={true} />
+      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-screen" showDarkOverlay={false} />
       
       {/* Text Section with Scroll-Triggered Highlighting */}
       <section 

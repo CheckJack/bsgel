@@ -3,13 +3,13 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 interface Slide {
   type: "video" | "image";
   src: string;
   title?: string;
+  titleLine2?: string;
   description?: string;
   buttonText?: string;
   buttonLink?: string;
@@ -175,7 +175,7 @@ export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDar
       </div>
 
       {/* Dark overlay for better text readability */}
-      {showDarkOverlay && (currentSlideData.title || currentSlideData.description) && (
+      {showDarkOverlay && (currentSlideData.title || currentSlideData.titleLine2 || currentSlideData.description) && (
         <div className="absolute inset-0 bg-black/40 z-[5]" />
       )}
 
@@ -197,27 +197,30 @@ export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDar
         </div>
       )}
 
-      {/* Content */}
-      {(currentSlideData.title || currentSlideData.description || currentSlideData.buttonText) && (
-        <div className="relative z-10 flex flex-col items-center justify-center h-full px-4 sm:px-6 md:px-8">
-          {currentSlideData.title && (
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-bold text-center mb-4 md:mb-6 text-brand-white">
-              {currentSlideData.title}
+      {/* Title and Button Content - Bottom Left */}
+      {(currentSlideData.title || currentSlideData.titleLine2 || currentSlideData.description || currentSlideData.buttonText) && (
+        <div className="absolute bottom-20 sm:bottom-24 md:bottom-28 lg:bottom-32 xl:bottom-40 left-4 sm:left-6 md:left-8 lg:left-12 xl:left-16 z-10">
+          {(currentSlideData.title || currentSlideData.titleLine2) && (
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-light text-left mb-4 md:mb-6 text-brand-white tracking-tight leading-tight">
+              {currentSlideData.title && (
+                <span className="block">{currentSlideData.title}</span>
+              )}
+              {currentSlideData.titleLine2 && (
+                <span className="block">{currentSlideData.titleLine2}</span>
+              )}
             </h1>
           )}
           {currentSlideData.description && (
-            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-center text-brand-white mb-6 md:mb-8 max-w-2xl px-4">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-left text-brand-white mb-6 md:mb-8 max-w-2xl font-futura uppercase">
               {currentSlideData.description}
             </p>
           )}
           {currentSlideData.buttonText && currentSlideData.buttonLink && (
-            <Link href={currentSlideData.buttonLink}>
-              <Button
-                size="lg"
-                className="text-sm sm:text-base md:text-lg px-6 sm:px-8 py-4 sm:py-5 md:py-6 bg-brand-white text-brand-black hover:bg-brand-sweet-bianca"
-              >
-                {currentSlideData.buttonText}
-              </Button>
+            <Link 
+              href={currentSlideData.buttonLink}
+              className="inline-block text-brand-white border-b-2 border-brand-white pb-1 text-sm sm:text-base md:text-lg font-futura uppercase tracking-wider hover:opacity-80 transition-opacity mt-4 md:mt-6"
+            >
+              {currentSlideData.buttonText}
             </Link>
           )}
         </div>
@@ -243,23 +246,6 @@ export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDar
         </>
       )}
 
-      {/* Dots Indicator */}
-      {slides.length > 1 && (
-        <div className="absolute bottom-4 sm:bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-          {slides.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => goToSlide(index)}
-              className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-all touch-manipulation min-w-[20px] min-h-[20px] ${
-                index === currentSlide
-                  ? "bg-brand-white w-6 sm:w-8"
-                  : "bg-white/50 hover:bg-white/75 active:bg-white/90"
-              }`}
-              aria-label={`Go to slide ${index + 1}`}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

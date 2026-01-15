@@ -243,51 +243,53 @@ export default function FindSalonPage() {
 
       {/* Content Section - Side by Side Layout */}
       <div className="w-full px-4 pb-12">
-        {isLoading ? (
-          <div className="text-center py-20">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-champagne"></div>
-            <p className="mt-4 text-brand-champagne">{t("findSalon.loadingSalons")}</p>
-          </div>
-        ) : filteredSalons.length === 0 ? (
-          <div className="text-center py-20">
-            <MapPin className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-2xl font-medium text-brand-black mb-2">{t("findSalon.noSalonsFound")}</h3>
-            <p className="text-brand-champagne mb-6">
-              {t("findSalon.noSalonsFoundDesc")}
-            </p>
-            {hasActiveFilters && (
-              <button
-                onClick={clearFilters}
-                className="px-6 py-2 bg-brand-black text-brand-white rounded-lg hover:bg-brand-champagne transition-colors"
-              >
-                {t("findSalon.clearAllFilters")}
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 h-auto lg:h-[calc(100vh-400px)] min-h-[500px] lg:min-h-[600px]">
-            {/* Left Side - Map (Larger) */}
-            <div className="flex-[2] lg:w-[70%] h-[400px] sm:h-[500px] lg:h-full lg:min-h-0">
-              <div className="w-full h-full rounded-lg overflow-hidden border border-gray-300">
-                <SalonMap salons={filteredSalons} onMarkerClick={handleMarkerClick} />
-              </div>
+        <div className="container mx-auto max-w-6xl">
+          {isLoading ? (
+            <div className="text-center py-20">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-champagne"></div>
+              <p className="mt-4 text-brand-champagne">{t("findSalon.loadingSalons")}</p>
             </div>
+          ) : filteredSalons.length === 0 ? (
+            <div className="text-center py-20">
+              <MapPin className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-2xl font-medium text-brand-black mb-2">{t("findSalon.noSalonsFound")}</h3>
+              <p className="text-brand-champagne mb-6">
+                {t("findSalon.noSalonsFoundDesc")}
+              </p>
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="px-6 py-2 bg-brand-black text-brand-white rounded-lg hover:bg-brand-champagne transition-colors"
+                >
+                  {t("findSalon.clearAllFilters")}
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 h-auto lg:h-[calc(100vh-400px)] min-h-[500px] lg:min-h-[600px]">
+              {/* Left Side - Map (Larger) */}
+              <div className="flex-[2] lg:w-[70%] h-[400px] sm:h-[500px] lg:h-full lg:min-h-0">
+                <div className="w-full h-full rounded-lg overflow-hidden border border-gray-300">
+                  <SalonMap salons={filteredSalons} onMarkerClick={handleMarkerClick} />
+                </div>
+              </div>
 
-            {/* Right Side - Salon List (Smaller) */}
-            <div className="flex-[1] lg:w-[30%] h-auto lg:h-full lg:overflow-y-auto">
-              <div className="space-y-3 sm:space-y-4 pr-0 sm:pr-2 pb-4">
-                {filteredSalons.map((salon) => (
-                  <SalonCard
-                    key={salon.id}
-                    salon={salon}
-                    formatWorkingHours={formatWorkingHours}
-                    isSelected={selectedSalonId === salon.id}
-                  />
-                ))}
+              {/* Right Side - Salon List (Smaller) */}
+              <div className="flex-[1] lg:w-[30%] h-auto lg:h-full lg:overflow-y-auto">
+                <div className="space-y-3 sm:space-y-4 pr-0 sm:pr-2 pb-4">
+                  {filteredSalons.map((salon) => (
+                    <SalonCard
+                      key={salon.id}
+                      salon={salon}
+                      formatWorkingHours={formatWorkingHours}
+                      isSelected={selectedSalonId === salon.id}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

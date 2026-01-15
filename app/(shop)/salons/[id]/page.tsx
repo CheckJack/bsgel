@@ -126,7 +126,7 @@ export default function SalonDetailPage() {
       <div className="min-h-screen bg-brand-white flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-champagne"></div>
-          <p className="mt-4 text-brand-champagne">{t("findSalon.loadingSalonInfo")}</p>
+          <p className="mt-4 text-brand-champagne font-light">{t("findSalon.loadingSalonInfo")}</p>
         </div>
       </div>
     );
@@ -136,14 +136,16 @@ export default function SalonDetailPage() {
     return (
       <div className="min-h-screen bg-brand-white flex items-center justify-center px-4">
         <div className="text-center max-w-md">
-          <h1 className="text-2xl font-medium text-brand-black mb-4">
+          <h1 className="text-2xl font-heading font-medium text-brand-black mb-4">
             {error || t("findSalon.salonNotFound")}
           </h1>
-          <p className="text-brand-champagne mb-6">
+          <p className="text-brand-champagne font-light mb-8">
             {t("findSalon.salonNotFoundDesc")}
           </p>
           <Link href="/salons">
-            <Button>{t("findSalon.backToSalons")}</Button>
+            <Button className="bg-brand-champagne hover:bg-brand-champagne-dark text-white">
+              {t("findSalon.backToSalons")}
+            </Button>
           </Link>
         </div>
       </div>
@@ -153,11 +155,11 @@ export default function SalonDetailPage() {
   return (
     <div className="min-h-screen bg-brand-white">
       {/* Back Button */}
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4">
         <Button
           variant="ghost"
           onClick={() => router.back()}
-          className="text-brand-champagne hover:text-brand-black"
+          className="text-brand-champagne hover:text-brand-black hover:bg-brand-sweet-bianca/30 font-light"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           {t("findSalon.backToSalons")}
@@ -165,19 +167,19 @@ export default function SalonDetailPage() {
       </div>
 
       {/* Hero Section */}
-      <div className="bg-gradient-to-b from-brand-champagne/10 to-brand-white py-12 px-4">
-        <div className="container mx-auto max-w-6xl">
-          <div className="flex flex-col md:flex-row gap-8">
+      <div className="bg-gradient-to-b from-brand-sweet-bianca/40 via-brand-white to-brand-white py-16 sm:py-20 px-4 sm:px-6 lg:px-8">
+        <div className="container mx-auto max-w-7xl">
+          <div className="flex flex-col lg:flex-row gap-10 lg:gap-12 items-start">
             {/* Salon Image/Logo */}
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 w-full lg:w-auto">
               {salon.logo ? (
-                <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-white shadow-lg border border-gray-200 flex items-center justify-center">
+                <div className="relative w-full sm:w-64 h-64 rounded-2xl overflow-hidden bg-white shadow-xl border-2 border-brand-sweet-bianca/50 flex items-center justify-center">
                   <Image
                     src={salon.logo}
                     alt={salon.name}
-                    width={192}
-                    height={192}
-                    className="w-full h-full object-contain p-4"
+                    width={256}
+                    height={256}
+                    className="w-full h-full object-contain p-6"
                     priority
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
@@ -187,12 +189,12 @@ export default function SalonDetailPage() {
                   />
                 </div>
               ) : salon.image ? (
-                <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-gray-100 shadow-lg">
+                <div className="relative w-full sm:w-64 h-64 rounded-2xl overflow-hidden bg-gray-50 shadow-xl">
                   <Image
                     src={salon.image}
                     alt={salon.name}
-                    width={192}
-                    height={192}
+                    width={256}
+                    height={256}
                     className="w-full h-full object-cover"
                     priority
                     onError={(e) => {
@@ -203,58 +205,58 @@ export default function SalonDetailPage() {
                   />
                 </div>
               ) : (
-                <div className="w-48 h-48 rounded-lg bg-gray-100 flex items-center justify-center">
-                  <MapPin className="h-16 w-16 text-gray-400" />
+                <div className="w-full sm:w-64 h-64 rounded-2xl bg-brand-sweet-bianca/20 flex items-center justify-center border-2 border-brand-sweet-bianca/30">
+                  <MapPin className="h-20 w-20 text-brand-champagne/40" />
                 </div>
               )}
             </div>
 
             {/* Salon Info */}
-            <div className="flex-1">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h1 className="text-4xl font-medium text-brand-black mb-2">
+            <div className="flex-1 w-full">
+              <div className="mb-6">
+                <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+                  <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-medium text-brand-black leading-tight">
                     {salon.name}
                   </h1>
                   {salon.isBioDiamond && (
-                    <div className="inline-flex items-center gap-2 bg-brand-champagne text-white px-4 py-2 rounded-full text-sm font-medium">
+                    <div className="inline-flex items-center gap-2 bg-brand-champagne text-white px-5 py-2.5 rounded-full text-sm font-medium shadow-md">
                       <Sparkles className="h-4 w-4" />
                       {t("findSalon.bioDiamondSalon")}
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* Address */}
-              <div className="flex items-start gap-3 mb-4">
-                <MapPin className="h-5 w-5 text-brand-champagne flex-shrink-0 mt-1" />
-                <div className="text-brand-champagne">
-                  <p className="font-medium">{salon.address}</p>
-                  <p>
-                    {salon.city}
-                    {salon.postalCode && `, ${salon.postalCode}`}
-                  </p>
+                {/* Address */}
+                <div className="flex items-start gap-3 mb-6">
+                  <MapPin className="h-5 w-5 text-brand-champagne flex-shrink-0 mt-1" />
+                  <div className="text-brand-champagne font-light">
+                    <p className="font-medium text-base">{salon.address}</p>
+                    <p className="text-sm">
+                      {salon.city}
+                      {salon.postalCode && `, ${salon.postalCode}`}
+                    </p>
+                  </div>
                 </div>
               </div>
 
               {/* Contact Information */}
-              <div className="flex flex-wrap gap-4 mt-6">
+              <div className="flex flex-wrap gap-3">
                 {salon.phone && (
                   <a
                     href={`tel:${salon.phone}`}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-brand-champagne hover:text-brand-black"
+                    className="group flex items-center gap-2.5 px-5 py-3 bg-white border-2 border-brand-sweet-bianca rounded-xl hover:bg-brand-sweet-bianca/30 hover:border-brand-champagne/30 transition-all duration-200 text-brand-champagne hover:text-brand-black shadow-sm"
                   >
                     <Phone className="h-4 w-4" />
-                    {salon.phone}
+                    <span className="font-light text-sm">{salon.phone}</span>
                   </a>
                 )}
                 {salon.email && (
                   <a
                     href={`mailto:${salon.email}`}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-brand-champagne hover:text-brand-black"
+                    className="group flex items-center gap-2.5 px-5 py-3 bg-white border-2 border-brand-sweet-bianca rounded-xl hover:bg-brand-sweet-bianca/30 hover:border-brand-champagne/30 transition-all duration-200 text-brand-champagne hover:text-brand-black shadow-sm"
                   >
                     <Mail className="h-4 w-4" />
-                    {t("findSalon.email")}
+                    <span className="font-light text-sm">{t("findSalon.email")}</span>
                   </a>
                 )}
                 {salon.website && (
@@ -262,11 +264,11 @@ export default function SalonDetailPage() {
                     href={salon.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-brand-champagne hover:text-brand-black"
+                    className="group flex items-center gap-2.5 px-5 py-3 bg-white border-2 border-brand-sweet-bianca rounded-xl hover:bg-brand-sweet-bianca/30 hover:border-brand-champagne/30 transition-all duration-200 text-brand-champagne hover:text-brand-black shadow-sm"
                   >
                     <Globe className="h-4 w-4" />
-                    {t("findSalon.website")}
-                    <ExternalLink className="h-3 w-3" />
+                    <span className="font-light text-sm">{t("findSalon.website")}</span>
+                    <ExternalLink className="h-3 w-3 opacity-60" />
                   </a>
                 )}
               </div>
@@ -276,17 +278,17 @@ export default function SalonDetailPage() {
       </div>
 
       {/* Content Section */}
-      <div className="container mx-auto max-w-6xl px-4 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-12">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-12">
             {/* Description */}
             {salon.description && (
-              <div>
-                <h2 className="text-2xl font-medium text-brand-black mb-4">
+              <div className="bg-white rounded-2xl p-8 sm:p-10 shadow-sm border border-brand-sweet-bianca/30">
+                <h2 className="text-2xl sm:text-3xl font-heading font-medium text-brand-black mb-6">
                   {t("findSalon.about")}
                 </h2>
-                <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                <p className="text-brand-black/80 font-light leading-relaxed text-base sm:text-lg whitespace-pre-line">
                   {salon.description}
                 </p>
               </div>
@@ -295,20 +297,20 @@ export default function SalonDetailPage() {
             {/* Gallery */}
             {salon.images && salon.images.length > 0 && (
               <div>
-                <h2 className="text-2xl font-medium text-brand-black mb-4">
+                <h2 className="text-2xl sm:text-3xl font-heading font-medium text-brand-black mb-6">
                   {t("findSalon.gallery")}
                 </h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-5">
                   {salon.images.map((img, index) => (
                     <div
                       key={index}
-                      className="relative aspect-square rounded-lg overflow-hidden bg-gray-100"
+                      className="group relative aspect-square rounded-xl overflow-hidden bg-gray-50 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer"
                     >
                       <Image
                         src={img}
                         alt={`${salon.name} - Image ${index + 1}`}
                         fill
-                        className="object-cover hover:scale-105 transition-transform cursor-pointer"
+                        className="object-cover group-hover:scale-110 transition-transform duration-500"
                         priority={index < 3}
                         loading={index < 3 ? undefined : "lazy"}
                         onError={(e) => {
@@ -317,6 +319,7 @@ export default function SalonDetailPage() {
                         }}
                         unoptimized={img?.startsWith('data:') || img?.startsWith('blob:') || !img?.startsWith('http')}
                       />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     </div>
                   ))}
                 </div>
@@ -328,23 +331,29 @@ export default function SalonDetailPage() {
           <div className="space-y-6">
             {/* Working Hours */}
             {salon.workingHours && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Clock className="h-5 w-5 text-brand-champagne" />
-                  <h3 className="text-xl font-medium text-brand-black">
+              <div className="bg-white rounded-2xl shadow-sm border border-brand-sweet-bianca/30 p-6 sm:p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 bg-brand-sweet-bianca/40 rounded-lg">
+                    <Clock className="h-5 w-5 text-brand-champagne" />
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-heading font-medium text-brand-black">
                     {t("findSalon.openingHours")}
                   </h3>
                 </div>
-                <div className="text-sm text-gray-700 whitespace-pre-line">
-                  {formatWorkingHours(salon.workingHours)}
+                <div className="text-sm sm:text-base text-brand-black/70 font-light leading-relaxed whitespace-pre-line space-y-1">
+                  {formatWorkingHours(salon.workingHours).split('\n').map((line, idx) => (
+                    <div key={idx} className="py-1 border-b border-brand-sweet-bianca/20 last:border-0">
+                      {line}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
 
             {/* Map */}
             {salon.latitude && salon.longitude && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div className="h-64">
+              <div className="bg-white rounded-2xl shadow-sm border border-brand-sweet-bianca/30 overflow-hidden">
+                <div className="h-64 sm:h-80">
                   <SalonMap
                     salons={[salon]}
                     onMarkerClick={() => {}}

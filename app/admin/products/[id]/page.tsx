@@ -709,35 +709,21 @@ function EditProductPageContent() {
               </label>
             </div>
 
-            {/* Product Tags - Only one can be selected */}
+            {/* Product Tags - Independent checkboxes */}
             <div>
               <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-                Product Tag
+                Product Tags
               </label>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                Select only one tag for this product
+                Select tags for this product. Tags work independently and can be combined.
               </p>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <input
-                    type="radio"
-                    id="tag-none"
-                    name="productTag"
-                    checked={!formData.outOfStock && !formData.hemaFree}
-                    onChange={() => setFormData({ ...formData, outOfStock: false, hemaFree: false })}
-                    className="h-4 w-4"
-                  />
-                  <label htmlFor="tag-none" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    None
-                  </label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="radio"
+                    type="checkbox"
                     id="outOfStock"
-                    name="productTag"
                     checked={formData.outOfStock}
-                    onChange={() => setFormData({ ...formData, outOfStock: true, hemaFree: false })}
+                    onChange={(e) => setFormData({ ...formData, outOfStock: e.target.checked })}
                     className="h-4 w-4"
                   />
                   <label htmlFor="outOfStock" className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -746,11 +732,10 @@ function EditProductPageContent() {
                 </div>
                 <div className="flex items-center gap-2">
                   <input
-                    type="radio"
+                    type="checkbox"
                     id="hemaFree"
-                    name="productTag"
                     checked={formData.hemaFree}
-                    onChange={() => setFormData({ ...formData, outOfStock: false, hemaFree: true })}
+                    onChange={(e) => setFormData({ ...formData, hemaFree: e.target.checked })}
                     className="h-4 w-4"
                   />
                   <label htmlFor="hemaFree" className="text-sm font-medium text-gray-700 dark:text-gray-300">

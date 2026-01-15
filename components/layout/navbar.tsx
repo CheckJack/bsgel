@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, User, Menu, X, Search, ChevronDown, ChevronUp } from "lucide-react";
+import { ShoppingCart, User, Menu, X, Search, ChevronDown, ChevronUp, Circle } from "lucide-react";
 import { useCart } from "@/contexts/cart-context";
 import { useState, useRef, useEffect } from "react";
 import { CartDrawer } from "@/components/cart/cart-drawer";
@@ -29,6 +29,7 @@ export function Navbar() {
   const shopMegaMenuRef = useRef<HTMLDivElement>(null);
   const aboutMegaMenuRef = useRef<HTMLDivElement>(null);
   const navbarRef = useRef<HTMLElement>(null);
+  const headerWrapperRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -109,11 +110,11 @@ export function Navbar() {
     }
   }, [mobileMenuOpen]);
 
-  // Calculate navbar height for mobile menu positioning
+  // Calculate navbar height for mobile menu positioning (includes banner)
   useEffect(() => {
     const updateNavbarHeight = () => {
-      if (navbarRef.current) {
-        setNavbarHeight(navbarRef.current.offsetHeight);
+      if (headerWrapperRef.current) {
+        setNavbarHeight(headerWrapperRef.current.offsetHeight);
       }
     };
 
@@ -142,16 +143,54 @@ export function Navbar() {
   }, []);
 
   return (
-    <nav 
-      ref={navbarRef}
-      className="sticky top-0 bg-brand-black z-[100] relative"
-      style={{ position: 'sticky' }}
-      onMouseLeave={() => {
-        setShopMegaMenuOpen(false);
-        setAboutMegaMenuOpen(false);
-      }}
-    >
-      <div className="w-full px-4 sm:px-6 md:px-12 lg:px-16 py-3 md:py-4 relative overflow-visible">
+    <div ref={headerWrapperRef} className="sticky top-0 z-[100]">
+      {/* Free Shipping Notice Banner */}
+      <div className="bg-brand-champagne-dark border-b border-brand-black py-2.5 overflow-hidden relative">
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            @keyframes marqueeScroll {
+              0% { transform: translateX(0); }
+              100% { transform: translateX(-50%); }
+            }
+          `
+        }} />
+        <div 
+          className="flex items-center whitespace-nowrap"
+          style={{
+            animation: 'marqueeScroll 30s linear infinite',
+            willChange: 'transform'
+          }}
+        >
+          {/* First set */}
+          {[...Array(10)].map((_, i) => (
+            <div key={`first-${i}`} className="flex items-center flex-shrink-0">
+              <span className="text-xs font-normal text-brand-white tracking-wide font-futura px-8">
+                {t("header.freeShippingBanner")}
+              </span>
+              <span className="text-xs mx-4">📦</span>
+            </div>
+          ))}
+          {/* Second set - exact duplicate for seamless loop */}
+          {[...Array(10)].map((_, i) => (
+            <div key={`second-${i}`} className="flex items-center flex-shrink-0">
+              <span className="text-xs font-normal text-brand-white tracking-wide font-futura px-8">
+                {t("header.freeShippingBanner")}
+              </span>
+              <span className="text-xs mx-4">📦</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      <nav 
+        ref={navbarRef}
+        className="bg-brand-black relative"
+        onMouseLeave={() => {
+          setShopMegaMenuOpen(false);
+          setAboutMegaMenuOpen(false);
+        }}
+      >
+      <div className="w-full px-4 sm:px-6 md:px-12 lg:px-16 py-4 md:py-6 relative overflow-visible">
         <div className="flex items-center justify-between relative overflow-visible">
           {/* Left - Logo and Mobile Menu Button */}
           <div className="flex items-center gap-3 lg:gap-6">
@@ -610,6 +649,7 @@ export function Navbar() {
       <CartDrawer isOpen={cartDrawerOpen} onClose={() => setCartDrawerOpen(false)} />
       <SearchDrawer isOpen={searchDrawerOpen} onClose={() => setSearchDrawerOpen(false)} />
     </nav>
+    </div>
   );
 }
 

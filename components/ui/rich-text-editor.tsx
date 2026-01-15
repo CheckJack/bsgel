@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { Button } from "./button";
 import { useState, useEffect } from "react";
+import { TextSelection } from "prosemirror-state";
 
 interface RichTextEditorProps {
   content: string;
@@ -60,6 +61,7 @@ export function RichTextEditor({
         heading: {
           levels: [1, 2, 3],
         },
+        hardBreak: false,
       }),
       Link.configure({
         openOnClick: false,
@@ -94,6 +96,337 @@ export function RichTextEditor({
       attributes: {
         class:
           "prose prose-sm sm:prose lg:prose-lg xl:prose-2xl dark:prose-invert max-w-none focus:outline-none min-h-[400px] p-4",
+      },
+      handleKeyDown: (view, event) => {
+        const { state } = view;
+        const { selection } = state;
+        const { $anchor, empty } = selection;
+
+        // Helper function to check if a node is empty
+        const isEmptyNode = (node: any) => {
+          return !node || node.content.size === 0 || 
+            (node.textContent && node.textContent.trim().length === 0);
+        };
+
+        // Handle Backspace key
+        if (event.key === "Backspace") {
+          // Handle when cursor is in an empty paragraph (anywhere in it, not just at start)
+          if (empty) {
+            const parent = $anchor.parent;
+            
+            // Check if we're in an empty paragraph
+            if (parent.type.name === "paragraph" && isEmptyNode(parent) && $anchor.depth === 1) {
+              try {
+                const { tr } = state;
+                const paraPos = $anchor.before(1);
+                
+                // Find the index of this paragraph in the document
+                let currentIndex = -1;
+                let totalChildren = state.doc.content.childCount;
+                let posOffset = 1; // Start position after document start node
+                
+                // Also check what blocks are before and after this paragraph
+                let prevNode = null;
+                let nextNode = null;
+                
+                for (let i = 0; i < totalChildren; i++) {
+                  const child = state.doc.content.child(i);
+                  if (posOffset === paraPos) {
+                    currentIndex = i;
+                    // Get previous and next nodes
+                    if (i > 0) {
+                      prevNode = state.doc.content.child(i - 1);
+                    }
+                    if (i < totalChildren - 1) {
+                      nextNode = state.doc.content.child(i + 1);
+                    }
+                    break;
+                  }
+                  posOffset += child.nodeSize;
+                }
+                
+                // Always allow deletion of empty paragraphs, especially between text and lists
+                // Special handling when empty paragraph is between content and list
+                const isBetweenTextAndList = 
+                  (prevNode && (prevNode.type.name === "paragraph" || prevNode.type.name === "heading")) &&
+                  (nextNode && (nextNode.type.name === "bulletList" || nextNode.type.name === "orderedList"));
+                
+                const isBetweenListAndText = 
+                  (prevNode && (prevNode.type.name === "bulletList" || prevNode.type.name === "orderedList")) &&
+                  (nextNode && (nextNode.type.name === "paragraph" || nextNode.type.name === "heading"));
+                
+                if (totalChildren > 1 || currentIndex > 0 || isBetweenTextAndList || isBetweenListAndText) {
+                  // Delete the empty paragraph
+                  tr.delete(paraPos, paraPos + parent.nodeSize);
+                  
+                  // Ensure at least one paragraph remains
+                  if (tr.doc.content.size === 0) {
+                    const para = state.schema.nodes.paragraph.create();
+                    tr.insert(0, para);
+                    tr.setSelection(TextSelection.create(tr.doc, 1));
+                  } else {
+                    // Place cursor appropriately based on context
+                    let targetPos = paraPos;
+                    
+                    if (isBetweenTextAndList && nextNode) {
+                      // If between text and list, place cursor at start of list's first item
+                      const nextPos = paraPos + parent.nodeSize;
+                      try {
+                        // Find first list item position
+                        const listStartPos = nextPos + 1;
+                        tr.setSelection(TextSelection.create(tr.doc, listStartPos));
+                      } catch {
+                        tr.setSelection(TextSelection.create(tr.doc, paraPos));
+                      }
+                    } else if (isBetweenListAndText && nextNode) {
+                      // If between list and text, place cursor at start of next paragraph
+                      const nextPos = paraPos + parent.nodeSize;
+                      tr.setSelection(TextSelection.create(tr.doc, nextPos + 1));
+                    } else if (currentIndex === totalChildren - 1 && currentIndex > 0) {
+                      // Was last block, go to previous
+                      targetPos = paraPos - 1;
+                      try {
+                        tr.setSelection(TextSelection.create(tr.doc, Math.max(1, targetPos)));
+                      } catch {
+                        tr.setSelection(TextSelection.create(tr.doc, 1));
+                      }
+                    } else {
+                      // Default: place at next block or same position
+                      try {
+                        tr.setSelection(TextSelection.create(tr.doc, Math.max(1, Math.min(paraPos, tr.doc.content.size - 1))));
+                      } catch {
+                        tr.setSelection(TextSelection.create(tr.doc, 1));
+                      }
+                    }
+                  }
+                  
+                  view.dispatch(tr);
+                  return true;
+                }
+              } catch (e) {
+                return false;
+              }
+            }
+            
+            // Handle empty list items
+            if (parent.type.name === "listItem" && isEmptyNode(parent)) {
+              try {
+                const { tr } = state;
+                const listItemPos = $anchor.before($anchor.depth);
+                
+                // Delete the list item
+                tr.delete(listItemPos, listItemPos + parent.nodeSize);
+                
+                // Ensure at least one paragraph remains
+                if (tr.doc.content.size === 0) {
+                  const para = state.schema.nodes.paragraph.create();
+                  tr.insert(0, para);
+                  tr.setSelection(TextSelection.create(tr.doc, 1));
+                }
+                
+                view.dispatch(tr);
+                return true;
+              } catch (e) {
+                return false;
+              }
+            }
+            
+            // Handle empty paragraph inside a list item
+            if (parent.type.name === "paragraph" && $anchor.depth > 1) {
+              try {
+                const listItem = $anchor.node($anchor.depth - 1);
+                if (listItem && listItem.type.name === "listItem" && isEmptyNode(parent)) {
+                  const { tr } = state;
+                  const listItemPos = $anchor.before($anchor.depth - 1);
+                  
+                  tr.delete(listItemPos, listItemPos + listItem.nodeSize);
+                  
+                  // Ensure at least one paragraph remains
+                  if (tr.doc.content.size === 0) {
+                    const para = state.schema.nodes.paragraph.create();
+                    tr.insert(0, para);
+                    tr.setSelection(TextSelection.create(tr.doc, 1));
+                  }
+                  
+                  view.dispatch(tr);
+                  return true;
+                }
+              } catch (e) {
+                return false;
+              }
+            }
+            
+            // Handle Backspace at start of block - delete previous empty paragraph if it exists
+            if ($anchor.parentOffset === 0) {
+              const parent = $anchor.parent;
+              
+              // If we're at start of a list, check if previous block is an empty paragraph
+              if ((parent.type.name === "listItem" || 
+                   ($anchor.depth > 1 && $anchor.node($anchor.depth - 1).type.name === "bulletList") ||
+                   ($anchor.depth > 1 && $anchor.node($anchor.depth - 1).type.name === "orderedList"))) {
+                try {
+                  // Find the list's position in the document
+                  let listPos = -1;
+                  let listIndex = -1;
+                  let posOffset = 1;
+                  const totalChildren = state.doc.content.childCount;
+                  
+                  // Find which list we're in
+                  for (let i = 0; i < totalChildren; i++) {
+                    const child = state.doc.content.child(i);
+                    if (child.type.name === "bulletList" || child.type.name === "orderedList") {
+                      const childStart = posOffset;
+                      const childEnd = posOffset + child.nodeSize;
+                      if ($anchor.pos >= childStart && $anchor.pos <= childEnd) {
+                        listPos = childStart;
+                        listIndex = i;
+                        break;
+                      }
+                    }
+                    posOffset += child.nodeSize;
+                  }
+                  
+                  // Check if previous block is an empty paragraph
+                  if (listIndex > 0 && listPos > 0) {
+                    const prevNode = state.doc.content.child(listIndex - 1);
+                    if (prevNode && prevNode.type.name === "paragraph" && isEmptyNode(prevNode)) {
+                      const { tr } = state;
+                      const prevPos = listPos - prevNode.nodeSize;
+                      tr.delete(prevPos, listPos);
+                      view.dispatch(tr);
+                      return true;
+                    }
+                  }
+                } catch (e) {
+                  return false;
+                }
+              }
+              
+              // If we're at start of a non-empty paragraph, check if previous block is empty
+              if (parent.type.name === "paragraph" && $anchor.depth === 1 && !isEmptyNode(parent)) {
+                try {
+                  const paraPos = $anchor.before(1);
+                  
+                  // Find current paragraph index
+                  let currentIndex = -1;
+                  let posOffset = 1;
+                  const totalChildren = state.doc.content.childCount;
+                  
+                  for (let i = 0; i < totalChildren; i++) {
+                    const child = state.doc.content.child(i);
+                    if (posOffset === paraPos) {
+                      currentIndex = i;
+                      break;
+                    }
+                    posOffset += child.nodeSize;
+                  }
+                  
+                  if (currentIndex > 0) {
+                    // Get previous block
+                    const prevNode = state.doc.content.child(currentIndex - 1);
+                    
+                    // If previous block is an empty paragraph, delete it
+                    if (prevNode && prevNode.type.name === "paragraph" && isEmptyNode(prevNode)) {
+                      const { tr } = state;
+                      const prevPos = paraPos - prevNode.nodeSize;
+                      tr.delete(prevPos, paraPos);
+                      view.dispatch(tr);
+                      return true;
+                    }
+                  }
+                } catch (e) {
+                  return false;
+                }
+              }
+            }
+          }
+        }
+        
+        // Handle Delete key - delete empty paragraph ahead
+        if (event.key === "Delete") {
+          if (empty) {
+            const parent = $anchor.parent;
+            
+            // If cursor is at end of a list item or list, check if next block is empty paragraph
+            if (parent.type.name === "listItem") {
+              try {
+                // Find the list's position
+                let listPos = -1;
+                let listIndex = -1;
+                let posOffset = 1;
+                const totalChildren = state.doc.content.childCount;
+                
+                for (let i = 0; i < totalChildren; i++) {
+                  const child = state.doc.content.child(i);
+                  if (child.type.name === "bulletList" || child.type.name === "orderedList") {
+                    const childStart = posOffset;
+                    const childEnd = posOffset + child.nodeSize;
+                    if ($anchor.pos >= childStart && $anchor.pos <= childEnd) {
+                      listPos = childStart;
+                      listIndex = i;
+                      break;
+                    }
+                  }
+                  posOffset += child.nodeSize;
+                }
+                
+                // Check if next block after list is an empty paragraph
+                if (listIndex >= 0 && listIndex < totalChildren - 1) {
+                  const nextNode = state.doc.content.child(listIndex + 1);
+                  if (nextNode && nextNode.type.name === "paragraph" && isEmptyNode(nextNode)) {
+                    const { tr } = state;
+                    const nextPos = listPos + state.doc.content.child(listIndex).nodeSize;
+                    tr.delete(nextPos, nextPos + nextNode.nodeSize);
+                    view.dispatch(tr);
+                    return true;
+                  }
+                }
+              } catch (e) {
+                return false;
+              }
+            }
+            
+            // If cursor is at end of a paragraph, check if next block is empty
+            if (parent.type.name === "paragraph" && $anchor.depth === 1 && 
+                $anchor.parentOffset === parent.content.size) {
+              try {
+                const paraPos = $anchor.before(1);
+                
+                // Find current paragraph index
+                let currentIndex = -1;
+                let posOffset = 1;
+                const totalChildren = state.doc.content.childCount;
+                
+                for (let i = 0; i < totalChildren; i++) {
+                  const child = state.doc.content.child(i);
+                  if (posOffset === paraPos) {
+                    currentIndex = i;
+                    break;
+                  }
+                  posOffset += child.nodeSize;
+                }
+                
+                if (currentIndex < totalChildren - 1) {
+                  // Get next block
+                  const nextNode = state.doc.content.child(currentIndex + 1);
+                  
+                  // If next block is an empty paragraph, delete it
+                  if (nextNode && nextNode.type.name === "paragraph" && isEmptyNode(nextNode)) {
+                    const { tr } = state;
+                    const nextPos = paraPos + parent.nodeSize;
+                    tr.delete(nextPos, nextPos + nextNode.nodeSize);
+                    view.dispatch(tr);
+                    return true;
+                  }
+                }
+              } catch (e) {
+                return false;
+              }
+            }
+          }
+        }
+        
+        return false;
       },
     },
   });

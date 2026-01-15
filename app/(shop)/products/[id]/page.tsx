@@ -320,11 +320,6 @@ export default function ProductDetailPage() {
                 </div>
               ) : null}
 
-              {/* Product Name/Type */}
-              <h2 className="text-lg sm:text-xl font-medium text-brand-black mb-4">
-                {product.name.split(' ').slice(-2).join(' ')}
-              </h2>
-
               {/* Description */}
               {product.description && (
                 <div 

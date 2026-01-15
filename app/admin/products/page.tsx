@@ -359,21 +359,13 @@ function AdminProductsPageContent() {
       updates.featured = bulkEditData.featured === "true";
     }
 
-    // Handle product tags - only one can be set at a time
+    // Handle product tags - tags work independently
     if (bulkEditData.outOfStock !== "") {
       updates.outOfStock = bulkEditData.outOfStock === "true";
-      // If setting outOfStock, ensure hemaFree is false
-      if (bulkEditData.outOfStock === "true") {
-        updates.hemaFree = false;
-      }
     }
 
     if (bulkEditData.hemaFree !== "") {
       updates.hemaFree = bulkEditData.hemaFree === "true";
-      // If setting hemaFree, ensure outOfStock is false
-      if (bulkEditData.hemaFree === "true") {
-        updates.outOfStock = false;
-      }
     }
 
     if (bulkEditData.price !== "") {
@@ -1089,32 +1081,50 @@ function AdminProductsPageContent() {
                     </select>
                   </div>
 
-                  {/* Product Tag - Only one can be selected */}
+                  {/* Product Tags - Independent checkboxes */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Product Tag
+                      Product Tags
                     </label>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                      Select only one tag (will clear the other tag)
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                      Select tags to apply to selected products. Leave empty to keep existing tags.
                     </p>
-                    <select
-                      value={bulkEditData.outOfStock === "true" ? "outOfStock" : bulkEditData.hemaFree === "true" ? "hemaFree" : ""}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (value === "outOfStock") {
-                          setBulkEditData({ ...bulkEditData, outOfStock: "true", hemaFree: "false" });
-                        } else if (value === "hemaFree") {
-                          setBulkEditData({ ...bulkEditData, outOfStock: "false", hemaFree: "true" });
-                        } else {
-                          setBulkEditData({ ...bulkEditData, outOfStock: "", hemaFree: "" });
-                        }
-                      }}
-                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">{t("products.noChange")}</option>
-                      <option value="outOfStock">Out of Stock</option>
-                      <option value="hemaFree">HEMA Free</option>
-                    </select>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="bulk-outOfStock"
+                          checked={bulkEditData.outOfStock === "true"}
+                          onChange={(e) => {
+                            setBulkEditData({ 
+                              ...bulkEditData, 
+                              outOfStock: e.target.checked ? "true" : "" 
+                            });
+                          }}
+                          className="h-4 w-4"
+                        />
+                        <label htmlFor="bulk-outOfStock" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Out of Stock
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="bulk-hemaFree"
+                          checked={bulkEditData.hemaFree === "true"}
+                          onChange={(e) => {
+                            setBulkEditData({ 
+                              ...bulkEditData, 
+                              hemaFree: e.target.checked ? "true" : "" 
+                            });
+                          }}
+                          className="h-4 w-4"
+                        />
+                        <label htmlFor="bulk-hemaFree" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          HEMA Free
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
