@@ -200,24 +200,6 @@ export function ProductShowcase({ products }: ProductShowcaseProps) {
               })}
             </div>
           </div>
-
-          {/* Dots Indicator */}
-          {products.length > slidesToShow && (
-            <div className="flex justify-center items-center gap-2 mt-8">
-              {Array.from({ length: maxIndex + 1 }).map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentIndex(index)}
-                  className={`transition-all duration-300 rounded-full touch-manipulation min-w-[20px] min-h-[20px] ${
-                    currentIndex === index
-                      ? "w-8 h-2 bg-brand-champagne"
-                      : "w-2 h-2 bg-gray-300 hover:bg-gray-400 active:bg-gray-500"
-                  }`}
-                  aria-label={`Go to slide ${index + 1}`}
-                />
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Optional: View All Link */}

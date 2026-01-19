@@ -13,6 +13,7 @@ interface Ingredient {
   backgroundColor?: string;
   textColor?: string;
   imageSize?: string;
+  whyWeUseItHeading?: string;
 }
 
 interface IngredientSliderProps {
@@ -416,7 +417,7 @@ export function IngredientSlider({ ingredients }: IngredientSliderProps) {
                         }}
                       >
                         <h4 className="text-xl md:text-2xl font-medium mb-3" style={{ color: textColor }}>
-                          {t("ingredients.whyWeUseIt")}
+                          {currentIngredient.whyWeUseItHeading || t("ingredients.whyWeUseIt")}
                         </h4>
                         {introText && (
                           <p className="text-base md:text-lg leading-relaxed mb-3" style={{ color: textColor }}>

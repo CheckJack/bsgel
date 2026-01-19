@@ -42,7 +42,8 @@ export default function BioGelPage() {
     {
       type: "video" as const,
       src: "/hjbuy.mp4",
-      overlayImage: "/biologo.png",
+      title: "BIO Gel",
+      description: t("productPages.bioGel.heroDescription"),
     },
   ];
 
@@ -185,7 +186,7 @@ export default function BioGelPage() {
           <div className="container mx-auto px-4 sm:px-6 max-w-6xl">
             <div className="text-center">
               <TextGenerateEffect
-                words={`${t("productPages.bioGel.description")} #our-funds`}
+                words={t("productPages.bioGel.description")}
                 className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl text-brand-black leading-relaxed font-normal"
                 filter={true}
                 duration={0.5}

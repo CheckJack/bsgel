@@ -93,7 +93,7 @@ export function ProductCard({
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Product Image - Full size square */}
-      <Link href={`/products/${id}`} className="relative w-full aspect-square bg-[#F5F3F0] overflow-hidden">
+      <Link href={`/products/${id}`} className="relative w-full aspect-square bg-[#F5F3F0] overflow-hidden rounded-lg">
         {firstMedia ? (
           <>
             {/* First media (always visible) */}

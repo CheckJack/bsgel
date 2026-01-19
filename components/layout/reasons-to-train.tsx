@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Award, Tag, Heart, RefreshCw, TrendingUp, ShoppingBag } from "lucide-react";
+import { Award, Tag, Heart, RefreshCw, TrendingUp, Beaker } from "lucide-react";
 import { ReactNode } from "react";
 import { useLanguage } from "@/contexts/language-context";
 
@@ -39,25 +39,25 @@ export function ReasonsToTrain() {
       text: t("home.salonListingBusinessSupport"),
     },
     {
-      icon: <ShoppingBag className="w-6 h-6" strokeWidth={2} stroke="currentColor" fill="none" />,
+      icon: <Beaker className="w-6 h-6" strokeWidth={2} stroke="currentColor" fill="none" />,
       text: t("home.moneyBackExclusiveDiscounts"),
     },
   ];
 
   return (
     <section className="w-full mt-2 bg-gray-50 py-8 sm:py-12 md:py-16">
-      <div className="w-full">
+      <div className="container mx-auto max-w-[1920px] px-4 sm:px-6">
         {/* Three Containers Side by Side - Horizontally Aligned */}
         <div className="flex flex-col md:flex-row items-start gap-0 mb-8 md:mb-10 relative">
           {/* Container 1: Title - Left Side - Matching Training Banner padding */}
-          <div className="flex-shrink-0 pl-4 sm:pl-6 md:pl-8 pr-4 sm:pr-8 md:pr-12 mb-6 md:mb-0">
+          <div className="flex-shrink-0 pr-4 sm:pr-8 md:pr-12 mb-6 md:mb-0">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-light text-brand-black text-left tracking-tight">
               {t("home.reasonsToTrain")}
             </h2>
           </div>
 
           {/* Container 2: Left Column Items - Middle */}
-          <div className="flex-1 space-y-0 px-4 sm:px-8 md:px-12 w-full md:w-auto">
+          <div className="flex-1 space-y-0 pr-4 sm:pr-8 md:pr-12 w-full md:w-auto">
             {leftColumnItems.map((item, index) => (
               <div key={index}>
                 <div className="flex items-center py-3 sm:py-4 md:py-6">
@@ -85,7 +85,7 @@ export function ReasonsToTrain() {
           <div className="hidden md:block w-px bg-gray-300 self-stretch"></div>
 
           {/* Container 3: Right Column Items - Right Side */}
-          <div className="flex-1 space-y-0 px-4 sm:px-8 md:pl-12 w-full md:w-auto mt-6 md:mt-0">
+          <div className="flex-1 space-y-0 pl-4 sm:pl-8 md:pl-12 w-full md:w-auto mt-6 md:mt-0">
             {rightColumnItems.map((item, index) => (
               <div key={index}>
                 <div className="flex items-center py-3 sm:py-4 md:py-6">

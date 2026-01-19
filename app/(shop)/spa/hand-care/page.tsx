@@ -375,7 +375,7 @@ export default function HandCarePage() {
           preload="auto"
           className="absolute inset-0 w-full h-full object-cover"
         >
-          <source src="/Untitleddesign(4).mp4" type="video/mp4" />
+          <source src="/srgsdhdsh.mp4" type="video/mp4" />
         </video>
         {/* Optional: Add overlay with call-to-action */}
         <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
