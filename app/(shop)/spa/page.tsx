@@ -35,6 +35,7 @@ export default function SpaPage() {
   const [showDiagnosisModal, setShowDiagnosisModal] = useState(false);
   const textSectionRef = useRef<HTMLElement>(null);
   const productsSectionRef = useRef<HTMLElement>(null);
+  const bottomVideoRef = useRef<HTMLVideoElement>(null);
 
   const slides = [
     {
@@ -47,6 +48,15 @@ export default function SpaPage() {
 
   useEffect(() => {
     fetchSpaProducts();
+  }, []);
+
+  // Ensure bottom video plays
+  useEffect(() => {
+    if (bottomVideoRef.current) {
+      bottomVideoRef.current.play().catch((error) => {
+        console.error("Video autoplay failed:", error);
+      });
+    }
   }, []);
 
   // Intersection Observer for showing diagnosis modal when products section is visible
@@ -174,7 +184,8 @@ export default function SpaPage() {
       benefits: [],
       backgroundColor: "#8B6F47",
       textColor: "#FFFFFF",
-      imageSize: "100%"
+      imageSize: "100%",
+      whyWeUseItHeading: "Porque o utilizamos?"
     },
     {
       id: "shea-butter",
@@ -202,7 +213,7 @@ export default function SpaPage() {
           <div className="container mx-auto px-4 max-w-6xl">
             <div className="text-center">
               <TextGenerateEffect
-                words={`${t("productPages.spa.description")} #our-funds`}
+                words={t("productPages.spa.description")}
                 className="text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl text-brand-black leading-relaxed font-normal"
                 filter={true}
                 duration={0.5}
@@ -260,13 +271,15 @@ export default function SpaPage() {
       {/* Full Width Video Background Section */}
       <section className="relative w-full h-screen overflow-hidden">
         <video
+          ref={bottomVideoRef}
           autoPlay
           loop
           muted
           playsInline
+          preload="auto"
           className="absolute inset-0 w-full h-full object-cover"
         >
-          <source src="/Lavender Base (2).mp4" type="video/mp4" />
+          <source src="/srgsdhdsh.mp4" type="video/mp4" />
         </video>
       </section>
 

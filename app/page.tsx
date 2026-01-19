@@ -2,6 +2,7 @@
 
 import { HeroSlider } from "@/components/layout/hero-slider";
 import { ProductShowcase } from "@/components/layout/product-showcase";
+import { MoodyJewelsBanner } from "@/components/layout/moody-jewels-banner";
 import { TrainingBanner } from "@/components/layout/training-banner";
 import { ReasonsToTrain } from "@/components/layout/reasons-to-train";
 import { FeaturedProducts } from "@/components/layout/featured-products";
@@ -14,8 +15,8 @@ export default function Home() {
 
   const slides = [
     {
-      type: "video" as const,
-      src: "/csavasvsa.mp4",
+      type: "image" as const,
+      src: "/gregregrereg.png",
       title: t("hero.becomeTherapist"),
       titleLine2: t("hero.becomeTherapistLine2"),
       buttonText: t("hero.learnMore"),
@@ -70,6 +71,7 @@ export default function Home() {
     <>
       <HeroSlider slides={slides} autoPlayInterval={5000} />
       <ProductShowcase products={productLines} />
+      <MoodyJewelsBanner />
       <TrainingBanner />
       <ReasonsToTrain />
       <FeaturedProducts />

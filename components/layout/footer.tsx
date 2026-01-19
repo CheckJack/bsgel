@@ -41,7 +41,7 @@ export function Footer() {
   return (
     <footer className="bg-black text-white mt-auto">
       {/* Main Footer Content */}
-      <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 lg:py-16">
+      <div className="w-full px-4 sm:px-6 md:px-12 lg:px-16 py-8 sm:py-12 lg:py-16">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 sm:gap-8 lg:gap-12">
           
           {/* Brand Section */}
@@ -247,25 +247,25 @@ export function Footer() {
               <li className="flex items-start gap-2">
                 <Mail className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <a 
-                  href="mailto:info@biosculpture.com" 
+                  href="mailto:info@biosculpture.pt" 
                   className="text-sm text-white/90 hover:text-white transition-colors"
                 >
-                  info@biosculpture.com
+                  info@biosculpture.pt
                 </a>
               </li>
               <li className="flex items-start gap-2">
                 <Phone className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <a 
-                  href="tel:+15551234567" 
+                  href="tel:+351935172295" 
                   className="text-sm text-white/90 hover:text-white transition-colors"
                 >
-                  (555) 123-4567
+                  +351 935 172 295 <span className="text-white/70">(rede móvel nacional)</span>
                 </a>
               </li>
               <li className="flex items-start gap-2">
                 <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <span className="text-sm text-white/90">
-                  Bio Sculpture USA
+                  Bio Sculpture Portugal
                 </span>
               </li>
             </ul>
@@ -294,7 +294,7 @@ export function Footer() {
 
       {/* Bottom Bar */}
       <div className="border-t border-white/20">
-        <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
+        <div className="w-full px-4 sm:px-6 md:px-12 lg:px-16 py-4 sm:py-6">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
             {/* Copyright */}
             <p className="text-sm text-white/80 text-center md:text-left">
