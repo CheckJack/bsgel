@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { Copy, Check, Loader2, Tag, Calendar, Gift, XCircle, CheckCircle2, Clock } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Redemption {
   id: string;
@@ -46,18 +47,59 @@ interface Redemption {
 export default function MyCouponsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { t } = useLanguage();
   const [redemptions, setRedemptions] = useState<Redemption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingFeatureSettings, setIsLoadingFeatureSettings] = useState(true);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [featureSettings, setFeatureSettings] = useState<{
+    rewardsEnabled: boolean;
+    affiliateEnabled: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
     } else if (session) {
+      fetchFeatureSettings();
+    }
+  }, [session, status, router]);
+
+  useEffect(() => {
+    if (!featureSettings) return;
+    
+    if (!featureSettings.rewardsEnabled && session) {
+      router.push("/dashboard");
+      return;
+    }
+    
+    if (featureSettings.rewardsEnabled && session) {
       fetchCoupons();
     }
-  }, [session, status, router, statusFilter]);
+  }, [featureSettings?.rewardsEnabled, session, router, statusFilter]);
+
+  const fetchFeatureSettings = async () => {
+    try {
+      setIsLoadingFeatureSettings(true);
+      // Use fetch with cache for better performance
+      const res = await fetch("/api/admin/feature-settings", {
+        next: { revalidate: 30 }, // Cache for 30 seconds
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFeatureSettings({
+          rewardsEnabled: data.rewardsEnabled ?? true,
+          affiliateEnabled: data.affiliateEnabled ?? true,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch feature settings:", error);
+      setFeatureSettings({ rewardsEnabled: false, affiliateEnabled: false });
+    } finally {
+      setIsLoadingFeatureSettings(false);
+    }
+  };
 
   // Refresh coupons when page becomes visible or focused (e.g., when navigating to this page)
   useEffect(() => {
@@ -100,11 +142,11 @@ export default function MyCouponsPage() {
       } else {
         const error = await res.json();
         console.error("Failed to load coupons:", error);
-        toast(error.error || "Failed to load coupons", "error");
+        toast(error.error || t("clientPanel.coupons.failedToLoad"), "error");
       }
     } catch (error) {
       console.error("Failed to fetch coupons:", error);
-      toast("Failed to load coupons. Please try again.", "error");
+      toast(t("clientPanel.coupons.failedToLoadRetry"), "error");
     } finally {
       setIsLoading(false);
     }
@@ -113,7 +155,7 @@ export default function MyCouponsPage() {
   const copyToClipboard = (code: string) => {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
-    toast("Coupon code copied to clipboard!", "success");
+    toast(t("clientPanel.coupons.couponCopied"), "success");
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
@@ -122,7 +164,7 @@ export default function MyCouponsPage() {
       return (
         <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200 flex items-center gap-1">
           <CheckCircle2 className="h-3 w-3" />
-          Used
+          {t("clientPanel.coupons.statusUsed")}
         </span>
       );
     }
@@ -130,7 +172,7 @@ export default function MyCouponsPage() {
       return (
         <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 flex items-center gap-1">
           <XCircle className="h-3 w-3" />
-          Expired
+          {t("clientPanel.coupons.statusExpired")}
         </span>
       );
     }
@@ -138,14 +180,14 @@ export default function MyCouponsPage() {
       return (
         <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 flex items-center gap-1">
           <CheckCircle2 className="h-3 w-3" />
-          Active
+          {t("clientPanel.coupons.statusActive")}
         </span>
       );
     }
     return (
       <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 flex items-center gap-1">
         <Clock className="h-3 w-3" />
-        Pending
+        {t("clientPanel.coupons.statusPending")}
       </span>
     );
   };
@@ -166,14 +208,28 @@ export default function MyCouponsPage() {
     );
   }
 
-  if (!session) {
+  // Show loading while checking feature settings
+  if (isLoadingFeatureSettings || !featureSettings) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <p className="text-gray-600 dark:text-gray-400">Please log in to view your coupons.</p>
-        </div>
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     );
+  }
+
+  // Redirect if rewards disabled
+  if (!featureSettings.rewardsEnabled) {
+    return null; // Will redirect in useEffect
+  }
+
+  if (!session) {
+      return (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-gray-600 dark:text-gray-400">{t("clientPanel.coupons.pleaseLogin")}</p>
+          </div>
+        </div>
+      );
   }
 
   // Filter coupons based on status filter
@@ -192,9 +248,9 @@ export default function MyCouponsPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">My Coupons</h1>
+        <h1 className="text-4xl font-bold mb-2">{t("clientPanel.coupons.title")}</h1>
         <p className="text-gray-600 dark:text-gray-400">
-          View and manage your redeemed reward coupons
+          {t("clientPanel.coupons.description")}
         </p>
       </div>
 
@@ -204,7 +260,7 @@ export default function MyCouponsPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4" />
-              Active Coupons
+              {t("clientPanel.coupons.activeCoupons")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -212,7 +268,7 @@ export default function MyCouponsPage() {
               {activeCoupons.length}
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Ready to use
+              {t("clientPanel.coupons.readyToUse")}
             </p>
           </CardContent>
         </Card>
@@ -221,7 +277,7 @@ export default function MyCouponsPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
               <Gift className="h-4 w-4" />
-              Used Coupons
+              {t("clientPanel.coupons.usedCoupons")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -229,7 +285,7 @@ export default function MyCouponsPage() {
               {usedCoupons.length}
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Already applied
+              {t("clientPanel.coupons.alreadyApplied")}
             </p>
           </CardContent>
         </Card>
@@ -238,7 +294,7 @@ export default function MyCouponsPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-2">
               <XCircle className="h-4 w-4" />
-              Expired Coupons
+              {t("clientPanel.coupons.expiredCoupons")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -246,7 +302,7 @@ export default function MyCouponsPage() {
               {expiredCoupons.length}
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              No longer valid
+              {t("clientPanel.coupons.noLongerValid")}
             </p>
           </CardContent>
         </Card>
@@ -262,7 +318,7 @@ export default function MyCouponsPage() {
               : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
           }`}
         >
-          All ({redemptions.length})
+          {t("clientPanel.coupons.all")} ({redemptions.length})
         </button>
         <button
           onClick={() => setStatusFilter("active")}
@@ -272,7 +328,7 @@ export default function MyCouponsPage() {
               : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
           }`}
         >
-          Active ({activeCoupons.length})
+          {t("clientPanel.coupons.active")} ({activeCoupons.length})
         </button>
         <button
           onClick={() => setStatusFilter("used")}
@@ -282,7 +338,7 @@ export default function MyCouponsPage() {
               : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
           }`}
         >
-          Used ({usedCoupons.length})
+          {t("clientPanel.coupons.used")} ({usedCoupons.length})
         </button>
         <button
           onClick={() => setStatusFilter("expired")}
@@ -292,7 +348,7 @@ export default function MyCouponsPage() {
               : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
           }`}
         >
-          Expired ({expiredCoupons.length})
+          {t("clientPanel.coupons.expired")} ({expiredCoupons.length})
         </button>
       </div>
 
@@ -301,12 +357,12 @@ export default function MyCouponsPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <Tag className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg mb-2">No coupons yet</p>
+            <p className="text-gray-500 text-lg mb-2">{t("clientPanel.coupons.noCouponsYet")}</p>
             <p className="text-sm text-gray-400 mb-4">
-              Redeem rewards to get discount coupons
+              {t("clientPanel.coupons.redeemRewards")}
             </p>
             <Button onClick={() => router.push("/dashboard/rewards")} variant="outline">
-              Browse Rewards
+              {t("clientPanel.coupons.browseRewards")}
             </Button>
           </CardContent>
         </Card>
@@ -340,7 +396,7 @@ export default function MyCouponsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                        Coupon Code
+                        {t("clientPanel.coupons.couponCode")}
                       </p>
                       <p className="text-xl font-bold font-mono">
                         {redemption.couponCode}
@@ -355,12 +411,12 @@ export default function MyCouponsPage() {
                       {copiedCode === redemption.couponCode ? (
                         <>
                           <Check className="h-4 w-4 mr-2" />
-                          Copied!
+                          {t("clientPanel.coupons.copied")}
                         </>
                       ) : (
                         <>
                           <Copy className="h-4 w-4 mr-2" />
-                          Copy
+                          {t("clientPanel.coupons.copy")}
                         </>
                       )}
                     </Button>
@@ -369,7 +425,7 @@ export default function MyCouponsPage() {
 
                 {/* Discount Info */}
                 <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <span className="text-sm font-medium">Discount</span>
+                  <span className="text-sm font-medium">{t("clientPanel.coupons.discount")}</span>
                   <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
                     {redemption.coupon.discountType === "PERCENTAGE"
                       ? `${redemption.coupon.discountValue}% off`
@@ -381,7 +437,7 @@ export default function MyCouponsPage() {
                 <div className="space-y-2 text-sm">
                   {redemption.coupon.minPurchaseAmount && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Min. Purchase:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t("clientPanel.coupons.minPurchase")}</span>
                       <span className="font-medium">
                         €{Number(redemption.coupon.minPurchaseAmount).toFixed(2)}
                       </span>
@@ -389,33 +445,33 @@ export default function MyCouponsPage() {
                   )}
                   {redemption.coupon.maxDiscountAmount && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Max. Discount:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t("clientPanel.coupons.maxDiscount")}</span>
                       <span className="font-medium">
                         €{Number(redemption.coupon.maxDiscountAmount).toFixed(2)}
                       </span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Valid From:</span>
+                    <span className="text-gray-600 dark:text-gray-400">{t("clientPanel.coupons.validFrom")}</span>
                     <span className="font-medium">{formatDate(redemption.coupon.validFrom)}</span>
                   </div>
                   {redemption.coupon.validUntil && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Valid Until:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t("clientPanel.coupons.validUntil")}</span>
                       <span className="font-medium">
                         {formatDate(redemption.coupon.validUntil)}
                       </span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Points Spent:</span>
+                    <span className="text-gray-600 dark:text-gray-400">{t("clientPanel.coupons.pointsSpent")}</span>
                     <span className="font-medium">{redemption.pointsSpent.toLocaleString()} pts</span>
                   </div>
                   {redemption.coupon.isUsed && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Used:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t("clientPanel.coupons.usedLabel")}</span>
                       <span className="font-medium">
-                        {redemption.coupon.usedCount} time{redemption.coupon.usedCount !== 1 ? "s" : ""}
+                        {redemption.coupon.usedCount} {redemption.coupon.usedCount !== 1 ? t("clientPanel.coupons.timesPlural") : t("clientPanel.coupons.times")}
                       </span>
                     </div>
                   )}
@@ -430,7 +486,7 @@ export default function MyCouponsPage() {
                       router.push("/products");
                     }}
                   >
-                    Use Coupon
+                    {t("clientPanel.coupons.useCoupon")}
                   </Button>
                 )}
               </CardContent>

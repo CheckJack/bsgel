@@ -7,9 +7,10 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bell, Check, CheckCheck, Loader2, ExternalLink, Trash2 } from "lucide-react";
+import { Bell, Check, CheckCheck, Loader2, ExternalLink, Trash2, X } from "lucide-react";
 import { toast } from "@/components/ui/toast";
 import Link from "next/link";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Notification {
   id: string;
@@ -26,9 +27,12 @@ interface Notification {
 export default function NotificationsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { t } = useLanguage();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [markingAsRead, setMarkingAsRead] = useState<string | null>(null);
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
 
   useEffect(() => {
@@ -106,7 +110,7 @@ export default function NotificationsPage() {
   };
 
   const deleteAllNotifications = async () => {
-    if (!confirm("Are you sure you want to delete all notifications? This action cannot be undone.")) {
+    if (!confirm(t("clientPanel.notifications.deleteAllConfirm"))) {
       return;
     }
 
@@ -171,6 +175,13 @@ export default function NotificationsPage() {
       markAsRead(notification.id);
     }
 
+    // If it's a salon update notification, show detail modal
+    if (notification.metadata?.salonId || notification.metadata?.changes) {
+      setSelectedNotification(notification);
+      setShowDetailModal(true);
+      return;
+    }
+
     if (notification.linkUrl) {
       if (notification.linkUrl.startsWith("/")) {
         router.push(notification.linkUrl);
@@ -200,18 +211,18 @@ export default function NotificationsPage() {
     <div>
       <div className="mb-8 flex justify-between items-center">
         <div>
-          <h1 className="text-4xl font-bold mb-2">Notifications</h1>
+          <h1 className="text-4xl font-bold mb-2">{t("clientPanel.notifications.title")}</h1>
           <p className="text-gray-600 dark:text-gray-400">
             {unreadCount > 0
-              ? `${unreadCount} unread notification${unreadCount !== 1 ? "s" : ""}`
-              : "All caught up"}
+              ? t("clientPanel.notifications.unreadCount", { count: String(unreadCount), plural: unreadCount !== 1 ? "s" : "" })
+              : t("clientPanel.notifications.allCaughtUp")}
           </p>
         </div>
         <div className="flex gap-2">
           {unreadCount > 0 && (
             <Button variant="outline" onClick={markAllAsRead}>
               <CheckCheck className="h-4 w-4 mr-2" />
-              Mark All as Read
+              {t("clientPanel.notifications.markAllAsRead")}
             </Button>
           )}
           {notifications.length > 0 && (
@@ -223,12 +234,12 @@ export default function NotificationsPage() {
               {deletingAll ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
+                  {t("clientPanel.notifications.deleting")}
                 </>
               ) : (
                 <>
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Delete All
+                  {t("clientPanel.notifications.deleteAll")}
                 </>
               )}
             </Button>
@@ -241,10 +252,10 @@ export default function NotificationsPage() {
           <CardContent className="p-12 text-center">
             <Bell className="h-16 w-16 mx-auto mb-4 text-gray-400" />
             <p className="text-gray-600 dark:text-gray-400 mb-4 text-lg">
-              No notifications yet.
+              {t("clientPanel.notifications.noNotificationsYet")}
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-500">
-              You&apos;ll see order updates and important messages here.
+              {t("clientPanel.notifications.seeUpdates")}
             </p>
           </CardContent>
         </Card>
@@ -286,7 +297,7 @@ export default function NotificationsPage() {
                           }}
                           disabled={markingAsRead === notification.id}
                           className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0"
-                          aria-label="Mark as read"
+                          aria-label={t("clientPanel.notifications.markAsRead")}
                         >
                           {markingAsRead === notification.id ? (
                             <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
@@ -305,7 +316,7 @@ export default function NotificationsPage() {
                       </span>
                       {(notification.linkUrl || notification.metadata?.orderId) && (
                         <span className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                          View details
+                          {t("clientPanel.notifications.viewDetails")}
                           <ExternalLink className="h-3 w-3" />
                         </span>
                       )}
@@ -317,6 +328,113 @@ export default function NotificationsPage() {
           ))}
         </div>
       )}
+
+      {/* Notification Detail Modal */}
+      {showDetailModal && selectedNotification && (
+        <NotificationDetailModal
+          notification={selectedNotification}
+          onClose={() => {
+            setShowDetailModal(false);
+            setSelectedNotification(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Notification Detail Modal Component
+function NotificationDetailModal({
+  notification,
+  onClose,
+}: {
+  notification: Notification;
+  onClose: () => void;
+}) {
+  const { t } = useLanguage();
+  const changes = notification.metadata?.changes || [];
+  const reason = notification.metadata?.reason;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <CardContent className="p-6">
+          <div className="flex justify-between items-start mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {notification.title}
+            </h2>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+
+          <div className="space-y-6">
+            {/* Main Message */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {t("clientPanel.notifications.message")}
+              </h3>
+              <p className="text-sm text-gray-900 dark:text-gray-100 whitespace-pre-line">
+                {notification.message}
+              </p>
+            </div>
+
+            {/* Reason - Show first if available */}
+            {reason && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  {t("clientPanel.notifications.reasonForChanges")}
+                </h3>
+                <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                  {reason}
+                </p>
+              </div>
+            )}
+
+            {/* Changes List */}
+            {changes.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  {t("clientPanel.notifications.changesRequired")}
+                </h3>
+                <div className="space-y-2">
+                  {changes.map((change: string, index: number) => (
+                    <div
+                      key={index}
+                      className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700"
+                    >
+                      <p className="text-sm text-gray-900 dark:text-gray-100 whitespace-pre-line">
+                        {change}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <Button variant="outline" onClick={onClose}>
+                {t("clientPanel.notifications.close")}
+              </Button>
+              {notification.linkUrl && (
+                <Button
+                  onClick={() => {
+                    if (notification.linkUrl?.startsWith("/")) {
+                      window.location.href = notification.linkUrl;
+                    } else {
+                      window.open(notification.linkUrl, "_blank");
+                    }
+                  }}
+                >
+                  {t("clientPanel.notifications.viewSalon")}
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

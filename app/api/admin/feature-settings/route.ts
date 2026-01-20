@@ -7,17 +7,28 @@ import { logAdminAction } from "@/lib/admin-logger";
 // GET - Get feature settings (public endpoint, but admin can update)
 export async function GET(req: Request) {
   try {
-    const rewardsSetting = await db.systemSettings.findUnique({
-      where: { key: "rewardsEnabled" },
-    });
-    
-    const affiliateSetting = await db.systemSettings.findUnique({
-      where: { key: "affiliateEnabled" },
+    // Fetch both settings in parallel using findMany for better performance
+    const settings = await db.systemSettings.findMany({
+      where: {
+        key: {
+          in: ["rewardsEnabled", "affiliateEnabled"],
+        },
+      },
     });
 
-    return NextResponse.json({
-      rewardsEnabled: rewardsSetting?.value === "true",
-      affiliateEnabled: affiliateSetting?.value === "true",
+    // Create a map for quick lookup
+    const settingsMap = new Map(settings.map(s => [s.key, s.value === "true"]));
+
+    const response = {
+      rewardsEnabled: settingsMap.get("rewardsEnabled") ?? true,
+      affiliateEnabled: settingsMap.get("affiliateEnabled") ?? true,
+    };
+
+    // Add cache headers for better performance (cache for 30 seconds)
+    return NextResponse.json(response, {
+      headers: {
+        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+      },
     });
   } catch (error: any) {
     console.error("Failed to fetch feature settings:", error);
@@ -27,6 +38,10 @@ export async function GET(req: Request) {
       return NextResponse.json({
         rewardsEnabled: true,
         affiliateEnabled: true,
+      }, {
+        headers: {
+          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+        },
       });
     }
     

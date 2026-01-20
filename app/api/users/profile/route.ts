@@ -46,7 +46,13 @@ const updateProfileSchema = z.object({
     (val) => (val === "" ? undefined : val),
     z.string().min(6, "Password must be at least 6 characters").optional()
   ),
-  image: z.union([z.string().url(), z.literal(""), z.null()]).optional(),
+  image: z.preprocess(
+    (val) => val === "" ? null : val,
+    z.union([
+      z.string(), // Accept any string (URLs or base64 data URLs)
+      z.null()
+    ]).optional()
+  ),
   shippingAddress: z.string().nullable().optional(),
 }).refine(
   (data) => {
@@ -147,7 +153,9 @@ export async function PATCH(req: Request) {
 
     // Update image if provided
     if (validatedData.image !== undefined) {
-      updateData.image = validatedData.image === "" || validatedData.image === null ? null : validatedData.image;
+      const imageValue = validatedData.image === "" || validatedData.image === null ? null : validatedData.image;
+      console.log("Updating image:", imageValue ? `Base64 length: ${imageValue.length}` : "null");
+      updateData.image = imageValue;
     }
 
     // Update shipping address if provided
@@ -156,23 +164,45 @@ export async function PATCH(req: Request) {
     }
 
     // Update user
-    const updatedUser = await db.user.update({
-      where: { id: session.user.id },
-      data: updateData as any,
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        image: true,
-        role: true,
-        shippingAddress: true,
-      },
-    });
+    try {
+      const updatedUser = await db.user.update({
+        where: { id: session.user.id },
+        data: updateData as any,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          image: true,
+          role: true,
+          shippingAddress: true,
+        },
+      });
 
-    return NextResponse.json({
-      message: "Profile updated successfully",
-      user: updatedUser,
-    });
+      console.log("User updated successfully:", {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        image: updatedUser.image ? `Base64 length: ${updatedUser.image.length}` : "null",
+      });
+
+      return NextResponse.json({
+        message: "Profile updated successfully",
+        user: updatedUser,
+      });
+    } catch (dbError: any) {
+      console.error("Database update error:", dbError);
+      // Check if it's a value too long error
+      if (dbError.code === "P2000" || dbError.message?.toLowerCase().includes("value too long") || dbError.message?.toLowerCase().includes("character varying")) {
+        return NextResponse.json(
+          { 
+            error: "Image is too large. The database field needs to be updated to support larger images. Please contact support.",
+            details: dbError.message,
+            code: dbError.code,
+          },
+          { status: 500 }
+        );
+      }
+      throw dbError;
+    }
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error("Validation error:", error.errors);

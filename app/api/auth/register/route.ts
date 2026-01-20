@@ -87,8 +87,12 @@ export async function POST(req: Request) {
       certificateUrl: certificate || null,
     }
 
+    // Set certificationId but DON'T connect the certification relation
+    // The relation will be connected only when admin approves the certification
     if (finalCertificationId) {
-      createData.certification = { connect: { id: finalCertificationId } }
+      createData.certificationId = finalCertificationId
+      // Do NOT connect the certification relation - it will be connected on approval
+      // createData.certification = { connect: { id: finalCertificationId } }
     }
 
     const user = await db.user.create({

@@ -88,8 +88,15 @@ export default function AdminSalonsPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showImageDeleteModal, setShowImageDeleteModal] = useState(false);
+  const [imageToDelete, setImageToDelete] = useState<{type: 'main' | 'logo' | 'gallery', index?: number} | null>(null);
+  const [imageDeleteReason, setImageDeleteReason] = useState("");
+  const [imageDeleteReasons, setImageDeleteReasons] = useState<Record<string, string>>({});
+  const [changeReason, setChangeReason] = useState("");
   const [reviewAction, setReviewAction] = useState<"approve" | "reject" | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [deleteReason, setDeleteReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -365,19 +372,26 @@ export default function AdminSalonsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this salon?")) {
+  const handleDelete = async (id: string, reason: string) => {
+    if (!reason.trim()) {
+      toast("Please provide a reason for deletion", "error");
       return;
     }
 
+    setIsProcessing(true);
     try {
       const res = await fetch(`/api/salons/${id}`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: reason.trim() }),
       });
 
       if (res.ok) {
         toast("Salon deleted successfully", "success");
         await fetchSalons();
+        setShowDeleteModal(false);
+        setDeleteReason("");
+        setSelectedSalon(null);
       } else {
         const data = await res.json();
         toast(data.error || "Failed to delete salon", "error");
@@ -385,6 +399,8 @@ export default function AdminSalonsPage() {
     } catch (error) {
       console.error("Failed to delete salon:", error);
       toast("Failed to delete salon. Please try again.", "error");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -393,18 +409,87 @@ export default function AdminSalonsPage() {
 
     setIsProcessing(true);
     try {
+      // Track changes
+      const changes: string[] = [];
+      const originalSalon = selectedSalon;
+
+      if (editFormData.name !== undefined && editFormData.name !== originalSalon.name) {
+        changes.push(`Name: "${originalSalon.name}" → "${editFormData.name}"`);
+      }
+      if (editFormData.address !== undefined && editFormData.address !== originalSalon.address) {
+        changes.push(`Address: "${originalSalon.address}" → "${editFormData.address}"`);
+      }
+      if (editFormData.city !== undefined && editFormData.city !== originalSalon.city) {
+        changes.push(`City: "${originalSalon.city}" → "${editFormData.city}"`);
+      }
+      if (editFormData.postalCode !== undefined && editFormData.postalCode !== originalSalon.postalCode) {
+        changes.push(`Postal Code: "${originalSalon.postalCode || 'N/A'}" → "${editFormData.postalCode || 'N/A'}"`);
+      }
+      if (editFormData.phone !== undefined && editFormData.phone !== originalSalon.phone) {
+        changes.push(`Phone: "${originalSalon.phone || 'N/A'}" → "${editFormData.phone || 'N/A'}"`);
+      }
+      if (editFormData.email !== undefined && editFormData.email !== originalSalon.email) {
+        changes.push(`Email: "${originalSalon.email || 'N/A'}" → "${editFormData.email || 'N/A'}"`);
+      }
+      if (editFormData.website !== undefined && editFormData.website !== originalSalon.website) {
+        changes.push(`Website: "${originalSalon.website || 'N/A'}" → "${editFormData.website || 'N/A'}"`);
+      }
+      if (editFormData.description !== undefined && editFormData.description !== originalSalon.description) {
+        changes.push("Description was updated");
+      }
+      if (editFormData.image === undefined && originalSalon.image) {
+        const reason = imageDeleteReasons['main'] || 'No reason provided';
+        changes.push(`Main image was removed. Reason: ${reason}`);
+      }
+      if (editFormData.logo === undefined && originalSalon.logo) {
+        const reason = imageDeleteReasons['logo'] || 'No reason provided';
+        changes.push(`Logo was removed. Reason: ${reason}`);
+      }
+      if (editFormData.images !== undefined) {
+        const originalCount = (originalSalon.images || []).length;
+        const newCount = (editFormData.images || []).length;
+        if (newCount < originalCount) {
+          const removedCount = originalCount - newCount;
+          const galleryReasons: string[] = [];
+          for (let i = 0; i < removedCount; i++) {
+            const reasonKey = `gallery_${i}`;
+            const reason = imageDeleteReasons[reasonKey] || 'No reason provided';
+            galleryReasons.push(`Image ${i + 1}: ${reason}`);
+          }
+          changes.push(`Gallery images: ${originalCount} → ${newCount} (${removedCount} removed)`);
+          if (galleryReasons.length > 0) {
+            changes.push(`Gallery removal reasons:\n${galleryReasons.map(r => `  • ${r}`).join('\n')}`);
+          }
+        }
+      }
+      if (editFormData.isBioDiamond !== undefined && editFormData.isBioDiamond !== originalSalon.isBioDiamond) {
+        changes.push(`Bio Diamond status: ${originalSalon.isBioDiamond ? 'Yes' : 'No'} → ${editFormData.isBioDiamond ? 'Yes' : 'No'}`);
+      }
+      if (editFormData.isActive !== undefined && editFormData.isActive !== originalSalon.isActive) {
+        changes.push(`Active status: ${originalSalon.isActive ? 'Active' : 'Inactive'} → ${editFormData.isActive ? 'Active' : 'Inactive'}`);
+      }
+
       const res = await fetch(`/api/salons/${selectedSalon.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editFormData),
+        body: JSON.stringify({
+          ...editFormData,
+          changeReason: changeReason,
+          changes: changes,
+        }),
       });
 
       if (res.ok) {
         toast("Salon updated successfully", "success");
         await fetchSalons();
+        // Refresh selectedSalon with updated data
+        const updatedSalon = await fetch(`/api/salons/${selectedSalon.id}`).then(r => r.json());
+        setSelectedSalon(updatedSalon);
         setShowEditModal(false);
-        setSelectedSalon(null);
+        setShowDetailModal(true);
         setEditFormData({});
+        setChangeReason("");
+        setImageDeleteReasons({});
       } else {
         const data = await res.json();
         toast(data.error || "Failed to update salon", "error");
@@ -963,29 +1048,6 @@ export default function AdminSalonsPage() {
                             <Eye className="h-4 w-4 mr-1" />
                             View
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedSalon(salon);
-                              setEditFormData({
-                                name: salon.name,
-                                address: salon.address,
-                                city: salon.city,
-                                postalCode: salon.postalCode,
-                                phone: salon.phone,
-                                email: salon.email,
-                                website: salon.website,
-                                description: salon.description,
-                                isBioDiamond: salon.isBioDiamond,
-                                isActive: salon.isActive,
-                              });
-                              setShowEditModal(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Edit
-                          </Button>
                           {salon.status === "PENDING_REVIEW" && (
                             <>
                               <Button
@@ -1068,7 +1130,32 @@ export default function AdminSalonsPage() {
           }}
           formatWorkingHours={formatWorkingHours}
           onRefresh={fetchSalons}
-          onDelete={handleDelete}
+          onDelete={(id) => {
+            // Keep the current selectedSalon, just close detail modal and show delete modal
+            setShowDetailModal(false);
+            setShowDeleteModal(true);
+          }}
+          onEdit={() => {
+            setEditFormData({
+              name: selectedSalon.name,
+              address: selectedSalon.address,
+              city: selectedSalon.city,
+              postalCode: selectedSalon.postalCode,
+              phone: selectedSalon.phone,
+              email: selectedSalon.email,
+              website: selectedSalon.website,
+              description: selectedSalon.description,
+              latitude: selectedSalon.latitude,
+              longitude: selectedSalon.longitude,
+              image: selectedSalon.image,
+              logo: selectedSalon.logo,
+              images: selectedSalon.images || [],
+              isBioDiamond: selectedSalon.isBioDiamond,
+              isActive: selectedSalon.isActive,
+            });
+            setShowDetailModal(false);
+            setShowEditModal(true);
+          }}
         />
       )}
 
@@ -1081,8 +1168,20 @@ export default function AdminSalonsPage() {
           onSave={handleEdit}
           onCancel={() => {
             setShowEditModal(false);
-            setSelectedSalon(null);
+            setShowDetailModal(true);
+            // Don't clear selectedSalon or editFormData - keep them in case user wants to edit again
+          }}
+          onDelete={(id) => {
+            // Keep the current selectedSalon, just close edit modal and show delete modal
+            setShowEditModal(false);
             setEditFormData({});
+            setShowDeleteModal(true);
+          }}
+          changeReason={changeReason}
+          onChangeReasonChange={setChangeReason}
+          onImageDelete={(type, index) => {
+            setImageToDelete({ type, index });
+            setShowImageDeleteModal(true);
           }}
           isProcessing={isProcessing}
         />
@@ -1104,6 +1203,61 @@ export default function AdminSalonsPage() {
           isProcessing={isProcessing}
         />
       )}
+
+      {/* Delete Modal */}
+      {showDeleteModal && selectedSalon && (
+        <DeleteSalonModal
+          salon={selectedSalon}
+          deleteReason={deleteReason}
+          onDeleteReasonChange={setDeleteReason}
+          onConfirm={() => handleDelete(selectedSalon.id, deleteReason)}
+          onCancel={() => {
+            setShowDeleteModal(false);
+            setDeleteReason("");
+            setSelectedSalon(null);
+          }}
+          isProcessing={isProcessing}
+        />
+      )}
+
+      {/* Image Delete Modal */}
+      {showImageDeleteModal && imageToDelete && (
+        <DeleteImageModal
+          imageType={imageToDelete.type}
+          imageIndex={imageToDelete.index}
+          deleteReason={imageDeleteReason}
+          onDeleteReasonChange={setImageDeleteReason}
+          onConfirm={() => {
+            const reasonKey = imageToDelete.type === 'gallery' 
+              ? `${imageToDelete.type}_${imageToDelete.index}` 
+              : imageToDelete.type;
+            
+            // Store the deletion reason
+            setImageDeleteReasons(prev => ({
+              ...prev,
+              [reasonKey]: imageDeleteReason
+            }));
+
+            if (imageToDelete.type === 'main') {
+              setEditFormData({ ...editFormData, image: undefined });
+            } else if (imageToDelete.type === 'logo') {
+              setEditFormData({ ...editFormData, logo: undefined });
+            } else if (imageToDelete.type === 'gallery' && imageToDelete.index !== undefined) {
+              const newImages = [...(editFormData.images || [])];
+              newImages.splice(imageToDelete.index, 1);
+              setEditFormData({ ...editFormData, images: newImages });
+            }
+            setShowImageDeleteModal(false);
+            setImageToDelete(null);
+            setImageDeleteReason("");
+          }}
+          onCancel={() => {
+            setShowImageDeleteModal(false);
+            setImageToDelete(null);
+            setImageDeleteReason("");
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1115,12 +1269,14 @@ function SalonDetailModal({
   formatWorkingHours,
   onRefresh,
   onDelete,
+  onEdit,
 }: {
   salon: Salon;
   onClose: () => void;
   formatWorkingHours: (hours: any) => string;
   onRefresh: () => void;
   onDelete: (id: string) => void;
+  onEdit: () => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
@@ -1290,12 +1446,17 @@ function SalonDetailModal({
               </Button>
               <Button
                 variant="outline"
+                onClick={onEdit}
+                className="flex items-center gap-2"
+              >
+                <Edit className="h-4 w-4" />
+                Edit
+              </Button>
+              <Button
+                variant="outline"
                 className="text-red-600 hover:text-red-700"
                 onClick={() => {
-                  if (confirm("Are you sure you want to delete this salon?")) {
-                    onDelete(salon.id);
-                    onClose();
-                  }
+                  onDelete(salon.id);
                 }}
               >
                 Delete
@@ -1315,6 +1476,10 @@ function EditSalonModal({
   onFormDataChange,
   onSave,
   onCancel,
+  onDelete,
+  changeReason,
+  onChangeReasonChange,
+  onImageDelete,
   isProcessing,
 }: {
   salon: Salon;
@@ -1322,6 +1487,10 @@ function EditSalonModal({
   onFormDataChange: (data: Partial<Salon>) => void;
   onSave: () => void;
   onCancel: () => void;
+  onDelete: (id: string) => void;
+  changeReason: string;
+  onChangeReasonChange: (reason: string) => void;
+  onImageDelete: (type: 'main' | 'logo' | 'gallery', index?: number) => void;
   isProcessing: boolean;
 }) {
   return (
@@ -1424,6 +1593,101 @@ function EditSalonModal({
               />
             </div>
 
+            {/* Change Reason */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Reason for Changes <span className="text-gray-500 text-xs">(Optional - will be sent to salon owner)</span>
+              </label>
+              <Textarea
+                value={changeReason}
+                onChange={(e) => onChangeReasonChange(e.target.value)}
+                placeholder="Explain what you changed and why (this will be sent to the salon owner)..."
+                rows={3}
+              />
+            </div>
+
+            {/* Images Management */}
+            <div className="space-y-4">
+              {/* Main Image */}
+              {formData.image && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Main Image
+                  </label>
+                  <div className="relative inline-block">
+                    <img
+                      src={formData.image}
+                      alt="Main"
+                      className="w-32 h-32 object-cover rounded-lg border border-gray-300"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute -top-2 -right-2"
+                      onClick={() => onImageDelete('main')}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Logo */}
+              {formData.logo && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Logo
+                  </label>
+                  <div className="relative inline-block">
+                    <img
+                      src={formData.logo}
+                      alt="Logo"
+                      className="w-32 h-32 object-contain bg-gray-100 rounded-lg border border-gray-300 p-2"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute -top-2 -right-2"
+                      onClick={() => onImageDelete('logo')}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Gallery Images */}
+              {formData.images && formData.images.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Gallery Images
+                  </label>
+                  <div className="grid grid-cols-4 gap-4">
+                    {formData.images.map((img, idx) => (
+                      <div key={idx} className="relative">
+                        <img
+                          src={img}
+                          alt={`Gallery ${idx + 1}`}
+                          className="w-full h-24 object-cover rounded-lg border border-gray-300"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute -top-2 -right-2 h-6 w-6 p-0"
+                          onClick={() => onImageDelete('gallery', idx)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center gap-6">
               <label className="flex items-center gap-2">
                 <input
@@ -1447,21 +1711,168 @@ function EditSalonModal({
               </label>
             </div>
 
-            <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button variant="outline" onClick={onCancel} disabled={isProcessing}>
-                Cancel
+            <div className="flex justify-between items-center pt-4 border-t">
+              <Button
+                variant="outline"
+                className="text-red-600 hover:text-red-700"
+                onClick={() => onDelete(salon.id)}
+                disabled={isProcessing}
+              >
+                Delete
               </Button>
-              <Button onClick={onSave} disabled={isProcessing}>
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Changes"
-                )}
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={onCancel} disabled={isProcessing}>
+                  Cancel
+                </Button>
+                <Button onClick={onSave} disabled={isProcessing}>
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Delete Salon Modal Component
+function DeleteSalonModal({
+  salon,
+  deleteReason,
+  onDeleteReasonChange,
+  onConfirm,
+  onCancel,
+  isProcessing,
+}: {
+  salon: Salon;
+  deleteReason: string;
+  onDeleteReasonChange: (reason: string) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isProcessing: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <Card className="w-full max-w-md">
+        <CardContent className="p-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+            Delete Salon
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Are you sure you want to delete "{salon.name}"? This action cannot be undone. The salon owner will be notified of this deletion.
+          </p>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Reason for Deletion <span className="text-red-500">*</span>
+            </label>
+            <Textarea
+              value={deleteReason}
+              onChange={(e) => onDeleteReasonChange(e.target.value)}
+              placeholder="Please provide a reason for deleting this salon..."
+              rows={4}
+              className="w-full"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              This reason will be sent to the salon owner via notification.
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onCancel} disabled={isProcessing}>
+              Cancel
+            </Button>
+            <Button
+              onClick={onConfirm}
+              disabled={isProcessing || !deleteReason.trim()}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Salon"
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Delete Image Modal Component
+function DeleteImageModal({
+  imageType,
+  imageIndex,
+  deleteReason,
+  onDeleteReasonChange,
+  onConfirm,
+  onCancel,
+}: {
+  imageType: 'main' | 'logo' | 'gallery';
+  imageIndex?: number;
+  deleteReason: string;
+  onDeleteReasonChange: (reason: string) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const imageTypeLabels = {
+    main: 'Main Image',
+    logo: 'Logo',
+    gallery: 'Gallery Image',
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <Card className="w-full max-w-md">
+        <CardContent className="p-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+            Delete {imageTypeLabels[imageType]}
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Are you sure you want to delete this {imageTypeLabels[imageType].toLowerCase()}? The salon owner will be notified of this change.
+          </p>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Reason for Deletion <span className="text-red-500">*</span>
+            </label>
+            <Textarea
+              value={deleteReason}
+              onChange={(e) => onDeleteReasonChange(e.target.value)}
+              placeholder="Please provide a reason for deleting this image..."
+              rows={4}
+              className="w-full"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              This reason will be sent to the salon owner via notification.
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button
+              onClick={onConfirm}
+              disabled={!deleteReason.trim()}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete Image
+            </Button>
           </div>
         </CardContent>
       </Card>

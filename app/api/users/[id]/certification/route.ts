@@ -55,7 +55,9 @@ export async function PUT(
     if (certificationId === null || certificationId === undefined || certificationId === "") {
       updateData.certification = { disconnect: true }
     } else {
+      // When approving (connecting certification), clear certificateUrl to indicate it's been reviewed
       updateData.certification = { connect: { id: certificationId } }
+      updateData.certificateUrl = null // Clear the uploaded certificate URL to mark as approved
     }
 
     const user = await db.user.update({

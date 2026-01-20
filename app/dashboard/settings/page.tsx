@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import { Camera, Save, Loader2 } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
 
 export default function SettingsPage() {
   const { data: session, status, update } = useSession();
   const router = useRouter();
+  const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -48,6 +50,7 @@ export default function SettingsPage() {
         newPassword: "",
         confirmPassword: "",
       });
+      // Always sync profileImage with session image to reflect updates
       setProfileImage(session.user.image || null);
       
       // Load saved shipping address
@@ -156,15 +159,32 @@ export default function SettingsPage() {
 
       // Handle image upload if new image is selected
       if (imageFile) {
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          updateData.image = reader.result;
-          await saveSettings(updateData);
-        };
-        reader.readAsDataURL(imageFile);
+        console.log("Converting image file to base64...", {
+          fileName: imageFile.name,
+          fileSize: imageFile.size,
+          fileType: imageFile.type,
+        });
+        // Convert file to base64 data URL
+        const base64Image = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            console.log("Base64 conversion complete, length:", result.length);
+            resolve(result);
+          };
+          reader.onerror = (error) => {
+            console.error("FileReader error:", error);
+            reject(error);
+          };
+          reader.readAsDataURL(imageFile);
+        });
+        updateData.image = base64Image;
+        console.log("Image added to updateData, base64 length:", base64Image.length);
       } else {
-        await saveSettings(updateData);
+        console.log("No image file selected, skipping image update");
       }
+
+      await saveSettings(updateData);
     } catch (error) {
       console.error("Failed to update settings:", error);
       setMessage({ type: "error", text: "Failed to update settings. Please try again." });
@@ -174,22 +194,59 @@ export default function SettingsPage() {
 
   const saveSettings = async (updateData: any) => {
     try {
+      console.log("Saving settings with updateData:", {
+        ...updateData,
+        image: updateData.image ? `${updateData.image.substring(0, 50)}...` : null,
+      });
+
       const res = await fetch("/api/users/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updateData),
       });
 
+      const responseData = await res.json();
+      console.log("API Response:", {
+        ok: res.ok,
+        status: res.status,
+        data: {
+          ...responseData,
+          user: responseData.user ? {
+            ...responseData.user,
+            image: responseData.user.image ? `${responseData.user.image.substring(0, 50)}...` : null,
+          } : null,
+        },
+      });
+
       if (res.ok) {
-        const data = await res.json();
-        // Update session
+        const data = responseData;
+        // Update profile image state with the saved image
+        const savedImage = data.user?.image || data.image;
+        console.log("Saved image:", savedImage ? `${savedImage.substring(0, 50)}...` : null);
+        
+        if (savedImage) {
+          setProfileImage(savedImage);
+        } else {
+          setProfileImage(null);
+        }
+        // Clear imageFile since it's been saved
+        setImageFile(null);
+        // Update session (don't pass image - it's too large for JWT token)
+        // The session callback will fetch the image from database instead
+        console.log("Updating session (image will be fetched from DB)...");
         await update({
-          name: data.name,
-          email: data.email,
-          image: data.image,
+          name: data.user?.name || data.name,
+          email: data.user?.email || data.email,
+          // Don't pass image here - it causes cookie size issues
+          // The session callback will fetch it from database
         });
-        setMessage({ type: "success", text: "Settings updated successfully!" });
-        toast("Settings updated successfully!", "success");
+        console.log("Session updated, forcing refresh...");
+        // Force session refresh to ensure all components get the updated image
+        await getSession();
+        // Refresh router to ensure all components update
+        router.refresh();
+        setMessage({ type: "success", text: t("clientPanel.settings.settingsUpdated") });
+        toast(t("clientPanel.settings.settingsUpdated"), "success");
         // Clear password fields
         setFormData((prev) => ({
           ...prev,
@@ -198,12 +255,15 @@ export default function SettingsPage() {
           confirmPassword: "",
         }));
       } else {
-        const error = await res.json();
-        setMessage({ type: "error", text: error.error || "Failed to update settings" });
+        console.error("API Error:", responseData);
+        setMessage({ 
+          type: "error", 
+          text: responseData.error || responseData.message || t("clientPanel.settings.settingsUpdateFailed")
+        });
       }
     } catch (error) {
       console.error("Failed to save settings:", error);
-      setMessage({ type: "error", text: "Failed to update settings. Please try again." });
+      setMessage({ type: "error", text: t("clientPanel.settings.settingsUpdateFailed") });
     } finally {
       setIsSaving(false);
     }
@@ -224,9 +284,9 @@ export default function SettingsPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Account Settings</h1>
+        <h1 className="text-4xl font-bold mb-2">{t("clientPanel.settings.title")}</h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Manage your account information and preferences
+          {t("clientPanel.settings.description")}
         </p>
       </div>
 
@@ -235,7 +295,7 @@ export default function SettingsPage() {
           {/* Profile Picture */}
           <Card>
             <CardHeader>
-              <CardTitle>Profile Picture</CardTitle>
+              <CardTitle>{t("clientPanel.settings.profilePicture")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-6">
@@ -267,10 +327,10 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                    Upload a new profile picture
+                    {t("clientPanel.settings.uploadNewPicture")}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-500">
-                    JPG, PNG or GIF. Max size 5MB
+                    {t("clientPanel.settings.fileTypes")}
                   </p>
                 </div>
               </div>
@@ -280,12 +340,12 @@ export default function SettingsPage() {
           {/* Personal Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
+              <CardTitle>{t("clientPanel.settings.personalInformation")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium mb-2">
-                  Full Name
+                  {t("clientPanel.settings.fullName")}
                 </label>
                 <Input
                   id="name"
@@ -293,12 +353,12 @@ export default function SettingsPage() {
                   type="text"
                   value={formData.name}
                   onChange={handleInputChange}
-                  placeholder="Enter your full name"
+                  placeholder={t("clientPanel.settings.enterFullName")}
                 />
               </div>
               <div>
                 <label htmlFor="email" className="block text-sm font-medium mb-2">
-                  Email Address
+                  {t("clientPanel.settings.emailAddress")}
                 </label>
                 <Input
                   id="email"
@@ -306,7 +366,7 @@ export default function SettingsPage() {
                   type="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  placeholder="Enter your email"
+                  placeholder={t("clientPanel.settings.enterEmail")}
                 />
               </div>
             </CardContent>
@@ -315,30 +375,30 @@ export default function SettingsPage() {
           {/* Shipping Address */}
           <Card>
             <CardHeader>
-              <CardTitle>Shipping Address</CardTitle>
+              <CardTitle>{t("clientPanel.settings.shippingAddress")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">First Name *</label>
+                  <label className="block text-sm font-medium mb-2">{t("clientPanel.settings.firstName")}</label>
                   <Input
                     value={shippingAddress.firstName}
                     onChange={(e) => setShippingAddress((prev) => ({ ...prev, firstName: e.target.value }))}
-                    placeholder="First Name"
+                    placeholder={t("clientPanel.settings.firstName")}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Last Name *</label>
+                  <label className="block text-sm font-medium mb-2">{t("clientPanel.settings.lastName")}</label>
                   <Input
                     value={shippingAddress.lastName}
                     onChange={(e) => setShippingAddress((prev) => ({ ...prev, lastName: e.target.value }))}
-                    placeholder="Last Name"
+                    placeholder={t("clientPanel.settings.lastName")}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Email *</label>
+                <label className="block text-sm font-medium mb-2">{t("clientPanel.settings.email")}</label>
                 <Input
                   type="email"
                   value={shippingAddress.email}
@@ -348,7 +408,7 @@ export default function SettingsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Phone Number *</label>
+                <label className="block text-sm font-medium mb-2">{t("clientPanel.settings.phoneNumber")}</label>
                 <Input
                   type="tel"
                   value={shippingAddress.phone}
@@ -358,7 +418,7 @@ export default function SettingsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Address Line 1 *</label>
+                <label className="block text-sm font-medium mb-2">{t("clientPanel.settings.addressLine1")}</label>
                 <Input
                   value={shippingAddress.addressLine1}
                   onChange={(e) => setShippingAddress((prev) => ({ ...prev, addressLine1: e.target.value }))}
@@ -367,7 +427,7 @@ export default function SettingsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Address Line 2</label>
+                <label className="block text-sm font-medium mb-2">{t("clientPanel.settings.addressLine2")}</label>
                 <Input
                   value={shippingAddress.addressLine2}
                   onChange={(e) => setShippingAddress((prev) => ({ ...prev, addressLine2: e.target.value }))}
@@ -377,7 +437,7 @@ export default function SettingsPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Postal Code *</label>
+                  <label className="block text-sm font-medium mb-2">{t("clientPanel.settings.postalCode")}</label>
                   <Input
                     value={shippingAddress.postalCode}
                     onChange={(e) => {
@@ -392,17 +452,17 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">City *</label>
+                  <label className="block text-sm font-medium mb-2">{t("clientPanel.settings.city")}</label>
                   <Input
                     value={shippingAddress.city}
                     onChange={(e) => setShippingAddress((prev) => ({ ...prev, city: e.target.value }))}
-                    placeholder="City"
+                    placeholder={t("clientPanel.settings.city")}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">District *</label>
+                <label className="block text-sm font-medium mb-2">{t("clientPanel.settings.district")}</label>
                 <Input
                   value={shippingAddress.district}
                   onChange={(e) => setShippingAddress((prev) => ({ ...prev, district: e.target.value }))}
@@ -411,7 +471,7 @@ export default function SettingsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Country *</label>
+                <label className="block text-sm font-medium mb-2">{t("clientPanel.settings.country")}</label>
                 <Input
                   value={shippingAddress.country}
                   onChange={(e) => setShippingAddress((prev) => ({ ...prev, country: e.target.value }))}
@@ -423,12 +483,12 @@ export default function SettingsPage() {
           {/* Change Password */}
           <Card>
             <CardHeader>
-              <CardTitle>Change Password</CardTitle>
+              <CardTitle>{t("clientPanel.settings.changePassword")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <label htmlFor="currentPassword" className="block text-sm font-medium mb-2">
-                  Current Password
+                  {t("clientPanel.settings.currentPassword")}
                 </label>
                 <Input
                   id="currentPassword"
@@ -436,12 +496,12 @@ export default function SettingsPage() {
                   type="password"
                   value={formData.currentPassword}
                   onChange={handleInputChange}
-                  placeholder="Enter current password"
+                  placeholder={t("clientPanel.settings.enterCurrentPassword")}
                 />
               </div>
               <div>
                 <label htmlFor="newPassword" className="block text-sm font-medium mb-2">
-                  New Password
+                  {t("clientPanel.settings.newPassword")}
                 </label>
                 <Input
                   id="newPassword"
@@ -449,12 +509,12 @@ export default function SettingsPage() {
                   type="password"
                   value={formData.newPassword}
                   onChange={handleInputChange}
-                  placeholder="Enter new password (min 8 characters)"
+                  placeholder={t("clientPanel.settings.enterNewPassword")}
                 />
               </div>
               <div>
                 <label htmlFor="confirmPassword" className="block text-sm font-medium mb-2">
-                  Confirm New Password
+                  {t("clientPanel.settings.confirmNewPassword")}
                 </label>
                 <Input
                   id="confirmPassword"
@@ -462,7 +522,7 @@ export default function SettingsPage() {
                   type="password"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
-                  placeholder="Confirm new password"
+                  placeholder={t("clientPanel.settings.confirmPassword")}
                 />
               </div>
             </CardContent>
@@ -487,12 +547,12 @@ export default function SettingsPage() {
               {isSaving ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
+                  {t("common.loading")}
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  Save Changes
+                  {t("clientPanel.settings.saveChanges")}
                 </>
               )}
             </Button>

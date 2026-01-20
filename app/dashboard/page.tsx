@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import { ShoppingBag, FileDown, Settings, Users, BookOpen, MapPin, MessageCircle, ArrowRight, Award, Coins, TrendingUp, Sparkles, Gift } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
+import { AccountStatusModal } from "@/components/dashboard/account-status-modal";
 
 interface Order {
   id: string;
@@ -27,13 +29,24 @@ interface PointsData {
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { t } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
   const [pointsData, setPointsData] = useState<PointsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [featureSettings, setFeatureSettings] = useState({
-    rewardsEnabled: true,
-    affiliateEnabled: true,
-  });
+  const [isLoadingFeatureSettings, setIsLoadingFeatureSettings] = useState(true);
+  const [featureSettings, setFeatureSettings] = useState<{
+    rewardsEnabled: boolean;
+    affiliateEnabled: boolean;
+  } | null>(null);
+  const [userCertification, setUserCertification] = useState<{
+    certificationId: string | null;
+    certificateUrl: string | null;
+    certification: { id: string; name: string; pending?: boolean } | null;
+  } | null>(null);
+  const [userCreatedAt, setUserCreatedAt] = useState<string | null>(null);
+  const [userUpdatedAt, setUserUpdatedAt] = useState<string | null>(null);
+  const [isAccountStatusModalOpen, setIsAccountStatusModalOpen] = useState(false);
+  const [isLoadingCertification, setIsLoadingCertification] = useState(true);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -41,18 +54,48 @@ export default function DashboardPage() {
     } else if (session) {
       fetchOrders();
       fetchFeatureSettings();
+      fetchUserCertification();
     }
   }, [session, status, router]);
 
+  const fetchUserCertification = async () => {
+    if (!session?.user?.id) {
+      setIsLoadingCertification(false);
+      return;
+    }
+    try {
+      setIsLoadingCertification(true);
+      const res = await fetch(`/api/users/${session.user.id}`);
+      if (res.ok) {
+        const userData = await res.json();
+        setUserCertification({
+          certificationId: userData.certificationId || null,
+          certificateUrl: userData.certificateUrl || null,
+          certification: userData.certification || null,
+        });
+        setUserCreatedAt(userData.createdAt || null);
+        setUserUpdatedAt(userData.updatedAt || null);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user certification:", error);
+    } finally {
+      setIsLoadingCertification(false);
+    }
+  };
+
   useEffect(() => {
-    if (featureSettings.rewardsEnabled && session) {
+    if (featureSettings?.rewardsEnabled && session) {
       fetchPointsData();
     }
-  }, [featureSettings.rewardsEnabled, session]);
+  }, [featureSettings?.rewardsEnabled, session]);
 
   const fetchFeatureSettings = async () => {
     try {
-      const res = await fetch("/api/admin/feature-settings");
+      setIsLoadingFeatureSettings(true);
+      // Use fetch with cache for better performance
+      const res = await fetch("/api/admin/feature-settings", {
+        next: { revalidate: 30 }, // Cache for 30 seconds
+      });
       if (res.ok) {
         const data = await res.json();
         const settings = {
@@ -63,8 +106,10 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("Failed to fetch feature settings:", error);
-      // Default to enabled if fetch fails
-      setFeatureSettings({ rewardsEnabled: true, affiliateEnabled: true });
+      // Default to disabled if fetch fails to prevent showing content
+      setFeatureSettings({ rewardsEnabled: false, affiliateEnabled: false });
+    } finally {
+      setIsLoadingFeatureSettings(false);
     }
   };
 
@@ -86,7 +131,7 @@ export default function DashboardPage() {
   };
 
   const fetchPointsData = async () => {
-    if (!featureSettings.rewardsEnabled) {
+    if (!featureSettings?.rewardsEnabled) {
       return;
     }
     try {
@@ -131,17 +176,17 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-              Welcome back, {session.user?.name || session.user?.email?.split("@")[0] || "User"}!
+              {t("clientPanel.dashboard.welcomeBack", { name: session.user?.name || session.user?.email?.split("@")[0] || "User" })}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 text-base sm:text-lg">
-              Here&apos;s an overview of your account activity
+              {t("clientPanel.dashboard.overview")}
             </p>
           </div>
-          {featureSettings.rewardsEnabled && (
+          {featureSettings?.rewardsEnabled && !isLoadingFeatureSettings && (
             <Link href="/dashboard/rewards" className="self-start sm:self-auto">
               <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all text-sm sm:text-base">
                 <Award className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                My Rewards
+                {t("clientPanel.dashboard.myRewards")}
               </Button>
             </Link>
           )}
@@ -149,14 +194,14 @@ export default function DashboardPage() {
         {isPendingCertification && (
           <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg animate-pulse">
             <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              Your certification is pending confirmation. Once confirmed, you&apos;ll have access to all dashboard features.
+              {t("clientPanel.dashboard.certificationPending")}
             </p>
           </div>
         )}
       </div>
 
       {/* Rewards/Points Card - Professional Design */}
-      {featureSettings.rewardsEnabled && pointsData && (
+      {!isLoadingFeatureSettings && featureSettings?.rewardsEnabled && pointsData && (
         <Link href="/dashboard/rewards">
           <Card className="relative overflow-hidden border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-300 hover:shadow-xl group cursor-pointer bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950">
             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-400/10 to-indigo-400/10 rounded-full -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-500"></div>
@@ -167,7 +212,7 @@ export default function DashboardPage() {
                     <Coins className="h-6 w-6 sm:h-8 sm:w-8 md:h-10 md:w-10 text-white" />
                   </div>
                   <div>
-                    <p className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1 sm:mb-2 uppercase tracking-wide">Rewards Balance</p>
+                    <p className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1 sm:mb-2 uppercase tracking-wide">{t("clientPanel.dashboard.rewardsBalance")}</p>
                     <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-1">
                       {pointsData.pointsBalance.toLocaleString()}
                     </h2>
@@ -175,18 +220,18 @@ export default function DashboardPage() {
                       {pointsData.pointsThisMonth > 0 && (
                         <span className="text-xs sm:text-sm text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
                           <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
-                          +{pointsData.pointsThisMonth.toLocaleString()} this month
+                          {t("clientPanel.dashboard.thisMonth", { points: pointsData.pointsThisMonth.toLocaleString() })}
                         </span>
                       )}
                       <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                        Lifetime: {pointsData.totalEarnings.toLocaleString()} pts
+                        {t("clientPanel.dashboard.lifetime", { points: pointsData.totalEarnings.toLocaleString() })}
                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="text-left sm:text-right w-full sm:w-auto">
                   <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg group-hover:shadow-xl transition-all px-4 sm:px-6 py-3 sm:py-4 md:py-6 text-sm sm:text-base w-full sm:w-auto">
-                    Redeem Rewards
+                    {t("clientPanel.dashboard.redeemRewards")}
                     <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 ml-2 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </div>
@@ -206,13 +251,13 @@ export default function DashboardPage() {
                   <ShoppingBag className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 <Link href="/dashboard/orders" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                  View all →
+                  {t("clientPanel.dashboard.viewAll")}
                 </Link>
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Orders</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t("clientPanel.dashboard.totalOrders")}</p>
                 <p className="text-4xl font-bold text-gray-900 dark:text-white">{orders.length}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">All time purchases</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{t("clientPanel.dashboard.allTimePurchases")}</p>
               </div>
             </CardContent>
           </Card>
@@ -225,9 +270,9 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Spent</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t("clientPanel.dashboard.totalSpent")}</p>
                 <p className="text-4xl font-bold text-gray-900 dark:text-white">{formatPrice(totalSpent.toString())}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Lifetime value</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{t("clientPanel.dashboard.lifetimeValue")}</p>
               </div>
             </CardContent>
           </Card>
@@ -238,17 +283,87 @@ export default function DashboardPage() {
                 <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
                   <Sparkles className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                 </div>
-                <Link href="/dashboard/settings" className="text-sm text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
-                  Manage →
-                </Link>
+                <button
+                  onClick={() => setIsAccountStatusModalOpen(true)}
+                  className="text-sm text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors cursor-pointer"
+                >
+                  {t("clientPanel.dashboard.manage")}
+                </button>
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Account Status</p>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">Active</p>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Account in good standing</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t("clientPanel.dashboard.accountStatus")}</p>
+                {isLoadingCertification ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded-full animate-pulse"></div>
+                      <p className="text-2xl font-bold text-gray-400 dark:text-gray-500">
+                        Loading...
+                      </p>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      &nbsp;
+                    </p>
+                  </>
+                ) : (() => {
+                  const hasCertificationId = !!userCertification?.certificationId;
+                  const hasCertificateUrl = !!userCertification?.certificateUrl;
+                  const certificationRelation = userCertification?.certification;
+                  
+                  // Certification is approved ONLY if the relation exists AND doesn't have pending flag
+                  // If relation exists without pending flag, admin has approved it
+                  const isApproved = certificationRelation && !certificationRelation.pending;
+                  
+                  // Certification is pending if:
+                  // 1. User has certificationId + certificateUrl (they applied and uploaded)
+                  // 2. BUT the certification relation doesn't exist OR has pending flag
+                  const isPending = hasCertificationId && hasCertificateUrl && !isApproved;
+                  
+                  if (isPending) {
+                    // Get certification name from the pending certification (API provides it with pending flag)
+                    const certName = certificationRelation?.name || "Certification";
+                    return (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
+                          <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                            {certName}
+                          </p>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          Your certification is under review
+                        </p>
+                      </>
+                    );
+                  } else if (isApproved && certificationRelation) {
+                    return (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                          <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                            {certificationRelation.name}
+                          </p>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          {t("clientPanel.dashboard.accountGoodStanding")}
+                        </p>
+                      </>
+                    );
+                  } else {
+                    return (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                          <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                            {t("clientPanel.dashboard.active")}
+                          </p>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          {t("clientPanel.dashboard.accountGoodStanding")}
+                        </p>
+                      </>
+                    );
+                  }
+                })()}
               </div>
             </CardContent>
           </Card>
@@ -259,10 +374,10 @@ export default function DashboardPage() {
       {recentOrders.length > 0 && (
         <div>
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
-            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">Recent Orders</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">{t("clientPanel.dashboard.recentOrders")}</h2>
             <Link href="/dashboard/orders">
               <Button variant="outline" className="hover:bg-gray-100 dark:hover:bg-gray-800 text-sm sm:text-base w-full sm:w-auto">
-                View All
+                {t("clientPanel.dashboard.viewAllOrders")}
                 <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-2" />
               </Button>
             </Link>
@@ -301,6 +416,18 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Account Status Modal */}
+      <AccountStatusModal
+        isOpen={isAccountStatusModalOpen}
+        onClose={() => setIsAccountStatusModalOpen(false)}
+        userName={session.user?.name || session.user?.email?.split("@")[0] || "User"}
+        certification={userCertification?.certification || null}
+        certificationId={userCertification?.certificationId || null}
+        certificateUrl={userCertification?.certificateUrl || null}
+        createdAt={userCreatedAt}
+        updatedAt={userUpdatedAt}
+      />
     </div>
   );
 }

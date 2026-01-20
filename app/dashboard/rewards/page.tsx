@@ -32,11 +32,12 @@ export default function RewardsPage() {
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [pointsBalance, setPointsBalance] = useState<PointsBalance | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingFeatureSettings, setIsLoadingFeatureSettings] = useState(true);
   const [redeeming, setRedeeming] = useState<string | null>(null);
-  const [featureSettings, setFeatureSettings] = useState({
-    rewardsEnabled: true,
-    affiliateEnabled: true,
-  });
+  const [featureSettings, setFeatureSettings] = useState<{
+    rewardsEnabled: boolean;
+    affiliateEnabled: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -47,6 +48,8 @@ export default function RewardsPage() {
   }, [session, status, router]);
 
   useEffect(() => {
+    if (!featureSettings) return;
+    
     if (!featureSettings.rewardsEnabled && session) {
       router.push("/dashboard");
       return;
@@ -56,11 +59,15 @@ export default function RewardsPage() {
       fetchRewards();
       fetchPointsBalance();
     }
-  }, [featureSettings.rewardsEnabled, session, router]);
+  }, [featureSettings?.rewardsEnabled, session, router]);
 
   const fetchFeatureSettings = async () => {
     try {
-      const res = await fetch("/api/admin/feature-settings");
+      setIsLoadingFeatureSettings(true);
+      // Use fetch with cache for better performance
+      const res = await fetch("/api/admin/feature-settings", {
+        next: { revalidate: 30 }, // Cache for 30 seconds
+      });
       if (res.ok) {
         const data = await res.json();
         setFeatureSettings({
@@ -70,7 +77,9 @@ export default function RewardsPage() {
       }
     } catch (error) {
       console.error("Failed to fetch feature settings:", error);
-      setFeatureSettings({ rewardsEnabled: true, affiliateEnabled: true });
+      setFeatureSettings({ rewardsEnabled: false, affiliateEnabled: false });
+    } finally {
+      setIsLoadingFeatureSettings(false);
     }
   };
 
@@ -183,6 +192,20 @@ export default function RewardsPage() {
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     );
+  }
+
+  // Show loading while checking feature settings
+  if (isLoadingFeatureSettings || !featureSettings) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  // Redirect if rewards disabled
+  if (!featureSettings.rewardsEnabled) {
+    return null; // Will redirect in useEffect
   }
 
   if (!session) {

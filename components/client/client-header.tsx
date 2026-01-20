@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { Menu, Moon, Sun, Settings } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useLanguage } from "@/contexts/language-context";
 
 interface ClientHeaderProps {
   onMenuClick?: () => void;
@@ -12,6 +13,7 @@ interface ClientHeaderProps {
 export function ClientHeader({ onMenuClick }: ClientHeaderProps) {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
+  const { t } = useLanguage();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -19,7 +21,7 @@ export function ClientHeader({ onMenuClick }: ClientHeaderProps) {
   }, []);
 
   return (
-    <header className="h-16 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-between px-4 md:px-6">
+    <header className="h-16 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-between px-4 md:px-6 -mt-px">
       {/* Mobile Menu Button */}
       {onMenuClick && (
         <button
@@ -32,7 +34,7 @@ export function ClientHeader({ onMenuClick }: ClientHeaderProps) {
 
       {/* Title */}
       <div className="flex-1">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">My Account</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t("clientPanel.header.myAccount")}</h1>
       </div>
 
       {/* Right Side Icons */}
@@ -41,7 +43,7 @@ export function ClientHeader({ onMenuClick }: ClientHeaderProps) {
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           className="w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          aria-label="Toggle theme"
+          aria-label={t("clientPanel.header.toggleTheme")}
         >
           {mounted && theme === "dark" ? (
             <Sun className="h-5 w-5 text-gray-600 dark:text-gray-300" />
@@ -75,7 +77,7 @@ export function ClientHeader({ onMenuClick }: ClientHeaderProps) {
             <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
               {session?.user?.name || session?.user?.email?.split("@")[0] || "User"}
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Account</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">{t("clientPanel.header.account")}</div>
           </div>
         </div>
 
@@ -83,7 +85,7 @@ export function ClientHeader({ onMenuClick }: ClientHeaderProps) {
         <a
           href="/dashboard/settings"
           className="w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          aria-label="Account settings"
+          aria-label={t("clientPanel.header.accountSettings")}
         >
           <Settings className="h-5 w-5 text-gray-600 dark:text-gray-300" />
         </a>

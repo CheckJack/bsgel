@@ -28,11 +28,12 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Only admins can view user details
-    if (session.user.role !== "ADMIN") {
+    // Users can view their own data, admins can view any user
+    if (session.user.role !== "ADMIN" && session.user.id !== id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
+    // Get user data
     const user = await db.user.findUnique({
       where: { id },
       include: {
@@ -61,6 +62,31 @@ export async function GET(
     )
     const orderCount = user.orders.length
 
+    // Determine certification status:
+    // IMPORTANT: If certificateUrl exists, the certification is ALWAYS pending
+    // The certificateUrl is only cleared/nullified when admin approves the certification
+    // So if certificateUrl exists, it means admin hasn't approved it yet
+    let certification = null
+    if (user.certificationId) {
+      const certData = await db.certification.findUnique({
+        where: { id: user.certificationId },
+        select: { id: true, name: true },
+      })
+      
+      if (certData) {
+        // If certificateUrl exists, user uploaded a certificate that needs review → Pending
+        if (user.certificateUrl) {
+          certification = { id: certData.id, name: certData.name, pending: true } as any
+        } else if (user.certification) {
+          // No certificateUrl but relation exists → Admin approved it
+          certification = { ...user.certification, pending: false } as any
+        } else {
+          // Has certificationId but no certificateUrl and no relation → Edge case, treat as not pending
+          certification = { id: certData.id, name: certData.name, pending: false } as any
+        }
+      }
+    }
+
     return NextResponse.json({
       id: user.id,
       email: user.email,
@@ -69,9 +95,11 @@ export async function GET(
       permissions: user.permissions,
       isActive: user.isActive,
       lastLoginAt: user.lastLoginAt,
-      certification: user.certification,
+      certificationId: user.certificationId,
+      certification: certification,
       certificateUrl: user.certificateUrl,
       createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
       totalSpent,
       orderCount,
     })
