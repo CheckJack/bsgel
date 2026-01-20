@@ -9,6 +9,7 @@ import { MessageCircle, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLanguage } from "@/contexts/language-context";
 
 interface ChatMessage {
   id: string;
@@ -27,6 +28,7 @@ interface ChatMessage {
 export default function CustomerMessagesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { t } = useLanguage();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMessage, setSelectedMessage] = useState<ChatMessage | null>(null);
@@ -167,16 +169,16 @@ export default function CustomerMessagesPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            Messages
+            {t("clientPanel.messages.title")}
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             {unreadResponses > 0 && (
               <span className="text-blue-600 dark:text-blue-400 font-medium">
-                {unreadResponses} new response{unreadResponses !== 1 ? "s" : ""}
+                {t("clientPanel.messages.newResponses", { count: String(unreadResponses), plural: unreadResponses !== 1 ? "s" : "" })}
               </span>
             )}
-            {unreadResponses === 0 && messagesArray.length > 0 && "All caught up"}
-            {messagesArray.length === 0 && "No messages yet"}
+            {unreadResponses === 0 && messagesArray.length > 0 && t("clientPanel.messages.allCaughtUp")}
+            {messagesArray.length === 0 && t("clientPanel.messages.noMessagesYet")}
           </p>
         </div>
         <Button
@@ -188,7 +190,7 @@ export default function CustomerMessagesPage() {
           className="bg-blue-600 hover:bg-blue-700 text-white"
         >
           <Send className="h-4 w-4 mr-2" />
-          New Message
+          {t("clientPanel.messages.newMessage")}
         </Button>
       </div>
 
@@ -197,15 +199,15 @@ export default function CustomerMessagesPage() {
         <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
             <h2 className="font-semibold text-gray-900 dark:text-gray-100">
-              Your Messages ({messagesArray.length})
+              {t("clientPanel.messages.yourMessages", { count: String(messagesArray.length) })}
             </h2>
           </div>
           <div className="overflow-y-auto max-h-[600px]">
             {messagesArray.length === 0 ? (
               <div className="p-8 text-center text-gray-500 dark:text-gray-400">
                 <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No messages yet</p>
-                <p className="text-sm mt-2">Start a conversation with our team</p>
+                <p>{t("clientPanel.messages.noMessagesYet")}</p>
+                <p className="text-sm mt-2">{t("clientPanel.messages.startConversation")}</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -231,11 +233,11 @@ export default function CustomerMessagesPage() {
                       </div>
                       {message.adminResponse ? (
                         <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded flex-shrink-0">
-                          Replied
+                          {t("clientPanel.messages.replied")}
                         </span>
                       ) : (
                         <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-1 rounded flex-shrink-0">
-                          Pending
+                          {t("clientPanel.messages.pending")}
                         </span>
                       )}
                     </div>
@@ -244,7 +246,7 @@ export default function CustomerMessagesPage() {
                     </p>
                     {message.adminResponse && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 italic line-clamp-1">
-                        Admin: {message.adminResponse}
+                        {t("clientPanel.messages.adminResponse")}: {message.adminResponse}
                       </p>
                     )}
                   </button>
@@ -260,10 +262,10 @@ export default function CustomerMessagesPage() {
             <div className="flex flex-col h-full min-h-0">
               <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  New Message
+                  {t("clientPanel.messages.newMessageTitle")}
                 </h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Send a message to our support team
+                  {t("clientPanel.messages.sendToSupport")}
                 </p>
               </div>
               <div className="flex-1 overflow-y-auto p-6">
@@ -273,13 +275,13 @@ export default function CustomerMessagesPage() {
                       htmlFor="newMessage"
                       className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                     >
-                      Your Message
+                      {t("clientPanel.messages.yourMessage")}
                     </label>
                     <Textarea
                       id="newMessage"
                       value={newMessageText}
                       onChange={(e) => setNewMessageText(e.target.value)}
-                      placeholder="Type your message here..."
+                      placeholder={t("clientPanel.messages.typeMessage")}
                       rows={8}
                       className="w-full"
                       disabled={isSending}
@@ -294,12 +296,12 @@ export default function CustomerMessagesPage() {
                       {isSending ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          Sending...
+                          {t("clientPanel.messages.sending")}
                         </>
                       ) : (
                         <>
                           <Send className="h-4 w-4" />
-                          Send Message
+                          {t("clientPanel.messages.sendMessage")}
                         </>
                       )}
                     </Button>
@@ -312,7 +314,7 @@ export default function CustomerMessagesPage() {
                       }}
                       disabled={isSending}
                     >
-                      Cancel
+                      {t("clientPanel.messages.cancel")}
                     </Button>
                   </div>
                 </form>
@@ -325,10 +327,10 @@ export default function CustomerMessagesPage() {
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      Message Details
+                      {t("clientPanel.messages.messageDetails")}
                     </h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Sent: {formatTime(selectedMessage.createdAt)}
+                      {t("clientPanel.messages.sent", { time: formatTime(selectedMessage.createdAt) })}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -344,7 +346,7 @@ export default function CustomerMessagesPage() {
                       className="text-xs"
                     >
                       <Send className="h-3 w-3 mr-1" />
-                      New Message
+                      {t("clientPanel.messages.newMessage")}
                     </Button>
                     <span
                       className={`px-3 py-1 rounded text-sm ${
@@ -353,7 +355,7 @@ export default function CustomerMessagesPage() {
                           : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400"
                       }`}
                     >
-                      {selectedMessage.adminResponse ? "Replied" : "Awaiting Response"}
+                      {selectedMessage.adminResponse ? t("clientPanel.messages.replied") : t("clientPanel.messages.awaitingResponse")}
                     </span>
                   </div>
                 </div>
@@ -364,7 +366,7 @@ export default function CustomerMessagesPage() {
                 {/* User Message */}
                 <div className="flex flex-col items-end">
                   <div className="max-w-[80%] w-full rounded-lg bg-blue-600 text-white p-4 break-words">
-                    <p className="text-sm font-medium mb-1">You:</p>
+                    <p className="text-sm font-medium mb-1">{t("clientPanel.messages.you")}</p>
                     <p className="text-sm whitespace-pre-wrap break-words">{selectedMessage.message}</p>
                   </div>
                   <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -376,12 +378,12 @@ export default function CustomerMessagesPage() {
                 {selectedMessage.adminResponse ? (
                   <div className="flex flex-col items-start">
                     <div className="max-w-[80%] w-full rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 p-4 break-words">
-                      <p className="text-sm font-medium mb-1">Admin Response:</p>
+                      <p className="text-sm font-medium mb-1">{t("clientPanel.messages.adminResponse")}:</p>
                       <p className="text-sm whitespace-pre-wrap break-words">{selectedMessage.adminResponse}</p>
                     </div>
                     {selectedMessage.readAt && (
                       <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Read: {formatTime(selectedMessage.readAt)}
+                        {t("clientPanel.messages.read", { time: formatTime(selectedMessage.readAt) })}
                       </span>
                     )}
                   </div>
@@ -389,7 +391,7 @@ export default function CustomerMessagesPage() {
                   <div className="flex flex-col items-start">
                     <div className="max-w-[80%] w-full rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 p-4">
                       <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                        Waiting for admin response...
+                        {t("clientPanel.messages.waitingForResponse")}
                       </p>
                     </div>
                   </div>
@@ -405,16 +407,16 @@ export default function CustomerMessagesPage() {
                         htmlFor="reply"
                         className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                       >
-                        Send a New Message
+                        {t("clientPanel.messages.sendNewMessage")}
                       </label>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                        This will create a new message in your conversation. To start a completely new topic, use the &quot;New Message&quot; button above.
+                        {t("clientPanel.messages.createNewTopic")}
                       </p>
                       <Textarea
                         id="reply"
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
-                        placeholder="Type your message..."
+                        placeholder={t("clientPanel.messages.typeYourMessage")}
                         rows={4}
                         className="w-full"
                         disabled={isSending}
@@ -428,12 +430,12 @@ export default function CustomerMessagesPage() {
                       {isSending ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          Sending...
+                          {t("clientPanel.messages.sending")}
                         </>
                       ) : (
                         <>
                           <Send className="h-4 w-4" />
-                          Send Message
+                          {t("clientPanel.messages.sendMessage")}
                         </>
                       )}
                     </Button>
@@ -441,7 +443,7 @@ export default function CustomerMessagesPage() {
                 ) : (
                   <div className="text-center py-4">
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                      Waiting for admin response. You can start a new conversation using the &quot;New Message&quot; button above.
+                      {t("clientPanel.messages.waitingForAdmin")}
                     </p>
                   </div>
                 )}
@@ -451,8 +453,8 @@ export default function CustomerMessagesPage() {
             <div className="flex items-center justify-center h-[600px] text-gray-500 dark:text-gray-400">
               <div className="text-center">
                 <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                <p>Select a message to view details</p>
-                <p className="text-sm mt-2">or create a new message</p>
+                <p>{t("clientPanel.messages.selectMessage")}</p>
+                <p className="text-sm mt-2">{t("clientPanel.messages.orCreateNew")}</p>
               </div>
             </div>
           )}

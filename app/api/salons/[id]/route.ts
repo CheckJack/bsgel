@@ -114,7 +114,7 @@ export async function PATCH(
   try {
     const session = await getServerSession(authOptions);
     const body = await req.json();
-    const { name, address, city, postalCode, phone, email, website, latitude, longitude, image, logo, images, description, workingHours, isActive, isBioDiamond } = body;
+    const { name, address, city, postalCode, phone, email, website, latitude, longitude, image, logo, images, description, workingHours, isActive, isBioDiamond, changeReason, changes } = body;
 
     // Check if salon exists
     const existingSalon = await db.salon.findUnique({
@@ -212,7 +212,45 @@ export async function PATCH(
     const salon = await db.salon.update({
       where: { id: id },
       data: updateData,
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+      },
     });
+
+    // If admin made changes and salon has an owner, create notification
+    if (session?.user?.role === "ADMIN" && salon.userId && (changeReason || (changes && changes.length > 0))) {
+      try {
+        const changesList = changes && Array.isArray(changes) ? changes : [];
+        
+        const notificationMessage = `Bio Sculpture Portugal requires you to make changes in your salon "${salon.name}". Click to view details.`;
+        
+        await db.notification.create({
+          data: {
+            type: "SYSTEM",
+            title: "Salon Changes Required",
+            message: notificationMessage,
+            userId: salon.userId,
+            linkUrl: "/dashboard/salon",
+            metadata: {
+              salonId: id,
+              salonName: salon.name,
+              updatedBy: session.user.id,
+              changes: changesList,
+              reason: changeReason || null,
+            },
+          },
+        });
+      } catch (notificationError) {
+        console.error("Failed to create update notification:", notificationError);
+        // Don't fail the update if notification fails
+      }
+    }
 
     return NextResponse.json(salon);
   } catch (error: any) {
@@ -254,9 +292,29 @@ export async function DELETE(
       );
     }
 
-    // Check if salon exists
+    // Parse request body for deletion reason (only admins can provide reason)
+    let deleteReason = "";
+    if (session.user.role === "ADMIN") {
+      try {
+        const body = await req.json().catch(() => ({}));
+        deleteReason = body.reason || "";
+      } catch (e) {
+        // Body might be empty, that's okay
+      }
+    }
+
+    // Check if salon exists and get owner info
     const existingSalon = await db.salon.findUnique({
       where: { id: id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+      },
     });
 
     if (!existingSalon) {
@@ -276,9 +334,36 @@ export async function DELETE(
       }
     }
 
+    // Delete the salon
     await db.salon.delete({
       where: { id: id },
     });
+
+    // If admin deleted with a reason and salon has an owner, create notification
+    if (session.user.role === "ADMIN" && deleteReason && existingSalon.userId) {
+      try {
+        const notificationMessage = `Bio Sculpture Portugal has deleted your salon "${existingSalon.name}". The reason was: ${deleteReason}`;
+        
+        await db.notification.create({
+          data: {
+            type: "SYSTEM",
+            title: "Salon Deleted",
+            message: notificationMessage,
+            userId: existingSalon.userId,
+            linkUrl: "/dashboard/salon",
+            metadata: {
+              salonId: id,
+              salonName: existingSalon.name,
+              deletedBy: session.user.id,
+              reason: deleteReason,
+            },
+          },
+        });
+      } catch (notificationError) {
+        console.error("Failed to create deletion notification:", notificationError);
+        // Don't fail the deletion if notification fails
+      }
+    }
 
     return NextResponse.json({ message: "Salon deleted successfully" });
   } catch (error: any) {

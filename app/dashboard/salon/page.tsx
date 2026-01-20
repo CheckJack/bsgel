@@ -22,7 +22,13 @@ import {
   AlertCircle,
   Save,
   Loader2,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+  ExternalLink,
 } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Salon {
   id: string;
@@ -55,19 +61,20 @@ interface WorkingHours {
   };
 }
 
-const DAYS = [
-  { key: "monday", label: "Monday" },
-  { key: "tuesday", label: "Tuesday" },
-  { key: "wednesday", label: "Wednesday" },
-  { key: "thursday", label: "Thursday" },
-  { key: "friday", label: "Friday" },
-  { key: "saturday", label: "Saturday" },
-  { key: "sunday", label: "Sunday" },
-];
-
 export default function SalonPage() {
   const { data: session } = useSession();
   const router = useRouter();
+  const { t } = useLanguage();
+  
+  const DAYS = [
+    { key: "monday", label: t("clientPanel.salon.monday") },
+    { key: "tuesday", label: t("clientPanel.salon.tuesday") },
+    { key: "wednesday", label: t("clientPanel.salon.wednesday") },
+    { key: "thursday", label: t("clientPanel.salon.thursday") },
+    { key: "friday", label: t("clientPanel.salon.friday") },
+    { key: "saturday", label: t("clientPanel.salon.saturday") },
+    { key: "sunday", label: t("clientPanel.salon.sunday") },
+  ];
   const [salon, setSalon] = useState<Salon | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -75,6 +82,9 @@ export default function SalonPage() {
   const [success, setSuccess] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [showLivePreview, setShowLivePreview] = useState(false);
+  const [previewImageIndex, setPreviewImageIndex] = useState(0);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -287,11 +297,11 @@ export default function SalonPage() {
       return;
     }
     if (!formData.address.trim()) {
-      setError("Address is required");
+      setError(t("clientPanel.salon.addressRequired"));
       return;
     }
     if (!formData.city.trim()) {
-      setError("City is required");
+      setError(t("clientPanel.salon.cityRequired"));
       return;
     }
 
@@ -374,17 +384,17 @@ export default function SalonPage() {
       PENDING_REVIEW: {
         icon: AlertCircle,
         color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200",
-        text: "Pending Review",
+        text: t("clientPanel.salon.pendingReviewStatus"),
       },
       APPROVED: {
         icon: CheckCircle,
         color: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-200",
-        text: "Approved",
+        text: t("clientPanel.salon.approvedStatus"),
       },
       REJECTED: {
         icon: XCircle,
         color: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-200",
-        text: "Rejected",
+        text: t("clientPanel.salon.rejectedStatus"),
       },
     };
 
@@ -415,15 +425,34 @@ export default function SalonPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            My Salon
+            {t("clientPanel.salon.title")}
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             {salon
-              ? "Manage your salon listing information"
-              : "Create your salon listing to appear in our salon finder"}
+              ? t("clientPanel.salon.manageListing")
+              : t("clientPanel.salon.description")}
           </p>
         </div>
-        {salon && getStatusBadge()}
+        <div className="flex items-center gap-4">
+          {salon && getStatusBadge()}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              // If salon is approved and active, show live page in pop-up
+              if (salon?.status === "APPROVED" && salon?.isActive) {
+                setShowLivePreview(true);
+              } else {
+                // Otherwise show preview with current form data
+                setShowPreview(true);
+              }
+            }}
+            className="flex items-center gap-2"
+          >
+            <Eye className="h-4 w-4" />
+            {salon?.status === "APPROVED" && salon?.isActive ? "View Live Page" : "Preview"}
+          </Button>
+        </div>
       </div>
 
       {/* Status Messages */}
@@ -433,11 +462,10 @@ export default function SalonPage() {
             <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                Your salon is pending review
+                {t("clientPanel.salon.pendingReview")}
               </p>
               <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                Your salon listing will be visible to customers once approved by
-                an administrator.
+                {t("clientPanel.salon.pendingReviewDesc")}
               </p>
             </div>
           </div>
@@ -450,13 +478,13 @@ export default function SalonPage() {
             <XCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-red-800 dark:text-red-200">
-                Your salon was rejected
+                {t("clientPanel.salon.salonRejected")}
               </p>
               <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                Reason: {salon.rejectionReason}
+                {t("clientPanel.salon.rejectionReason")} {salon.rejectionReason}
               </p>
               <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                Please update your salon information and resubmit for review.
+                {t("clientPanel.salon.updateAndResubmit")}
               </p>
             </div>
           </div>
@@ -489,20 +517,20 @@ export default function SalonPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Basic Information</CardTitle>
+            <CardTitle>{t("clientPanel.salon.basicInformation")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Salon Name <span className="text-red-500">*</span>
+                  {t("clientPanel.salon.salonName")} <span className="text-red-500">*</span>
                 </label>
                 <Input
                   value={formData.name}
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
                   }
-                  placeholder="Enter salon name"
+                  placeholder={t("clientPanel.salon.enterSalonName")}
                   required
                   disabled={!isEditing}
                 />
@@ -510,14 +538,14 @@ export default function SalonPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  City <span className="text-red-500">*</span>
+                  {t("clientPanel.salon.city")} <span className="text-red-500">*</span>
                 </label>
                 <Input
                   value={formData.city}
                   onChange={(e) =>
                     setFormData({ ...formData, city: e.target.value })
                   }
-                  placeholder="Enter city"
+                  placeholder={t("clientPanel.salon.enterCity")}
                   required
                   disabled={!isEditing}
                 />
@@ -526,14 +554,14 @@ export default function SalonPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Address <span className="text-red-500">*</span>
+                {t("clientPanel.salon.address")} <span className="text-red-500">*</span>
               </label>
               <Input
                 value={formData.address}
                 onChange={(e) =>
                   setFormData({ ...formData, address: e.target.value })
                 }
-                placeholder="Enter full address"
+                placeholder={t("clientPanel.salon.enterAddress")}
                 required
                 disabled={!isEditing}
               />
@@ -542,14 +570,14 @@ export default function SalonPage() {
             <div className="grid md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Postal Code
+                  {t("clientPanel.salon.postalCode")}
                 </label>
                 <Input
                   value={formData.postalCode}
                   onChange={(e) =>
                     setFormData({ ...formData, postalCode: e.target.value })
                   }
-                  placeholder="Postal code"
+                  placeholder={t("clientPanel.salon.postalCodePlaceholder")}
                   disabled={!isEditing}
                 />
               </div>
@@ -595,14 +623,14 @@ export default function SalonPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Description
+                {t("clientPanel.salon.descriptionLabel")}
               </label>
               <Textarea
                 value={formData.description}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
-                placeholder="Describe your salon..."
+                placeholder={t("clientPanel.salon.describeSalon")}
                 rows={4}
                 disabled={!isEditing}
               />
@@ -612,27 +640,27 @@ export default function SalonPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Contact Information</CardTitle>
+            <CardTitle>{t("clientPanel.salon.contactInformation")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Phone
+                  {t("clientPanel.salon.phone")}
                 </label>
                 <Input
                   value={formData.phone}
                   onChange={(e) =>
                     setFormData({ ...formData, phone: e.target.value })
                   }
-                  placeholder="Phone number"
+                  placeholder={t("clientPanel.salon.phoneNumber")}
                   disabled={!isEditing}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Website
+                  {t("clientPanel.salon.website")}
                 </label>
                 <Input
                   value={formData.website}
@@ -663,7 +691,7 @@ export default function SalonPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Working Hours</CardTitle>
+            <CardTitle>{t("clientPanel.salon.workingHours")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {DAYS.map((day) => (
@@ -732,7 +760,7 @@ export default function SalonPage() {
                 )}
                 {workingHours[day.key].closed && (
                   <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Closed
+                    {t("clientPanel.salon.closed")}
                   </span>
                 )}
               </div>
@@ -742,13 +770,13 @@ export default function SalonPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Images</CardTitle>
+            <CardTitle>{t("clientPanel.salon.images")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Main Image */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Main Image
+                {t("clientPanel.salon.mainImage")}
               </label>
               {image && (
                 <div className="relative inline-block mb-2">
@@ -783,7 +811,7 @@ export default function SalonPage() {
                     onClick={() => imageInputRef.current?.click()}
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    {image ? "Change Image" : "Upload Image"}
+                    {image ? t("clientPanel.salon.changeImage") : t("clientPanel.salon.uploadImage")}
                   </Button>
                 </div>
               )}
@@ -792,7 +820,7 @@ export default function SalonPage() {
             {/* Logo */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Logo
+                {t("clientPanel.salon.logo")}
               </label>
               {logo && (
                 <div className="relative inline-block mb-2">
@@ -827,7 +855,7 @@ export default function SalonPage() {
                     onClick={() => logoInputRef.current?.click()}
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    {logo ? "Change Logo" : "Upload Logo"}
+                    {logo ? t("clientPanel.salon.changeLogo") : t("clientPanel.salon.uploadLogo")}
                   </Button>
                 </div>
               )}
@@ -836,7 +864,7 @@ export default function SalonPage() {
             {/* Gallery Images */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Gallery Images
+                {t("clientPanel.salon.galleryImages")}
               </label>
               {images.length > 0 && (
                 <div className="grid grid-cols-4 gap-4 mb-4">
@@ -878,7 +906,7 @@ export default function SalonPage() {
                     onClick={() => imagesInputRef.current?.click()}
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    Add Gallery Images
+                    {t("clientPanel.salon.addGalleryImages")}
                   </Button>
                 </div>
               )}
@@ -894,7 +922,7 @@ export default function SalonPage() {
               variant="outline"
               onClick={() => setIsEditing(true)}
             >
-              Edit Salon
+              {t("clientPanel.salon.editSalon")}
             </Button>
           )}
           {isEditing && (
@@ -910,19 +938,19 @@ export default function SalonPage() {
                     setSuccess("");
                   }}
                 >
-                  Cancel
+                  {t("clientPanel.salon.cancel")}
                 </Button>
               )}
               <Button type="submit" disabled={isSaving}>
                 {isSaving ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
+                    {t("clientPanel.salon.saving")}
                   </>
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    {salon ? "Update Salon" : "Create Salon"}
+                    {salon ? t("clientPanel.salon.updateSalon") : t("clientPanel.salon.createSalon")}
                   </>
                 )}
               </Button>
@@ -930,6 +958,420 @@ export default function SalonPage() {
           )}
         </div>
       </form>
+
+      {/* Live Salon Page Preview Modal (for approved salons) */}
+      {showLivePreview && salon?.id && (
+        <LiveSalonPreviewModal
+          salonId={salon.id}
+          onClose={() => setShowLivePreview(false)}
+        />
+      )}
+
+      {/* Preview Modal (for pending/editing salons) */}
+      {showPreview && (
+        <SalonPreviewModal
+          salon={{
+            id: salon?.id || "",
+            name: formData.name || salon?.name || "",
+            address: formData.address || salon?.address || "",
+            city: formData.city || salon?.city || "",
+            postalCode: formData.postalCode || salon?.postalCode || "",
+            phone: formData.phone || salon?.phone || "",
+            email: session?.user?.email || salon?.email || "",
+            website: formData.website || salon?.website || "",
+            latitude: formData.latitude ? parseFloat(formData.latitude) : salon?.latitude,
+            longitude: formData.longitude ? parseFloat(formData.longitude) : salon?.longitude,
+            image: image?.url || salon?.image,
+            logo: logo?.url || salon?.logo,
+            images: images.length > 0 ? images.map(img => img.url) : (salon?.images || []),
+            description: formData.description || salon?.description || "",
+            workingHours: Object.keys(workingHours).length > 0 ? workingHours : (salon?.workingHours || {}),
+            isActive: salon?.isActive || false,
+            isBioDiamond: salon?.isBioDiamond || false,
+            status: salon?.status || "PENDING_REVIEW",
+          }}
+          onClose={() => {
+            setShowPreview(false);
+            setPreviewImageIndex(0);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Live Salon Page Preview Modal Component (for approved salons)
+function LiveSalonPreviewModal({
+  salonId,
+  onClose,
+}: {
+  salonId: string;
+  onClose: () => void;
+}) {
+  const [isVisible, setIsVisible] = useState(false);
+  const [shouldRender, setShouldRender] = useState(true);
+
+  useEffect(() => {
+    setShouldRender(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setIsVisible(true);
+      });
+    });
+  }, []);
+
+  const handleClose = () => {
+    setIsVisible(false);
+    setTimeout(() => {
+      onClose();
+      setShouldRender(false);
+    }, 300);
+  };
+
+  if (!shouldRender) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div 
+        className={`fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-out ${
+          isVisible ? 'opacity-100' : 'opacity-0'
+        }`}
+        onClick={handleClose}
+      />
+      
+      {/* Modal */}
+      <div className={`relative w-full max-w-7xl h-[90vh] bg-white rounded-lg shadow-2xl transition-all duration-300 ease-out ${
+        isVisible 
+          ? 'opacity-100 scale-100 translate-y-0' 
+          : 'opacity-0 scale-95 translate-y-4'
+      }`}>
+        {/* Close Button */}
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-white flex items-center justify-center hover:bg-gray-100 transition-colors shadow-lg"
+          aria-label="Close"
+        >
+          <X className="w-5 h-5 text-gray-900" />
+        </button>
+
+        {/* Iframe for live salon page */}
+        <iframe
+          src={`/salons/${salonId}`}
+          className="w-full h-full rounded-lg"
+          style={{ border: 'none' }}
+          title="Salon Preview"
+        />
+      </div>
+    </div>
+  );
+}
+
+// Salon Preview Modal Component
+function SalonPreviewModal({
+  salon,
+  onClose,
+}: {
+  salon: Salon;
+  onClose: () => void;
+}) {
+  const { t } = useLanguage();
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isVisible, setIsVisible] = useState(false);
+  const [shouldRender, setShouldRender] = useState(true);
+
+  useEffect(() => {
+    setShouldRender(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setIsVisible(true);
+      });
+    });
+  }, []);
+
+  const handleClose = () => {
+    setIsVisible(false);
+    setTimeout(() => {
+      onClose();
+      setShouldRender(false);
+    }, 300);
+  };
+
+  if (!shouldRender) return null;
+
+  const formatWorkingHours = (workingHours: any): string => {
+    if (!workingHours || typeof workingHours !== "object") {
+      return t("findSalon.contactForHours");
+    }
+
+    const days = [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+      "sunday",
+    ];
+    const dayNames: { [key: string]: string } = {
+      monday: t("findSalon.dayNamesFull.monday"),
+      tuesday: t("findSalon.dayNamesFull.tuesday"),
+      wednesday: t("findSalon.dayNamesFull.wednesday"),
+      thursday: t("findSalon.dayNamesFull.thursday"),
+      friday: t("findSalon.dayNamesFull.friday"),
+      saturday: t("findSalon.dayNamesFull.saturday"),
+      sunday: t("findSalon.dayNamesFull.sunday"),
+    };
+
+    const hoursList: string[] = [];
+    days.forEach((day) => {
+      const dayData = workingHours[day];
+      if (dayData && !dayData.closed) {
+        hoursList.push(
+          `${dayNames[day]}: ${dayData.open || "?"} - ${dayData.close || "?"}`
+        );
+      } else if (dayData?.closed) {
+        hoursList.push(`${dayNames[day]}: ${t("findSalon.closed")}`);
+      }
+    });
+
+    return hoursList.length > 0 ? hoursList.join("\n") : t("findSalon.contactForHours");
+  };
+
+  const galleryImages = salon?.images && salon.images.length > 0 
+    ? salon.images 
+    : salon?.image 
+      ? [salon.image] 
+      : [];
+
+  const nextImage = () => {
+    if (galleryImages.length > 0) {
+      setCurrentImageIndex((prev) => (prev + 1) % galleryImages.length);
+    }
+  };
+
+  const prevImage = () => {
+    if (galleryImages.length > 0) {
+      setCurrentImageIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      {/* Backdrop */}
+      <div 
+        className={`fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-out ${
+          isVisible ? 'opacity-100' : 'opacity-0'
+        }`}
+        onClick={handleClose}
+      />
+      
+      {/* Modal */}
+      <div className={`relative w-full max-w-7xl bg-brand-white rounded-lg shadow-2xl transition-all duration-300 ease-out my-8 ${
+        isVisible 
+          ? 'opacity-100 scale-100 translate-y-0' 
+          : 'opacity-0 scale-95 translate-y-4'
+      }`}>
+        {/* Close Button */}
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-white flex items-center justify-center hover:bg-gray-100 transition-colors shadow-lg"
+          aria-label="Close"
+        >
+          <X className="w-5 h-5 text-gray-900" />
+        </button>
+
+        {/* Preview Content */}
+        <div className="max-h-[90vh] overflow-y-auto">
+          {/* Gallery Hero Section */}
+          {galleryImages.length > 0 && (
+            <div className="relative w-full h-[40vh] sm:h-[45vh] lg:h-[50vh] overflow-hidden">
+              <div className="relative w-full h-full">
+                <img
+                  src={galleryImages[currentImageIndex]}
+                  alt={`${salon?.name} - Gallery ${currentImageIndex + 1}`}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                  }}
+                />
+                {/* Overlay gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
+                
+                {/* Navigation Buttons */}
+                {galleryImages.length > 1 && (
+                  <>
+                    <button
+                      onClick={prevImage}
+                      className="absolute left-4 sm:left-6 lg:left-8 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white text-brand-champagne hover:text-brand-black rounded-full p-3 sm:p-4 shadow-lg transition-all duration-200 hover:scale-110"
+                      aria-label="Previous image"
+                    >
+                      <ChevronLeft className="h-6 w-6 sm:h-8 sm:w-8" />
+                    </button>
+                    <button
+                      onClick={nextImage}
+                      className="absolute right-4 sm:right-6 lg:right-8 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white text-brand-champagne hover:text-brand-black rounded-full p-3 sm:p-4 shadow-lg transition-all duration-200 hover:scale-110"
+                      aria-label="Next image"
+                    >
+                      <ChevronRight className="h-6 w-6 sm:h-8 sm:w-8" />
+                    </button>
+                  </>
+                )}
+
+                {/* Image Counter */}
+                {galleryImages.length > 1 && (
+                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-black/50 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-light">
+                    {currentImageIndex + 1} / {galleryImages.length}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Hero Section */}
+          <div className="bg-gradient-to-b from-brand-sweet-bianca/40 via-brand-white to-brand-white py-8 sm:py-10 px-4 sm:px-6 lg:px-8">
+            <div className="container mx-auto max-w-7xl">
+              <div className="flex flex-col lg:flex-row gap-10 lg:gap-12 items-start">
+                {/* Salon Image/Logo */}
+                <div className="flex-shrink-0 w-full lg:w-auto">
+                  {salon.logo ? (
+                    <div className="relative w-full sm:w-64 h-64 rounded-2xl overflow-hidden bg-white shadow-xl border-2 border-brand-sweet-bianca/50 flex items-center justify-center">
+                      <img
+                        src={salon.logo}
+                        alt={salon.name}
+                        className="w-full h-full object-contain p-6"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = "none";
+                        }}
+                      />
+                    </div>
+                  ) : salon.image ? (
+                    <div className="relative w-full sm:w-64 h-64 rounded-2xl overflow-hidden bg-gray-50 shadow-xl">
+                      <img
+                        src={salon.image}
+                        alt={salon.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = "none";
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full sm:w-64 h-64 rounded-2xl bg-brand-sweet-bianca/20 flex items-center justify-center border-2 border-brand-sweet-bianca/30">
+                      <MapPin className="h-20 w-20 text-brand-champagne/40" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Salon Info */}
+                <div className="flex-1 w-full">
+                  <div className="mb-6">
+                    <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+                      <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-medium text-brand-black leading-tight">
+                        {salon.name || "Salon Name"}
+                      </h1>
+                      {salon.isBioDiamond && (
+                        <div className="inline-flex items-center gap-2 bg-brand-champagne text-white px-5 py-2.5 rounded-full text-sm font-medium shadow-md">
+                          <Sparkles className="h-4 w-4" />
+                          {t("findSalon.bioDiamondSalon")}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Address */}
+                    <div className="flex items-start gap-3 mb-6">
+                      <MapPin className="h-5 w-5 text-brand-champagne flex-shrink-0 mt-1" />
+                      <div className="text-brand-champagne font-light">
+                        <p className="font-medium text-base">{salon.address || "Address"}</p>
+                        <p className="text-sm">
+                          {salon.city || "City"}
+                          {salon.postalCode && `, ${salon.postalCode}`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Contact Information */}
+                  <div className="flex flex-wrap gap-3">
+                    {salon.phone && (
+                      <div className="group flex items-center gap-2.5 px-5 py-3 bg-white border-2 border-brand-sweet-bianca rounded-xl shadow-sm">
+                        <Phone className="h-4 w-4" />
+                        <span className="font-light text-sm">{salon.phone}</span>
+                      </div>
+                    )}
+                    {salon.email && (
+                      <div className="group flex items-center gap-2.5 px-5 py-3 bg-white border-2 border-brand-sweet-bianca rounded-xl shadow-sm">
+                        <Mail className="h-4 w-4" />
+                        <span className="font-light text-sm">{t("findSalon.email")}</span>
+                      </div>
+                    )}
+                    {salon.website && (
+                      <div className="group flex items-center gap-2.5 px-5 py-3 bg-white border-2 border-brand-sweet-bianca rounded-xl shadow-sm">
+                        <Globe className="h-4 w-4" />
+                        <span className="font-light text-sm">{t("findSalon.website")}</span>
+                        <ExternalLink className="h-3 w-3 opacity-60" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Content Section */}
+          <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8">
+            {/* Opening Hours & Map Section */}
+            {(salon.workingHours || (salon.latitude && salon.longitude)) && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+                {/* Opening Hours */}
+                {salon.workingHours && (
+                  <div className="bg-white rounded-2xl shadow-sm border border-brand-sweet-bianca/30 p-6 sm:p-8">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="p-2 bg-brand-sweet-bianca/40 rounded-lg">
+                        <Clock className="h-5 w-5 text-brand-champagne" />
+                      </div>
+                      <h2 className="text-xl sm:text-2xl font-heading font-medium text-brand-black">
+                        {t("findSalon.openingHours")}
+                      </h2>
+                    </div>
+                    <div className="text-sm sm:text-base text-brand-black/70 font-light leading-relaxed whitespace-pre-line space-y-1">
+                      {formatWorkingHours(salon.workingHours).split('\n').map((line, idx) => (
+                        <div key={idx} className="py-1.5 border-b border-brand-sweet-bianca/20 last:border-0">
+                          {line}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Map */}
+                {salon.latitude && salon.longitude && (
+                  <div className="bg-white rounded-2xl shadow-sm border border-brand-sweet-bianca/30 overflow-hidden">
+                    <div className="h-64 sm:h-80 lg:h-full min-h-[300px] flex items-center justify-center bg-gray-100">
+                      <p className="text-gray-500">Map Preview</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* About Section */}
+            {salon.description && (
+              <div className="bg-white rounded-2xl p-8 sm:p-10 shadow-sm border border-brand-sweet-bianca/30">
+                <h2 className="text-2xl sm:text-3xl font-heading font-medium text-brand-black mb-6">
+                  {t("findSalon.about")}
+                </h2>
+                <p className="text-brand-black/80 font-light leading-relaxed text-base sm:text-lg whitespace-pre-line">
+                  {salon.description}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

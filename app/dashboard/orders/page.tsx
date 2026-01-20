@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatPrice } from "@/lib/utils";
 import { toast } from "@/components/ui/toast";
+import { useLanguage } from "@/contexts/language-context";
 import {
   Search,
   Filter,
@@ -50,6 +51,7 @@ interface Pagination {
 export default function OrderHistoryPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { t } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -102,7 +104,7 @@ export default function OrderHistoryPage() {
   };
 
   const handleCancelOrder = async (orderId: string) => {
-    if (!confirm("Are you sure you want to cancel this order?")) {
+    if (!confirm(t("clientPanel.orders.cancelConfirm"))) {
       return;
     }
 
@@ -191,9 +193,9 @@ export default function OrderHistoryPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Order History</h1>
+        <h1 className="text-4xl font-bold mb-2">{t("clientPanel.orders.title")}</h1>
         <p className="text-gray-600 dark:text-gray-400">
-          View all your past purchases and order details
+          {t("clientPanel.orders.description")}
         </p>
       </div>
 
@@ -205,7 +207,7 @@ export default function OrderHistoryPage() {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search by order ID or product name..."
+                placeholder={t("clientPanel.orders.searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -235,12 +237,12 @@ export default function OrderHistoryPage() {
               }}
               className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
             >
-              <option value="all">All Status</option>
-              <option value="PENDING">Pending</option>
-              <option value="PROCESSING">Processing</option>
-              <option value="SHIPPED">Shipped</option>
-              <option value="DELIVERED">Delivered</option>
-              <option value="CANCELLED">Cancelled</option>
+              <option value="all">{t("clientPanel.orders.allStatus")}</option>
+              <option value="PENDING">{t("clientPanel.orders.pending")}</option>
+              <option value="PROCESSING">{t("clientPanel.orders.processing")}</option>
+              <option value="SHIPPED">{t("clientPanel.orders.shipped")}</option>
+              <option value="DELIVERED">{t("clientPanel.orders.delivered")}</option>
+              <option value="CANCELLED">{t("clientPanel.orders.cancelled")}</option>
             </select>
 
             {/* Sort */}
@@ -250,9 +252,9 @@ export default function OrderHistoryPage() {
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
               >
-                <option value="date">Sort by Date</option>
-                <option value="total">Sort by Total</option>
-                <option value="status">Sort by Status</option>
+                <option value="date">{t("clientPanel.orders.sortByDate")}</option>
+                <option value="total">{t("clientPanel.orders.sortByTotal")}</option>
+                <option value="status">{t("clientPanel.orders.sortByStatus")}</option>
               </select>
               <Button
                 variant="outline"
@@ -271,12 +273,12 @@ export default function OrderHistoryPage() {
           <CardContent className="p-12 text-center">
             <p className="text-gray-600 dark:text-gray-400 mb-4 text-lg">
               {searchQuery || statusFilter !== "all"
-                ? "No orders found matching your filters."
-                : "You haven't placed any orders yet."}
+                ? t("clientPanel.orders.noOrdersFound")
+                : t("clientPanel.orders.noOrdersYet")}
             </p>
             {!searchQuery && statusFilter === "all" && (
               <Link href="/products">
-                <Button className="px-6 py-2">Start Shopping</Button>
+                <Button className="px-6 py-2">{t("clientPanel.orders.startShopping")}</Button>
               </Link>
             )}
           </CardContent>
@@ -289,7 +291,7 @@ export default function OrderHistoryPage() {
                 <CardHeader>
                   <div className="flex justify-between items-center flex-wrap gap-4">
                     <div>
-                      <CardTitle>Order #{order.id.slice(0, 8)}</CardTitle>
+                      <CardTitle>{t("clientPanel.orders.orderNumber", { id: order.id.slice(0, 8) })}</CardTitle>
                       <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                         {new Date(order.createdAt).toLocaleDateString("en-US", {
                           year: "numeric",
@@ -322,14 +324,14 @@ export default function OrderHistoryPage() {
                     ))}
                     {order.items.length > 3 && (
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        +{order.items.length - 3} more item(s)
+                        {t("clientPanel.orders.moreItems", { count: String(order.items.length - 3) })}
                       </p>
                     )}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Link href={`/dashboard/orders/${order.id}`}>
                       <Button variant="outline" size="sm">
-                        View Details →
+                        {t("clientPanel.orders.viewDetails")}
                       </Button>
                     </Link>
                     {canCancel(order.status) && (
@@ -342,10 +344,10 @@ export default function OrderHistoryPage() {
                         {cancellingOrderId === order.id ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Cancelling...
+                            {t("clientPanel.orders.cancelling")}
                           </>
                         ) : (
-                          "Cancel Order"
+                          t("clientPanel.orders.cancelOrder")
                         )}
                       </Button>
                     )}
@@ -356,7 +358,7 @@ export default function OrderHistoryPage() {
                         onClick={() => handleReorder(order)}
                       >
                         <RotateCcw className="h-4 w-4 mr-2" />
-                        Reorder
+                        {t("clientPanel.orders.reorder")}
                       </Button>
                     )}
                   </div>
@@ -373,17 +375,17 @@ export default function OrderHistoryPage() {
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
               >
-                Previous
+                {t("clientPanel.orders.previous")}
               </Button>
               <span className="text-sm text-gray-600 dark:text-gray-400">
-                Page {pagination.page} of {pagination.totalPages}
+                {t("clientPanel.orders.page", { current: String(pagination.page), total: String(pagination.totalPages) })}
               </span>
               <Button
                 variant="outline"
                 onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
                 disabled={currentPage === pagination.totalPages}
               >
-                Next
+                {t("clientPanel.orders.next")}
               </Button>
             </div>
           )}

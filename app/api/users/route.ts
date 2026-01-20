@@ -47,6 +47,8 @@ export async function GET(req: Request) {
         role: true,
         createdAt: true,
         updatedAt: true,
+        certificationId: true,
+        certificateUrl: true,
         orders: {
           select: {
             total: true,
@@ -64,6 +66,23 @@ export async function GET(req: Request) {
       },
     })
 
+    // Fetch pending certification names for users who have certificationId but no certification (pending approval)
+    const pendingCertificationIds = users
+      .filter(u => u.certificationId && !u.certification)
+      .map(u => u.certificationId!)
+      .filter((id, index, self) => self.indexOf(id) === index) // unique IDs
+    
+    const pendingCertifications = pendingCertificationIds.length > 0
+      ? await db.certification.findMany({
+          where: { id: { in: pendingCertificationIds } },
+          select: { id: true, name: true },
+        })
+      : []
+    
+    const pendingCertMap = new Map(
+      pendingCertifications.map(cert => [cert.id, cert.name])
+    )
+
     // Calculate total spent and order count for each user
     const usersWithStats = users.map((user) => {
       const orders = user.orders || []
@@ -73,6 +92,16 @@ export async function GET(req: Request) {
       )
       const orderCount = orders.length
 
+      // If user has certificationId but no certification object, include pending certification name
+      let certification = user.certification
+      if (!certification && user.certificationId) {
+        const pendingCertName = pendingCertMap.get(user.certificationId)
+        if (pendingCertName) {
+          // Return a special marker object to indicate pending status
+          certification = { id: user.certificationId, name: pendingCertName, pending: true } as any
+        }
+      }
+
       return {
         id: user.id,
         email: user.email,
@@ -81,8 +110,9 @@ export async function GET(req: Request) {
         permissions: null, // Field doesn't exist in database, return null
         isActive: true, // Field doesn't exist in database, default to true
         lastLoginAt: null, // Field doesn't exist in database, return null
-        certification: null, // Not fetched to avoid schema issues
-        certificateUrl: null, // Not fetched to avoid schema issues
+        certificationId: user.certificationId,
+        certificateUrl: user.certificateUrl,
+        certification: certification,
         createdAt: user.createdAt,
         totalSpent,
         orderCount,

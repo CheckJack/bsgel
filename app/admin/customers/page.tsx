@@ -18,6 +18,7 @@ interface Customer {
   email: string;
   name: string | null;
   role: string;
+  certificationId?: string | null;
   certification: Certification | null;
   certificateUrl: string | null;
   createdAt: string;
@@ -557,6 +558,9 @@ export default function AdminCustomersPage() {
                     Customer
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    Account Status
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Total Spent
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
@@ -579,12 +583,12 @@ export default function AdminCustomersPage() {
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {paginatedCustomers.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={7}
-                      className="px-6 py-12 text-center text-gray-500 dark:text-gray-400"
-                    >
-                      No customers found
-                    </td>
+                      <td
+                        colSpan={8}
+                        className="px-6 py-12 text-center text-gray-500 dark:text-gray-400"
+                      >
+                        No customers found
+                      </td>
                   </tr>
                 ) : (
                   paginatedCustomers.map((customer) => {
@@ -619,6 +623,38 @@ export default function AdminCustomersPage() {
                             </p>
                           </div>
                         </div>
+                      </td>
+
+                      {/* Account Status Column */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {(() => {
+                          const hasCertificationId = !!customer.certificationId;
+                          const hasCertificateUrl = !!customer.certificateUrl;
+                          const hasCertification = hasCertificationId && hasCertificateUrl;
+                          const isApproved = customer.certification && !(customer.certification as any).pending;
+                          const isPending = hasCertification && !isApproved;
+                          
+                          if (isPending) {
+                            const certName = customer.certification?.name || "Certification";
+                            return (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                                {certName}
+                              </span>
+                            );
+                          } else if (isApproved && customer.certification) {
+                            return (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                {customer.certification.name}
+                              </span>
+                            );
+                          } else {
+                            return (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                Active
+                              </span>
+                            );
+                          }
+                        })()}
                       </td>
 
                       {/* Total Spent Column */}

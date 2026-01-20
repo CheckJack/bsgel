@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { ClientSidebar } from "@/components/client/client-sidebar";
 import { ClientHeader } from "@/components/client/client-header";
 import { ToastContainer } from "@/components/ui/toast";
@@ -16,6 +16,47 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [navbarHeight, setNavbarHeight] = useState(120);
+
+  // Calculate navbar height dynamically
+  useEffect(() => {
+    const updateNavbarHeight = () => {
+      // Find the navbar wrapper element (the sticky container)
+      const navbar = document.querySelector('nav')?.closest('div[class*="sticky"]') as HTMLElement;
+      if (navbar) {
+        const height = navbar.offsetHeight;
+        setNavbarHeight(height);
+      } else {
+        // Fallback: try to find any element with sticky and z-[100]
+        const fallbackNavbar = Array.from(document.querySelectorAll('div')).find(
+          el => el.classList.contains('sticky') && 
+                (el.style.zIndex === '100' || el.className.includes('z-[100]'))
+        ) as HTMLElement;
+        if (fallbackNavbar) {
+          setNavbarHeight(fallbackNavbar.offsetHeight);
+        }
+      }
+    };
+
+    // Initial calculation with multiple attempts
+    updateNavbarHeight();
+    const timeout1 = setTimeout(updateNavbarHeight, 50);
+    const timeout2 = setTimeout(updateNavbarHeight, 200);
+    
+    // Update on resize
+    window.addEventListener("resize", updateNavbarHeight);
+    
+    // Use MutationObserver to watch for navbar changes
+    const observer = new MutationObserver(updateNavbarHeight);
+    observer.observe(document.body, { childList: true, subtree: true });
+    
+    return () => {
+      window.removeEventListener("resize", updateNavbarHeight);
+      clearTimeout(timeout1);
+      clearTimeout(timeout2);
+      observer.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -64,9 +105,12 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="fixed inset-0 flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex md:w-64 md:flex-shrink-0 shadow-sm">
+      <aside 
+        className="hidden md:block md:fixed md:left-0 md:bottom-0 md:w-64 md:flex-shrink-0 shadow-sm z-30 overflow-y-auto"
+        style={{ top: `${navbarHeight}px` }}
+      >
         <ClientSidebar />
       </aside>
 
@@ -84,13 +128,18 @@ export default function DashboardLayout({
         />
       </aside>
 
-      {/* Main Content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Top Header */}
-        <ClientHeader onMenuClick={() => setIsMobileMenuOpen(true)} />
+      {/* Main Content - Account for navbar height */}
+      <div className="md:ml-64 flex flex-col flex-1">
+        {/* Top Header - Sticky below navbar, no gap */}
+        <div 
+          className="flex-shrink-0 sticky z-20 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
+          style={{ top: `${navbarHeight}px` }}
+        >
+          <ClientHeader onMenuClick={() => setIsMobileMenuOpen(true)} />
+        </div>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+        <main className="flex-1 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
           <div className="p-6 md:p-8">
             {children}
           </div>

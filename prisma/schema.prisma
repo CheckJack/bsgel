@@ -46,7 +46,7 @@ model User {
   email           String         @unique
   password        String
   name            String?
-  image           String?
+  image           String?        @db.Text // Support base64 data URLs which can be very long
   role            UserRole       @default(USER)
   permissions     Json? // Store permissions as JSON: { "addProduct": "allow", "updateProduct": "deny", ... }
   isActive        Boolean        @default(true)

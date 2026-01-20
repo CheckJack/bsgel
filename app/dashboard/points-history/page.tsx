@@ -24,16 +24,56 @@ export default function PointsHistoryPage() {
   const router = useRouter();
   const [transactions, setTransactions] = useState<PointsTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingFeatureSettings, setIsLoadingFeatureSettings] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [featureSettings, setFeatureSettings] = useState<{
+    rewardsEnabled: boolean;
+    affiliateEnabled: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
     } else if (session) {
+      fetchFeatureSettings();
+    }
+  }, [session, status, router]);
+
+  useEffect(() => {
+    if (!featureSettings) return;
+    
+    if (!featureSettings.rewardsEnabled && session) {
+      router.push("/dashboard");
+      return;
+    }
+    
+    if (featureSettings.rewardsEnabled && session) {
       fetchTransactions();
     }
-  }, [session, status, router, currentPage]);
+  }, [featureSettings?.rewardsEnabled, session, router, currentPage]);
+
+  const fetchFeatureSettings = async () => {
+    try {
+      setIsLoadingFeatureSettings(true);
+      // Use fetch with cache for better performance
+      const res = await fetch("/api/admin/feature-settings", {
+        next: { revalidate: 30 }, // Cache for 30 seconds
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFeatureSettings({
+          rewardsEnabled: data.rewardsEnabled ?? true,
+          affiliateEnabled: data.affiliateEnabled ?? true,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch feature settings:", error);
+      setFeatureSettings({ rewardsEnabled: false, affiliateEnabled: false });
+    } finally {
+      setIsLoadingFeatureSettings(false);
+    }
+  };
 
   const fetchTransactions = async () => {
     try {
@@ -58,7 +98,7 @@ export default function PointsHistoryPage() {
     MANUAL_ADJUSTMENT: "Adjustment",
   };
 
-  if (status === "loading" || isLoading) {
+  if (status === "loading" || isLoading || isLoadingFeatureSettings || !featureSettings) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />

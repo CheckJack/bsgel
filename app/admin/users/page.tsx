@@ -18,6 +18,12 @@ interface Permission {
   createCoupon?: "allow" | "deny";
 }
 
+interface Certification {
+  id: string;
+  name: string;
+  pending?: boolean; // Indicates if certification is pending approval
+}
+
 interface User {
   id: string;
   email: string;
@@ -26,6 +32,9 @@ interface User {
   permissions?: Permission | null;
   isActive?: boolean;
   lastLoginAt?: string | null;
+  certificationId?: string | null;
+  certificateUrl?: string | null;
+  certification?: Certification | null;
   createdAt: string;
   totalSpent: number;
   orderCount: number;
@@ -430,13 +439,46 @@ export default function AdminUsersPage() {
 
                         {/* Status Column */}
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            user.isActive !== false
-                              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                              : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                          }`}>
-                            {user.isActive !== false ? t("users.active") : t("users.inactive")}
-                          </span>
+                          {(() => {
+                            // Check if user has certificationId and certificateUrl (professional with uploaded cert)
+                            const hasCertificationId = !!user.certificationId;
+                            const hasCertificateUrl = !!user.certificateUrl;
+                            const hasCertification = hasCertificationId && hasCertificateUrl;
+                            
+                            // Check if certification is approved (has certification object without pending flag)
+                            const isApproved = user.certification && !user.certification.pending;
+                            
+                            // Check if certification is pending (has certificationId but no approved certification)
+                            const isPending = hasCertification && !isApproved;
+                            
+                            if (isPending) {
+                              // Pending approval - show orange
+                              const certName = user.certification?.name || "Certification";
+                              return (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                                  {certName}
+                                </span>
+                              );
+                            } else if (isApproved && user.certification) {
+                              // Approved - show green with certification name
+                              return (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                  {user.certification.name}
+                                </span>
+                              );
+                            } else {
+                              // No certification - show active/inactive status
+                              return (
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  user.isActive !== false
+                                    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                    : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                                }`}>
+                                  {user.isActive !== false ? t("users.active") : t("users.inactive")}
+                                </span>
+                              );
+                            }
+                          })()}
                         </td>
 
                         {/* Email Column */}
@@ -969,23 +1011,49 @@ export default function AdminUsersPage() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     {t("common.status")}
                   </label>
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                    selectedUser.isActive !== false
-                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                      : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                  }`}>
-                    {selectedUser.isActive !== false ? (
-                      <>
-                        <CheckCircle2 className="h-4 w-4 mr-1" />
-                        {t("users.active")}
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="h-4 w-4 mr-1" />
-                        {t("users.inactive")}
-                      </>
-                    )}
-                  </span>
+                  {(() => {
+                    const hasCertificationId = !!selectedUser.certificationId;
+                    const hasCertificateUrl = !!selectedUser.certificateUrl;
+                    const hasCertification = hasCertificationId && hasCertificateUrl;
+                    const isApproved = selectedUser.certification && !selectedUser.certification.pending;
+                    const isPending = hasCertification && !isApproved;
+                    
+                    if (isPending) {
+                      const certName = selectedUser.certification?.name || "Certification";
+                      return (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                          Pending approval of certification: {certName}
+                        </span>
+                      );
+                    } else if (isApproved && selectedUser.certification) {
+                      return (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                          <CheckCircle2 className="h-4 w-4 mr-1" />
+                          {selectedUser.certification.name}
+                        </span>
+                      );
+                    } else {
+                      return (
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                          selectedUser.isActive !== false
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                            : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                        }`}>
+                          {selectedUser.isActive !== false ? (
+                            <>
+                              <CheckCircle2 className="h-4 w-4 mr-1" />
+                              {t("users.active")}
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="h-4 w-4 mr-1" />
+                              {t("users.inactive")}
+                            </>
+                          )}
+                        </span>
+                      );
+                    }
+                  })()}
                 </div>
 
                 {/* Permissions */}
