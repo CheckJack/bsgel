@@ -643,7 +643,6 @@ export const en = {
     evoProducts: "Evo Products",
     geminiProducts: "Gemini Products",
     ethosProducts: "Ethos Products",
-    loadingProducts: "Loading products...",
     noBioGelProducts: "No BIO Gel products found.",
     noSpaProducts: "No SPA products found.",
     noEvoProducts: "No Evo products found.",

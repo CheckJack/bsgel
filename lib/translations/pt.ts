@@ -647,7 +647,6 @@ export const pt = {
     evoProducts: "Produtos Evo",
     geminiProducts: "Produtos Gemini",
     ethosProducts: "Produtos Ethos",
-    loadingProducts: "A carregar produtos...",
     noBioGelProducts: "Nenhum produto BIO Gel encontrado.",
     noSpaProducts: "Nenhum produto SPA encontrado.",
     noEvoProducts: "Nenhum produto Evo encontrado.",

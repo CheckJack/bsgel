@@ -13,7 +13,7 @@ export function MoodyJewelsBanner() {
         {/* Full Background Image */}
         <div className="absolute inset-0 w-full h-full">
           <Image
-            src="/Nova Coleção (1920 x 800 px).png"
+            src="/nova-colecao-banner.png"
             alt="Moody Jewels Collection"
             fill
             className="object-cover object-center lg:object-right"
