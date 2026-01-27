@@ -102,18 +102,28 @@ export function ShopMegaMenu({ isOpen, onClose, onMouseEnter }: ShopMegaMenuProp
       name: t("nav.shopMenu.bioGel"), 
       href: "/bio-gel",
       children: [
-        { name: t("nav.shopMenu.treatmentGels"), href: "/bio-gel/treatment-gels" },
-        { name: t("nav.shopMenu.colorGels"), href: "/bio-gel/color-gels" }
+        { name: t("nav.shopMenu.treatmentGels"), href: "/bio-gel/treatment-gels" }
       ]
     },
     { 
-      name: t("nav.shopMenu.gemini"), 
-      href: "/gemini",
+      name: t("nav.shopMenu.evo"), 
+      href: "/evo",
       children: [
-        { name: t("nav.shopMenu.reds"), href: "/gemini/reds" },
-        { name: t("nav.shopMenu.pinks"), href: "/gemini/pinks" },
-        { name: t("nav.shopMenu.nudesNeutralsBrowns"), href: "/gemini/nudes-neutrals-browns" },
-        { name: t("nav.shopMenu.orangesCoralsYellows"), href: "/gemini/oranges-corals-yellows" }
+        { name: t("nav.shopMenu.treatmentBaseGels"), href: "/evo/treatment-base-gels" },
+        { name: t("nav.shopMenu.topCoats"), href: "/evo/top-coats" }
+      ]
+    },
+    { 
+      name: t("nav.shopMenu.colours"), 
+      href: "/colours",
+      children: [
+        { name: t("nav.shopMenu.redsBrowns"), href: "/colours/reds-browns" },
+        { name: t("nav.shopMenu.pinksPurples"), href: "/colours/pinks-purples" },
+        { name: t("nav.shopMenu.whitesNudes"), href: "/colours/whites-nudes" },
+        { name: t("nav.shopMenu.orangesYellows"), href: "/colours/oranges-yellows" },
+        { name: t("nav.shopMenu.brights"), href: "/colours/brights" },
+        { name: t("nav.shopMenu.bluesGreens"), href: "/colours/blues-greens" },
+        { name: t("nav.shopMenu.fluorescents"), href: "/colours/fluorescents" }
       ]
     },
     { 
@@ -132,13 +142,8 @@ export function ShopMegaMenu({ isOpen, onClose, onMouseEnter }: ShopMegaMenuProp
       ]
     },
     { 
-      name: t("nav.shopMenu.evo"), 
-      href: "/evo",
-      children: [
-        { name: t("nav.shopMenu.treatmentBaseGels"), href: "/evo/treatment-base-gels" },
-        { name: t("nav.shopMenu.colourGels"), href: "/evo/colour-gels" },
-        { name: t("nav.shopMenu.topCoats"), href: "/evo/top-coats" }
-      ]
+      name: t("nav.shopMenu.gemini"), 
+      href: "/gemini"
     },
   ];
 

@@ -175,7 +175,7 @@ export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDar
       </div>
 
       {/* Dark overlay for better text readability */}
-      {showDarkOverlay && (currentSlideData.title || currentSlideData.titleLine2 || currentSlideData.description) && (
+      {showDarkOverlay && (currentSlideData.title || currentSlideData.titleLine2) && (
         <div className="absolute inset-0 bg-black/40 z-[5]" />
       )}
 
@@ -198,7 +198,7 @@ export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDar
       )}
 
       {/* Title and Button Content - Bottom Left */}
-      {(currentSlideData.title || currentSlideData.titleLine2 || currentSlideData.description || currentSlideData.buttonText) && (
+      {(currentSlideData.title || currentSlideData.titleLine2 || currentSlideData.buttonText) && (
         <div className="absolute bottom-8 sm:bottom-10 md:bottom-12 lg:bottom-16 xl:bottom-20 left-4 sm:left-6 md:left-8 lg:left-12 xl:left-16 z-10">
           {(currentSlideData.title || currentSlideData.titleLine2) && (
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-light text-left mb-4 md:mb-6 text-brand-white tracking-tight leading-tight">
@@ -209,11 +209,6 @@ export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDar
                 <span className="block">{currentSlideData.titleLine2}</span>
               )}
             </h1>
-          )}
-          {currentSlideData.description && (
-            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-left text-brand-white mb-6 md:mb-8 max-w-2xl font-futura font-normal">
-              {currentSlideData.description}
-            </p>
           )}
           {currentSlideData.buttonText && currentSlideData.buttonLink && (
             <Link 
