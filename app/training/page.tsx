@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
 import { Calendar, Clock, MapPin, Users, BookOpen, Loader2 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { TrainingCalendar } from "@/components/training/training-calendar";
 import { useLanguage } from "@/contexts/language-context";
 
@@ -343,6 +344,50 @@ export default function TrainingPage() {
   return (
     <>
       <HeroSlider slides={slides} autoPlayInterval={5000} className="h-[50vh] md:h-[60vh]" />
+      
+      {/* Training Banner Section */}
+      <section className="w-full bg-white py-12 md:py-16 px-4">
+        <div className="container mx-auto max-w-6xl text-center">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium text-brand-black mb-3 md:mb-4">
+            {t("training.bannerTitle")}
+          </h2>
+          <p className="text-xl md:text-2xl lg:text-3xl font-light text-brand-black mb-6 md:mb-8">
+            {t("training.bannerSubtitle")}
+          </p>
+          <div className="w-24 h-1 bg-brand-champagne mx-auto mb-4"></div>
+        </div>
+      </section>
+
+      {/* Two Column Section - Text and Image */}
+      <section className="w-full bg-white overflow-hidden">
+        <div className="flex flex-col lg:flex-row">
+          {/* Left Column - Text Content */}
+          <div className="w-full lg:w-[55%] px-4 md:px-6 lg:px-8 xl:px-12 py-12 md:py-16 lg:py-20 flex items-center">
+            <div className="w-full max-w-2xl space-y-6">
+              <p className="text-xl md:text-2xl font-light text-brand-black leading-relaxed">
+                {t("training.upgradeParagraph1")}
+              </p>
+              <p className="text-xl md:text-2xl font-light text-brand-black leading-relaxed">
+                {t("training.upgradeParagraph2")}
+              </p>
+            </div>
+          </div>
+
+          {/* Right Column - Image (connected to right border) */}
+          <div className="w-full lg:w-[45%] relative h-[300px] md:h-[350px] lg:h-[400px]">
+            <Image
+              src="/Untitled design (73).png"
+              alt="BIO Sculpture Therapist"
+              fill
+              className="object-cover object-center"
+              sizes="(max-width: 1024px) 100vw, 45vw"
+              priority
+              quality={100}
+            />
+          </div>
+        </div>
+      </section>
+
       <div className="min-h-screen bg-brand-white">
         {/* Main Content Section */}
         <section className="py-8 md:py-12 px-4">

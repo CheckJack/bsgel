@@ -5,7 +5,6 @@ import Image from "next/image";
 import { HeroSlider } from "@/components/layout/hero-slider";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
-import { NailDiagnosisModal } from "@/components/ui/nail-diagnosis-modal";
 import TextGenerateEffect from "@/components/ui/text-generate-effect";
 import { useLanguage } from "@/contexts/language-context";
 
@@ -31,7 +30,6 @@ export default function EvoPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [categoryId, setCategoryId] = useState<string | undefined>();
   const [isScrolling, setIsScrolling] = useState(false);
-  const [showDiagnosisModal, setShowDiagnosisModal] = useState(false);
   const textSectionRef = useRef<HTMLElement>(null);
   const productsSectionRef = useRef<HTMLElement>(null);
 
@@ -48,49 +46,6 @@ export default function EvoPage() {
     fetchEvoProducts();
   }, []);
 
-  // Intersection Observer for showing diagnosis modal when products section is visible
-  useEffect(() => {
-    let observer: IntersectionObserver | null = null;
-    let lastShownTime = 0;
-    
-    const timer = setTimeout(() => {
-      if (!productsSectionRef.current) return;
-
-      // Check if user has already interacted with the modal in this session
-      const hasInteracted = sessionStorage.getItem("evo-modal-interacted") === "true";
-      if (hasInteracted) return;
-
-      observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            // Check again in case user interacted while scrolling
-            const hasInteractedNow = sessionStorage.getItem("evo-modal-interacted") === "true";
-            if (hasInteractedNow) return;
-
-            // Show modal when section is visible, but wait at least 2 seconds between shows
-            const now = Date.now();
-            if (entry.isIntersecting && (now - lastShownTime > 2000)) {
-              setShowDiagnosisModal(true);
-              lastShownTime = now;
-            }
-          });
-        },
-        {
-          threshold: 0.2, // Trigger when 20% of the section is visible
-          rootMargin: "0px",
-        }
-      );
-
-      observer.observe(productsSectionRef.current);
-    }, 1000);
-
-    return () => {
-      clearTimeout(timer);
-      if (observer && productsSectionRef.current) {
-        observer.unobserve(productsSectionRef.current);
-      }
-    };
-  }, []);
 
 
   const fetchEvoProducts = async () => {
@@ -210,19 +165,6 @@ export default function EvoPage() {
         </video>
       </section>
 
-      {/* Nail Diagnosis Modal */}
-      <NailDiagnosisModal 
-        isOpen={showDiagnosisModal} 
-        onClose={() => {
-          setShowDiagnosisModal(false);
-          // Mark as interacted in sessionStorage so it won't show again this session
-          sessionStorage.setItem("evo-modal-interacted", "true");
-        }}
-        onParticipate={() => {
-          // Mark as interacted in sessionStorage so it won't show again this session
-          sessionStorage.setItem("evo-modal-interacted", "true");
-        }}
-      />
     </>
   );
 }

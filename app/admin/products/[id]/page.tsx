@@ -64,8 +64,6 @@ function EditProductPageContent() {
   const showcasingSections = [
     { value: "treatment-gels", label: "Treatment Gels" },
     { value: "treatment-base-gels", label: "Treatment Base Gels" },
-    { value: "color-gels", label: "Color Gels (Bio Gel)" },
-    { value: "evo-color-gels", label: "Color Gels (Evo)" },
     { value: "top-coats", label: "Top Coats" },
     { value: "hand-care", label: "Hand Care" },
     { value: "foot-care", label: "Foot Care" },
@@ -73,6 +71,9 @@ function EditProductPageContent() {
     { value: "pinks", label: "Pinks" },
     { value: "nudes", label: "Nudes" },
     { value: "oranges", label: "Oranges" },
+    { value: "brights", label: "Brights" },
+    { value: "blues-greens", label: "Blues / Greens" },
+    { value: "fluorescents", label: "Fluorescents" },
   ];
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [attributes, setAttributes] = useState<Attribute[]>([]);

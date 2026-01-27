@@ -28,7 +28,7 @@ interface Product {
   } | null;
 }
 
-export default function ColorGelsPage() {
+export default function WhitesNudesPage() {
   const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,12 +43,12 @@ export default function ColorGelsPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [shouldShowId, setShouldShowId] = useState(false);
 
-  const fetchColorGelProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams({
-        showcasingSection: "color-gels",
+        showcasingSection: "nudes",
         page: currentPage.toString(),
         limit: "12",
         sortBy: sortBy,
@@ -68,7 +68,6 @@ export default function ColorGelsPage() {
         setProducts(data.products || []);
         setTotalPages(data.pagination.totalPages || 1);
       } else {
-        // Fallback for backward compatibility
         setProducts(Array.isArray(data) ? data : data.products || []);
         setTotalPages(1);
       }
@@ -82,15 +81,13 @@ export default function ColorGelsPage() {
   }, [currentPage, sortBy, minPrice, maxPrice]);
 
   useEffect(() => {
-    fetchColorGelProducts();
-    // Add id after component mounts to prevent browser auto-scroll
+    fetchProducts();
     const timer = setTimeout(() => {
       setShouldShowId(true);
     }, 100);
     return () => clearTimeout(timer);
-  }, [fetchColorGelProducts]);
+  }, [fetchProducts]);
 
-  // Ensure video plays
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.play().catch((error) => {
@@ -110,7 +107,6 @@ export default function ColorGelsPage() {
 
   return (
     <>
-      {/* Prevent automatic scroll to #products - runs immediately before React */}
       <script
         dangerouslySetInnerHTML={{
           __html: `
@@ -124,16 +120,13 @@ export default function ColorGelsPage() {
         }}
       />
       
-      {/* Custom Hero Section - Promotional Style */}
       <section className="relative w-full h-[50vh] md:h-[60vh] overflow-hidden">
-        {/* Dark overlay for better text readability */}
         <div className="absolute inset-0 bg-black/20 z-[1]"></div>
         
-        {/* Full Width Background Image */}
         <div className="absolute inset-0 w-full h-full">
           <Image
-            src="/gdsds.png"
-            alt="BIO Gel Color Products"
+            src="/cvncvky.png"
+            alt={t("productPagesExtended.coloursWhitesNudes.hero.alt")}
             fill
             className="object-cover object-center"
             priority
@@ -141,29 +134,27 @@ export default function ColorGelsPage() {
           />
         </div>
         
-        {/* Text Content Overlay - Left Aligned */}
         <div className="relative z-10 w-full h-full flex items-center">
           <div className="container mx-auto px-4 max-w-7xl">
             <div className="max-w-2xl">
               <div className="text-white space-y-1 drop-shadow-lg">
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  {t("productPagesExtended.colorGels.hero.line1")}
+                  {t("productPagesExtended.coloursWhitesNudes.hero.line1")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  {t("productPagesExtended.colorGels.hero.line2")}
+                  {t("productPagesExtended.coloursWhitesNudes.hero.line2")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  {t("productPagesExtended.colorGels.hero.line3")}
+                  {t("productPagesExtended.coloursWhitesNudes.hero.line3")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  {t("productPagesExtended.colorGels.hero.line4")}
+                  {t("productPagesExtended.coloursWhitesNudes.hero.line4")}
                 </p>
                 <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  {t("productPagesExtended.colorGels.hero.line5")}
+                  {t("productPagesExtended.coloursWhitesNudes.hero.line5")}
                 </p>
               </div>
               
-              {/* SHOP NOW Button */}
               <Link 
                 href="#products" 
                 className="inline-block mt-8"
@@ -183,38 +174,17 @@ export default function ColorGelsPage() {
           </div>
         </div>
       </section>
-
-      {/* Description Section */}
-      <section className="relative w-full bg-gradient-to-b from-brand-white to-gray-50/50 py-20 md:py-28 overflow-hidden">
-        {/* Decorative background elements */}
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-brand-champagne rounded-full blur-3xl"></div>
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-brand-champagne rounded-full blur-3xl"></div>
-        </div>
-        <div className="container mx-auto px-4 max-w-4xl relative z-10">
-          <div className="text-center" style={{ animation: 'fadeInUp 0.8s ease-out' }}>
-            <div className="inline-block mb-6">
-              <div className="h-1 w-20 bg-brand-champagne mx-auto"></div>
-            </div>
-            <p className="text-lg md:text-xl lg:text-2xl text-gray-800 leading-relaxed font-light">
-              {t("productPagesExtended.colorGels.description")}
-            </p>
-          </div>
-        </div>
-      </section>
       
-      {/* Color Gel Products Grid Section */}
       <section {...(shouldShowId && { id: "products" })} ref={productsSectionRef} className="relative w-full min-h-screen bg-gradient-to-b from-gray-50/30 via-white to-white pt-24 pb-16">
         <div className="container mx-auto px-4 max-w-7xl">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-12">
             <div>
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-light text-brand-black mb-3">
-                {t("products.colorGelProducts")}
+                {t("nav.shopMenu.whitesNudes")}
               </h2>
               <div className="h-1 w-16 bg-brand-champagne"></div>
             </div>
             
-            {/* Filter Toggle Button */}
             <Button
               variant="outline"
               onClick={() => setShowFilters(!showFilters)}
@@ -228,7 +198,6 @@ export default function ColorGelsPage() {
             </Button>
           </div>
 
-          {/* Filters Panel */}
           {showFilters && (
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 sm:p-6 mb-8">
               <div className="flex items-center justify-between mb-4">
@@ -243,7 +212,6 @@ export default function ColorGelsPage() {
                 </Button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Price Range */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-brand-black">{t("shop.priceRange")}</label>
                   <div className="flex gap-2">
@@ -272,7 +240,6 @@ export default function ColorGelsPage() {
                   </div>
                 </div>
 
-                {/* Sort By */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-brand-black">{t("shop.sortBy")}</label>
                   <Select
@@ -291,7 +258,6 @@ export default function ColorGelsPage() {
                   </Select>
                 </div>
 
-                {/* Clear Filters */}
                 {hasActiveFilters && (
                   <div className="flex items-end">
                     <Button
@@ -310,7 +276,7 @@ export default function ColorGelsPage() {
           {error ? (
             <div className="text-center py-12">
               <p className="text-red-600 mb-4">{error}</p>
-              <Button onClick={() => fetchColorGelProducts()} variant="outline">
+              <Button onClick={() => fetchProducts()} variant="outline">
                 {t("common.tryAgain")}
               </Button>
             </div>
@@ -321,7 +287,7 @@ export default function ColorGelsPage() {
             </div>
           ) : products.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-600 mb-4">{t("products.noColorGelProducts")}</p>
+              <p className="text-gray-600 mb-4">{t("products.noProductsFound")}</p>
               {hasActiveFilters && (
                 <Button onClick={clearFilters} variant="outline">
                   {t("shop.clearFilters")}
@@ -361,10 +327,8 @@ export default function ColorGelsPage() {
         </div>
       </section>
 
-      {/* Product Reviews Section */}
-      <ProductReviews showcasingSection="color-gels" />
+      <ProductReviews showcasingSection="nudes" />
 
-      {/* Full Width Video Background Section */}
       <section className="relative w-full h-[60vh] md:h-[70vh] overflow-hidden">
         <video
           ref={videoRef}
@@ -377,14 +341,13 @@ export default function ColorGelsPage() {
         >
           <source src="/Untitleddesign(4).mp4" type="video/mp4" />
         </video>
-        {/* Optional: Add overlay with call-to-action */}
         <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
           <div className="text-center text-white px-4">
             <h3 className="text-2xl md:text-3xl lg:text-4xl font-medium mb-4">
-              {t("productPagesExtended.colorGels.videoSection.title")}
+              {t("productPagesExtended.coloursWhitesNudes.videoSection.title")}
             </h3>
             <p className="text-lg md:text-xl mb-6 max-w-2xl font-light">
-              {t("productPagesExtended.colorGels.videoSection.description")}
+              {t("productPagesExtended.coloursWhitesNudes.videoSection.description")}
             </p>
             <Link 
               href="#products" 
@@ -397,7 +360,7 @@ export default function ColorGelsPage() {
               }}
             >
               <button className="px-5 py-2 md:px-6 md:py-2.5 border-2 border-white text-white font-normal text-sm md:text-base hover:bg-white/10 transition-colors backdrop-blur-sm">
-                {t("productPagesExtended.colorGels.videoSection.cta")}
+                {t("productPagesExtended.coloursWhitesNudes.videoSection.cta")}
               </button>
             </Link>
           </div>
@@ -406,3 +369,4 @@ export default function ColorGelsPage() {
     </>
   );
 }
+

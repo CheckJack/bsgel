@@ -88,7 +88,7 @@ export function ProductCard({
 
   return (
     <div 
-      className="flex flex-col h-full bg-white overflow-hidden"
+      className="flex flex-col h-full bg-white overflow-hidden px-4 sm:px-6 pt-4 sm:pt-6"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -170,7 +170,7 @@ export function ProductCard({
       </Link>
 
       {/* Product Details - Clean, minimal design matching reference */}
-      <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-4 sm:pb-6 bg-white flex flex-col flex-1">
+      <div className="pt-4 sm:pt-6 pb-4 sm:pb-6 bg-white flex flex-col flex-1 w-full">
         {/* Product Heading - Main title */}
         <Link href={`/products/${id}`} className="mb-2 sm:mb-3 group">
           <h2 className="text-base sm:text-lg font-medium text-black leading-tight group-hover:text-brand-champagne transition-colors line-clamp-2">

@@ -422,13 +422,6 @@ export function Navbar() {
                       {t("nav.shopMenu.treatmentGels")}
                     </Link>
                     <Link
-                      href="/bio-gel/color-gels"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
-                    >
-                      {t("nav.shopMenu.colorGels")}
-                    </Link>
-                    <Link
                       href="/gemini"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
@@ -436,32 +429,60 @@ export function Navbar() {
                       {t("nav.shopMenu.gemini")}
                     </Link>
                     <Link
-                      href="/gemini/reds"
+                      href="/colours"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
                     >
-                      {t("nav.shopMenu.reds")}
+                      {t("nav.shopMenu.colours")}
                     </Link>
                     <Link
-                      href="/gemini/pinks"
+                      href="/colours/reds-browns"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      {t("nav.shopMenu.pinks")}
+                      {t("nav.shopMenu.redsBrowns")}
                     </Link>
                     <Link
-                      href="/gemini/nudes-neutrals-browns"
+                      href="/colours/pinks-purples"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      {t("nav.shopMenu.nudesNeutralsBrowns")}
+                      {t("nav.shopMenu.pinksPurples")}
                     </Link>
                     <Link
-                      href="/gemini/oranges-corals-yellows"
+                      href="/colours/whites-nudes"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
-                      {t("nav.shopMenu.orangesCoralsYellows")}
+                      {t("nav.shopMenu.whitesNudes")}
+                    </Link>
+                    <Link
+                      href="/colours/oranges-yellows"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      {t("nav.shopMenu.orangesYellows")}
+                    </Link>
+                    <Link
+                      href="/colours/brights"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      {t("nav.shopMenu.brights")}
+                    </Link>
+                    <Link
+                      href="/colours/blues-greens"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      {t("nav.shopMenu.bluesGreens")}
+                    </Link>
+                    <Link
+                      href="/colours/fluorescents"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
+                    >
+                      {t("nav.shopMenu.fluorescents")}
                     </Link>
                     <Link
                       href="/ethos"
@@ -511,13 +532,6 @@ export function Navbar() {
                       className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
                     >
                       {t("nav.shopMenu.treatmentBaseGels")}
-                    </Link>
-                    <Link
-                      href="/evo/colour-gels"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block px-4 py-2 text-xs text-gray-400 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded pl-8"
-                    >
-                      {t("nav.shopMenu.colourGels")}
                     </Link>
                     <Link
                       href="/evo/top-coats"
