@@ -219,3 +219,31 @@ export async function GET(request: Request) {
   }
 }
 
+export async function DELETE(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session || !session.user || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Delete all logs
+    const result = await db.adminLog.deleteMany({});
+
+    return NextResponse.json({ 
+      success: true, 
+      message: "All logs deleted successfully",
+      count: result.count 
+    });
+  } catch (error: any) {
+    console.error("❌ FAILED TO DELETE ADMIN LOGS:", error);
+    return NextResponse.json(
+      { 
+        error: "Failed to delete admin logs",
+        details: error?.message || "Unknown error"
+      },
+      { status: 500 }
+    );
+  }
+}
+

@@ -83,8 +83,8 @@ export const authOptions: NextAuthOptions = {
               isFirstLogin = details.lastLoginAt === null
               hasCertificate = details.certificateUrl !== null && details.certificateUrl.trim() !== ""
               
-              // Get certification name if certificationId exists
-              if (userCertificationId) {
+              // Get certification name if certificationId exists AND not pending (certificateUrl must be null)
+              if (userCertificationId && (details.certificateUrl === null || details.certificateUrl === "")) {
                 const cert = await db.certification.findUnique({
                   where: { id: userCertificationId },
                   select: { name: true },

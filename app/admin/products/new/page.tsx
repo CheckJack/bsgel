@@ -53,6 +53,7 @@ export default function NewProductPage() {
     { value: "brights", label: "Brights" },
     { value: "blues-greens", label: "Blues / Greens" },
     { value: "fluorescents", label: "Fluorescents" },
+    { value: "gemini", label: "Gemini" },
   ];
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [selectedSize, setSelectedSize] = useState("");

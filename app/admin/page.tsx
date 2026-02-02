@@ -18,6 +18,11 @@ export default function AdminDashboardPage() {
     totalRevenue: 0,
     pendingOrders: 0,
   });
+  const [ordersTimeSeries, setOrdersTimeSeries] = useState<any[]>([]);
+  const [earningsTimeSeries, setEarningsTimeSeries] = useState<any[]>([]);
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [topProducts, setTopProducts] = useState<any[]>([]);
+  const [topCountries, setTopCountries] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [chartData, setChartData] = useState<any[]>([]);
@@ -29,50 +34,27 @@ export default function AdminDashboardPage() {
   const fetchStats = async () => {
     try {
       setIsLoading(true);
-      const [productsRes, ordersRes] = await Promise.all([
-        fetch("/api/products?limit=10000"),
-        fetch("/api/orders"),
-      ]);
+      const res = await fetch("/api/admin/dashboard/stats");
 
-      // Check for errors
-      if (!productsRes.ok) {
-        const errorData = await productsRes.json().catch(() => ({ error: "Unknown error" }));
-        console.error("❌ Failed to fetch products:", productsRes.status, errorData);
-      }
-      
-      if (!ordersRes.ok) {
-        const errorData = await ordersRes.json().catch(() => ({ error: "Unknown error" }));
-        console.error("❌ Failed to fetch orders:", ordersRes.status, errorData);
-      }
-
-      if (productsRes.ok && ordersRes.ok) {
-        const productsData = await productsRes.json();
-        const ordersData = await ordersRes.json();
+      if (res.ok) {
+        const data = await res.json();
         
-        // Handle different response formats - use pagination.total if available for accurate count
-        const products = Array.isArray(productsData) ? productsData : (productsData.products || []);
-        const orders = Array.isArray(ordersData) ? ordersData : (ordersData.orders || []);
-        
-        // Use pagination.total if available, otherwise count the array
-        const totalProducts = productsData.pagination?.total ?? (Array.isArray(products) ? products.length : 0);
-
-        const totalRevenue = Array.isArray(orders) ? orders.reduce(
-          (sum: number, order: any) => sum + parseFloat(order.total?.toString() || '0'),
-          0
-        ) : 0;
-        const pendingOrders = Array.isArray(orders) ? orders.filter(
-          (order: any) => order.status === "PENDING" || order.status === "PROCESSING"
-        ).length : 0;
-
-        console.log("✅ Stats fetched:", { products: totalProducts, orders: orders.length });
+        console.log("✅ Stats fetched:", data);
         setStats({
-          totalProducts,
-          totalOrders: Array.isArray(orders) ? orders.length : 0,
-          totalRevenue,
-          pendingOrders,
+          totalProducts: data.totalProducts,
+          totalOrders: data.totalOrders,
+          totalRevenue: data.totalRevenue,
+          pendingOrders: data.pendingOrders,
         });
+        setOrdersTimeSeries(data.ordersTimeSeries || []);
+        setEarningsTimeSeries(data.earningsTimeSeries || []);
+        setRecentOrders(data.recentOrders || []);
+        setTopProducts(data.topProducts || []);
+        setTopCountries(data.topCountries || []);
       } else {
-        // Set defaults if API calls failed
+        const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
+        console.error("❌ Failed to fetch stats:", res.status, errorData);
+        // Set defaults if API call failed
         setStats({
           totalProducts: 0,
           totalOrders: 0,
@@ -171,18 +153,27 @@ export default function AdminDashboardPage() {
           <RecentOrderChart 
             onDataReady={setChartData}
             refreshTrigger={refreshTrigger}
+            data={ordersTimeSeries}
           />
         </ChartCard>
       </div>
 
       {/* Orders & Earnings */}
       <div className="mb-6">
-        <OrdersEarnings />
+        <OrdersEarnings 
+          recentOrders={recentOrders}
+          earningsData={earningsTimeSeries}
+          totalRevenue={stats.totalRevenue}
+        />
       </div>
 
       {/* Top Products & Countries */}
       <div className="mb-6">
-        <TopProductsCountries />
+        <TopProductsCountries 
+          topProducts={topProducts}
+          topCountries={topCountries}
+          totalSales={stats.totalRevenue}
+        />
       </div>
 
       {/* New Comments - Full Width */}

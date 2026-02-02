@@ -109,123 +109,37 @@ const extractCountry = (shippingAddress: string | null): string => {
   return "GB";
 };
 
-export function TopProductsCountries() {
+interface TopProductsCountriesProps {
+  topProducts?: TopProduct[];
+  topCountries?: TopCountry[];
+  totalSales?: number;
+}
+
+export function TopProductsCountries({ topProducts: initialTopProducts, topCountries: initialTopCountries, totalSales: initialTotalSales }: TopProductsCountriesProps) {
   const router = useRouter();
-  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
-  const [topCountries, setTopCountries] = useState<TopCountry[]>([]);
-  const [totalSales, setTotalSales] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>(initialTopProducts || []);
+  const [topCountries, setTopCountries] = useState<TopCountry[]>(initialTopCountries || []);
+  const [totalSales, setTotalSales] = useState(initialTotalSales || 0);
+  const [isLoading, setIsLoading] = useState(!initialTopProducts);
+
+  useEffect(() => {
+    if (initialTopProducts) setTopProducts(initialTopProducts);
+    if (initialTopCountries) setTopCountries(initialTopCountries);
+    if (initialTotalSales !== undefined) setTotalSales(initialTotalSales);
+    if (initialTopProducts && initialTopCountries) setIsLoading(false);
+  }, [initialTopProducts, initialTopCountries, initialTotalSales]);
 
   useEffect(() => {
     const fetchData = async () => {
+      if (initialTopProducts && initialTopCountries) return;
       try {
         setIsLoading(true);
-        const [ordersRes, productsRes] = await Promise.all([
-          fetch("/api/orders?limit=1000"),
-          fetch("/api/products"),
-        ]);
-
-        if (ordersRes.ok && productsRes.ok) {
-          const ordersData = await ordersRes.json();
-          const productsData = await productsRes.json();
-          const orders = ordersData.orders || [];
-          const products = Array.isArray(productsData) ? productsData : (productsData.products || []);
-
-          // Calculate top products by quantity sold and track country for each product
-          const productSales: { [key: string]: { 
-            name: string; 
-            quantity: number; 
-            revenue: number; 
-            image?: string; 
-            productId: string;
-            countrySales: { [countryCode: string]: number }; // Track revenue per country
-          } } = {};
-          
-          orders.forEach((order: any) => {
-            // Extract country from shipping address for this order
-            const countryCode = extractCountry(order.shippingAddress);
-            
-            order.items?.forEach((item: any) => {
-              const productId = item.productId;
-              const productName = item.product?.name || "Unknown Product";
-              const productImage = item.product?.image || item.product?.images?.[0] || null;
-              const itemRevenue = parseFloat(item.price.toString()) * item.quantity;
-              
-              if (!productSales[productId]) {
-                productSales[productId] = { 
-                  name: productName, 
-                  quantity: 0, 
-                  revenue: 0, 
-                  image: productImage,
-                  productId: productId,
-                  countrySales: {}
-                };
-              }
-              productSales[productId].quantity += item.quantity;
-              productSales[productId].revenue += itemRevenue;
-              
-              // Track revenue by country for this product
-              if (!productSales[productId].countrySales[countryCode]) {
-                productSales[productId].countrySales[countryCode] = 0;
-              }
-              productSales[productId].countrySales[countryCode] += itemRevenue;
-            });
-          });
-
-          // Get top 5 products with their top country
-          const topProductsList = Object.values(productSales)
-            .sort((a, b) => b.quantity - a.quantity)
-            .slice(0, 5)
-            .map((product, index) => {
-              // Find the country with the highest revenue for this product
-              const topCountryCode = Object.entries(product.countrySales)
-                .sort(([, a], [, b]) => b - a)[0]?.[0] || "GB"; // Default to GB if no country data
-              const topCountryFlag = countryFlags[topCountryCode] || "🇬🇧";
-              
-              return {
-                name: product.name.length > 30 ? product.name.substring(0, 30) + "..." : product.name,
-                items: `${product.quantity} Items`,
-                coupon: "N/A",
-                discount: "-0",
-                price: `€${product.revenue.toFixed(2)}`,
-                flag: topCountryFlag,
-                image: product.image,
-                productId: product.productId,
-              };
-            });
-          setTopProducts(topProductsList);
-
-          // Calculate sales by country (using shipping address if available)
-          const countrySales: { [key: string]: { name: string; sales: number; code: string } } = {};
-          let total = 0;
-
-          orders.forEach((order: any) => {
-            const orderTotal = parseFloat(order.total.toString());
-            total += orderTotal;
-            
-            // Extract country from shipping address
-            const countryCode = extractCountry(order.shippingAddress);
-            const countryName = countryCodeToName[countryCode] || countryCode;
-            
-            if (!countrySales[countryCode]) {
-              countrySales[countryCode] = { name: countryName, sales: 0, code: countryCode };
-            }
-            countrySales[countryCode].sales += orderTotal;
-          });
-
-          setTotalSales(total);
-
-          // Get top 6 countries
-          const topCountriesList = Object.values(countrySales)
-            .sort((a, b) => b.sales - a.sales)
-            .slice(0, 6)
-            .map((country, index, array) => ({
-              name: country.name,
-              flag: countryFlags[country.code] || "🇬🇧",
-              trend: index === 0 || Math.random() > 0.5 ? "up" : "down" as "up" | "down",
-              sales: `€${country.sales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-            }));
-          setTopCountries(topCountriesList);
+        const res = await fetch("/api/admin/dashboard/stats");
+        if (res.ok) {
+          const data = await res.json();
+          setTopProducts(data.topProducts || []);
+          setTopCountries(data.topCountries || []);
+          setTotalSales(data.totalRevenue || 0);
         }
       } catch (error) {
         console.error("Failed to fetch data:", error);

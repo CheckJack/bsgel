@@ -46,6 +46,7 @@ function AdminProductsPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const [products, setProducts] = useState<Product[]>([]);
+  const [totalProducts, setTotalProducts] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
@@ -82,6 +83,7 @@ function AdminProductsPageContent() {
     { value: "brights", label: "Brights" },
     { value: "blues-greens", label: "Blues / Greens" },
     { value: "fluorescents", label: "Fluorescents" },
+    { value: "gemini", label: "Gemini" },
   ];
 
   // Format category/subcategory names: replace dots, hyphens, underscores with spaces and format properly
@@ -115,124 +117,93 @@ function AdminProductsPageContent() {
     const urlPage = searchParams.get("page");
     const urlEntries = searchParams.get("entries");
     
-    setSearchQuery(urlSearch);
-    setCategoryFilter(urlCategory);
+    if (urlSearch) setSearchQuery(urlSearch);
+    if (urlCategory) setCategoryFilter(urlCategory);
     if (urlPage) {
       const pageNum = parseInt(urlPage, 10);
-      if (!isNaN(pageNum) && pageNum > 0) {
-        setCurrentPage(pageNum);
-      }
+      if (!isNaN(pageNum) && pageNum > 0) setCurrentPage(pageNum);
     }
     if (urlEntries) {
       const entriesNum = parseInt(urlEntries, 10);
-      if (!isNaN(entriesNum) && [10, 25, 50, 100].includes(entriesNum)) {
-        setEntriesPerPage(entriesNum);
-      }
+      if (!isNaN(entriesNum) && [10, 25, 50, 100].includes(entriesNum)) setEntriesPerPage(entriesNum);
     }
+    
     setIsRestoringState(false);
+    fetchCategories();
   }, []); // Only run on mount
 
+  // Fetch products when filters or pagination change
   useEffect(() => {
+    if (isRestoringState) return;
+    
     fetchProducts();
-    fetchCategories();
-  }, []);
+    
+    // Update URL params
+    const params = new URLSearchParams();
+    if (searchQuery.trim()) params.set("search", searchQuery);
+    if (categoryFilter) params.set("category", categoryFilter);
+    if (currentPage > 1) params.set("page", currentPage.toString());
+    if (entriesPerPage !== 10) params.set("entries", entriesPerPage.toString());
+    
+    const queryString = params.toString();
+    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
+    
+    // Only replace if URL actually changed to avoid unnecessary re-renders
+    if (window.location.search !== `?${queryString}` && (window.location.search !== "" || queryString !== "")) {
+      router.replace(newUrl, { scroll: false });
+    }
+  }, [currentPage, entriesPerPage, searchQuery, categoryFilter, isRestoringState]);
 
+  // Handle subcategories
   useEffect(() => {
-    // Filter subcategories (categories with parentId that is not null)
     const subs = categories.filter((cat) => cat.parentId !== null && cat.parentId !== undefined && cat.parentId !== "");
     setSubcategories(subs);
-    // Debug: log to see what we're getting
-    if (subs.length === 0 && categories.length > 0) {
-      console.log("No subcategories found. Categories:", categories.map(c => ({ id: c.id, name: c.name, parentId: c.parentId })));
-    }
   }, [categories]);
 
-  // Sync search query with URL params from AdminHeader (but not on initial mount)
+  // Sync search query with URL params (e.g. from header search)
   useEffect(() => {
-    if (!isRestoringState) {
-      const urlSearchQuery = searchParams.get("search") || "";
+    if (isRestoringState) return;
+    const urlSearchQuery = searchParams.get("search") || "";
+    if (urlSearchQuery !== searchQuery) {
       setSearchQuery(urlSearchQuery);
     }
-  }, [searchParams, isRestoringState]);
+  }, [searchParams]);
 
   const fetchCategories = async () => {
     try {
-      // Fetch all categories - use a high limit to get all at once
-      const res = await fetch("/api/categories?limit=10000");
+      const res = await fetch("/api/categories?limit=1000");
       if (res.ok) {
         const data = await res.json();
         const categoriesList = data.categories || data || [];
-        
-        // Ensure parentId is included in the type
-        const typedCategories: Category[] = categoriesList.map((cat: any) => ({
+        setCategories(categoriesList.map((cat: any) => ({
           id: cat.id,
           name: cat.name,
           parentId: cat.parentId || null,
-        }));
-        
-        setCategories(typedCategories);
-        
-        // Debug: check if parentId is being returned
-        const withParentId = typedCategories.filter((cat) => cat.parentId);
-        console.log(`Fetched ${typedCategories.length} categories, ${withParentId.length} have parentId`);
-        if (withParentId.length > 0) {
-          console.log("Subcategories found:", withParentId.map(c => c.name));
-        }
+        })));
       }
     } catch (error) {
       console.error("Failed to fetch categories:", error);
     }
   };
 
-  // Update URL params when filters/pagination change
-  useEffect(() => {
-    if (isRestoringState) return; // Don't update URL during initial state restoration
-    
-    const params = new URLSearchParams();
-    if (searchQuery.trim()) {
-      params.set("search", searchQuery);
-    }
-    if (categoryFilter) {
-      params.set("category", categoryFilter);
-    }
-    if (currentPage > 1) {
-      params.set("page", currentPage.toString());
-    }
-    if (entriesPerPage !== 10) {
-      params.set("entries", entriesPerPage.toString());
-    }
-    
-    const queryString = params.toString();
-    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
-    router.replace(newUrl, { scroll: false });
-  }, [searchQuery, categoryFilter, currentPage, entriesPerPage, isRestoringState, pathname, router]);
-
-  useEffect(() => {
-    // Filter products based on search query and category
-    let filtered = products;
-
-    if (searchQuery.trim()) {
-      filtered = filtered.filter(
-        (product) =>
-          product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          product.id.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    if (categoryFilter) {
-      filtered = filtered.filter(
-        (product) => product.category?.id === categoryFilter
-      );
-    }
-
-    setFilteredProducts(filtered);
-  }, [searchQuery, categoryFilter, products]);
-
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      // Request all products with a high limit for admin panel
-      const res = await fetch("/api/products?limit=10000");
+      
+      const params = new URLSearchParams();
+      params.append("page", currentPage.toString());
+      params.append("limit", entriesPerPage.toString());
+      
+      if (searchQuery.trim()) {
+        params.append("search", searchQuery);
+      }
+      
+      if (categoryFilter) {
+        params.append("categoryId", categoryFilter);
+      }
+
+      // Request products with pagination and filters
+      const res = await fetch(`/api/products?${params.toString()}`);
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
@@ -240,20 +211,24 @@ function AdminProductsPageContent() {
         toast(`Failed to fetch products: ${errorData.error || res.statusText} (${res.status})`, "error");
         setProducts([]);
         setFilteredProducts([]);
+        setTotalProducts(0);
         return;
       }
       
       const data = await res.json();
-      // Handle different response formats
-      const productsArray = Array.isArray(data) ? data : (data.products || []);
-      console.log("✅ Products fetched successfully:", productsArray.length, "products");
+      const productsArray = data.products || [];
+      const total = data.pagination?.total || productsArray.length;
+
+      console.log("✅ Products fetched successfully:", productsArray.length, "of", total);
       setProducts(productsArray);
       setFilteredProducts(productsArray);
+      setTotalProducts(total);
     } catch (error: any) {
       console.error("❌ Error fetching products:", error);
       toast(`Failed to fetch products: ${error?.message || "Network error"}`, "error");
       setProducts([]);
       setFilteredProducts([]);
+      setTotalProducts(0);
     } finally {
       setIsLoading(false);
     }
@@ -512,10 +487,10 @@ function AdminProductsPageContent() {
   };
 
   // Calculate pagination
-  const totalPages = Math.ceil(filteredProducts.length / entriesPerPage);
+  const totalPages = Math.ceil(totalProducts / entriesPerPage);
   const startIndex = (currentPage - 1) * entriesPerPage;
-  const endIndex = startIndex + entriesPerPage;
-  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + entriesPerPage, totalProducts);
+  const paginatedProducts = products; // Already paginated from server
 
   // Generate short product ID (first 7 characters)
   const getShortProductId = (id: string) => {
@@ -926,7 +901,7 @@ function AdminProductsPageContent() {
             <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {t("table.showing")} {startIndex + 1} {t("table.to")} {Math.min(endIndex, filteredProducts.length)} {t("table.of")} {filteredProducts.length} {t("table.entriesPerPage")}
+                  {t("table.showing")} {startIndex + 1} {t("table.to")} {endIndex} {t("table.of")} {totalProducts} {t("table.entriesPerPage")}
                 </div>
                 <div className="flex items-center gap-2 mx-auto sm:mx-0">
                   <button

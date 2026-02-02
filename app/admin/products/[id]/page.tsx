@@ -74,6 +74,7 @@ function EditProductPageContent() {
     { value: "brights", label: "Brights" },
     { value: "blues-greens", label: "Blues / Greens" },
     { value: "fluorescents", label: "Fluorescents" },
+    { value: "gemini", label: "Gemini" },
   ];
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [attributes, setAttributes] = useState<Attribute[]>([]);

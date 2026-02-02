@@ -426,6 +426,7 @@ export async function POST(req: Request) {
           type: "ORDER",
           title: "New Order",
           message: `New order #${order.id.slice(0, 8)} from ${user?.name || user?.email || "Customer"} - ${formatPrice(total)}`,
+          linkUrl: `/admin/orders/${order.id}`,
           metadata: {
             orderId: order.id,
             userId: session.user.id,

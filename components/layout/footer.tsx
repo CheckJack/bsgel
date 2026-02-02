@@ -145,7 +145,7 @@ export function Footer() {
             <ul className="space-y-2.5">
               <li>
                 <Link href="/bio-gel" className="text-sm text-white/90 hover:text-white transition-colors">
-                  Bio Gel
+                  Biogel
                 </Link>
               </li>
               <li>
@@ -278,13 +278,18 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/terms" className="text-sm text-white/90 hover:text-white transition-colors">
-                  {t("footer.termsOfService")}
+                <Link href="/terms-and-returns" className="text-sm text-white/90 hover:text-white transition-colors">
+                  {t("footer.termsAndReturns")}
                 </Link>
               </li>
               <li>
-                <Link href="/shipping" className="text-sm text-white/90 hover:text-white transition-colors">
-                  {t("footer.shippingPolicy")}
+                <Link href="/consumer-dispute-resolution" className="text-sm text-white/90 hover:text-white transition-colors">
+                  {t("footer.consumerDisputeResolution")}
+                </Link>
+              </li>
+              <li>
+                <Link href="/complaints-book" className="text-sm text-white/90 hover:text-white transition-colors">
+                  {t("footer.complaintsBook")}
                 </Link>
               </li>
             </ul>

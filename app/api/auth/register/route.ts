@@ -84,7 +84,9 @@ export async function POST(req: Request) {
       role: role || "USER", // Set role to ADMIN if provided, otherwise default to USER
       permissions: permissions || null,
       isActive: true,
-      certificateUrl: certificate || null,
+      // If professional, set certificateUrl to the uploaded certificate or a placeholder
+      // to indicate it's pending review. Only NULL means approved.
+      certificateUrl: certificate || (userType === "professional" ? "PENDING_REVIEW" : null),
     }
 
     // Set certificationId but DON'T connect the certification relation
@@ -190,6 +192,7 @@ export async function POST(req: Request) {
             type: "NEW_CUSTOMER",
             title: "New Customer Signup",
             message: `${name.trim()} (${normalizedEmail}) has signed up as a new customer`,
+            linkUrl: `/admin/customers?userId=${user.id}`,
             metadata: {
               userId: user.id,
               email: normalizedEmail,
@@ -202,38 +205,46 @@ export async function POST(req: Request) {
 
       // Create notification for admin users when a professional customer signs up
       if (role !== "ADMIN" && userType === "professional") {
-        if (certificate) {
-          // Professional with certificate - needs review
-          const notification = await db.notification.create({
-            data: {
-              type: "NEW_PROFESSIONAL_CERTIFICATION",
-              title: "New Professional Certification Upload",
-              message: `${name.trim()} (${normalizedEmail}) has signed up as a professional and uploaded a certificate for review`,
-              metadata: {
-                userId: user.id,
-                email: normalizedEmail,
-                name: name.trim(),
-                hasCertificate: true,
-              },
-            },
+        // Fetch all admin users to send notifications to
+        const adminUsers = await db.user.findMany({
+          where: { role: "ADMIN" },
+          select: { id: true },
+        })
+
+        const notificationData = {
+          type: "NEW_PROFESSIONAL_CERTIFICATION" as const,
+          title: certificate 
+            ? "New Professional Certification Upload" 
+            : "New Professional Signup",
+          message: certificate
+            ? `${name.trim()} (${normalizedEmail}) has signed up as a professional and uploaded a certificate for review`
+            : `${name.trim()} (${normalizedEmail}) has signed up as a professional (no certificate uploaded yet)`,
+          linkUrl: `/admin/customers?filter=pending&userId=${user.id}`,
+          metadata: {
+            userId: user.id,
+            email: normalizedEmail,
+            name: name.trim(),
+            hasCertificate: !!certificate,
+          },
+        }
+
+        // Create notification for each admin user
+        if (adminUsers.length > 0) {
+          const notifications = adminUsers.map((admin) => ({
+            ...notificationData,
+            userId: admin.id,
+          }))
+
+          await db.notification.createMany({
+            data: notifications,
           })
-          console.log("✅ Professional certification notification created successfully:", notification.id)
+          console.log(`✅ Professional certification notifications created for ${adminUsers.length} admin(s)`)
         } else {
-          // Professional without certificate - still notify admin
-          const notification = await db.notification.create({
-            data: {
-              type: "NEW_PROFESSIONAL_CERTIFICATION",
-              title: "New Professional Signup",
-              message: `${name.trim()} (${normalizedEmail}) has signed up as a professional (no certificate uploaded yet)`,
-              metadata: {
-                userId: user.id,
-                email: normalizedEmail,
-                name: name.trim(),
-                hasCertificate: false,
-              },
-            },
+          // Fallback: create notification without userId if no admins exist (shouldn't happen)
+          await db.notification.create({
+            data: notificationData,
           })
-          console.log("✅ Professional signup notification created successfully:", notification.id)
+          console.log("✅ Professional certification notification created (no admins found)")
         }
       }
     } catch (notificationError) {

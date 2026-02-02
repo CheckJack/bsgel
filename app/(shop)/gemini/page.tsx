@@ -31,7 +31,6 @@ export default function GeminiPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [categoryId, setCategoryId] = useState<string | undefined>();
   const [isScrolling, setIsScrolling] = useState(false);
   const textSectionRef = useRef<HTMLElement>(null);
   const productsSectionRef = useRef<HTMLElement>(null);
@@ -82,41 +81,23 @@ export default function GeminiPage() {
   const fetchGeminiProducts = async () => {
     setIsLoading(true);
     try {
-      // First, try to find a "Gemini" category
-      const categoriesRes = await fetch("/api/categories");
-      if (categoriesRes.ok) {
-        const categoriesData = await categoriesRes.json();
-        const geminiCategory = categoriesData.categories?.find(
-          (cat: { name: string }) => cat.name.toLowerCase() === "gemini"
-        );
+      // Fetch products with "gemini" showcasing section
+      const params = new URLSearchParams({
+        showcasingSection: "gemini",
+        page: currentPage.toString(),
+        limit: "10",
+      });
 
-        if (geminiCategory) {
-          setCategoryId(geminiCategory.id);
-          // If category exists, fetch all products in that category with pagination
-          const res = await fetch(`/api/products?categoryId=${geminiCategory.id}&page=${currentPage}&limit=10`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.pagination) {
-              setProducts(data.products || []);
-              setTotalPages(data.pagination.totalPages || 1);
-            } else {
-              setProducts(Array.isArray(data) ? data : data.products || []);
-              setTotalPages(1);
-            }
-          }
+      const res = await fetch(`/api/products?${params.toString()}`);
+      
+      if (res.ok) {
+        const data = await res.json();
+        if (data.pagination) {
+          setProducts(data.products || []);
+          setTotalPages(data.pagination.totalPages || 1);
         } else {
-          // Otherwise, search for products with "gemini" in the name with pagination
-          const res = await fetch(`/api/products?search=gemini&page=${currentPage}&limit=10`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.pagination) {
-              setProducts(data.products || []);
-              setTotalPages(data.pagination.totalPages || 1);
-            } else {
-              setProducts(Array.isArray(data) ? data : data.products || []);
-              setTotalPages(1);
-            }
-          }
+          setProducts(Array.isArray(data) ? data : data.products || []);
+          setTotalPages(1);
         }
       }
     } catch (error) {
@@ -204,7 +185,7 @@ export default function GeminiPage() {
       </section>
 
       {/* Product Reviews Section */}
-      <ProductReviews categoryId={categoryId} />
+      <ProductReviews showcasingSection="gemini" />
 
       {/* Full Width Video Background Section */}
       <section className="relative w-full h-screen overflow-hidden">

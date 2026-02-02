@@ -85,6 +85,7 @@ export async function GET(req: Request) {
     let products;
     try {
       // Optimized query: Only select needed fields, skip subcategories for list view
+      console.log("🔍 Fetching products from database with filters:", JSON.stringify(where));
       products = await db.product.findMany({
         where,
         select: {
@@ -114,6 +115,7 @@ export async function GET(req: Request) {
         skip: (page - 1) * limit,
         take: limit,
       });
+      console.log(`✅ Found ${products.length} products`);
 
       // Calculate review stats in a single optimized query (only if products exist)
       // Use raw SQL for better performance with large datasets
@@ -412,7 +414,7 @@ export async function GET(req: Request) {
       }
 
       const countResult = await db.$queryRawUnsafe(countQuery, ...countParams) as any[];
-      total = parseInt(countResult[0]?.count || "0");
+      total = countResult && countResult[0] ? parseInt(countResult[0].count?.toString() || "0") : 0;
     }
     const totalPages = Math.ceil(total / limit)
 

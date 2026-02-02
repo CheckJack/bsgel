@@ -70,17 +70,37 @@ export async function PUT(
       },
     })
 
-    // Create notification about certification change
+    // Create notification about certification change for the user
     try {
       await db.notification.create({
         data: {
           userId: id,
-          type: "NEW_PROFESSIONAL_CERTIFICATION",
+          type: "SYSTEM",
           title: "Certification Update Submitted",
           message: "Your certification change has been submitted and is pending review. We'll notify you once it's been reviewed.",
+          linkUrl: "/dashboard",
           read: false,
         },
       })
+
+      // Also create notification for all ADMINS
+      const adminUsers = await db.user.findMany({
+        where: { role: "ADMIN" },
+        select: { id: true },
+      })
+
+      if (adminUsers.length > 0) {
+        await db.notification.createMany({
+          data: adminUsers.map(admin => ({
+            userId: admin.id,
+            type: "NEW_PROFESSIONAL_CERTIFICATION",
+            title: "Updated Professional Certification",
+            message: `${user.name || user.email} has updated their professional certification for review`,
+            linkUrl: `/admin/customers?filter=pending&userId=${user.id}`,
+            read: false,
+          }))
+        })
+      }
     } catch (notificationError) {
       // Don't fail the request if notification creation fails
       console.error("Failed to create notification:", notificationError)

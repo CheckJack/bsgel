@@ -50,8 +50,8 @@ export async function GET(
         console.log("Schema mismatch detected, using raw SQL query");
         const result = await db.$queryRaw`
           SELECT 
-            p.id, p.name, p.description, p.price, p.image, p.images, p.featured, p."categoryId", p.attributes,
-            p."createdAt", p."updatedAt",
+            p.id, p.name, p.description, p.price, p.image, p.images, p.featured, p."outOfStock", p."hemaFree", p."categoryId", p.attributes,
+            p."showcasingSections", p."createdAt", p."updatedAt",
             c.id as "category_id", c.name as "category_name", c.slug as "category_slug"
           FROM "Product" p
           LEFT JOIN "Category" c ON p."categoryId" = c.id

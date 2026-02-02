@@ -18,8 +18,16 @@ export async function GET(req: Request) {
     // Build where clause with proper conditions
     const whereConditions: any[] = []
     
-    // Clients only see their own notifications
-    if (!session.user.role || session.user.role !== "ADMIN") {
+    // Everyone sees their own notifications
+    // Admins also see notifications with no userId (system-wide admin notifications)
+    if (session.user.role === "ADMIN") {
+      whereConditions.push({
+        OR: [
+          { userId: session.user.id },
+          { userId: null }
+        ]
+      })
+    } else {
       whereConditions.push({ userId: session.user.id })
     }
     

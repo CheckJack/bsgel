@@ -163,13 +163,7 @@ export async function PATCH(
     if (city !== undefined) updateData.city = city;
     if (postalCode !== undefined) updateData.postalCode = toNullIfEmpty(postalCode);
     if (phone !== undefined) updateData.phone = toNullIfEmpty(phone);
-    // For non-admin users, always use their account email (don't allow changing it)
-    // For admins, allow changing the email
-    if (session?.user?.id && session.user.role !== "ADMIN") {
-      updateData.email = session.user.email;
-    } else if (email !== undefined) {
-      updateData.email = toNullIfEmpty(email);
-    }
+    if (email !== undefined) updateData.email = toNullIfEmpty(email);
     if (website !== undefined) updateData.website = toNullIfEmpty(website);
     if (latitude !== undefined) {
       updateData.latitude = latitude !== null && latitude !== undefined && latitude !== "" ? parseFloat(latitude) : null;

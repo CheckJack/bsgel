@@ -92,13 +92,14 @@ export async function GET(req: Request) {
       )
       const orderCount = orders.length
 
-      // If user has certificationId but no certification object, include pending certification name
-      let certification = user.certification
-      if (!certification && user.certificationId) {
+      // A certification is pending if certificateUrl exists
+      let certification = user.certification as any
+      if (certification && user.certificateUrl) {
+        certification = { ...certification, pending: true }
+      } else if (!certification && user.certificationId) {
         const pendingCertName = pendingCertMap.get(user.certificationId)
         if (pendingCertName) {
-          // Return a special marker object to indicate pending status
-          certification = { id: user.certificationId, name: pendingCertName, pending: true } as any
+          certification = { id: user.certificationId, name: pendingCertName, pending: true }
         }
       }
 

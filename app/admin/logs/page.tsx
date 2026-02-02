@@ -14,9 +14,11 @@ import {
   User,
   Eye,
   Download,
+  Trash2,
 } from "lucide-react";
 import { AdminLogActionType } from "@prisma/client";
 import { Pagination } from "@/components/ui/pagination";
+import { toast } from "@/components/ui/toast";
 
 interface AdminLog {
   id: string;
@@ -284,6 +286,7 @@ export default function AdminLogsPage() {
   });
 
   const [showFilters, setShowFilters] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -337,6 +340,32 @@ export default function AdminLogsPage() {
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
+  const handleDeleteAll = async () => {
+    if (!confirm("Are you sure you want to delete ALL activity logs? This action cannot be undone.")) {
+      return;
+    }
+
+    setIsDeletingAll(true);
+    try {
+      const response = await fetch("/api/admin/logs", {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        toast("All logs have been deleted successfully", "success");
+        fetchLogs();
+      } else {
+        const data = await response.json();
+        toast(data.error || "Failed to delete logs", "error");
+      }
+    } catch (error) {
+      console.error("Error deleting logs:", error);
+      toast("An error occurred while deleting logs", "error");
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   const getActionBadgeColor = (actionType: AdminLogActionType) => {
     switch (actionType) {
       case "CREATE":
@@ -374,6 +403,14 @@ export default function AdminLogsPage() {
             Track and monitor all admin actions
           </p>
         </div>
+        <button
+          onClick={handleDeleteAll}
+          disabled={isDeletingAll || logs.length === 0}
+          className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-lg transition-colors text-sm font-medium"
+        >
+          <Trash2 className="h-4 w-4" />
+          {isDeletingAll ? "Deleting..." : "Delete All Logs"}
+        </button>
       </div>
 
       {/* Search and Filters */}

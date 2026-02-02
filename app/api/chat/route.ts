@@ -209,6 +209,7 @@ export async function POST(req: Request) {
           type: "SYSTEM",
           title: "New Chat Message",
           message: `New message from ${user?.name || user?.email || "Customer"}`,
+          linkUrl: "/admin/messages",
           metadata: {
             chatMessageId: chatMessage.id,
             userId: session.user.id,

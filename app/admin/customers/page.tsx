@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { formatPrice } from "@/lib/utils";
-import { Search, ChevronLeft, ChevronRight, Plus, Eye, EyeOff, X, FileText, CheckCircle, XCircle, Download, Pencil, Trash2, Ban, CheckCircle2 } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Plus, Eye, EyeOff, X, FileText, CheckCircle, XCircle, Download, Pencil, Trash2, Ban, CheckCircle2, Check } from "lucide-react";
 
 interface Certification {
   id: string;
@@ -34,6 +35,7 @@ interface BannedEmail {
 }
 
 export default function AdminCustomersPage() {
+  const searchParams = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,6 +43,7 @@ export default function AdminCustomersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage] = useState(10);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
+  const [certificationFilter, setCertificationFilter] = useState<string>("all"); // "all", "pending", "approved"
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -80,7 +83,32 @@ export default function AdminCustomersPage() {
     fetchCustomers();
     fetchBannedEmails();
     fetchCertifications();
-  }, []);
+    
+    // Check URL parameters for filter and userId
+    const filter = searchParams.get("filter");
+    const userId = searchParams.get("userId");
+    
+    if (filter === "pending") {
+      setCertificationFilter("pending");
+    }
+    
+  }, [searchParams]);
+
+  // Handle userId parameter after customers are loaded
+  useEffect(() => {
+    const userId = searchParams.get("userId");
+    console.log("🔍 [Customers Page] URL userId:", userId, "Total customers:", customers.length);
+    
+    if (userId && customers.length > 0) {
+      const customer = customers.find(c => c.id === userId);
+      if (customer) {
+        console.log("✅ [Customers Page] Found customer from URL, opening details:", customer.name);
+        handleViewDetails(customer);
+      } else {
+        console.warn("⚠️ [Customers Page] User ID from URL not found in customers list:", userId);
+      }
+    }
+  }, [customers, searchParams]);
 
   const fetchCertifications = async () => {
     try {
@@ -108,11 +136,29 @@ export default function AdminCustomersPage() {
   };
 
   useEffect(() => {
-    // Filter customers based on search query
+    // Filter customers based on search query and certification filter
     let filtered = customers;
 
+    // Apply certification filter
+    if (certificationFilter === "pending") {
+      filtered = filtered.filter((customer) => {
+        const hasCertificationId = !!customer.certificationId;
+        const hasCertificateUrl = !!customer.certificateUrl;
+        const hasCertification = hasCertificationId && hasCertificateUrl;
+        const isApproved = customer.certification && !(customer.certification as any).pending;
+        const isPending = hasCertification && !isApproved;
+        return isPending;
+      });
+    } else if (certificationFilter === "approved") {
+      filtered = filtered.filter((customer) => {
+        const isApproved = customer.certification && !(customer.certification as any).pending;
+        return isApproved;
+      });
+    }
+
+    // Apply search query filter
     if (searchQuery.trim()) {
-      filtered = customers.filter(
+      filtered = filtered.filter(
         (customer) =>
           customer.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           customer.email.toLowerCase().includes(searchQuery.toLowerCase())
@@ -120,8 +166,8 @@ export default function AdminCustomersPage() {
     }
 
     setFilteredCustomers(filtered);
-    setCurrentPage(1); // Reset to first page on search
-  }, [searchQuery, customers]);
+    setCurrentPage(1); // Reset to first page on search/filter change
+  }, [searchQuery, customers, certificationFilter]);
 
   const fetchCustomers = async () => {
     try {
@@ -543,6 +589,21 @@ export default function AdminCustomersPage() {
                 />
               </div>
             </div>
+            {/* Certification Filter */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                Certification:
+              </label>
+              <select
+                value={certificationFilter}
+                onChange={(e) => setCertificationFilter(e.target.value)}
+                className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">All</option>
+                <option value="pending">Pending Approval</option>
+                <option value="approved">Approved</option>
+              </select>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -688,16 +749,57 @@ export default function AdminCustomersPage() {
 
                       {/* Certification Column */}
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-900 dark:text-gray-100">
-                            {formatCertification(customer.certification)}
-                          </span>
-                          {customer.certificateUrl && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
-                              <FileText className="h-3 w-3" />
-                              Certificate
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-900 dark:text-gray-100">
+                              {formatCertification(customer.certification)}
                             </span>
-                          )}
+                            {customer.certificateUrl && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                                <FileText className="h-3 w-3" />
+                                Certificate
+                              </span>
+                            )}
+                          </div>
+                          {(() => {
+                            const hasCertificationId = !!customer.certificationId;
+                            const hasCertificateUrl = !!customer.certificateUrl;
+                            const hasCertification = hasCertificationId && hasCertificateUrl;
+                            const isApproved = customer.certification && !(customer.certification as any).pending;
+                            const isPending = hasCertification && !isApproved;
+                            
+                            if (isPending) {
+                              return (
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleUpdateCertification(customer.id, customer.certificationId!);
+                                    }}
+                                    className="h-7 px-2 text-[10px] bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                                  >
+                                    <Check className="h-3 w-3 mr-1" />
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleUpdateCertification(customer.id, null);
+                                    }}
+                                    className="h-7 px-2 text-[10px] bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                                  >
+                                    <X className="h-3 w-3 mr-1" />
+                                    Reject
+                                  </Button>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       </td>
 
@@ -1146,22 +1248,57 @@ export default function AdminCustomersPage() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Certification
                     </label>
-                    <select
-                      value={selectedCustomer.certification?.id || ""}
-                      onChange={(e) => {
-                        const newCertificationId = e.target.value || null;
-                        handleUpdateCertification(selectedCustomer.id, newCertificationId);
-                      }}
-                      disabled={isUpdatingCertification}
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">None</option>
-                      {certifications.map((cert) => (
-                        <option key={cert.id} value={cert.id}>
-                          {cert.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex flex-col gap-3">
+                      <select
+                        value={selectedCustomer.certification?.id || ""}
+                        onChange={(e) => {
+                          const newCertificationId = e.target.value || null;
+                          handleUpdateCertification(selectedCustomer.id, newCertificationId);
+                        }}
+                        disabled={isUpdatingCertification}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="">None</option>
+                        {certifications.map((cert) => (
+                          <option key={cert.id} value={cert.id}>
+                            {cert.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      {(() => {
+                        const hasCertificationId = !!selectedCustomer.certificationId;
+                        const hasCertificateUrl = !!selectedCustomer.certificateUrl;
+                        const hasCertification = hasCertificationId && hasCertificateUrl;
+                        const isApproved = selectedCustomer.certification && !(selectedCustomer.certification as any).pending;
+                        const isPending = hasCertification && !isApproved;
+                        
+                        if (isPending) {
+                          return (
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => handleUpdateCertification(selectedCustomer.id, selectedCustomer.certificationId!)}
+                                disabled={isUpdatingCertification}
+                                className="flex-1 bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2"
+                              >
+                                <Check className="h-4 w-4" />
+                                Approve Certification
+                              </Button>
+                              <Button
+                                onClick={() => handleUpdateCertification(selectedCustomer.id, null)}
+                                disabled={isUpdatingCertification}
+                                variant="outline"
+                                className="flex-1 border-red-200 text-red-700 hover:bg-red-50 flex items-center justify-center gap-2"
+                              >
+                                <X className="h-4 w-4" />
+                                Reject Application
+                              </Button>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
                   </div>
                 </div>
 

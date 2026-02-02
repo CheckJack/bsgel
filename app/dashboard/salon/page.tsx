@@ -102,6 +102,7 @@ export default function SalonPage() {
     latitude: "",
     longitude: "",
     description: "",
+    email: "",
   });
 
   const [image, setImage] = useState<{ url: string; file?: File } | null>(null);
@@ -237,6 +238,7 @@ export default function SalonPage() {
       latitude: salonData.latitude?.toString() || "",
       longitude: salonData.longitude?.toString() || "",
       description: salonData.description || "",
+      email: salonData.email || "",
     });
 
     if (salonData.image) {
@@ -330,6 +332,7 @@ export default function SalonPage() {
         postalCode: formData.postalCode.trim() || null,
         phone: formData.phone.trim() || null,
         website: formData.website.trim() || null,
+        email: formData.email.trim() || null,
         latitude: formData.latitude ? parseFloat(formData.latitude) : null,
         longitude: formData.longitude ? parseFloat(formData.longitude) : null,
         image: imageBase64,
@@ -678,12 +681,15 @@ export default function SalonPage() {
                 Email
               </label>
               <Input
-                value={session?.user?.email || ""}
-                disabled
-                className="bg-gray-50 dark:bg-gray-800"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                placeholder="salon@example.com"
+                disabled={!isEditing}
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Your account email is used for salon contact
+                This email will be displayed on your salon listing
               </p>
             </div>
           </CardContent>

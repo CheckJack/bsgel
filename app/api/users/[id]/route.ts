@@ -65,7 +65,6 @@ export async function GET(
     // Determine certification status:
     // IMPORTANT: If certificateUrl exists, the certification is ALWAYS pending
     // The certificateUrl is only cleared/nullified when admin approves the certification
-    // So if certificateUrl exists, it means admin hasn't approved it yet
     let certification = null
     if (user.certificationId) {
       const certData = await db.certification.findUnique({
@@ -74,15 +73,12 @@ export async function GET(
       })
       
       if (certData) {
-        // If certificateUrl exists, user uploaded a certificate that needs review → Pending
+        // If certificateUrl exists, it's pending review
         if (user.certificateUrl) {
-          certification = { id: certData.id, name: certData.name, pending: true } as any
-        } else if (user.certification) {
-          // No certificateUrl but relation exists → Admin approved it
-          certification = { ...user.certification, pending: false } as any
+          certification = { ...certData, pending: true }
         } else {
-          // Has certificationId but no certificateUrl and no relation → Edge case, treat as not pending
-          certification = { id: certData.id, name: certData.name, pending: false } as any
+          // No certificateUrl means it's been reviewed and approved
+          certification = { ...certData, pending: false }
         }
       }
     }

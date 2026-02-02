@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -70,6 +71,7 @@ type SortField = "name" | "city" | "status" | "createdAt" | "isBioDiamond";
 type SortDirection = "asc" | "desc";
 
 export default function AdminSalonsPage() {
+  const searchParams = useSearchParams();
   const [salons, setSalons] = useState<Salon[]>([]);
   const [filteredSalons, setFilteredSalons] = useState<Salon[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -105,6 +107,24 @@ export default function AdminSalonsPage() {
   useEffect(() => {
     fetchSalons();
   }, []);
+
+  // Handle URL parameters for filter and salonId
+  useEffect(() => {
+    const filter = searchParams.get("filter");
+    const salonId = searchParams.get("salonId");
+
+    if (filter === "pending") {
+      setStatusFilter("PENDING_REVIEW");
+    }
+
+    if (salonId && salons.length > 0) {
+      const salon = salons.find((s) => s.id === salonId);
+      if (salon) {
+        setSelectedSalon(salon);
+        setShowDetailModal(true);
+      }
+    }
+  }, [searchParams, salons]);
 
   useEffect(() => {
     filterAndSortSalons();
@@ -1156,6 +1176,14 @@ export default function AdminSalonsPage() {
             setShowDetailModal(false);
             setShowEditModal(true);
           }}
+          onApprove={() => {
+            setReviewAction("approve");
+            setShowReviewModal(true);
+          }}
+          onReject={() => {
+            setReviewAction("reject");
+            setShowReviewModal(true);
+          }}
         />
       )}
 
@@ -1270,6 +1298,8 @@ function SalonDetailModal({
   onRefresh,
   onDelete,
   onEdit,
+  onApprove,
+  onReject,
 }: {
   salon: Salon;
   onClose: () => void;
@@ -1277,6 +1307,8 @@ function SalonDetailModal({
   onRefresh: () => void;
   onDelete: (id: string) => void;
   onEdit: () => void;
+  onApprove: () => void;
+  onReject: () => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
@@ -1441,6 +1473,26 @@ function SalonDetailModal({
 
             {/* Actions */}
             <div className="flex justify-end gap-2 pt-4 border-t">
+              {salon.status === "PENDING_REVIEW" && (
+                <>
+                  <Button
+                    variant="outline"
+                    className="text-green-600 hover:text-green-700 border-green-300 flex items-center gap-2"
+                    onClick={onApprove}
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    Approve
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="text-red-600 hover:text-red-700 border-red-300 flex items-center gap-2"
+                    onClick={onReject}
+                  >
+                    <XCircle className="h-4 w-4" />
+                    Reject
+                  </Button>
+                </>
+              )}
               <Button variant="outline" onClick={onClose}>
                 Close
               </Button>

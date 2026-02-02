@@ -66,14 +66,15 @@ export async function PATCH(req: Request) {
       updateData.price = parseFloat(updates.price)
     }
 
-    // discountPercentage and showcasingSections fields don't exist in database, skip them
-    // if (updates.discountPercentage !== undefined && updates.discountPercentage !== null && updates.discountPercentage !== "") {
-    //   updateData.discountPercentage = parseInt(updates.discountPercentage)
-    // }
+    // Handle discountPercentage (if provided)
+    if (updates.discountPercentage !== undefined && updates.discountPercentage !== null && updates.discountPercentage !== "") {
+      updateData.discountPercentage = parseInt(updates.discountPercentage)
+    }
 
-    // if (updates.showcasingSections !== undefined) {
-    //   updateData.showcasingSections = Array.isArray(updates.showcasingSections) ? updates.showcasingSections : []
-    // }
+    // Handle showcasingSections (if provided)
+    if (updates.showcasingSections !== undefined) {
+      updateData.showcasingSections = Array.isArray(updates.showcasingSections) ? updates.showcasingSections : []
+    }
 
     // Handle subcategoryIds (if provided)
     let needsSubcategoryUpdate = false
@@ -115,7 +116,7 @@ export async function PATCH(req: Request) {
         // Prepare product update data
         const productUpdate: any = {}
         
-        // Copy non-relation fields (skip discountPercentage and showcasingSections as they don't exist)
+        // Copy non-relation fields
         if (updateData.featured !== undefined) productUpdate.featured = updateData.featured
         if (updateData.outOfStock !== undefined) {
           productUpdate.outOfStock = updateData.outOfStock
@@ -124,9 +125,8 @@ export async function PATCH(req: Request) {
           productUpdate.hemaFree = updateData.hemaFree
         }
         if (updateData.price !== undefined) productUpdate.price = updateData.price
-        // discountPercentage and showcasingSections don't exist in database
-        // if (updateData.discountPercentage !== undefined) productUpdate.discountPercentage = updateData.discountPercentage
-        // if (updateData.showcasingSections !== undefined) productUpdate.showcasingSections = updateData.showcasingSections
+        if (updateData.discountPercentage !== undefined) productUpdate.discountPercentage = updateData.discountPercentage
+        if (updateData.showcasingSections !== undefined) productUpdate.showcasingSections = updateData.showcasingSections
         
         // Update product with non-relation fields first
         if (Object.keys(productUpdate).length > 0) {
@@ -137,13 +137,25 @@ export async function PATCH(req: Request) {
             })
           } catch (error: any) {
             // If columns don't exist, remove them and retry
-            if (error?.message?.includes("outOfStock") || error?.message?.includes("hemaFree") || error?.code === "P2022") {
-              const { outOfStock, hemaFree, ...productUpdateWithoutMissing } = productUpdate;
+            if (error?.message?.includes("outOfStock") || error?.message?.includes("hemaFree") || error?.message?.includes("showcasingSections") || error?.code === "P2022") {
+              const { outOfStock, hemaFree, showcasingSections, ...productUpdateWithoutMissing } = productUpdate;
               if (Object.keys(productUpdateWithoutMissing).length > 0) {
                 await db.product.update({
                   where: { id },
                   data: productUpdateWithoutMissing,
                 })
+              }
+              // If showcasingSections was removed, try to update it separately
+              if (productUpdate.showcasingSections !== undefined && !productUpdateWithoutMissing.showcasingSections) {
+                try {
+                  await db.product.update({
+                    where: { id },
+                    data: { showcasingSections: productUpdate.showcasingSections },
+                  })
+                } catch (e) {
+                  // If it still fails, just log and continue
+                  console.warn(`Failed to update showcasingSections for product ${id}:`, e)
+                }
               }
             } else {
               throw error;
@@ -203,8 +215,8 @@ export async function PATCH(req: Request) {
         })
       } catch (error: any) {
         // If columns don't exist, remove them and retry
-        if (error?.message?.includes("outOfStock") || error?.message?.includes("hemaFree") || error?.code === "P2022") {
-          const { outOfStock, hemaFree, ...updateDataWithoutMissing } = updateData;
+        if (error?.message?.includes("outOfStock") || error?.message?.includes("hemaFree") || error?.message?.includes("showcasingSections") || error?.code === "P2022") {
+          const { outOfStock, hemaFree, showcasingSections, ...updateDataWithoutMissing } = updateData;
           if (Object.keys(updateDataWithoutMissing).length > 0) {
             const result = await db.product.updateMany({
               where: {
@@ -214,15 +226,56 @@ export async function PATCH(req: Request) {
               },
               data: updateDataWithoutMissing,
             })
+            // If showcasingSections was removed, try to update it separately
+            if (updateData.showcasingSections !== undefined && !updateDataWithoutMissing.showcasingSections) {
+              try {
+                await db.product.updateMany({
+                  where: {
+                    id: {
+                      in: productIds,
+                    },
+                  },
+                  data: { showcasingSections: updateData.showcasingSections },
+                })
+              } catch (e) {
+                // If it still fails, just log and continue
+                console.warn("Failed to update showcasingSections:", e)
+              }
+            }
             return NextResponse.json({
               message: "Products updated successfully (some fields skipped due to missing columns)",
               count: result.count,
             })
           } else {
+            // If only showcasingSections remains, try to update it
+            if (updateData.showcasingSections !== undefined) {
+              try {
+                const result = await db.product.updateMany({
+                  where: {
+                    id: {
+                      in: productIds,
+                    },
+                  },
+                  data: { showcasingSections: updateData.showcasingSections },
+                })
+                return NextResponse.json({
+                  message: "Products updated successfully",
+                  count: result.count,
+                })
+              } catch (e) {
+                return NextResponse.json(
+                  {
+                    error: "No valid updates provided (all fields require missing database columns)",
+                    details: "The showcasingSections column does not exist in the database. Please run migrations.",
+                  },
+                  { status: 400 }
+                )
+              }
+            }
             return NextResponse.json(
               {
                 error: "No valid updates provided (all fields require missing database columns)",
-                details: "The outOfStock and hemaFree columns do not exist in the database. Please run migrations.",
+                details: "The outOfStock, hemaFree, and showcasingSections columns do not exist in the database. Please run migrations.",
               },
               { status: 400 }
             )

@@ -55,6 +55,10 @@ export async function GET(request: Request) {
         description: true,
         isActive: true,
         isBioDiamond: true,
+        status: true,
+        rejectionReason: true,
+        reviewedBy: true,
+        reviewedAt: true,
         userId: true,
         workingHours: true,
         createdAt: true,
@@ -134,11 +138,9 @@ export async function POST(req: Request) {
       }
     }
 
-    // For non-admin users, use their account email instead of form input
-    // For admins, use the email from the form
-    const salonEmail = userId && session?.user?.email 
-      ? session.user.email 
-      : (email || null);
+    // For non-admin users, if an email is provided in the form, use it.
+    // Otherwise, default to their account email.
+    const salonEmail = email ? email : (userId && session?.user?.email ? session.user.email : null);
 
     // Set status: PENDING_REVIEW for client-created salons, APPROVED for admin-created salons
     const salonStatus = userId && !isAdmin ? "PENDING_REVIEW" : "APPROVED";
@@ -198,6 +200,7 @@ export async function POST(req: Request) {
       description: toNullIfEmpty(description),
       workingHours: workingHours || null,
       isBioDiamond: isAdmin ? (isBioDiamond ?? false) : false, // Only admins can set BioDiamond
+      isActive: isAdmin, // Only active by default if created by admin
       status: salonStatus,
       userId: userId || null,
     };
@@ -311,6 +314,33 @@ export async function POST(req: Request) {
     const salon = await db.salon.create({
       data: salonData,
     });
+
+    // Create notification for admin users when a new salon is created by a professional
+    try {
+      if (userId && !isAdmin) {
+        // Fetch all admin users to send notifications to
+        const adminUsers = await db.user.findMany({
+          where: { role: "ADMIN" },
+          select: { id: true },
+        });
+
+        if (adminUsers.length > 0) {
+          await db.notification.createMany({
+            data: adminUsers.map(admin => ({
+              userId: admin.id,
+              type: "SYSTEM",
+              title: "New Salon Pending Review",
+              message: `New salon "${salon.name}" created by ${session?.user?.name || session?.user?.email} is pending review`,
+              linkUrl: `/admin/salons?filter=pending&salonId=${salon.id}`,
+              read: false,
+            }))
+          });
+          console.log("✅ Admin notifications created for new salon:", salon.id);
+        }
+      }
+    } catch (notificationError) {
+      console.error("❌ Failed to create admin notifications for new salon:", notificationError);
+    }
 
     return NextResponse.json(salon, { status: 201 });
   } catch (error: any) {

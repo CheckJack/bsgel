@@ -20,8 +20,10 @@ interface Notification {
   message: string;
   image?: string | null;
   time: string;
-  type: "order" | "message" | "system";
+  type: string;
   read: boolean;
+  linkUrl?: string | null;
+  metadata?: any;
 }
 
 interface ChatMessage {
@@ -104,6 +106,8 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
               ? "order" 
               : "system",
             read: notif.read,
+            linkUrl: notif.linkUrl,
+            metadata: notif.metadata,
           }));
           console.log("📬 Mapped notifications:", mappedNotifications.length, mappedNotifications);
           setNotifications(mappedNotifications);
@@ -378,6 +382,18 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
                             )
                           );
                           setUnreadCount((prev) => Math.max(0, prev - 1));
+
+                          // Close notifications dropdown
+                          setShowNotifications(false);
+
+                          // Handle navigation
+                          if (notification.linkUrl) {
+                            if (notification.linkUrl.startsWith('http')) {
+                              window.open(notification.linkUrl, '_blank');
+                            } else {
+                              router.push(notification.linkUrl);
+                            }
+                          }
                         }}
                       >
                         <div className="flex items-start gap-3">

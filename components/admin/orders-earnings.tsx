@@ -21,85 +21,53 @@ interface EarningsData {
 
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-export function OrdersEarnings() {
+interface OrdersEarningsProps {
+  recentOrders?: OrderData[];
+  earningsData?: EarningsData[];
+  totalRevenue?: number;
+}
+
+export function OrdersEarnings({ recentOrders, earningsData: initialEarningsData, totalRevenue: initialTotalRevenue }: OrdersEarningsProps) {
   const [ordersMenuOpen, setOrdersMenuOpen] = useState(false);
   const [earningsMenuOpen, setEarningsMenuOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOrdersSettingsOpen, setIsOrdersSettingsOpen] = useState(false);
   const [isEarningsSettingsOpen, setIsEarningsSettingsOpen] = useState(false);
-  const [ordersData, setOrdersData] = useState<OrderData[]>([]);
-  const [earningsData, setEarningsData] = useState<EarningsData[]>([]);
-  const [totalRevenue, setTotalRevenue] = useState(0);
-  const [totalProfit, setTotalProfit] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [ordersData, setOrdersData] = useState<OrderData[]>(recentOrders || []);
+  const [earningsData, setEarningsData] = useState<EarningsData[]>(initialEarningsData || []);
+  const [totalRevenue, setTotalRevenue] = useState(initialTotalRevenue || 0);
+  const [totalProfit, setTotalProfit] = useState((initialTotalRevenue || 0) * 0.75);
+  const [isLoading, setIsLoading] = useState(!recentOrders);
   const ordersMenuRef = useRef<HTMLDivElement>(null);
   const earningsMenuRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    if (recentOrders) {
+      setOrdersData(recentOrders);
+    }
+    if (initialEarningsData) {
+      setEarningsData(initialEarningsData);
+    }
+    if (initialTotalRevenue !== undefined) {
+      setTotalRevenue(initialTotalRevenue);
+      setTotalProfit(initialTotalRevenue * 0.75);
+    }
+    if (recentOrders && initialEarningsData) {
+      setIsLoading(false);
+    }
+  }, [recentOrders, initialEarningsData, initialTotalRevenue]);
+
   const fetchData = async () => {
+    if (recentOrders && initialEarningsData && !isRefreshing) return;
     try {
       setIsLoading(true);
-      const res = await fetch("/api/orders?limit=1000");
+      const res = await fetch("/api/admin/dashboard/stats");
       if (res.ok) {
-        const response = await res.json();
-        const orders = response.orders || [];
-        
-        // Get recent orders (last 5)
-        const recentOrders = orders
-          .slice(0, 5)
-          .map((order: any) => {
-            const firstItem = order.items?.[0];
-            const productName = firstItem?.product?.name || "Unknown Product";
-            const productImage = firstItem?.product?.image || firstItem?.product?.images?.[0] || null;
-            const orderDate = new Date(order.createdAt);
-            return {
-              product: productName.length > 30 ? productName.substring(0, 30) + "..." : productName,
-              price: `€${parseFloat(order.total.toString()).toFixed(2)}`,
-              date: orderDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
-              image: productImage,
-            };
-          });
-        setOrdersData(recentOrders);
-        
-        // Calculate earnings by month
-        const earningsByMonth: { [key: string]: { revenue: number; profit: number } } = {};
-        
-        // Initialize last 8 months
-        const now = new Date();
-        for (let i = 7; i >= 0; i--) {
-          const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-          earningsByMonth[monthKey] = { revenue: 0, profit: 0 };
-        }
-        
-        // Calculate revenue and profit by month
-        orders.forEach((order: any) => {
-          const orderDate = new Date(order.createdAt);
-          const monthKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, '0')}`;
-          if (earningsByMonth.hasOwnProperty(monthKey)) {
-            const revenue = parseFloat(order.total.toString());
-            earningsByMonth[monthKey].revenue += revenue;
-            // Estimate profit as 75% of revenue (you can adjust this)
-            earningsByMonth[monthKey].profit += revenue * 0.75;
-          }
-        });
-        
-        // Convert to chart data
-        const chartData: EarningsData[] = Object.keys(earningsByMonth)
-          .sort()
-          .map((key) => {
-            const date = new Date(key + '-01');
-            return {
-              month: monthNames[date.getMonth()],
-              revenue: Math.round(earningsByMonth[key].revenue),
-              profit: Math.round(earningsByMonth[key].profit),
-            };
-          });
-        setEarningsData(chartData);
-        
-        // Calculate totals
-        const totalRev = orders.reduce((sum: number, order: any) => sum + parseFloat(order.total.toString()), 0);
-        setTotalRevenue(totalRev);
-        setTotalProfit(totalRev * 0.75); // Estimate profit
+        const data = await res.json();
+        setOrdersData(data.recentOrders || []);
+        setEarningsData(data.earningsTimeSeries || []);
+        setTotalRevenue(data.totalRevenue || 0);
+        setTotalProfit((data.totalRevenue || 0) * 0.75);
       }
     } catch (error) {
       console.error("Failed to fetch orders data:", error);

@@ -11,15 +11,24 @@ interface ChartData {
 interface RecentOrderChartProps {
   onDataReady?: (data: ChartData[]) => void;
   refreshTrigger?: number;
+  data?: ChartData[];
 }
 
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-export function RecentOrderChart({ onDataReady, refreshTrigger }: RecentOrderChartProps) {
-  const [data, setData] = useState<ChartData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export function RecentOrderChart({ onDataReady, refreshTrigger, data: initialData }: RecentOrderChartProps) {
+  const [data, setData] = useState<ChartData[]>(initialData || []);
+  const [isLoading, setIsLoading] = useState(!initialData);
+
+  useEffect(() => {
+    if (initialData) {
+      setData(initialData);
+      setIsLoading(false);
+    }
+  }, [initialData]);
 
   const fetchOrderData = async () => {
+    if (initialData && !refreshTrigger) return;
     try {
       setIsLoading(true);
       const res = await fetch("/api/orders?limit=1000");

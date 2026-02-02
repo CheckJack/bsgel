@@ -373,46 +373,6 @@ function SalonCard({
           <p className="text-sm text-gray-600 mb-4 line-clamp-2">{salon.description}</p>
         )}
 
-        {/* Working Hours */}
-        {salon.workingHours && (
-          <div className="flex items-start gap-2 mb-3">
-            <Clock className="h-4 w-4 text-brand-champagne flex-shrink-0 mt-1" />
-            <p className="text-xs text-gray-600">{formatWorkingHours(salon.workingHours)}</p>
-          </div>
-        )}
-
-        {/* Contact Information */}
-        <div className="space-y-2 mt-4 pt-4 border-t border-gray-200">
-          {salon.phone && (
-            <a
-              href={`tel:${salon.phone}`}
-              className="flex items-center gap-2 text-sm text-brand-champagne hover:text-brand-black transition-colors"
-            >
-              <Phone className="h-4 w-4" />
-              {salon.phone}
-            </a>
-          )}
-          {salon.email && (
-            <a
-              href={`mailto:${salon.email}`}
-              className="flex items-center gap-2 text-sm text-brand-champagne hover:text-brand-black transition-colors"
-            >
-              <Mail className="h-4 w-4" />
-              {salon.email}
-            </a>
-          )}
-          {salon.website && (
-            <a
-              href={salon.website}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-sm text-brand-champagne hover:text-brand-black transition-colors"
-            >
-              <Globe className="h-4 w-4" />
-              {t("findSalon.visitWebsite")}
-            </a>
-          )}
-        </div>
       </div>
     </div>
   );
