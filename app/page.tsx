@@ -2,7 +2,6 @@
 
 import { HeroSlider } from "@/components/layout/hero-slider";
 import { ProductShowcase } from "@/components/layout/product-showcase";
-import { MoodyJewelsBanner } from "@/components/layout/moody-jewels-banner";
 import { TrainingBanner } from "@/components/layout/training-banner";
 import { ReasonsToTrain } from "@/components/layout/reasons-to-train";
 import { FeaturedProducts } from "@/components/layout/featured-products";
@@ -69,9 +68,12 @@ export default function Home() {
 
   return (
     <>
-      <HeroSlider slides={slides} autoPlayInterval={5000} />
+      <HeroSlider
+        slides={slides}
+        autoPlayInterval={5000}
+        className="h-[calc(100vh-var(--site-header-height,113px))]"
+      />
       <ProductShowcase products={productLines} />
-      <MoodyJewelsBanner />
       <TrainingBanner />
       <ReasonsToTrain />
       <FeaturedProducts />
