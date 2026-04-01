@@ -18,7 +18,7 @@ export function TrainingBanner() {
             <div className="relative w-full h-[300px] sm:h-[400px] md:h-[450px] lg:h-[500px] overflow-hidden rounded-2xl mb-6">
               <div className="relative w-full h-full">
                 <Image
-                  src="/Training_1.webp"
+                  src="/training-session.png"
                   alt="Training Session"
                   fill
                   className="object-cover transition-transform duration-700 hover:scale-105"
