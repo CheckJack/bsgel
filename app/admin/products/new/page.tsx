@@ -37,23 +37,28 @@ export default function NewProductPage() {
     showcasingSections: [] as string[],
     outOfStock: false,
     hemaFree: false,
+    hasDiscount: false,
+    discountPrice: "",
   });
 
   // Available showcasing sections
   const showcasingSections = [
-    { value: "treatment-gels", label: "Treatment Gels" },
-    { value: "treatment-base-gels", label: "Treatment Base Gels" },
-    { value: "top-coats", label: "Top Coats" },
-    { value: "hand-care", label: "Hand Care" },
-    { value: "foot-care", label: "Foot Care" },
-    { value: "reds", label: "Reds" },
-    { value: "pinks", label: "Pinks" },
-    { value: "nudes", label: "Nudes" },
-    { value: "oranges", label: "Oranges" },
-    { value: "brights", label: "Brights" },
-    { value: "blues-greens", label: "Blues / Greens" },
-    { value: "fluorescents", label: "Fluorescents" },
-    { value: "gemini", label: "Gemini" },
+    { value: "bases", label: "Bases" },
+    { value: "builders", label: "Builders" },
+    { value: "softs", label: "Softs" },
+    { value: "extensao", label: "Extensao" },
+    { value: "bundles", label: "Bundles" },
+    { value: "eletronicos", label: "Eletronicos" },
+    { value: "promocoes", label: "Promocoes" },
+    { value: "kits-treino", label: "Kits e Treino" },
+    { value: "solventes", label: "Solventes" },
+    { value: "nail-art", label: "Nail Art" },
+    { value: "tips", label: "Tips" },
+    { value: "utensilios", label: "Utensilios" },
+    { value: "pinceis", label: "Pinceis" },
+    { value: "lima-buffs", label: "Lima e Buffs" },
+    { value: "ethos", label: "Cuidados das unhas" },
+    { value: "gemini", label: "Verniz Classico" },
   ];
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [selectedSize, setSelectedSize] = useState("");
@@ -280,11 +285,17 @@ export default function NewProductPage() {
         return;
       }
       
+      // Calculate discount price if discount is enabled
+      const salePrice = formData.hasDiscount && formData.discountPrice 
+        ? parseFloat(formData.discountPrice) 
+        : null;
+
       const productData = {
         id: productId, // Always include ID
         name: formData.name,
         description: formData.description || null,
         price: basePrice,
+        salePrice: salePrice,
         image: imageUrls[0] || null,
         images: imageUrls.slice(1),
         categoryId: formData.categoryId || null,
@@ -857,6 +868,51 @@ export default function NewProductPage() {
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   No size attributes available. Please add size attributes in the Attributes section.
                 </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Pricing & Discount Section */}
+          <Card className="bg-white dark:bg-gray-800">
+            <CardHeader>
+              <CardTitle className="text-xl">Pricing & Discount</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Discount Checkbox */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="hasDiscount"
+                  checked={formData.hasDiscount}
+                  onChange={(e) => setFormData({ ...formData, hasDiscount: e.target.checked, discountPrice: e.target.checked ? formData.discountPrice : "" })}
+                  className="h-4 w-4"
+                />
+                <label htmlFor="hasDiscount" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Has Discount
+                </label>
+              </div>
+
+              {/* Discount Price Field - Only show when discount is enabled */}
+              {formData.hasDiscount && (
+                <div>
+                  <label htmlFor="discountPrice" className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                    Discount Price <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    id="discountPrice"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.discountPrice}
+                    onChange={(e) => setFormData({ ...formData, discountPrice: e.target.value })}
+                    placeholder="0.00"
+                    required={formData.hasDiscount}
+                    className="w-full"
+                  />
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    The discounted price that will be displayed to customers. The original price will be shown as crossed out.
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>

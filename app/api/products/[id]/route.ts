@@ -21,6 +21,7 @@ export async function GET(
           name: true,
           description: true,
           price: true,
+          salePrice: true,
           image: true,
           images: true,
           featured: true,
@@ -50,7 +51,7 @@ export async function GET(
         console.log("Schema mismatch detected, using raw SQL query");
         const result = await db.$queryRaw`
           SELECT 
-            p.id, p.name, p.description, p.price, p.image, p.images, p.featured, p."outOfStock", p."hemaFree", p."categoryId", p.attributes,
+            p.id, p.name, p.description, p.price, p."salePrice", p.image, p.images, p.featured, p."outOfStock", p."hemaFree", p."categoryId", p.attributes,
             p."showcasingSections", p."createdAt", p."updatedAt",
             c.id as "category_id", c.name as "category_name", c.slug as "category_slug"
           FROM "Product" p
@@ -66,6 +67,7 @@ export async function GET(
             name: row.name,
             description: row.description,
             price: row.price,
+            salePrice: row.salePrice || null,
             image: row.image,
             images: row.images || [],
             featured: row.featured,
@@ -94,6 +96,7 @@ export async function GET(
               name: true,
               description: true,
               price: true,
+              salePrice: true,
               image: true,
               images: true,
               featured: true,
@@ -118,7 +121,7 @@ export async function GET(
           console.log("Select query failed, using raw SQL");
           const result = await db.$queryRaw`
             SELECT 
-              p.id, p.name, p.description, p.price, p.image, p.images, p.featured, p."outOfStock", p."hemaFree", p."categoryId", p.attributes,
+              p.id, p.name, p.description, p.price, p."salePrice", p.image, p.images, p.featured, p."outOfStock", p."hemaFree", p."categoryId", p.attributes,
               p."showcasingSections", p."createdAt", p."updatedAt",
               c.id as "category_id", c.name as "category_name", c.slug as "category_slug"
             FROM "Product" p
@@ -134,6 +137,7 @@ export async function GET(
             name: row.name,
             description: row.description,
             price: row.price,
+            salePrice: row.salePrice || null,
             image: row.image,
             images: row.images || [],
             featured: row.featured,
@@ -193,11 +197,20 @@ export async function GET(
       }
     }
     
-    // salePrice doesn't exist in database, return null
+    // Handle salePrice conversion
+    let salePriceString = null;
+    if (product.salePrice !== null && product.salePrice !== undefined) {
+      if (typeof product.salePrice === 'object' && 'toString' in product.salePrice) {
+        salePriceString = product.salePrice.toString();
+      } else {
+        salePriceString = String(product.salePrice);
+      }
+    }
+    
     const serializedProduct = {
       ...product,
       price: priceString,
-      salePrice: null, // Field doesn't exist in database
+      salePrice: salePriceString,
       discountPercentage: null, // Field doesn't exist in database
       rating: rating,
       reviewCount: reviewCount,
@@ -250,6 +263,7 @@ export async function PATCH(
             name: true,
             description: true,
             price: true,
+            salePrice: true,
             image: true,
             images: true,
             featured: true,
@@ -277,7 +291,7 @@ export async function PATCH(
     }
 
     const body = await req.json()
-    const { id: newId, name, description, price, image, images, categoryId, subcategoryIds, featured, outOfStock, hemaFree, attributes, showcasingSections } = body
+    const { id: newId, name, description, price, salePrice, image, images, categoryId, subcategoryIds, featured, outOfStock, hemaFree, attributes, showcasingSections } = body
 
     // Handle ID change - must check for duplicates first
     if (newId !== undefined && typeof newId === "string" && newId.trim().length > 0) {
@@ -303,6 +317,7 @@ export async function PATCH(
     if (name !== undefined) updateData.name = name
     if (description !== undefined) updateData.description = description
     if (price !== undefined) updateData.price = price
+    if (salePrice !== undefined) updateData.salePrice = salePrice === null ? null : (typeof salePrice === "string" ? parseFloat(salePrice) : salePrice)
     if (image !== undefined) updateData.image = image
     if (images !== undefined) updateData.images = images
     if (featured !== undefined) updateData.featured = featured
@@ -372,6 +387,7 @@ export async function PATCH(
                 name: true,
                 description: true,
                 price: true,
+                salePrice: true,
                 image: true,
                 images: true,
                 featured: true,
@@ -396,6 +412,7 @@ export async function PATCH(
               name: updateDataScalars.name ?? currentProduct.name,
               description: updateDataScalars.description ?? currentProduct.description,
               price: updateDataScalars.price ?? currentProduct.price,
+              salePrice: updateDataScalars.salePrice !== undefined ? updateDataScalars.salePrice : currentProduct.salePrice,
               image: updateDataScalars.image ?? currentProduct.image,
               images: updateDataScalars.images ?? currentProduct.images,
               featured: updateDataScalars.featured ?? currentProduct.featured,
@@ -456,6 +473,7 @@ export async function PATCH(
               name: true,
               description: true,
               price: true,
+              salePrice: true,
               image: true,
               images: true,
               featured: true,
@@ -493,6 +511,7 @@ export async function PATCH(
               name: true,
               description: true,
               price: true,
+              salePrice: true,
               image: true,
               images: true,
               featured: true,
@@ -709,11 +728,21 @@ export async function PATCH(
       }
     }
     
-    // salePrice doesn't exist in database
+    // Handle salePrice conversion
+    let salePriceString = null;
+    const productWithSalePrice = product as any;
+    if (productWithSalePrice.salePrice !== null && productWithSalePrice.salePrice !== undefined) {
+      if (typeof productWithSalePrice.salePrice === 'object' && 'toString' in productWithSalePrice.salePrice) {
+        salePriceString = productWithSalePrice.salePrice.toString();
+      } else {
+        salePriceString = String(productWithSalePrice.salePrice);
+      }
+    }
+    
     const serializedProduct = {
       ...product,
       price: priceString,
-      salePrice: null, // Field doesn't exist in database
+      salePrice: salePriceString,
       discountPercentage: null, // Field doesn't exist in database
     }
 

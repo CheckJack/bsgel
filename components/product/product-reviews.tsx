@@ -31,6 +31,7 @@ interface Review {
 
 interface ReviewsProps {
   productId?: string;
+  productIds?: string[];
   categoryId?: string;
   showcasingSection?: string;
   overallRating?: number;
@@ -109,6 +110,7 @@ const RatingBreakdown = ({
 
 export function ProductReviews({ 
   productId, 
+  productIds,
   categoryId,
   showcasingSection,
   overallRating: initialOverallRating, 
@@ -136,7 +138,7 @@ export function ProductReviews({
   const reviewsPerPage = 5;
 
   useEffect(() => {
-    if (productId || categoryId || showcasingSection) {
+    if (productId || (productIds && productIds.length > 0) || categoryId || showcasingSection) {
       fetchReviews();
     } else if (initialReviews) {
       // Use provided reviews if available
@@ -144,16 +146,16 @@ export function ProductReviews({
       setOverallRating(initialOverallRating || 0);
       setTotalReviews(initialTotalReviews || 0);
     }
-  }, [productId, categoryId, showcasingSection]);
+  }, [productId, JSON.stringify(productIds || []), categoryId, showcasingSection]);
 
   useEffect(() => {
-    if (productId || categoryId || showcasingSection) {
+    if (productId || (productIds && productIds.length > 0) || categoryId || showcasingSection) {
       fetchReviews();
     }
-  }, [sortBy, currentPage]);
+  }, [sortBy, currentPage, productId, JSON.stringify(productIds || []), categoryId, showcasingSection]);
 
   const fetchReviews = async () => {
-    if (!productId && !categoryId && !showcasingSection) return;
+    if (!productId && (!productIds || productIds.length === 0) && !categoryId && !showcasingSection) return;
     
     setIsLoading(true);
     try {
@@ -174,6 +176,9 @@ export function ProductReviews({
         });
         if (categoryId) {
           params.set('categoryId', categoryId);
+        }
+        if (productIds && productIds.length > 0) {
+          params.set('productIds', productIds.join(','));
         }
         if (showcasingSection) {
           params.set('showcasingSection', showcasingSection);

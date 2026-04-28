@@ -354,7 +354,9 @@ function SalonCard({
 
       {/* Salon Content */}
       <div className="p-6">
-        <h3 className="text-xl font-medium text-brand-black mb-2">{salon.name}</h3>
+        <h3 className="text-xs sm:text-sm font-medium text-brand-black mb-2 leading-snug line-clamp-3">
+          {salon.name}
+        </h3>
 
         {/* Address */}
         <div className="flex items-start gap-2 mb-3">

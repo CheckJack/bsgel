@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { HeroSlider } from "@/components/layout/hero-slider";
-import { IngredientSlider } from "@/components/product/ingredient-slider";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
-import TextGenerateEffect from "@/components/ui/text-generate-effect";
+import { Select } from "@/components/ui/select";
 import { useLanguage } from "@/contexts/language-context";
 
 interface Product {
@@ -30,59 +28,11 @@ export default function SpaPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [categoryId, setCategoryId] = useState<string | undefined>();
-  const [isScrolling, setIsScrolling] = useState(false);
-  const textSectionRef = useRef<HTMLElement>(null);
-  const productsSectionRef = useRef<HTMLElement>(null);
-  const bottomVideoRef = useRef<HTMLVideoElement>(null);
-
-  const slides = [
-    {
-      type: "video" as const,
-      src: "/GDSDSDSBDSBDS.mp4",
-      title: "SPA",
-      description: t("productPages.spa.heroDescription"),
-    },
-  ];
+  const [sortBy, setSortBy] = useState("newest");
 
   useEffect(() => {
     fetchSpaProducts();
-  }, []);
-
-  // Ensure bottom video plays
-  useEffect(() => {
-    if (bottomVideoRef.current) {
-      bottomVideoRef.current.play().catch((error) => {
-        console.error("Video autoplay failed:", error);
-      });
-    }
-  }, []);
-
-
-  // Scroll detection for text highlighting
-  useEffect(() => {
-    let scrollTimeout: NodeJS.Timeout;
-    let isScrollingActive = false;
-
-    const handleScroll = () => {
-      if (!isScrollingActive) {
-        setIsScrolling(true);
-        isScrollingActive = true;
-      }
-
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        setIsScrolling(false);
-        isScrollingActive = false;
-      }, 150);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      clearTimeout(scrollTimeout);
-    };
-  }, []);
+  }, [sortBy]);
 
   const fetchSpaProducts = async () => {
     setIsLoading(true);
@@ -98,14 +48,14 @@ export default function SpaPage() {
         if (spaCategory) {
           setCategoryId(spaCategory.id);
           // If category exists, fetch all products in that category
-          const res = await fetch(`/api/products?categoryId=${spaCategory.id}`);
+          const res = await fetch(`/api/products?categoryId=${spaCategory.id}&sortBy=${encodeURIComponent(sortBy)}`);
           if (res.ok) {
             const data = await res.json();
             setProducts(Array.isArray(data) ? data : data.products || []);
           }
         } else {
           // Otherwise, search for products with "spa" in the name
-          const res = await fetch(`/api/products?search=spa`);
+          const res = await fetch(`/api/products?search=spa&sortBy=${encodeURIComponent(sortBy)}`);
           if (res.ok) {
             const data = await res.json();
             setProducts(Array.isArray(data) ? data : data.products || []);
@@ -120,75 +70,38 @@ export default function SpaPage() {
     }
   };
 
-  // Ingredients data for the slider
-  const ingredients = [
-    {
-      id: "cocoa-butter",
-      name: "Manteiga de Cacau",
-      image: "/DSGVSDVDSXZVXZB (1).png",
-      whyWeUseIt: "A Manteiga de Cacau (Theobroma Cacao Seed Butter) é um hidratante natural poderoso para a pele, rico em antioxidantes e ácidos gordos, que nutre profundamente, melhora a elasticidade, protege contra a desidratação e ajuda a regenerar.",
-      benefits: [],
-      backgroundColor: "#7b3615",
-      textColor: "#FFFFFF"
-    },
-    {
-      id: "coconut-oil",
-      name: "Óleo de Coco",
-      image: "/DSGGDSDGS.png",
-      whyWeUseIt: "O óleo de coco é um excelente hidratante natural, ideal para peles secas, maduras e irritadas, pois suaviza, acalma e nutre profundamente.",
-      benefits: [],
-      backgroundColor: "#8B6F47",
-      textColor: "#FFFFFF",
-      imageSize: "100%",
-      whyWeUseItHeading: "Porque o utilizamos?"
-    },
-    {
-      id: "shea-butter",
-      name: "Manteiga de Karité",
-      image: "/VDDSVDS.png",
-      whyWeUseIt: "A manteiga de karité oferece hidratação profunda e duradoura, nutrindo intensamente a pele e as cutículas. Rica em vitaminas A, E e F, que ajuda na regeneração e reparação da pele, melhora a elasticidade e cria uma proteção natural contra agressões externas.",
-      benefits: [],
-      backgroundColor: "#6B4E3D",
-      textColor: "#FFFFFF",
-      imageSize: "120%"
-    }
-  ];
-
   return (
     <>
-      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-screen" showDarkOverlay={false} scrollControlled={false} />
-      
-      {/* Text Section with Scroll-Triggered Highlighting */}
-      <section 
-        ref={textSectionRef}
-        id="our-funds"
-        className="relative w-full h-[600px] md:h-[700px] lg:h-[800px] bg-brand-white"
-      >
-        <div className="w-full h-full flex items-center">
-          <div className="container mx-auto px-4 max-w-6xl">
-            <div className="text-center">
-              <TextGenerateEffect
-                words={t("productPages.spa.description")}
-                className="text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl text-brand-black leading-relaxed font-normal"
-                filter={true}
-                duration={0.5}
-                triggerOnScroll={true}
-                isScrolling={isScrolling}
-              />
-            </div>
+      <section className="relative h-[36vh] w-full overflow-hidden md:h-[44vh]">
+        <Image src="/spa-hero-custom.png" alt="SPA" fill className="object-cover" priority unoptimized />
+        <div className="relative z-10 flex h-full items-center">
+          <div className="container mx-auto flex h-full max-w-7xl items-center px-4">
+            <h1 className="text-4xl font-medium text-white sm:text-5xl md:text-6xl">SPA</h1>
           </div>
         </div>
       </section>
 
-      {/* Natural & Organic Ingredients Section */}
-      <IngredientSlider ingredients={ingredients} />
-
-      {/* SPA Products Grid Section */}
-      <section ref={productsSectionRef} className="relative w-full min-h-screen bg-brand-white py-16">
+      <section id="products" className="relative w-full min-h-screen bg-brand-white py-16">
         <div className="container mx-auto px-4 max-w-7xl">
-          <h2 className="text-4xl md:text-5xl font-medium mb-12 text-center text-brand-black">
-            {t("productPages.spaProducts")}
-          </h2>
+          <div className="mb-12 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="text-2xl font-medium text-brand-black sm:text-3xl md:text-4xl">
+                SPA BIO Sculpture
+              </h2>
+              <div className="mt-3 h-1 w-16 bg-brand-champagne"></div>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-brand-black">{t("shop.sortBy")}</label>
+              <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="w-full sm:w-48">
+                <option value="newest">{t("shop.newestFirst")}</option>
+                <option value="oldest">{t("shop.oldestFirst")}</option>
+                <option value="price-asc">{t("shop.priceLowToHigh")}</option>
+                <option value="price-desc">{t("shop.priceHighToLow")}</option>
+                <option value="name-asc">{t("shop.nameAtoZ")}</option>
+                <option value="name-desc">{t("shop.nameZtoA")}</option>
+              </Select>
+            </div>
+          </div>
           
           {isLoading ? (
             <div className="text-center py-12">
@@ -222,22 +135,6 @@ export default function SpaPage() {
 
       {/* Product Reviews Section */}
       <ProductReviews categoryId={categoryId} />
-
-      {/* Full Width Video Background Section */}
-      <section className="relative w-full h-screen overflow-hidden">
-        <video
-          ref={bottomVideoRef}
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          className="absolute inset-0 w-full h-full object-cover"
-        >
-          <source src="/srgsdhdsh.mp4" type="video/mp4" />
-        </video>
-      </section>
-
     </>
   );
 }

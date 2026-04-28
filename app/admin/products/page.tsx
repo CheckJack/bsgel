@@ -23,7 +23,6 @@ interface Product {
   name: string;
   price: string;
   salePrice?: string | null;
-  discountPercentage?: number | null;
   featured: boolean;
   image: string | null;
   attributes?: Record<string, AttributeValue[] | string[]>;
@@ -65,25 +64,28 @@ function AdminProductsPageContent() {
     outOfStock: "",
     hemaFree: "",
     price: "",
-    discountPercentage: "",
+    discountPrice: "",
     showcasingSections: [] as string[],
   });
 
   // Available showcasing sections
   const showcasingSections = [
-    { value: "treatment-gels", label: "Treatment Gels" },
-    { value: "treatment-base-gels", label: "Treatment Base Gels" },
-    { value: "top-coats", label: "Top Coats" },
-    { value: "hand-care", label: "Hand Care" },
-    { value: "foot-care", label: "Foot Care" },
-    { value: "reds", label: "Reds" },
-    { value: "pinks", label: "Pinks" },
-    { value: "nudes", label: "Nudes" },
-    { value: "oranges", label: "Oranges" },
-    { value: "brights", label: "Brights" },
-    { value: "blues-greens", label: "Blues / Greens" },
-    { value: "fluorescents", label: "Fluorescents" },
-    { value: "gemini", label: "Gemini" },
+    { value: "bases", label: "Bases" },
+    { value: "builders", label: "Builders" },
+    { value: "softs", label: "Softs" },
+    { value: "extensao", label: "Extensao" },
+    { value: "bundles", label: "Bundles" },
+    { value: "eletronicos", label: "Eletronicos" },
+    { value: "promocoes", label: "Promocoes" },
+    { value: "kits-treino", label: "Kits e Treino" },
+    { value: "solventes", label: "Solventes" },
+    { value: "nail-art", label: "Nail Art" },
+    { value: "tips", label: "Tips" },
+    { value: "utensilios", label: "Utensilios" },
+    { value: "pinceis", label: "Pinceis" },
+    { value: "lima-buffs", label: "Lima e Buffs" },
+    { value: "ethos", label: "Cuidados das unhas" },
+    { value: "gemini", label: "Verniz Classico" },
   ];
 
   // Format category/subcategory names: replace dots, hyphens, underscores with spaces and format properly
@@ -354,13 +356,13 @@ function AdminProductsPageContent() {
       updates.price = price;
     }
 
-    if (bulkEditData.discountPercentage !== "") {
-      const discount = parseInt(bulkEditData.discountPercentage);
-      if (isNaN(discount) || discount < 0 || discount > 100) {
-        toast(t("products.invalidDiscount"), "error");
+    if (bulkEditData.discountPrice !== "") {
+      const discountPrice = parseFloat(bulkEditData.discountPrice);
+      if (isNaN(discountPrice) || discountPrice < 0) {
+        toast(t("products.invalidPrice"), "error");
         return;
       }
-      updates.discountPercentage = discount;
+      updates.salePrice = discountPrice;
     }
 
     // Showcasing sections: send if explicitly set (including empty array to clear)
@@ -391,7 +393,7 @@ function AdminProductsPageContent() {
         toast(t("products.bulkEditSuccessWithCount", { count: data.count }), "success");
         setShowBulkEditModal(false);
         setSelectedProducts(new Set());
-        setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", outOfStock: "", hemaFree: "", price: "", discountPercentage: "", showcasingSections: [] });
+        setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", outOfStock: "", hemaFree: "", price: "", discountPrice: "", showcasingSections: [] });
         fetchProducts();
       } else {
         const error = await res.json();
@@ -455,7 +457,7 @@ function AdminProductsPageContent() {
         `"${product.name.replace(/"/g, '""')}"`,
         product.price,
         product.salePrice || "",
-        product.discountPercentage?.toString() || "",
+        "",
         product.category?.name || "",
         product.featured ? "Yes" : "No",
         new Date(product.createdAt).toLocaleDateString(),
@@ -509,9 +511,6 @@ function AdminProductsPageContent() {
 
   // Calculate sale percentage
   const getSalePercentage = (product: Product): number | null => {
-    if (product.discountPercentage !== null && product.discountPercentage !== undefined) {
-      return product.discountPercentage;
-    }
     if (product.salePrice) {
       const price = parseFloat(product.price);
       const salePrice = parseFloat(product.salePrice);
@@ -969,7 +968,7 @@ function AdminProductsPageContent() {
                 <button
                   onClick={() => {
                     setShowBulkEditModal(false);
-                    setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", outOfStock: "", hemaFree: "", price: "", discountPercentage: "", showcasingSections: [] });
+                    setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", outOfStock: "", hemaFree: "", price: "", discountPrice: "", showcasingSections: [] });
                   }}
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 >
@@ -1125,22 +1124,25 @@ function AdminProductsPageContent() {
                     />
                   </div>
 
-                  {/* Discount Percentage */}
+                  {/* Discount Price */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      {t("products.discountPercentage")}
+                      Discount Price
                     </label>
                     <Input
                       type="number"
+                      step="0.01"
                       min="0"
-                      max="100"
-                      value={bulkEditData.discountPercentage}
+                      value={bulkEditData.discountPrice}
                       onChange={(e) =>
-                        setBulkEditData({ ...bulkEditData, discountPercentage: e.target.value })
+                        setBulkEditData({ ...bulkEditData, discountPrice: e.target.value })
                       }
                       placeholder={t("products.leaveEmptyToSkip")}
                       className="w-full"
                     />
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      The discounted price that will be applied to all selected products. The original price will be shown as crossed out.
+                    </p>
                   </div>
 
                   {/* Showcasing Sections */}
@@ -1200,7 +1202,7 @@ function AdminProductsPageContent() {
                   variant="outline"
                   onClick={() => {
                     setShowBulkEditModal(false);
-                    setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", outOfStock: "", hemaFree: "", price: "", discountPercentage: "", showcasingSections: [] });
+                    setBulkEditData({ categoryId: "", subcategoryIds: [], featured: "", outOfStock: "", hemaFree: "", price: "", discountPrice: "", showcasingSections: [] });
                   }}
                   disabled={isBulkEditing}
                   className="flex-1"

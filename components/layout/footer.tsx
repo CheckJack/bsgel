@@ -155,12 +155,12 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/ethos" className="text-sm text-white/90 hover:text-white transition-colors">
-                  Ethos
+                  Cuidados das unhas
                 </Link>
               </li>
               <li>
                 <Link href="/gemini" className="text-sm text-white/90 hover:text-white transition-colors">
-                  Gemini
+                  Verniz Clássico
                 </Link>
               </li>
               <li>
@@ -196,13 +196,8 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/about/biosculpture/training" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/training" className="text-sm text-white/90 hover:text-white transition-colors">
                   {t("footer.training")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/about/biosculpture/certifications" className="text-sm text-white/90 hover:text-white transition-colors">
-                  {t("footer.certifications")}
                 </Link>
               </li>
             </ul>

@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Pagination } from "@/components/ui/pagination";
-import { HeroSlider } from "@/components/layout/hero-slider";
 import { ProductReviews } from "@/components/product/product-reviews";
 import { useLanguage } from "@/contexts/language-context";
 
@@ -19,6 +18,7 @@ interface Product {
   name: string;
   description: string | null;
   price: string;
+  salePrice?: string | null;
   image: string | null;
   images?: string[];
   featured: boolean;
@@ -66,19 +66,6 @@ function ProductsPageContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
-
-  const slides = [
-    {
-      type: "video" as const,
-      src: "/moodywo4.mp4",
-      overlayImage: "/MoodyJewels.png",
-    },
-    {
-      type: "video" as const,
-      src: "/buildervid.mp4",
-      overlayImage: "/builderg.png",
-    },
-  ];
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -190,7 +177,6 @@ function ProductsPageContent() {
 
   return (
     <>
-      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-[300px] sm:h-[400px] md:h-[500px]" />
       <div className="bg-brand-white min-h-screen">
         <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-12">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6 md:mb-8">
@@ -224,33 +210,30 @@ function ProductsPageContent() {
           </div>
 
           {/* Search and Category Filter */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
-            <div className="flex-1">
-              <Input
-                placeholder={t("shop.searchPlaceholder")}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full text-sm sm:text-base"
-              />
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
-              <Button
-                variant={selectedCategory === null ? "default" : "outline"}
-                onClick={() => setSelectedCategory(null)}
-                className={selectedCategory === null ? "bg-brand-champagne hover:bg-brand-champagne/90 text-brand-white whitespace-nowrap" : "whitespace-nowrap"}
-              >
-                {t("shop.all")}
-              </Button>
-              {categories.map((category) => (
-                <Button
-                  key={category.id}
-                  variant={selectedCategory === category.id ? "default" : "outline"}
-                  onClick={() => setSelectedCategory(category.id)}
-                  className={selectedCategory === category.id ? "bg-brand-champagne hover:bg-brand-champagne/90 text-brand-white whitespace-nowrap" : "whitespace-nowrap"}
+          <div className="mb-4 rounded-lg border border-brand-champagne/20 bg-brand-white p-3 sm:mb-6 sm:p-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_240px] sm:gap-4">
+              <div>
+                <Input
+                  placeholder={t("shop.searchPlaceholder")}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full text-sm sm:text-base"
+                />
+              </div>
+              <div>
+                <Select
+                  value={selectedCategory || "all"}
+                  onChange={(e) => setSelectedCategory(e.target.value === "all" ? null : e.target.value)}
+                  className="w-full"
                 >
-                  {category.name}
-                </Button>
-              ))}
+                  <option value="all">{t("shop.all")}</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -388,13 +371,14 @@ function ProductsPageContent() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
                 {products.map((product) => (
                   <ProductCard
                     key={product.id}
                     id={product.id}
                     name={product.name}
                     price={product.price}
+                    salePrice={product.salePrice}
                     image={product.image}
                     images={product.images}
                     featured={product.featured}

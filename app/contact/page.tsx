@@ -1,23 +1,30 @@
 "use client";
 
-import { HeroSlider } from "@/components/layout/hero-slider";
+import Image from "next/image";
 import { useLanguage } from "@/contexts/language-context";
 
 export default function ContactPage() {
   const { t } = useLanguage();
 
-  const slides = [
-    {
-      type: "image" as const,
-      src: "/123_Tracey_Wide - Copy.jpg",
-      title: t("contact.title"),
-      description: t("contact.description"),
-    },
-  ];
-
   return (
     <>
-      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-[400px]" />
+      <section className="relative h-[36vh] w-full overflow-hidden md:h-[44vh]">
+        <Image
+          src="/contact-hero-custom.png"
+          alt={t("contact.title")}
+          fill
+          className="object-cover"
+          priority
+          unoptimized
+        />
+        <div className="relative z-10 flex h-full items-center">
+          <div className="container mx-auto flex h-full max-w-7xl items-center px-4">
+            <h1 className="text-4xl font-medium text-black sm:text-5xl md:text-6xl">
+              {t("contact.title")}
+            </h1>
+          </div>
+        </div>
+      </section>
       <div className="min-h-screen bg-brand-white flex flex-col">
 
       {/* Contact Information Section */}

@@ -23,16 +23,67 @@ export async function GET(req: Request) {
     const usePagination = true // Always use pagination for performance
 
     const where: any = {}
+    const normalizedSearch = search?.trim() || ""
+    const normalizedSearchLower = normalizedSearch.toLowerCase()
+    const compactSearch = normalizedSearchLower.replace(/\s+/g, "")
+    const searchTerms = normalizedSearch
+      .split(/\s+/)
+      .map((term) => term.trim())
+      .filter((term) => term.length >= 2)
+    const searchTokens = Array.from(new Set(searchTerms))
+    const isSearchRequest = searchTokens.length > 0
+
+    const getRelevanceScore = (product: any) => {
+      if (!isSearchRequest) return 0
+
+      const name = (product?.name || "").toLowerCase()
+      const description = (product?.description || "").toLowerCase()
+      const productId = (product?.id || "").toLowerCase()
+      const categoryName = (product?.category?.name || "").toLowerCase()
+      const categorySlug = (product?.category?.slug || "").toLowerCase()
+      const compactName = name.replace(/\s+/g, "")
+
+      let score = 0
+
+      if (name === normalizedSearchLower) score += 1000
+      if (name.startsWith(normalizedSearchLower)) score += 700
+      if (name.includes(normalizedSearchLower)) score += 500
+      if (compactSearch && compactName.includes(compactSearch)) score += 350
+
+      for (const token of searchTokens) {
+        if (name.startsWith(token)) score += 140
+        if (name.includes(token)) score += 100
+        if (description.includes(token)) score += 50
+        if (productId.includes(token)) score += 35
+        if (categoryName.includes(token) || categorySlug.includes(token)) score += 25
+      }
+
+      return score
+    }
 
     if (categoryId) {
       where.categoryId = categoryId
     }
 
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-      ]
+    if (searchTokens.length > 0) {
+      // Better search intent:
+      // - single-term query => broad OR matching
+      // - multi-term query => each term must match somewhere (AND of OR groups)
+      const tokenClauses = searchTokens.map((token) => ({
+        OR: [
+          { name: { contains: token, mode: "insensitive" } },
+          { description: { contains: token, mode: "insensitive" } },
+          { id: { contains: token, mode: "insensitive" } },
+          { category: { name: { contains: token, mode: "insensitive" } } },
+          { category: { slug: { contains: token, mode: "insensitive" } } },
+        ],
+      }));
+
+      if (searchTokens.length === 1) {
+        where.OR = tokenClauses[0].OR;
+      } else {
+        where.AND = [...(where.AND || []), ...tokenClauses];
+      }
     }
 
     if (featured === "true") {
@@ -93,6 +144,7 @@ export async function GET(req: Request) {
           name: true,
           description: true,
           price: true,
+          salePrice: true,
           image: true,
           images: true,
           featured: true,
@@ -112,8 +164,8 @@ export async function GET(req: Request) {
           },
         },
         orderBy,
-        skip: (page - 1) * limit,
-        take: limit,
+        skip: isSearchRequest ? 0 : (page - 1) * limit,
+        take: isSearchRequest ? 500 : limit,
       });
       console.log(`✅ Found ${products.length} products`);
 
@@ -173,6 +225,7 @@ export async function GET(req: Request) {
             name: true,
             description: true,
             price: true,
+            salePrice: true,
             image: true,
             images: true,
             featured: true,
@@ -191,8 +244,8 @@ export async function GET(req: Request) {
             },
           },
           orderBy,
-          skip: (page - 1) * limit,
-          take: limit,
+          skip: isSearchRequest ? 0 : (page - 1) * limit,
+          take: isSearchRequest ? 500 : limit,
         });
         
         // Add review stats for fallback query too
@@ -242,7 +295,7 @@ export async function GET(req: Request) {
         // We'll set them to defaults in the mapping
         let sqlQuery = `
           SELECT 
-              p.id, p.name, p.description, p.price, p.image, p.images, p.featured, p."categoryId",
+              p.id, p.name, p.description, p.price, p."salePrice", p.image, p.images, p.featured, p."categoryId",
             p."createdAt", p."updatedAt",
             c.id as category_id, c.name as category_name
           FROM "Product" p
@@ -258,10 +311,21 @@ export async function GET(req: Request) {
           paramIndex++;
         }
 
-        if (search) {
-          sqlQuery += ` AND (LOWER(p.name) LIKE $${paramIndex} OR LOWER(COALESCE(p.description, '')) LIKE $${paramIndex})`;
-          params.push(`%${search.toLowerCase()}%`);
-          paramIndex++;
+        if (searchTokens.length > 0) {
+          const tokenClauses: string[] = [];
+          for (const token of searchTokens) {
+            tokenClauses.push(`(
+              LOWER(p.name) LIKE $${paramIndex}
+              OR LOWER(COALESCE(p.description, '')) LIKE $${paramIndex}
+              OR LOWER(COALESCE(c.name, '')) LIKE $${paramIndex}
+              OR LOWER(COALESCE(c.slug, '')) LIKE $${paramIndex}
+              OR LOWER(p.id) LIKE $${paramIndex}
+            )`);
+            params.push(`%${token.toLowerCase()}%`);
+            paramIndex++;
+          }
+          const joinOperator = searchTokens.length > 1 ? " AND " : " OR ";
+          sqlQuery += ` AND (${tokenClauses.join(joinOperator)})`;
         }
 
         if (featured === "true") {
@@ -309,6 +373,7 @@ export async function GET(req: Request) {
           name: row.name,
           description: row.description,
           price: row.price,
+          salePrice: row.salePrice || null,
           image: row.image,
           images: Array.isArray(row.images) ? row.images : (row.images ? [row.images] : []),
           featured: row.featured,
@@ -369,6 +434,18 @@ export async function GET(req: Request) {
       }
     }
 
+    if (isSearchRequest && Array.isArray(products)) {
+      products = [...products]
+        .sort((a: any, b: any) => {
+          const scoreDiff = getRelevanceScore(b) - getRelevanceScore(a)
+          if (scoreDiff !== 0) return scoreDiff
+          const aCreated = new Date(a?.createdAt || 0).getTime()
+          const bCreated = new Date(b?.createdAt || 0).getTime()
+          return bCreated - aCreated
+        })
+        .slice((page - 1) * limit, page * limit)
+    }
+
     // Always return paginated response for consistency and performance
     let total;
     try {
@@ -385,10 +462,19 @@ export async function GET(req: Request) {
         paramIndex++;
       }
 
-      if (search) {
-        countQuery += ` AND (LOWER(p.name) LIKE $${paramIndex} OR LOWER(COALESCE(p.description, '')) LIKE $${paramIndex})`;
-        countParams.push(`%${search.toLowerCase()}%`);
-        paramIndex++;
+      if (searchTokens.length > 0) {
+        const tokenClauses: string[] = [];
+        for (const token of searchTokens) {
+          tokenClauses.push(`(
+            LOWER(p.name) LIKE $${paramIndex}
+            OR LOWER(COALESCE(p.description, '')) LIKE $${paramIndex}
+            OR LOWER(p.id) LIKE $${paramIndex}
+          )`);
+          countParams.push(`%${token.toLowerCase()}%`);
+          paramIndex++;
+        }
+        const joinOperator = searchTokens.length > 1 ? " AND " : " OR ";
+        countQuery += ` AND (${tokenClauses.join(joinOperator)})`;
       }
 
       if (featured === "true") {
@@ -467,7 +553,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    const { id, name, description, price, image, images, categoryId, subcategoryIds, featured, outOfStock, hemaFree, attributes, showcasingSections } = body
+    const { id, name, description, price, salePrice, image, images, categoryId, subcategoryIds, featured, outOfStock, hemaFree, attributes, showcasingSections } = body
 
     // Validate required fields
     if (!name || typeof name !== "string" || name.trim().length === 0) {
@@ -493,10 +579,23 @@ export async function POST(req: Request) {
       );
     }
 
+    // Handle salePrice conversion
+    let salePriceValue = null;
+    if (salePrice !== undefined && salePrice !== null) {
+      salePriceValue = typeof salePrice === "string" ? parseFloat(salePrice) : salePrice;
+      if (isNaN(salePriceValue) || salePriceValue < 0) {
+        return NextResponse.json(
+          { error: "Sale price must be a valid positive number" },
+          { status: 400 }
+        );
+      }
+    }
+
     const productData: any = {
       name: name.trim(),
       description: description?.trim() || null,
       price: priceValue, // Prisma will handle Decimal conversion
+      salePrice: salePriceValue,
       image: image || null,
       images: Array.isArray(images) ? images : [],
       categoryId: categoryId || null,

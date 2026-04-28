@@ -98,25 +98,23 @@ export function AboutMegaMenu({ isOpen, onClose, onMouseEnter }: AboutMegaMenuPr
 
   // About pages structure
   const aboutPages: AboutPage[] = [
-    { 
-      name: t("nav.aboutMenu.biosculpture"), 
+    {
+      name: t("nav.aboutMenu.biosculpture"),
       href: "/about/biosculpture",
       children: [
         { name: t("nav.aboutMenu.sustainability"), href: "/about/biosculpture/sustainability" },
-        { name: t("nav.aboutMenu.awards"), href: "/about/biosculpture/awards" }
-      ]
+        { name: t("nav.aboutMenu.awards"), href: "/about/biosculpture/awards" },
+      ],
     },
     {
       name: t("nav.aboutMenu.contact"),
       href: "/contact",
-      children: [
-        { name: t("nav.aboutMenu.findSalon"), href: "/salons" }
-      ]
+      children: [{ name: t("nav.aboutMenu.findSalon"), href: "/salons" }],
     },
     {
       name: t("nav.aboutMenu.blog"),
-      href: "/blog"
-    }
+      href: "/blog",
+    },
   ];
 
   // Handle link click - close menu and let Next.js Link handle navigation
@@ -242,7 +240,7 @@ export function AboutMegaMenu({ isOpen, onClose, onMouseEnter }: AboutMegaMenuPr
                   </div>
                   <div className="absolute inset-0 flex items-end pb-4 px-4">
                     <Link
-                      href="/about/biosculpture"
+                      href="/about"
                       data-mega-menu-link
                       onClick={handleLinkClick}
                       className="w-full bg-black hover:bg-gray-800 text-white py-3.5 px-4 rounded-md transition-all duration-200 font-medium text-sm text-center"
@@ -317,7 +315,7 @@ export function AboutMegaMenu({ isOpen, onClose, onMouseEnter }: AboutMegaMenuPr
                   </div>
                   <div className="absolute inset-0 flex items-end pb-4 px-4">
                     <Link
-                      href="/about/biosculpture"
+                      href="/about"
                       data-mega-menu-link
                       onClick={handleLinkClick}
                       className="w-full bg-black hover:bg-gray-800 text-white py-3.5 px-4 rounded-md transition-all duration-200 font-medium text-sm text-center"

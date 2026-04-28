@@ -10,6 +10,7 @@ export async function GET(req: Request) {
     const categoryId = searchParams.get("categoryId");
     const showcasingSection = searchParams.get("showcasingSection");
     const productId = searchParams.get("productId");
+    const productIdsParam = searchParams.get("productIds");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const sortBy = searchParams.get("sortBy") || "most-recent";
@@ -25,24 +26,38 @@ export async function GET(req: Request) {
     if (productId) {
       // If specific product, just get reviews for that product
       productWhere.id = productId;
+    } else if (productIdsParam) {
+      const parsedProductIds = productIdsParam
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean);
+
+      if (parsedProductIds.length === 0) {
+        return NextResponse.json({
+          reviews: [],
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            totalPages: 0,
+          },
+          stats: {
+            overallRating: 0,
+            totalReviews: 0,
+            breakdown: [],
+          },
+        });
+      }
+
+      productWhere.id = { in: parsedProductIds };
     } else if (categoryId) {
       // Filter by category
       productWhere.categoryId = categoryId;
     } else if (showcasingSection) {
-      // showcasingSections field doesn't exist in database, skip filter
-      // productWhere.showcasingSections = {
-      //   has: showcasingSection,
-      // };
-      // Return empty for now since we can't filter by non-existent field
-      return NextResponse.json({
-        reviews: [],
-        pagination: {
-          page: 1,
-          limit: 10,
-          total: 0,
-          totalPages: 0,
-        },
-      });
+      // Filter by showcasing section
+      productWhere.showcasingSections = {
+        has: showcasingSection,
+      };
     } else {
       // No filter - return empty
       return NextResponse.json({

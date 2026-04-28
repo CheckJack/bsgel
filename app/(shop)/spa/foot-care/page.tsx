@@ -126,9 +126,6 @@ export default function FootCarePage() {
       
       {/* Custom Hero Section - Promotional Style */}
       <section className="relative w-full h-[50vh] md:h-[60vh] overflow-hidden">
-        {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0 bg-black/20 z-[1]"></div>
-        
         {/* Full Width Background Image */}
         <div className="absolute inset-0 w-full h-full">
           <Image

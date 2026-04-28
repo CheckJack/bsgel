@@ -4,13 +4,14 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Star } from "lucide-react";
-import { formatPrice, stripHtml } from "@/lib/utils";
+import { formatPrice } from "@/lib/utils";
 import { useLanguage } from "@/contexts/language-context";
 
 interface ProductCardProps {
   id: string;
   name: string;
   price: string;
+  salePrice?: string | null;
   image: string | null;
   images?: string[];
   featured?: boolean;
@@ -34,18 +35,18 @@ function StarRating({ rating = 4.5 }: { rating?: number }) {
     <div className="flex items-center gap-0.5">
       {[...Array(5)].map((_, i) => {
         if (i < fullStars) {
-          return <Star key={i} className="h-4 w-4 fill-pink-500 text-pink-500" />;
+          return <Star key={i} className="h-3.5 w-3.5 fill-pink-500 text-pink-500" />;
         } else if (i === fullStars && hasHalfStar) {
           return (
-            <div key={i} className="relative h-4 w-4">
-              <Star className="h-4 w-4 text-gray-300 absolute inset-0" />
+            <div key={i} className="relative h-3.5 w-3.5">
+              <Star className="h-3.5 w-3.5 text-gray-300 absolute inset-0" />
               <div className="absolute inset-0 overflow-hidden" style={{ width: "50%" }}>
-                <Star className="h-4 w-4 fill-pink-500 text-pink-500" />
+                <Star className="h-3.5 w-3.5 fill-pink-500 text-pink-500" />
               </div>
             </div>
           );
         } else {
-          return <Star key={i} className="h-4 w-4 text-gray-300" />;
+          return <Star key={i} className="h-3.5 w-3.5 text-gray-300" />;
         }
       })}
     </div>
@@ -56,18 +57,21 @@ export function ProductCard({
   id, 
   name, 
   price, 
+  salePrice,
   image, 
   images = [], 
   featured,
   outOfStock,
   hemaFree,
-  description,
+  description: _description,
   rating,
   reviewCount
 }: ProductCardProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [isHovered, setIsHovered] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const resolvedRating = typeof rating === "number" ? rating : 0;
+  const resolvedReviewCount = typeof reviewCount === "number" ? reviewCount : 0;
   
   // Combine image and images array, with image as first item
   const allMedia = image ? [image, ...images] : images;
@@ -113,7 +117,7 @@ export function ProductCard({
                   src={firstMedia}
                   alt={name}
                   fill
-                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
                   className="object-cover"
                   priority
                   unoptimized={firstMedia?.startsWith('data:') || firstMedia?.startsWith('blob:') || !firstMedia?.startsWith('http')}
@@ -139,7 +143,7 @@ export function ProductCard({
                     src={secondMedia}
                     alt={name}
                     fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
                     className="object-cover"
                     loading="lazy"
                     unoptimized={secondMedia?.startsWith('data:') || secondMedia?.startsWith('blob:') || !secondMedia?.startsWith('http')}
@@ -172,40 +176,43 @@ export function ProductCard({
       {/* Product Details - Clean, minimal design matching reference */}
       <div className="pt-4 sm:pt-6 pb-4 sm:pb-6 bg-white flex flex-col flex-1 w-full">
         {/* Product Heading - Main title */}
-        <Link href={`/products/${id}`} className="mb-2 sm:mb-3 group">
-          <h2 className="text-base sm:text-lg font-medium text-black leading-tight group-hover:text-brand-champagne transition-colors line-clamp-2">
+        <Link href={`/products/${id}`} className="mb-2 group">
+          <h2 className="text-base sm:text-lg font-semibold text-black leading-tight group-hover:text-brand-champagne transition-colors line-clamp-1">
             {name}
           </h2>
         </Link>
 
-        {/* Rating, Review Count, and Price */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3 sm:mb-4">
-          {(rating !== undefined && rating > 0) || (reviewCount !== undefined && reviewCount > 0) ? (
-            <div className="flex items-center gap-2">
-              {rating !== undefined && rating > 0 && <StarRating rating={rating} />}
-              {reviewCount !== undefined && reviewCount > 0 && (
-                <span className="text-xs sm:text-sm text-gray-600">{reviewCount} {reviewCount === 1 ? t("products.review") : t("products.reviews")}</span>
-              )}
-            </div>
-          ) : null}
-          <span className="text-base sm:text-[18px] font-semibold text-black">
-            {price ? formatPrice(price) : t("products.priceOnRequest")}
-          </span>
+        {/* Price */}
+        <div className="flex items-center gap-2 mb-1.5">
+          {salePrice ? (
+            <>
+              <span className="text-sm sm:text-base font-medium text-gray-500 line-through">
+                {formatPrice(price)}
+              </span>
+              <span className="text-base sm:text-[18px] font-semibold text-black">
+                {formatPrice(salePrice)}
+              </span>
+            </>
+          ) : (
+            <span className="text-base sm:text-[18px] font-semibold text-black">
+              {price ? formatPrice(price) : t("products.priceOnRequest")}
+            </span>
+          )}
         </div>
 
-        {/* Product Name/Type */}
-        <Link href={`/products/${id}`} className="mb-2 group">
-          <h3 className="text-base font-medium text-black group-hover:text-brand-champagne transition-colors">
-            {name.split(' ').slice(-2).join(' ')}
-          </h3>
-        </Link>
-
-        {/* Description */}
-        {description && (
-          <p className="text-sm text-gray-600 mb-6 line-clamp-2 leading-relaxed">
-            {stripHtml(description)}
-          </p>
-        )}
+        {/* Rating and Review Count */}
+        <div className="flex items-center gap-2 mb-4 sm:mb-5">
+          <div className="flex items-center gap-2">
+            <StarRating rating={resolvedRating} />
+            <span className="text-xs sm:text-sm text-gray-500">
+              {resolvedReviewCount > 0
+                ? `${resolvedReviewCount} ${resolvedReviewCount === 1 ? t("products.review") : t("products.reviews")}`
+                : language === "pt"
+                ? "Sem avaliacoes"
+                : "No reviews yet"}
+            </span>
+          </div>
+        </div>
 
         {/* Bottom Section: Add to Cart button only */}
         <div className="mt-auto">
@@ -218,7 +225,8 @@ export function ProductCard({
                 window.location.href = `/products/${id}`;
               }}
             >
-              {t("products.addToCart")}
+              <span className="sm:hidden">{language === "pt" ? "Adicionar" : "Add"}</span>
+              <span className="hidden sm:inline">{t("products.addToCart")}</span>
             </button>
           </Link>
         </div>

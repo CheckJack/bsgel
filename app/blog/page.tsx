@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, User, ArrowRight } from "lucide-react";
-import { HeroSlider } from "@/components/layout/hero-slider";
 import Image from "next/image";
 
 interface BlogPost {
@@ -27,15 +26,6 @@ export default function BlogPage() {
     fetchBlogPosts();
   }, []);
 
-  const slides = [
-    {
-      type: "image" as const,
-      src: "/Training_1.webp",
-      title: "Insights & Inspiration",
-      description: "Discover expert techniques, industry insights, and the latest innovations in healthy, ethical, and professional nail care",
-    },
-  ];
-
   const fetchBlogPosts = async () => {
     try {
       const res = await fetch("/api/blogs?published=true");
@@ -53,7 +43,21 @@ export default function BlogPage() {
   if (isLoading) {
     return (
       <>
-        <HeroSlider slides={slides} autoPlayInterval={5000} className="h-[400px]" />
+        <section className="relative h-[36vh] w-full overflow-hidden md:h-[44vh]">
+          <Image
+            src="/blog-hero-custom.png"
+            alt="Blog"
+            fill
+            className="object-cover"
+            priority
+            unoptimized
+          />
+          <div className="relative z-10 flex h-full items-center">
+            <div className="container mx-auto flex h-full max-w-7xl items-center px-4">
+              <h1 className="text-4xl font-medium text-white sm:text-5xl md:text-6xl">Blog</h1>
+            </div>
+          </div>
+        </section>
         <div className="container mx-auto px-4 py-16">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-white"></div>
@@ -65,7 +69,21 @@ export default function BlogPage() {
 
   return (
     <>
-      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-[300px] sm:h-[400px]" />
+      <section className="relative h-[36vh] w-full overflow-hidden md:h-[44vh]">
+        <Image
+          src="/blog-hero-custom.png"
+          alt="Blog"
+          fill
+          className="object-cover"
+          priority
+          unoptimized
+        />
+        <div className="relative z-10 flex h-full items-center">
+          <div className="container mx-auto flex h-full max-w-7xl items-center px-4">
+            <h1 className="text-4xl font-medium text-white sm:text-5xl md:text-6xl">Blog</h1>
+          </div>
+        </div>
+      </section>
       <div className="container mx-auto px-4 sm:px-6 py-12 sm:py-16">
 
       {posts.length === 0 ? (

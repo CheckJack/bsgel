@@ -66,9 +66,16 @@ export async function PATCH(req: Request) {
       updateData.price = parseFloat(updates.price)
     }
 
-    // Handle discountPercentage (if provided)
-    if (updates.discountPercentage !== undefined && updates.discountPercentage !== null && updates.discountPercentage !== "") {
-      updateData.discountPercentage = parseInt(updates.discountPercentage)
+    // Handle salePrice (discount price) (if provided)
+    if (updates.salePrice !== undefined && updates.salePrice !== null && updates.salePrice !== "") {
+      const salePrice = parseFloat(updates.salePrice);
+      if (isNaN(salePrice) || salePrice < 0) {
+        return NextResponse.json(
+          { error: "Invalid sale price. Must be a valid positive number." },
+          { status: 400 }
+        );
+      }
+      updateData.salePrice = salePrice;
     }
 
     // Handle showcasingSections (if provided)
@@ -125,7 +132,7 @@ export async function PATCH(req: Request) {
           productUpdate.hemaFree = updateData.hemaFree
         }
         if (updateData.price !== undefined) productUpdate.price = updateData.price
-        if (updateData.discountPercentage !== undefined) productUpdate.discountPercentage = updateData.discountPercentage
+        if (updateData.salePrice !== undefined) productUpdate.salePrice = updateData.salePrice
         if (updateData.showcasingSections !== undefined) productUpdate.showcasingSections = updateData.showcasingSections
         
         // Update product with non-relation fields first

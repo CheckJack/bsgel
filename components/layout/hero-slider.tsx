@@ -8,6 +8,10 @@ import Link from "next/link";
 interface Slide {
   type: "video" | "image";
   src: string;
+  /** When set on an image slide, shown below the `md` breakpoint instead of `src`. */
+  srcMobile?: string;
+  /** When set with `srcMobile`, shown from `md` until below `lg` (tablet). Desktop uses `src`. */
+  srcTablet?: string;
   title?: string;
   titleLine2?: string;
   description?: string;
@@ -27,7 +31,8 @@ interface HeroSliderProps {
 export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDarkOverlay = true, scrollControlled = false }: HeroSliderProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,6 +44,21 @@ export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDar
 
     return () => clearInterval(interval);
   }, [isAutoPlaying, slides.length, autoPlayInterval]);
+
+  useEffect(() => {
+    videoRefs.current.forEach((video, index) => {
+      if (!video) return;
+
+      if (index === currentSlide && !scrollControlled) {
+        void video.play().catch(() => {});
+      } else {
+        video.pause();
+        if (!scrollControlled) {
+          video.currentTime = 0;
+        }
+      }
+    });
+  }, [currentSlide, scrollControlled]);
 
   // Scroll-controlled video playback with scroll hijacking
   useEffect(() => {
@@ -139,39 +159,124 @@ export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDar
 
   const currentSlideData = slides[currentSlide];
 
+  // Only apply 100vh styles if no custom className is provided (default behavior)
+  const hasCustomHeight = className && className !== "h-screen";
+  const containerStyle: React.CSSProperties = hasCustomHeight 
+    ? { position: 'relative', top: 0, left: 0, right: 0 }
+    : { 
+        height: '100vh', 
+        minHeight: '100vh',
+        position: 'relative',
+        top: 0,
+        left: 0,
+        right: 0
+      };
+
   return (
     <div 
       ref={containerRef}
-      className={`relative w-full ${className || "h-[60vh] md:h-[80vh] lg:h-screen"} overflow-hidden group`}
+      className={`relative w-full ${className || "h-screen"} overflow-hidden group bg-[#eeeeee]`}
+      style={containerStyle}
     >
       {/* Slide Content */}
-      <div className="absolute inset-0 w-full h-full">
-        {currentSlideData.type === "video" ? (
-          <video
-            ref={videoRef}
-            key={currentSlide}
-            autoPlay={!scrollControlled}
-            loop={!scrollControlled}
-            muted
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover"
-          >
-            <source src={currentSlideData.src} type="video/mp4" />
-          </video>
-        ) : (
-          <div className="relative w-full h-full">
-            <Image
-              key={currentSlide}
-              src={currentSlideData.src}
-              alt={currentSlideData.title || "Hero image"}
-              fill
-              className="object-cover"
-              priority
-              unoptimized
-              sizes="100vw"
-            />
-          </div>
-        )}
+      <div className="absolute inset-0 w-full h-full" style={{ top: 0, left: 0, right: 0, bottom: 0 }}>
+        {slides.map((slide, index) => {
+          const isActive = index === currentSlide;
+
+          return (
+            <div
+              key={`${slide.type}-${slide.src}-${index}`}
+              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+                isActive ? "opacity-100" : "opacity-0"
+              }`}
+              style={{ willChange: "opacity" }}
+            >
+              {slide.type === "video" ? (
+                <video
+                  ref={(el) => {
+                    videoRefs.current[index] = el;
+                    if (isActive) {
+                      videoRef.current = el;
+                    }
+                  }}
+                  autoPlay={!scrollControlled}
+                  loop={!scrollControlled}
+                  muted
+                  playsInline
+                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{ top: 0, left: 0, width: "100%", height: "100%" }}
+                >
+                  <source src={slide.src} type="video/mp4" />
+                </video>
+              ) : (
+                <div className="relative w-full h-full">
+                  {slide.srcMobile && slide.srcTablet ? (
+                    <>
+                      <Image
+                        src={slide.srcMobile}
+                        alt={slide.title || "Hero image"}
+                        fill
+                        className="object-cover md:hidden"
+                        priority={index === 0}
+                        unoptimized
+                        sizes="100vw"
+                      />
+                      <Image
+                        src={slide.srcTablet}
+                        alt={slide.title || "Hero image"}
+                        fill
+                        className="object-cover hidden md:block lg:hidden"
+                        priority={index === 0}
+                        unoptimized
+                        sizes="100vw"
+                      />
+                      <Image
+                        src={slide.src}
+                        alt={slide.title || "Hero image"}
+                        fill
+                        className="object-cover hidden lg:block"
+                        priority={index === 0}
+                        unoptimized
+                        sizes="100vw"
+                      />
+                    </>
+                  ) : slide.srcMobile ? (
+                    <>
+                      <Image
+                        src={slide.srcMobile}
+                        alt={slide.title || "Hero image"}
+                        fill
+                        className="object-cover md:hidden"
+                        priority={index === 0}
+                        unoptimized
+                        sizes="100vw"
+                      />
+                      <Image
+                        src={slide.src}
+                        alt={slide.title || "Hero image"}
+                        fill
+                        className="object-cover hidden md:block"
+                        priority={index === 0}
+                        unoptimized
+                        sizes="100vw"
+                      />
+                    </>
+                  ) : (
+                    <Image
+                      src={slide.src}
+                      alt={slide.title || "Hero image"}
+                      fill
+                      className="object-cover"
+                      priority={index === 0}
+                      unoptimized
+                      sizes="100vw"
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Dark overlay for better text readability */}
@@ -198,8 +303,8 @@ export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDar
       )}
 
       {/* Title and Button Content - Bottom Left */}
-      {(currentSlideData.title || currentSlideData.titleLine2 || currentSlideData.buttonText) && (
-        <div className="absolute bottom-8 sm:bottom-10 md:bottom-12 lg:bottom-16 xl:bottom-20 left-4 sm:left-6 md:left-8 lg:left-12 xl:left-16 z-10">
+      {(currentSlideData.title || currentSlideData.titleLine2 || currentSlideData.description || currentSlideData.buttonText) && (
+        <div className="absolute bottom-12 sm:bottom-16 md:bottom-20 lg:bottom-24 xl:bottom-28 left-4 sm:left-6 md:left-8 lg:left-12 xl:left-16 z-10">
           {(currentSlideData.title || currentSlideData.titleLine2) && (
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-light text-left mb-4 md:mb-6 text-brand-white tracking-tight leading-tight">
               {currentSlideData.title && (
@@ -209,6 +314,11 @@ export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDar
                 <span className="block">{currentSlideData.titleLine2}</span>
               )}
             </h1>
+          )}
+          {currentSlideData.description && (
+            <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-normal text-left text-brand-white mb-4 md:mb-6">
+              {currentSlideData.description}
+            </p>
           )}
           {currentSlideData.buttonText && currentSlideData.buttonLink && (
             <Link 

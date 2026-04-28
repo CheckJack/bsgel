@@ -96,7 +96,7 @@ export function TrainingCalendar({ sessions, onDateClick, selectedDate }: Traini
   // Render calendar days
   const renderCalendarDays = () => {
     const days = [];
-    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
     // Day names header
     days.push(
@@ -202,7 +202,7 @@ export function TrainingCalendar({ sessions, onDateClick, selectedDate }: Traini
     return days;
   };
 
-  const monthName = currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const monthName = currentMonth.toLocaleDateString("pt-PT", { month: "long", year: "numeric" });
 
   return (
     <Card className="bg-white dark:bg-gray-800">
@@ -222,7 +222,7 @@ export function TrainingCalendar({ sessions, onDateClick, selectedDate }: Traini
               onClick={goToToday}
               className="text-xs"
             >
-              Today
+              Hoje
             </Button>
             <div className="flex items-center gap-1">
               <Button
@@ -253,15 +253,15 @@ export function TrainingCalendar({ sessions, onDateClick, selectedDate }: Traini
           <div className="flex flex-wrap items-center gap-4 text-xs text-gray-600 dark:text-gray-400">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded border-2 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20" />
-              <span>Available sessions</span>
+              <span>Sessões disponíveis</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20" />
-              <span>Today</span>
+              <span>Hoje</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded border-2 border-gray-200 dark:border-gray-700" />
-              <span>No sessions</span>
+              <span>Sem sessões</span>
             </div>
           </div>
         </div>

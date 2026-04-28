@@ -1,82 +1,53 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import { HeroSlider } from "@/components/layout/hero-slider";
-import { ProductShowcase } from "@/components/layout/product-showcase";
+import { ShopCategoriesStrip } from "@/components/layout/shop-categories-strip";
 import { TrainingBanner } from "@/components/layout/training-banner";
 import { ReasonsToTrain } from "@/components/layout/reasons-to-train";
 import { FeaturedProducts } from "@/components/layout/featured-products";
 import { AsSeenIn } from "@/components/layout/as-seen-in";
 import { NailPolishDisplay } from "@/components/layout/nail-polish-display";
-import { useLanguage } from "@/contexts/language-context";
+import { HomeEntryLoader } from "@/components/layout/home-entry-loader";
 
 export default function Home() {
-  const { t } = useLanguage();
+  const [showEntryLoader, setShowEntryLoader] = useState(true);
+  const handleLoaderComplete = useCallback(() => {
+    setShowEntryLoader(false);
+  }, []);
 
   const slides = [
     {
       type: "image" as const,
-      src: "/gregregrereg.png",
-      title: t("hero.becomeTherapist"),
-      titleLine2: t("hero.becomeTherapistLine2"),
-      buttonText: t("hero.learnMore"),
-      buttonLink: "/training",
+      src: "/hero-experience-evolution-6.svg",
     },
     {
-      type: "video" as const,
-      src: "/moodywo4.mp4",
-      overlayImage: "/MoodyJewels.png",
-    },
-  ];
-
-  const productLines = [
-    {
-      image: "/Cuticle Oils (1).jpg",
-      title: t("home.trainingKits"),
-      description: t("home.trainingKitsDesc"),
-      link: "/training",
-      logo: "/ETHOSLOGO.png",
+      type: "image" as const,
+      src: "/hero-experience-evolution-7.svg",
     },
     {
-      image: "/328 Peach Pitstop - hand and product (5).jpg",
-      title: t("home.bioSculpture"),
-      description: t("home.bioSculptureDesc"),
-      link: "/products",
-      logo: "/biologo.png",
+      type: "image" as const,
+      src: "/hero-experience-evolution-9.svg",
     },
     {
-      image: "/123_Tracey_Wide - Copy.jpg",
-      title: t("home.evo"),
-      description: t("home.evoDesc"),
-      link: "/evo",
-      logo: "/EVOLOGO.png",
-    },
-    {
-      image: "/SPA - Apricot Kernel Scrub  (21) (1).jpg",
-      title: t("home.spa"),
-      description: t("home.spaDesc"),
-      link: "/spa",
-      logo: "/SPALOGO.png",
-    },
-    {
-      image: "/316 A Breath of Fresh Air - Creative (3).jpg",
-      title: t("home.gemini"),
-      description: t("home.geminiDesc"),
-      link: "/gemini",
-      logo: "/geminilogo.png",
+      type: "image" as const,
+      src: "/hero-experience-evolution-17.svg",
     },
   ];
 
   return (
     <>
+      {showEntryLoader && <HomeEntryLoader onComplete={handleLoaderComplete} />}
       <HeroSlider
         slides={slides}
         autoPlayInterval={5000}
         className="h-[calc(100vh-var(--site-header-height,113px))]"
+        showDarkOverlay={false}
       />
-      <ProductShowcase products={productLines} />
+      <ShopCategoriesStrip />
+      <FeaturedProducts />
       <TrainingBanner />
       <ReasonsToTrain />
-      <FeaturedProducts />
       <AsSeenIn />
       <NailPolishDisplay />
     </>

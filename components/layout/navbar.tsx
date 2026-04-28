@@ -9,7 +9,6 @@ import { useCart } from "@/contexts/cart-context";
 import { useState, useRef, useEffect } from "react";
 import { CartDrawer } from "@/components/cart/cart-drawer";
 import { ShopMegaMenu } from "./shop-mega-menu";
-import { AboutMegaMenu } from "./about-mega-menu";
 import { SearchDrawer } from "./search-drawer";
 import { NotificationDropdown } from "./notification-dropdown";
 import { useLanguage } from "@/contexts/language-context";
@@ -22,12 +21,10 @@ export function Navbar() {
   const [searchDrawerOpen, setSearchDrawerOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [shopMegaMenuOpen, setShopMegaMenuOpen] = useState(false);
-  const [aboutMegaMenuOpen, setAboutMegaMenuOpen] = useState(false);
   const [expandedShopItems, setExpandedShopItems] = useState<Set<string>>(new Set());
   const [expandedAboutItems, setExpandedAboutItems] = useState<Set<string>>(new Set());
   const [navbarHeight, setNavbarHeight] = useState(0);
   const shopMegaMenuRef = useRef<HTMLDivElement>(null);
-  const aboutMegaMenuRef = useRef<HTMLDivElement>(null);
   const navbarRef = useRef<HTMLElement>(null);
   const headerWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -49,27 +46,16 @@ export function Navbar() {
         }
       }
 
-      // Check if click is outside about mega menu
-      if (aboutMegaMenuOpen) {
-        const isMegaMenuLink = target.closest('[data-mega-menu-link]');
-        const isInsideMegaMenu = target.closest('[data-mega-menu]');
-        const isInsideAboutRef = aboutMegaMenuRef.current?.contains(target);
-        
-        // Only close if click is truly outside and not on a mega menu link
-        if (!isInsideAboutRef && !isInsideMegaMenu && !isMegaMenuLink) {
-          setAboutMegaMenuOpen(false);
-        }
-      }
     };
 
-    if (shopMegaMenuOpen || aboutMegaMenuOpen) {
+    if (shopMegaMenuOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [shopMegaMenuOpen, aboutMegaMenuOpen]);
+  }, [shopMegaMenuOpen]);
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -187,7 +173,6 @@ export function Navbar() {
         className="bg-brand-black relative"
         onMouseLeave={() => {
           setShopMegaMenuOpen(false);
-          setAboutMegaMenuOpen(false);
         }}
       >
       <div className="w-full px-4 sm:px-6 md:px-12 lg:px-16 py-4 md:py-6 relative overflow-visible">
@@ -237,7 +222,6 @@ export function Navbar() {
               ref={shopMegaMenuRef}
               className="relative"
               onMouseEnter={() => {
-                setAboutMegaMenuOpen(false);
                 setShopMegaMenuOpen(true);
               }}
               onMouseOver={() => {
@@ -257,19 +241,7 @@ export function Navbar() {
               </div>
               
             <div 
-              ref={aboutMegaMenuRef}
               className="relative"
-              onMouseEnter={() => {
-                setShopMegaMenuOpen(false);
-                setAboutMegaMenuOpen(true);
-              }}
-              onMouseOver={() => {
-                // Prefetch API data on hover for faster loading
-                fetch("/api/mega-menu-cards?menuType=ABOUT", { 
-                  method: 'GET',
-                  cache: 'force-cache'
-                }).catch(() => {});
-              }}
             >
               <Link href="/about" className="text-brand-white hover:text-brand-sweet-bianca transition-colors text-sm lg:text-base whitespace-nowrap">
                 {t("nav.about")}
@@ -281,6 +253,30 @@ export function Navbar() {
               className="text-brand-white hover:text-brand-sweet-bianca transition-colors text-sm lg:text-base whitespace-nowrap"
             >
               {t("nav.training")}
+            </Link>
+            <Link
+              href="/nail-diagnostics"
+              className="text-brand-white hover:text-brand-sweet-bianca transition-colors text-sm lg:text-base whitespace-nowrap"
+            >
+              {t("nav.shopMenu.nailDiagnosis")}
+            </Link>
+            <Link
+              href="/find-your-salon"
+              className="text-brand-white hover:text-brand-sweet-bianca transition-colors text-sm lg:text-base whitespace-nowrap"
+            >
+              {t("nav.aboutMenu.findSalon")}
+            </Link>
+            <Link
+              href="/blog"
+              className="text-brand-white hover:text-brand-sweet-bianca transition-colors text-sm lg:text-base whitespace-nowrap"
+            >
+              {t("nav.aboutMenu.blog")}
+            </Link>
+            <Link
+              href="/contact"
+              className="text-brand-white hover:text-brand-sweet-bianca transition-colors text-sm lg:text-base whitespace-nowrap"
+            >
+              {t("nav.aboutMenu.contact")}
             </Link>
             </div>
 
@@ -540,6 +536,104 @@ export function Navbar() {
                     >
                       {t("nav.shopMenu.topCoats")}
                     </Link>
+                    <Link
+                      href="/bases"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      {t("nav.shopMenu.bases")}
+                    </Link>
+                    <Link
+                      href="/builders"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      {t("nav.shopMenu.builders")}
+                    </Link>
+                    <Link
+                      href="/softs"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      {t("nav.shopMenu.softs")}
+                    </Link>
+                    <Link
+                      href="/extensao"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      {t("nav.shopMenu.extensao")}
+                    </Link>
+                    <Link
+                      href="/bundles"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      {t("nav.shopMenu.bundles")}
+                    </Link>
+                    <Link
+                      href="/eletronicos"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      {t("nav.shopMenu.eletronicos")}
+                    </Link>
+                    <Link
+                      href="/promocoes"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      {t("nav.shopMenu.promocoes")}
+                    </Link>
+                    <Link
+                      href="/kits-treino"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      {t("nav.shopMenu.kitsTreino")}
+                    </Link>
+                    <Link
+                      href="/solventes"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      {t("nav.shopMenu.solventes")}
+                    </Link>
+                    <Link
+                      href="/nail-art"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      {t("nav.shopMenu.nailArt")}
+                    </Link>
+                    <Link
+                      href="/tips"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      {t("nav.shopMenu.tips")}
+                    </Link>
+                    <Link
+                      href="/utensilios"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      {t("nav.shopMenu.utensilios")}
+                    </Link>
+                    <Link
+                      href="/pinceis"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      {t("nav.shopMenu.pinceis")}
+                    </Link>
+                    <Link
+                      href="/lima-buffs"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-300 hover:text-brand-sweet-bianca hover:bg-gray-900 transition-colors rounded"
+                    >
+                      {t("nav.shopMenu.limaBuffs")}
+                    </Link>
                   </div>
                 )}
               </div>
@@ -647,18 +741,7 @@ export function Navbar() {
       <ShopMegaMenu 
         isOpen={shopMegaMenuOpen} 
         onClose={() => setShopMegaMenuOpen(false)}
-        onMouseEnter={() => {
-          setAboutMegaMenuOpen(false);
-          setShopMegaMenuOpen(true);
-        }}
-      />
-      <AboutMegaMenu 
-        isOpen={aboutMegaMenuOpen} 
-        onClose={() => setAboutMegaMenuOpen(false)}
-        onMouseEnter={() => {
-          setShopMegaMenuOpen(false);
-          setAboutMegaMenuOpen(true);
-        }}
+        onMouseEnter={() => setShopMegaMenuOpen(true)}
       />
       <CartDrawer isOpen={cartDrawerOpen} onClose={() => setCartDrawerOpen(false)} />
       <SearchDrawer isOpen={searchDrawerOpen} onClose={() => setSearchDrawerOpen(false)} />

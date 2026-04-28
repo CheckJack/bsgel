@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -195,7 +194,7 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                     {products.map((product, index) => (
                       <div
                         key={product.id}
-                        className="flex gap-4 p-4 border border-gray-700 rounded-lg hover:bg-gray-900 transition-all cursor-pointer"
+                        className="flex items-center gap-3 border border-gray-700 rounded-lg px-3 py-2.5 hover:bg-gray-900 transition-all cursor-pointer"
                         onClick={() => handleProductClick(product.id)}
                         style={{
                           animation: isVisible
@@ -203,38 +202,41 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                             : undefined,
                         }}
                       >
-                        <div className="flex-shrink-0 w-24 self-stretch">
-                          {product.image ? (
-                            <div className="relative w-full h-full bg-gray-800 rounded overflow-hidden">
-                              <Image
-                                src={product.image}
-                                alt={product.name}
-                                fill
-                                className="object-contain rounded"
-                              />
-                            </div>
-                          ) : (
-                            <div className="w-full h-full bg-gray-800 rounded flex items-center justify-center">
-                              <span className="text-gray-400 text-xs">No Image</span>
-                            </div>
-                          )}
-                        </div>
+                        {product.image ? (
+                          <Image
+                            src={product.image}
+                            alt={product.name}
+                            width={400}
+                            height={400}
+                            sizes="144px"
+                            unoptimized={product.image.startsWith("data:")}
+                            className="h-36 w-36 shrink-0 object-contain rounded-lg"
+                            style={{
+                              overflow: "hidden",
+                              borderRadius: "0.5rem",
+                            }}
+                          />
+                        ) : (
+                          <span className="flex h-36 w-36 shrink-0 items-center justify-center rounded-lg text-center text-gray-500 text-xs">
+                            No Image
+                          </span>
+                        )}
 
-                        <div className="flex-1 min-w-0 flex flex-col">
-                          <h3 className="font-semibold text-base text-white hover:underline truncate mb-1">
+                        <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-1">
+                          <h3 className="truncate font-semibold text-sm leading-snug text-white hover:underline sm:text-base">
                             {product.name}
                           </h3>
                           {product.category && (
-                            <p className="text-sm text-gray-400 mb-2">
+                            <p className="text-xs text-gray-400 leading-tight">
                               {product.category.name}
                             </p>
                           )}
                           {product.description && (
-                            <p className="text-sm text-gray-300 line-clamp-2 mb-2 flex-1">
+                            <p className="line-clamp-1 text-xs leading-snug text-gray-300 sm:text-sm">
                               {stripHtml(product.description)}
                             </p>
                           )}
-                          <p className="text-lg font-bold text-white">
+                          <p className="text-base font-bold leading-tight text-white">
                             {formatPrice(product.price)}
                           </p>
                         </div>

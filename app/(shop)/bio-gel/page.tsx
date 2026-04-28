@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { HeroSlider } from "@/components/layout/hero-slider";
+import { useEffect, useState } from "react";
+import Image from "next/image";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
-import TextGenerateEffect from "@/components/ui/text-generate-effect";
 import { Pagination } from "@/components/ui/pagination";
+import { Select } from "@/components/ui/select";
 import { useLanguage } from "@/contexts/language-context";
 
 interface Product {
@@ -31,52 +31,11 @@ export default function BioGelPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [categoryId, setCategoryId] = useState<string | undefined>();
-  const [isScrolling, setIsScrolling] = useState(false);
-  const textSectionRef = useRef<HTMLElement>(null);
-  const productsSectionRef = useRef<HTMLElement>(null);
-  const isInitialMount = useRef(true);
-
-  const slides = [
-    {
-      type: "video" as const,
-      src: "/hjbuy.mp4",
-      title: "BIO Gel",
-      description: t("productPages.bioGel.heroDescription"),
-    },
-  ];
+  const [sortBy, setSortBy] = useState("newest");
 
   useEffect(() => {
     fetchBioGelProducts();
-  }, [currentPage]);
-
-
-
-  // Scroll detection for text highlighting
-  useEffect(() => {
-    let scrollTimeout: NodeJS.Timeout;
-    let isScrollingActive = false;
-
-    const handleScroll = () => {
-      if (!isScrollingActive) {
-        setIsScrolling(true);
-        isScrollingActive = true;
-      }
-
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        setIsScrolling(false);
-        isScrollingActive = false;
-      }, 150);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      clearTimeout(scrollTimeout);
-    };
-  }, []);
-
+  }, [currentPage, sortBy]);
   const fetchBioGelProducts = async () => {
     setIsLoading(true);
     try {
@@ -91,7 +50,7 @@ export default function BioGelPage() {
         if (bioGelCategory) {
           setCategoryId(bioGelCategory.id);
           // If category exists, fetch all products in that category with pagination
-          const res = await fetch(`/api/products?categoryId=${bioGelCategory.id}&page=${currentPage}&limit=10`);
+          const res = await fetch(`/api/products?categoryId=${bioGelCategory.id}&page=${currentPage}&limit=10&sortBy=${encodeURIComponent(sortBy)}`);
           if (res.ok) {
             const data = await res.json();
             if (data.pagination) {
@@ -104,7 +63,7 @@ export default function BioGelPage() {
           }
         } else {
           // Otherwise, search for products with "bio gel" or "biogel" in the name with pagination
-          const res = await fetch(`/api/products?search=bio gel&page=${currentPage}&limit=10`);
+          const res = await fetch(`/api/products?search=bio gel&page=${currentPage}&limit=10&sortBy=${encodeURIComponent(sortBy)}`);
           if (res.ok) {
             const data = await res.json();
             if (data.pagination) {
@@ -129,36 +88,36 @@ export default function BioGelPage() {
 
   return (
     <>
-      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-screen" showDarkOverlay={false} scrollControlled={true} />
-      
-      {/* Text Section with Scroll-Triggered Highlighting */}
-      <section 
-        ref={textSectionRef}
-        id="our-funds"
-        className="relative w-full h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px] xl:h-[800px] bg-brand-white"
-      >
-        <div className="w-full h-full flex items-center">
-          <div className="container mx-auto px-4 sm:px-6 max-w-6xl">
-            <div className="text-center">
-              <TextGenerateEffect
-                words={t("productPages.bioGel.description")}
-                className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl text-brand-black leading-relaxed font-normal"
-                filter={true}
-                duration={0.5}
-                triggerOnScroll={true}
-                isScrolling={isScrolling}
-              />
-            </div>
+      <section className="relative h-[36vh] w-full overflow-hidden md:h-[44vh]">
+        <Image src="/bio-gel-hero.svg" alt="BIO Gel" fill className="object-cover" priority unoptimized />
+        <div className="relative z-10 flex h-full items-center">
+          <div className="container mx-auto flex h-full max-w-7xl items-center px-4">
+            <h1 className="text-4xl font-medium text-white sm:text-5xl md:text-6xl">BIO Gel</h1>
           </div>
         </div>
       </section>
-      
-      {/* BIO Gel Products Grid Section */}
-      <section ref={productsSectionRef} className="relative w-full min-h-screen bg-brand-white py-12 sm:py-16">
+
+      <section id="products" className="relative w-full min-h-screen bg-brand-white py-12 sm:py-16">
         <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-medium mb-8 sm:mb-12 text-center text-brand-black">
-            {t("productPages.bioGelProducts")}
-          </h2>
+          <div className="mb-12 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="text-2xl font-medium text-brand-black sm:text-3xl md:text-4xl">
+                BIO Gel BIO Sculpture
+              </h2>
+              <div className="mt-3 h-1 w-16 bg-brand-champagne"></div>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-brand-black">{t("shop.sortBy")}</label>
+              <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="w-full sm:w-48">
+                <option value="newest">{t("shop.newestFirst")}</option>
+                <option value="oldest">{t("shop.oldestFirst")}</option>
+                <option value="price-asc">{t("shop.priceLowToHigh")}</option>
+                <option value="price-desc">{t("shop.priceHighToLow")}</option>
+                <option value="name-asc">{t("shop.nameAtoZ")}</option>
+                <option value="name-desc">{t("shop.nameZtoA")}</option>
+              </Select>
+            </div>
+          </div>
           
           {isLoading ? (
             <div className="text-center py-12">
@@ -203,20 +162,6 @@ export default function BioGelPage() {
 
       {/* Product Reviews Section */}
       <ProductReviews categoryId={categoryId} />
-
-      {/* Full Width Video Background Section */}
-      <section className="relative w-full h-screen overflow-hidden">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-        >
-          <source src="/Lavender Base (2).mp4" type="video/mp4" />
-        </video>
-      </section>
-
     </>
   );
 }

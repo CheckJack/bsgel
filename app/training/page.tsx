@@ -4,7 +4,6 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { HeroSlider } from "@/components/layout/hero-slider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
@@ -315,15 +314,6 @@ export default function TrainingPage() {
     }
   };
 
-  const slides = [
-    {
-      type: "image" as const,
-      src: "/gdsgsgs.png",
-      title: t("training.title"),
-      description: t("training.description"),
-    },
-  ];
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -343,7 +333,23 @@ export default function TrainingPage() {
 
   return (
     <>
-      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-[50vh] md:h-[60vh]" />
+      <section className="relative h-[36vh] w-full overflow-hidden md:h-[44vh]">
+        <Image
+          src="/training-hero-custom.png"
+          alt={t("training.title")}
+          fill
+          className="object-cover"
+          priority
+          unoptimized
+        />
+        <div className="relative z-10 flex h-full items-center">
+          <div className="container mx-auto flex h-full max-w-7xl items-center px-4">
+            <h1 className="text-4xl font-medium text-white sm:text-5xl md:text-6xl">
+              {t("training.title")}
+            </h1>
+          </div>
+        </div>
+      </section>
       
       {/* Training Banner Section */}
       <section className="w-full bg-white py-12 md:py-16 px-4">
@@ -390,7 +396,7 @@ export default function TrainingPage() {
 
       <div className="min-h-screen bg-brand-white">
         {/* Main Content Section */}
-        <section className="py-8 md:py-12 px-4">
+        <section id="programas-formacao" className="py-8 md:py-12 px-4">
           <div className="container mx-auto max-w-6xl">
             <div className="text-center mb-8">
               <h2 className="text-3xl md:text-4xl font-medium mb-3 text-brand-black">{t("training.trainingPrograms")}</h2>

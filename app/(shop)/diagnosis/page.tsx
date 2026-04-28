@@ -440,7 +440,7 @@ export default function NailDiagnosisPage() {
           {/* Left Container - Picture (50% width, full height, touches top) */}
           <div className="w-full h-[500px] lg:h-screen lg:sticky lg:top-0 bg-gray-100 overflow-hidden">
             <Image
-              src="/DSC_8219-v3.webp"
+              src="/nail-care-illustration.png"
               alt="Nail care illustration"
               width={1920}
               height={1080}
@@ -525,7 +525,7 @@ export default function NailDiagnosisPage() {
         {/* Left Container - Picture (50% width, full height, touches top) */}
         <div className="w-full h-[500px] lg:h-screen lg:sticky lg:top-0 bg-gray-100 overflow-hidden">
           <Image
-            src="/DSC_8219-v3.webp"
+            src="/nail-care-illustration.png"
             alt="Nail care illustration"
             width={1920}
             height={1080}

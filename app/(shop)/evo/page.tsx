@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { HeroSlider } from "@/components/layout/hero-slider";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
-import TextGenerateEffect from "@/components/ui/text-generate-effect";
+import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/language-context";
+import { Filter } from "lucide-react";
+import { Select } from "@/components/ui/select";
 
 interface Product {
   id: string;
@@ -29,22 +30,12 @@ export default function EvoPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [categoryId, setCategoryId] = useState<string | undefined>();
-  const [isScrolling, setIsScrolling] = useState(false);
-  const textSectionRef = useRef<HTMLElement>(null);
-  const productsSectionRef = useRef<HTMLElement>(null);
-
-  const slides = [
-    {
-      type: "image" as const,
-      src: "/vsavsvavb.png",
-      title: "EVO",
-      description: t("productPages.evo.heroDescription"),
-    },
-  ];
+  const [showFilters, setShowFilters] = useState(false);
+  const [sortBy, setSortBy] = useState("newest");
 
   useEffect(() => {
     fetchEvoProducts();
-  }, []);
+  }, [sortBy]);
 
 
 
@@ -62,14 +53,14 @@ export default function EvoPage() {
         if (evoCategory) {
           setCategoryId(evoCategory.id);
           // If category exists, fetch all products in that category
-          const res = await fetch(`/api/products?categoryId=${evoCategory.id}`);
+          const res = await fetch(`/api/products?categoryId=${evoCategory.id}&sortBy=${encodeURIComponent(sortBy)}`);
           if (res.ok) {
             const data = await res.json();
             setProducts(Array.isArray(data) ? data : data.products || []);
           }
         } else {
           // Otherwise, search for products with "evo" in the name
-          const res = await fetch(`/api/products?search=evo`);
+          const res = await fetch(`/api/products?search=evo&sortBy=${encodeURIComponent(sortBy)}`);
           if (res.ok) {
             const data = await res.json();
             setProducts(Array.isArray(data) ? data : data.products || []);
@@ -88,36 +79,59 @@ export default function EvoPage() {
 
   return (
     <>
-      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-screen" showDarkOverlay={false} />
-      
-      {/* Text Section with Scroll-Triggered Highlighting */}
-      <section 
-        ref={textSectionRef}
-        id="our-funds"
-        className="relative w-full h-[600px] md:h-[700px] lg:h-[800px] bg-brand-white"
-      >
-        <div className="w-full h-full flex items-center">
-          <div className="container mx-auto px-4 max-w-6xl">
-            <div className="text-center">
-              <TextGenerateEffect
-                words={`${t("productPages.evo.description")} #our-funds`}
-                className="text-base md:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl text-brand-black leading-relaxed font-normal"
-                filter={true}
-                duration={0.5}
-                triggerOnScroll={true}
-                isScrolling={isScrolling}
-              />
-            </div>
+      <section className="relative w-full h-[36vh] md:h-[44vh] overflow-hidden">
+        <div className="absolute inset-0 w-full h-full">
+          <Image
+            src="/evo-hero.svg"
+            alt="Evo"
+            fill
+            className="object-cover"
+            priority
+            unoptimized
+          />
+        </div>
+        <div className="relative z-10 flex h-full items-center">
+          <div className="container mx-auto flex h-full max-w-7xl items-center px-4">
+            <h1 className="text-4xl font-medium text-white sm:text-5xl md:text-6xl">Evo</h1>
           </div>
         </div>
       </section>
 
       {/* Evo Products Grid Section */}
-      <section ref={productsSectionRef} className="relative w-full min-h-screen bg-brand-white py-16">
+      <section id="products" className="relative w-full min-h-screen bg-brand-white py-16">
         <div className="container mx-auto px-4 max-w-7xl">
-          <h2 className="text-4xl md:text-5xl font-medium mb-12 text-center text-brand-black">
-            {t("productPages.evoProducts")}
-          </h2>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-12">
+            <div>
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-light text-brand-black mb-3">
+                {t("productPages.evoProducts")}
+              </h2>
+              <div className="h-1 w-16 bg-brand-champagne"></div>
+            </div>
+
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters((prev) => !prev)}
+              className="flex items-center gap-2"
+            >
+              <Filter className="w-4 h-4" />
+              {t("shop.sortBy")}
+            </Button>
+          </div>
+
+          {showFilters && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 sm:p-6 mb-8">
+              <div className="max-w-xs">
+                <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                  <option value="newest">{t("shop.newestFirst")}</option>
+                  <option value="oldest">{t("shop.oldestFirst")}</option>
+                  <option value="price-asc">{t("shop.priceLowToHigh")}</option>
+                  <option value="price-desc">{t("shop.priceHighToLow")}</option>
+                  <option value="name-asc">{t("shop.nameAtoZ")}</option>
+                  <option value="name-desc">{t("shop.nameZtoA")}</option>
+                </Select>
+              </div>
+            </div>
+          )}
           
           {isLoading ? (
             <div className="text-center py-12">
@@ -150,20 +164,10 @@ export default function EvoPage() {
       </section>
 
       {/* Product Reviews Section */}
-      <ProductReviews categoryId={categoryId} />
-
-      {/* Full Width Video Background Section */}
-      <section className="relative w-full h-screen overflow-hidden">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-        >
-          <source src="/Lavender Base (2).mp4" type="video/mp4" />
-        </video>
-      </section>
+      <ProductReviews
+        categoryId={categoryId}
+        productIds={products.map((product) => product.id)}
+      />
 
     </>
   );

@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import { Pagination } from "@/components/ui/pagination";
@@ -49,7 +48,6 @@ export default function ColoursPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [brandCategoryId, setBrandCategoryId] = useState<string | undefined>();
   const productsSectionRef = useRef<HTMLElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const [shouldShowId, setShouldShowId] = useState(false);
 
   // Fetch categories on mount
@@ -142,14 +140,6 @@ export default function ColoursPage() {
     return () => clearTimeout(timer);
   }, [fetchProducts]);
 
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.play().catch((error) => {
-        console.error("Video autoplay failed:", error);
-      });
-    }
-  }, []);
-
   const clearFilters = () => {
     setMinPrice("");
     setMaxPrice("");
@@ -175,12 +165,10 @@ export default function ColoursPage() {
         }}
       />
       
-      <section className="relative w-full h-[50vh] md:h-[60vh] overflow-hidden">
-        <div className="absolute inset-0 bg-black/20 z-[1]"></div>
-        
+      <section className="relative w-full h-[36vh] md:h-[44vh] overflow-hidden">
         <div className="absolute inset-0 w-full h-full">
           <Image
-            src="/fdhfhffhd.png"
+            src="/colours-hero-custom.png"
             alt={t("productPages.colours.heroDescription")}
             fill
             className="object-cover object-center"
@@ -189,31 +177,9 @@ export default function ColoursPage() {
           />
         </div>
         
-        <div className="relative z-10 w-full h-full flex items-center">
-          <div className="container mx-auto px-4 max-w-7xl">
-            <div className="max-w-2xl">
-              <div className="text-white space-y-1 drop-shadow-lg">
-                <p className="text-lg md:text-xl lg:text-2xl font-normal leading-tight">
-                  {t("productPages.colours.heroDescription")}
-                </p>
-              </div>
-              
-              <Link 
-                href="#products" 
-                className="inline-block mt-8"
-                onClick={(e) => {
-                  e.preventDefault();
-                  productsSectionRef.current?.scrollIntoView({ 
-                    behavior: 'smooth',
-                    block: 'start'
-                  });
-                }}
-              >
-                <button className="px-5 py-2 md:px-6 md:py-2.5 border-2 border-white text-white font-normal text-sm md:text-base hover:bg-white/10 transition-colors backdrop-blur-sm">
-                  {t("hero.shopNow")}
-                </button>
-              </Link>
-            </div>
+        <div className="relative z-10 flex h-full items-center">
+          <div className="container mx-auto flex h-full max-w-7xl items-center px-4">
+            <h1 className="text-4xl font-medium text-white sm:text-5xl md:text-6xl">Cores</h1>
           </div>
         </div>
       </section>
@@ -386,42 +352,10 @@ export default function ColoursPage() {
         </div>
       </section>
 
-      <ProductReviews categoryId={brandCategoryId} />
-
-      <section className="relative w-full h-[60vh] md:h-[70vh] overflow-hidden">
-        <video
-          ref={videoRef}
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          className="absolute inset-0 w-full h-full object-cover"
-        >
-          <source src="/Lavender Base (2).mp4" type="video/mp4" />
-        </video>
-        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-          <div className="text-center text-white px-4">
-            <h3 className="text-2xl md:text-3xl lg:text-4xl font-medium mb-4">
-              {t("productPages.colours.heroDescription")}
-            </h3>
-            <Link 
-              href="#products" 
-              onClick={(e) => {
-                e.preventDefault();
-                productsSectionRef.current?.scrollIntoView({ 
-                  behavior: 'smooth',
-                  block: 'start'
-                });
-              }}
-            >
-              <button className="px-5 py-2 md:px-6 md:py-2.5 border-2 border-white text-white font-normal text-sm md:text-base hover:bg-white/10 transition-colors backdrop-blur-sm">
-                {t("hero.shopNow")}
-              </button>
-            </Link>
-          </div>
-        </div>
-      </section>
+      <ProductReviews
+        categoryId={brandCategoryId}
+        productIds={products.map((product) => product.id)}
+      />
     </>
   );
 }

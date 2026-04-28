@@ -121,9 +121,7 @@ export default function FluorescentsPage() {
       />
       
       <section className="relative w-full h-[50vh] md:h-[60vh] overflow-hidden">
-        <div className="absolute inset-0 bg-black/20 z-[1]"></div>
-        
-        <div className="absolute inset-0 w-full h-full">
+                <div className="absolute inset-0 w-full h-full">
           <Image
             src="/fdhfhffhd.png"
             alt={t("productPagesExtended.coloursFluorescents.hero.alt")}

@@ -58,23 +58,28 @@ function EditProductPageContent() {
     outOfStock: false,
     hemaFree: false,
     showcasingSections: [] as string[],
+    hasDiscount: false,
+    discountPrice: "",
   });
 
   // Available showcasing sections
   const showcasingSections = [
-    { value: "treatment-gels", label: "Treatment Gels" },
-    { value: "treatment-base-gels", label: "Treatment Base Gels" },
-    { value: "top-coats", label: "Top Coats" },
-    { value: "hand-care", label: "Hand Care" },
-    { value: "foot-care", label: "Foot Care" },
-    { value: "reds", label: "Reds" },
-    { value: "pinks", label: "Pinks" },
-    { value: "nudes", label: "Nudes" },
-    { value: "oranges", label: "Oranges" },
-    { value: "brights", label: "Brights" },
-    { value: "blues-greens", label: "Blues / Greens" },
-    { value: "fluorescents", label: "Fluorescents" },
-    { value: "gemini", label: "Gemini" },
+    { value: "bases", label: "Bases" },
+    { value: "builders", label: "Builders" },
+    { value: "softs", label: "Softs" },
+    { value: "extensao", label: "Extensao" },
+    { value: "bundles", label: "Bundles" },
+    { value: "eletronicos", label: "Eletronicos" },
+    { value: "promocoes", label: "Promocoes" },
+    { value: "kits-treino", label: "Kits e Treino" },
+    { value: "solventes", label: "Solventes" },
+    { value: "nail-art", label: "Nail Art" },
+    { value: "tips", label: "Tips" },
+    { value: "utensilios", label: "Utensilios" },
+    { value: "pinceis", label: "Pinceis" },
+    { value: "lima-buffs", label: "Lima e Buffs" },
+    { value: "ethos", label: "Cuidados das unhas" },
+    { value: "gemini", label: "Verniz Classico" },
   ];
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [attributes, setAttributes] = useState<Attribute[]>([]);
@@ -165,6 +170,20 @@ function EditProductPageContent() {
         }
       }
       
+      // Handle salePrice (discount price) conversion
+      let discountPriceString = "";
+      // Check if salePrice exists and is not null/empty
+      const salePriceValue = product.salePrice;
+      const hasDiscount = salePriceValue !== undefined && salePriceValue !== null && salePriceValue !== "" && salePriceValue !== "null";
+      if (hasDiscount) {
+        if (typeof salePriceValue === 'object' && salePriceValue.toString) {
+          discountPriceString = salePriceValue.toString();
+        } else {
+          discountPriceString = String(salePriceValue);
+        }
+      }
+      console.log("Loading product - salePrice:", salePriceValue, "hasDiscount:", hasDiscount, "discountPriceString:", discountPriceString);
+      
       setFormData({
         id: product.id || "",
         name: product.name || "",
@@ -177,6 +196,8 @@ function EditProductPageContent() {
         outOfStock: (product as any).outOfStock || false,
         hemaFree: (product as any).hemaFree || false,
         showcasingSections: (product as any).showcasingSections || [],
+        hasDiscount: hasDiscount,
+        discountPrice: discountPriceString,
       });
       
       // Load existing images
@@ -400,6 +421,13 @@ function EditProductPageContent() {
         setIsLoading(false);
         return;
       }
+
+      // Calculate discount price if discount is enabled
+      const salePrice = formData.hasDiscount && formData.discountPrice && formData.discountPrice.trim() !== ""
+        ? parseFloat(formData.discountPrice) 
+        : null;
+      
+      console.log("Submitting product - hasDiscount:", formData.hasDiscount, "discountPrice:", formData.discountPrice, "salePrice:", salePrice);
       
       const res = await fetch(`/api/products/${currentProductId}`, {
         method: "PATCH",
@@ -409,6 +437,7 @@ function EditProductPageContent() {
           name: formData.name,
           description: formData.description || null,
           price: basePrice,
+          salePrice: salePrice,
           image: imageUrls[0] || null,
           images: imageUrls.slice(1),
           categoryId: formData.categoryId || null,
@@ -422,14 +451,22 @@ function EditProductPageContent() {
       });
 
       if (res.ok) {
-        // If ID changed, we need to update the URL
         const responseData = await res.json();
+        console.log("Product updated successfully:", responseData);
+        
+        // If ID changed, we need to update the URL
         const currentIdForRedirect = typeof params.id === 'string' ? params.id : params.id?.[0];
         if (responseData.id && currentIdForRedirect && responseData.id !== currentIdForRedirect) {
           // ID changed - redirect to new ID
           router.push(`/admin/products/${responseData.id}`);
           return;
         }
+        
+        // Reload the product to show updated discount
+        await fetchProduct();
+        
+        // Show success message
+        alert("Product updated successfully!");
         
         // Preserve query parameters (filters, pagination, etc.) when redirecting back
         const queryParams = new URLSearchParams();
@@ -444,7 +481,8 @@ function EditProductPageContent() {
         if (entries) queryParams.set("entries", entries);
         
         const queryString = queryParams.toString();
-        router.push(queryString ? `/admin/products?${queryString}` : "/admin/products");
+        // Don't redirect immediately - let user see the updated form
+        // router.push(queryString ? `/admin/products?${queryString}` : "/admin/products");
       } else {
         // Try to parse JSON, but handle cases where response might not be JSON
         let errorMessage = "Failed to update product";
@@ -746,6 +784,51 @@ function EditProductPageContent() {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Pricing & Discount Section */}
+        <Card className="bg-white dark:bg-gray-800">
+          <CardHeader>
+            <CardTitle className="text-xl">Pricing & Discount</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Discount Checkbox */}
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="hasDiscount"
+                checked={formData.hasDiscount}
+                onChange={(e) => setFormData({ ...formData, hasDiscount: e.target.checked, discountPrice: e.target.checked ? formData.discountPrice : "" })}
+                className="h-4 w-4"
+              />
+              <label htmlFor="hasDiscount" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Has Discount
+              </label>
+            </div>
+
+            {/* Discount Price Field - Only show when discount is enabled */}
+            {formData.hasDiscount && (
+              <div>
+                <label htmlFor="discountPrice" className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                  Discount Price <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  id="discountPrice"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.discountPrice}
+                  onChange={(e) => setFormData({ ...formData, discountPrice: e.target.value })}
+                  placeholder="0.00"
+                  required={formData.hasDiscount}
+                  className="w-full"
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  The discounted price that will be displayed to customers. The original price will be shown as crossed out.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -9,6 +9,7 @@ interface Product {
   id: string;
   name: string;
   price: string;
+  salePrice?: string | null;
   image: string | null;
   images?: string[];
   featured?: boolean;
@@ -23,30 +24,19 @@ export function FeaturedProducts() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchFeaturedProducts = async () => {
+    const fetchLatestProducts = async () => {
       try {
-        const res = await fetch("/api/products?featured=true&limit=20");
+        const res = await fetch("/api/products?sortBy=newest&limit=8");
         if (res.ok) {
           const data = await res.json();
           // Ensure price is formatted as string
           const formattedProducts = (data.products || []).map((product: any) => ({
             ...product,
             price: product.price?.toString() || "0",
+            salePrice: product.salePrice?.toString() || null,
           }));
-          
-          // Filter to show only these 4 specific products
-          const allowedProducts = [
-            'Peach Pitstop Gel Polish',
-            'Tracey Gel Polish',
-            'Nourishing Cuticle Oil',
-            'Apricot Kernel Scrub'
-          ];
-          
-          const filteredProducts = formattedProducts.filter((product: Product) =>
-            allowedProducts.includes(product.name)
-          );
-          
-          setProducts(filteredProducts);
+
+          setProducts(formattedProducts.slice(0, 4));
         }
       } catch (error) {
         console.error("Failed to fetch featured products:", error);
@@ -55,7 +45,7 @@ export function FeaturedProducts() {
       }
     };
 
-    fetchFeaturedProducts();
+    fetchLatestProducts();
   }, []);
 
   if (isLoading) {
@@ -121,6 +111,7 @@ export function FeaturedProducts() {
                   id={product.id}
                   name={product.name}
                   price={product.price}
+                  salePrice={product.salePrice}
                   image={product.image}
                   images={product.images}
                   featured={product.featured}
@@ -139,7 +130,7 @@ export function FeaturedProducts() {
                 href="/products?featured=true"
                 className="inline-flex items-center text-brand-black hover:text-brand-champagne font-medium text-base sm:text-lg transition-colors duration-300 font-light"
               >
-                <span className="mr-2">{t("home.viewAllFeaturedProducts")}</span>
+                <span className="mr-2">{t("home.viewAllProducts")}</span>
                 <svg
                   className="w-5 h-5"
                   fill="none"
