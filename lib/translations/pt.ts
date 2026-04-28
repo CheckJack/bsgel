@@ -576,7 +576,7 @@ export const pt = {
 
   // Training page
   training: {
-    title: "Formação Bio Sculpture",
+    title: "Formações",
     description: "Especialize-se com a Bio Sculpture e Atinja a Excelência Profissional.",
     trainingPrograms: "Programas de Formação: Evolua a sua Carreira",
     trainingProgramsDesc: "Impulsione o seu percurso no setor da estética nas unhas com os nossos programas de formação. Oferecemos certificações de referência, concebidas para que domine a ciência e a arte com o sistema Bio Sculpture.",

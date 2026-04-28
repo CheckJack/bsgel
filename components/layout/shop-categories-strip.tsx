@@ -41,14 +41,14 @@ export function ShopCategoriesStrip() {
   return (
     <section className="w-full overflow-hidden bg-white py-5 sm:py-6">
       <div className="px-4 sm:px-6">
-        <div className="shop-categories-marquee flex w-max gap-5 sm:gap-6">
+        <div className="shop-categories-marquee flex w-max gap-6 sm:gap-7">
           {animatedCategories.map((category, idx) => (
             <Link
               key={`${category.href}-${idx}`}
               href={category.href}
-              className="flex h-[168px] w-[168px] shrink-0 flex-col overflow-hidden rounded-md border border-gray-200 bg-white text-center transition-colors hover:border-brand-champagne sm:h-[188px] sm:w-[188px]"
+              className="flex h-[188px] w-[188px] shrink-0 flex-col overflow-hidden rounded-md border border-gray-200 bg-white text-center transition-colors hover:border-brand-champagne sm:h-[220px] sm:w-[220px]"
             >
-              <div className="relative h-[108px] w-full sm:h-[124px]">
+              <div className="relative h-[122px] w-full sm:h-[146px]">
                 <Image
                   src={category.image}
                   alt={category.label}
@@ -59,7 +59,7 @@ export function ShopCategoriesStrip() {
                 />
               </div>
               <div className="flex flex-1 items-center justify-center px-2">
-                <span className="line-clamp-2 text-sm font-medium text-brand-black sm:text-base">
+                <span className="line-clamp-2 text-base font-medium text-brand-black sm:text-lg">
                   {category.label}
                 </span>
               </div>

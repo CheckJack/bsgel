@@ -82,7 +82,7 @@ export default function EvoPage() {
       <section className="relative w-full h-[36vh] md:h-[44vh] overflow-hidden">
         <div className="absolute inset-0 w-full h-full">
           <Image
-            src="/evo-hero.svg"
+            src="/evo-hero-custom.png"
             alt="Evo"
             fill
             className="object-cover"

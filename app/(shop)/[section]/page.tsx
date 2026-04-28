@@ -29,15 +29,15 @@ const SECTIONS: Record<
   "bases": { title: "Bases", hero: "/bases-hero-custom.png", showcasingSection: "bases" },
   "builders": { title: "Builders", hero: "/builders-hero-custom.png", showcasingSection: "builders" },
   "softs": { title: "Softs", hero: "/softs-hero-custom.png", showcasingSection: "softs" },
-  "extensao": { title: "Extensão", hero: "/extensao-hero.svg", showcasingSection: "extensao" },
-  "bundles": { title: "Bundles", hero: "/bundles-hero.svg", showcasingSection: "bundles" },
-  "eletronicos": { title: "Eletrónicos", hero: "/eletronicos-hero.svg", showcasingSection: "eletronicos" },
-  "promocoes": { title: "Promoções", hero: "/promocoes-hero.svg", showcasingSection: "promocoes" },
-  "kits-treino": { title: "Kits e Treino", hero: "/kits-e-treino-hero.svg", showcasingSection: "kits-treino" },
-  "solventes": { title: "Solventes", hero: "/solventes-hero.svg", showcasingSection: "solventes" },
-  "nail-art": { title: "Nail Art", hero: "/nail-art-hero.svg", showcasingSection: "nail-art" },
-  "tips": { title: "Tips", hero: "/tips-hero.svg", showcasingSection: "tips" },
-  "utensilios": { title: "Utensílios", hero: "/utensilios-hero.svg", showcasingSection: "utensilios" },
+  "extensao": { title: "Extensão", hero: "/extensao-hero-custom.png", showcasingSection: "extensao" },
+  "bundles": { title: "Bundles", hero: "/bundles-hero-custom.png", showcasingSection: "bundles" },
+  "eletronicos": { title: "Eletrónicos", hero: "/eletronicos-hero-custom.png", showcasingSection: "eletronicos" },
+  "promocoes": { title: "Promoções", hero: "/promocoes-hero-custom.png", showcasingSection: "promocoes" },
+  "kits-treino": { title: "Kits e Treino", hero: "/kits-treino-hero-custom.png", showcasingSection: "kits-treino" },
+  "solventes": { title: "Solventes", hero: "/solventes-hero-custom.png", showcasingSection: "solventes" },
+  "nail-art": { title: "Nail Art", hero: "/nail-art-hero-custom.png", showcasingSection: "nail-art" },
+  "tips": { title: "Tips", hero: "/tips-hero-custom.png", showcasingSection: "tips" },
+  "utensilios": { title: "Utensílios", hero: "/utensilios-hero-custom.png", showcasingSection: "utensilios" },
   "pinceis": { title: "Pincéis", hero: "/pinceis-hero-custom.png", showcasingSection: "pinceis" },
   "lima-buffs": { title: "Lima & Buffs", hero: "/lima-buffs-hero-custom.png", showcasingSection: "lima-buffs" },
 };
@@ -89,7 +89,21 @@ export default function ShopSectionPage() {
           <div className="container mx-auto flex h-full max-w-7xl items-center px-4">
             <h1
               className={`text-4xl font-medium sm:text-5xl md:text-6xl ${
-                section === "pinceis" || section === "builders" || section === "bases" ? "text-black" : "text-white"
+                [
+                  "pinceis",
+                  "builders",
+                  "bases",
+                  "nail-art",
+                  "bundles",
+                  "kits-treino",
+                  "lima-buffs",
+                  "softs",
+                  "eletronicos",
+                  "solventes",
+                  "utensilios",
+                ].includes(section)
+                  ? "text-black"
+                  : "text-white"
               }`}
             >
               {config.title}

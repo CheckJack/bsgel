@@ -76,7 +76,7 @@ export default function SpaPage() {
         <Image src="/spa-hero-custom.png" alt="SPA" fill className="object-cover" priority unoptimized />
         <div className="relative z-10 flex h-full items-center">
           <div className="container mx-auto flex h-full max-w-7xl items-center px-4">
-            <h1 className="text-4xl font-medium text-white sm:text-5xl md:text-6xl">SPA</h1>
+            <h1 className="text-4xl font-medium text-black sm:text-5xl md:text-6xl">SPA</h1>
           </div>
         </div>
       </section>

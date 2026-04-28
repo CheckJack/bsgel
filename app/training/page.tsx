@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { TrainingCalendar } from "@/components/training/training-calendar";
 import { useLanguage } from "@/contexts/language-context";
+import TestimonialV2 from "@/components/ui/testimonial-v2";
 
 interface TrainingProgram {
   id: string;
@@ -214,10 +215,32 @@ export default function TrainingPage() {
   const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [sessionsForSelectedDate, setSessionsForSelectedDate] = useState<TrainingSession[]>([]);
+  const [nextAvailableSessions, setNextAvailableSessions] = useState<TrainingSession[]>([]);
+  const [showNextDatesNotice, setShowNextDatesNotice] = useState(true);
+  const [nextDatesTop, setNextDatesTop] = useState<number | null>(null);
+  const heroSectionRef = useRef<HTMLElement | null>(null);
+  const nextDatesNoticeRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     fetchPrograms();
+    fetchNextAvailableSessions();
     // Don't fetch all sessions on initial load - wait for program selection
+  }, []);
+
+  useEffect(() => {
+    const updateNoticePosition = () => {
+      if (!heroSectionRef.current || !nextDatesNoticeRef.current) return;
+      const heroRect = heroSectionRef.current.getBoundingClientRect();
+      const noticeHeight = nextDatesNoticeRef.current.offsetHeight;
+      setNextDatesTop(heroRect.top + heroRect.height / 2 - noticeHeight / 2 - 106);
+    };
+
+    updateNoticePosition();
+    window.addEventListener("resize", updateNoticePosition);
+
+    return () => {
+      window.removeEventListener("resize", updateNoticePosition);
+    };
   }, []);
 
   useEffect(() => {
@@ -258,6 +281,18 @@ export default function TrainingPage() {
       }
     } catch (error) {
       console.error("Failed to fetch sessions:", error);
+    }
+  };
+
+  const fetchNextAvailableSessions = async () => {
+    try {
+      const res = await fetch("/api/trainings/sessions");
+      if (res.ok) {
+        const data: TrainingSession[] = await res.json();
+        setNextAvailableSessions(data.slice(0, 3));
+      }
+    } catch (error) {
+      console.error("Failed to fetch next available sessions:", error);
     }
   };
 
@@ -333,7 +368,88 @@ export default function TrainingPage() {
 
   return (
     <>
-      <section className="relative h-[36vh] w-full overflow-hidden md:h-[44vh]">
+      {showNextDatesNotice && (
+        <aside
+          ref={nextDatesNoticeRef}
+          className="fixed right-2 z-40 w-[215px] rounded-md border border-gray-200 bg-white p-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.12)] md:right-5 md:w-[250px] md:p-2"
+          style={{ top: nextDatesTop ? `${nextDatesTop}px` : undefined }}
+        >
+          <div className="flex items-center justify-between gap-2 border-b border-gray-100 pb-2">
+            <p className="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-medium uppercase tracking-[0.1em] text-gray-700">
+              <Calendar className="h-3 w-3 text-brand-champagne" />
+              Próximas datas
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowNextDatesNotice(false)}
+              className="rounded p-0.5 text-sm leading-none text-gray-400 transition-colors hover:text-gray-700"
+              aria-label="Fechar notificação de próximas datas"
+            >
+              ×
+            </button>
+          </div>
+          <div className="mt-1.5 space-y-1">
+            {nextAvailableSessions.length > 0 ? (
+              nextAvailableSessions.map((sessionItem, idx) => (
+                <Link
+                  key={sessionItem.id}
+                  href={`/training/${sessionItem.programId}`}
+                  className={`group rounded-md border border-gray-200 bg-white p-1.5 transition-all hover:border-brand-champagne/60 hover:bg-brand-champagne/[0.04] ${idx === 2 ? "hidden md:block" : "block"}`}
+                >
+                  <p className="line-clamp-2 text-xs font-medium leading-snug text-brand-black [text-wrap:balance]">
+                    {sessionItem.program.title}
+                  </p>
+                  <p className="mt-0.5 text-[11px] font-medium text-gray-700">
+                    {new Date(sessionItem.startDate).toLocaleDateString("pt-PT", {
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </p>
+                  <p className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-gray-600">
+                    <Users className="h-3 w-3" />
+                    {sessionItem.availableSpots} vagas
+                  </p>
+                  <div className="mt-0.5 max-h-0 overflow-hidden border-t border-transparent opacity-0 transition-all duration-200 group-hover:mt-1.5 group-hover:max-h-24 group-hover:border-gray-100 group-hover:pt-1.5 group-hover:opacity-100">
+                    <p className="inline-flex items-center gap-1 text-[10px] text-gray-600">
+                      <Clock className="h-3 w-3" />
+                      {new Date(sessionItem.startDate).toLocaleTimeString("pt-PT", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })}
+                      {" - "}
+                      {new Date(sessionItem.endDate).toLocaleTimeString("pt-PT", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })}
+                    </p>
+                    <p className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-gray-600">
+                      <MapPin className="h-3 w-3" />
+                      {sessionItem.location || "Local a confirmar"}
+                    </p>
+                    <p className="mt-0.5 text-[10px] font-medium text-brand-champagne">
+                      {sessionItem.format === "ONLINE"
+                        ? "Online"
+                        : sessionItem.format === "HYBRID"
+                          ? "Híbrido"
+                          : "Presencial"}{" "}
+                      • Clique para reservar
+                    </p>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <p className="text-sm font-light text-gray-600">
+                Sem datas disponíveis de momento.
+              </p>
+            )}
+          </div>
+        </aside>
+      )}
+
+      <section ref={heroSectionRef} className="relative h-[36vh] w-full overflow-hidden md:h-[44vh]">
         <Image
           src="/training-hero-custom.png"
           alt={t("training.title")}
@@ -350,56 +466,191 @@ export default function TrainingPage() {
           </div>
         </div>
       </section>
-      
-      {/* Training Banner Section */}
-      <section className="w-full bg-white py-12 md:py-16 px-4">
-        <div className="container mx-auto max-w-6xl text-center">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium text-brand-black mb-3 md:mb-4">
-            {t("training.bannerTitle")}
-          </h2>
-          <p className="text-xl md:text-2xl lg:text-3xl font-light text-brand-black mb-6 md:mb-8">
-            {t("training.bannerSubtitle")}
-          </p>
-          <div className="w-24 h-1 bg-brand-champagne mx-auto mb-4"></div>
-        </div>
-      </section>
 
-      {/* Two Column Section - Text and Image */}
-      <section className="w-full bg-white overflow-hidden">
-        <div className="flex flex-col lg:flex-row">
-          {/* Left Column - Text Content */}
-          <div className="w-full lg:w-[55%] px-4 md:px-6 lg:px-8 xl:px-12 py-12 md:py-16 lg:py-20 flex items-center">
-            <div className="w-full max-w-2xl space-y-6">
-              <p className="text-xl md:text-2xl font-light text-brand-black leading-relaxed">
+      <section className="w-full bg-white py-10 md:py-14">
+        <div className="container mx-auto max-w-7xl px-4">
+          <div className="grid items-stretch gap-6 lg:grid-cols-2">
+            <div className="flex min-h-[320px] flex-col justify-center rounded-lg bg-white p-4 md:min-h-[380px] md:p-6 lg:min-h-[420px]">
+              <h2 className="mb-4 text-3xl font-light tracking-tight text-brand-black md:text-4xl">
+                Torne-se Terapeuta de unhas Bio
+              </h2>
+              <p className="text-lg font-light leading-relaxed text-brand-black md:text-2xl">
                 {t("training.upgradeParagraph1")}
               </p>
-              <p className="text-xl md:text-2xl font-light text-brand-black leading-relaxed">
+              <p className="mt-4 text-lg font-light leading-relaxed text-brand-black md:text-2xl">
                 {t("training.upgradeParagraph2")}
               </p>
             </div>
-          </div>
-
-          {/* Right Column - Image (connected to right border) */}
-          <div className="w-full lg:w-[45%] relative h-[300px] md:h-[350px] lg:h-[400px]">
-            <Image
-              src="/Untitled design (73).png"
-              alt="BIO Sculpture Therapist"
-              fill
-              className="object-cover object-center"
-              sizes="(max-width: 1024px) 100vw, 45vw"
-              priority
-              quality={100}
-            />
+            <div className="relative min-h-[320px] overflow-hidden rounded-lg md:min-h-[380px] lg:min-h-[420px]">
+              <Image
+                src="/training-detail-custom.png"
+                alt="Formação BIO Sculpture"
+                fill
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                priority
+              />
+            </div>
           </div>
         </div>
       </section>
 
+      <section className="relative w-full h-[420px] sm:h-[520px] md:h-[620px] overflow-hidden">
+        <Image
+          src="/training-benefits-bg-custom.png"
+          alt="Training background"
+          fill
+          className="object-cover"
+          priority
+          unoptimized
+        />
+        <div className="relative z-10 flex h-full items-center justify-center px-4">
+          <div className="grid w-full max-w-5xl grid-cols-1 justify-items-center gap-4 sm:grid-cols-3 sm:gap-4">
+            <div className="flex h-[175px] w-[245px] flex-col items-center justify-center border border-white/60 px-4 text-center sm:h-[195px] sm:w-[270px]">
+              <img
+                src="/training-benefit-recognized-custom.png"
+                alt="Reconhecida internacionalmente"
+                className="h-14 w-auto sm:h-16"
+              />
+              <p className="mt-3 text-xs font-medium leading-tight tracking-wide text-white sm:text-sm">
+                RECONHECIDA INTERNACIONALMENTE
+              </p>
+            </div>
+            <div className="flex h-[175px] w-[245px] flex-col items-center justify-center border border-white/60 px-4 text-center sm:h-[195px] sm:w-[270px]">
+              <img
+                src="/training-benefit-distinction-custom.png"
+                alt="Formação com distinção"
+                className="h-14 w-auto sm:h-16"
+              />
+              <p className="mt-3 text-xs font-medium leading-tight tracking-wide text-white sm:text-sm">
+                FORMAÇÃO COM DISTINÇÃO
+              </p>
+            </div>
+            <div className="flex h-[175px] w-[245px] flex-col items-center justify-center border border-white/60 px-4 text-center sm:h-[195px] sm:w-[270px]">
+              <img
+                src="/training-benefit-certificate-custom.png"
+                alt="Formação com certificado profissional"
+                className="h-14 w-auto sm:h-16"
+              />
+              <p className="mt-3 text-xs font-medium leading-tight tracking-wide text-white sm:text-sm">
+                FORMAÇÃO COM CERTIFICADO PROFISSIONAL
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="w-full bg-white py-12 md:py-16">
+        <div className="container mx-auto max-w-6xl px-4 text-center">
+          <h2 className="text-4xl font-light tracking-tight text-brand-black md:text-5xl">
+            Torna-se na Especialista Mais Requisitada
+            <br />
+            em Tratamento de Unhas
+          </h2>
+          <p className="mx-auto mt-6 whitespace-pre-line text-left text-base font-light leading-relaxed text-brand-black md:text-lg">
+            {`A Formação BIO Sculpture proporciona conhecimentos mais avançados em relação aos cuidados das unhas através da aplicação de produtos e protocolos específicos.
+
+Essa especialização permite que o profissional domine técnicas personalizadas para cada cliente consoante o tipo, condição da unha e estilo de vida cliente. Além disso, a formação BIO Sculpture também aborda técnicas de limagem, extensões, entre outras, de forma mais abrangente.
+
+Ao se tornar um Terapeuta de unhas BIO, e implementando o CONCEITO BIO, amplia os seus serviços, podendo oferecer tratamentos mais abrangentes e específicos para as unhas das suas clientes.
+
+Enquanto uma técnica de unhas comum foca principalmente na aplicação de unhas artificiais e na sua manutenção, uma Terapeuta de unhas BIO está apto a realizar tratamentos para melhorar a saúde das unhas naturais, diagnosticar problemas específicos e fornecer soluções adequadas.`}
+          </p>
+        </div>
+      </section>
+
+      <section className="relative w-full h-[300px] sm:h-[380px] md:h-[460px] overflow-hidden">
+        <Image
+          src="/training-banner-primeiro-custom.png"
+          alt="Primeiro tratar e depois embelezar"
+          fill
+          className="object-cover"
+          unoptimized
+        />
+        <div className="absolute inset-0 bg-black/35" />
+        <div className="relative z-10 flex h-full items-center justify-center px-4">
+          <h2 className="text-center text-3xl font-medium text-white md:text-5xl">
+            Primeiro tratar e depois embelezar
+          </h2>
+        </div>
+      </section>
+
+      <section className="w-full bg-white pt-10 pb-12 md:pt-14 md:pb-16">
+        <div className="container mx-auto max-w-6xl px-4">
+          <h2 className="text-left text-4xl font-light tracking-tight text-brand-black md:text-5xl">
+            Pronta para dar o próximo passo?
+          </h2>
+
+          <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+            <article className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="relative h-40 w-full overflow-hidden rounded-md">
+                <Image
+                  src="/training-card-1-custom.png"
+                  alt="Formação on-line e presencial"
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
+              <p className="mt-4 whitespace-pre-line text-left text-sm font-light leading-relaxed text-brand-black">
+                {`Formação on-line e/ou presencial consoante a sua necessidade, cursos e workshops para profissionais e iniciantes.`}
+              </p>
+            </article>
+
+            <article className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="relative h-40 w-full overflow-hidden rounded-md">
+                <Image
+                  src="/training-card-2-custom.png"
+                  alt="Apoio técnico contínuo"
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
+              <p className="mt-4 whitespace-pre-line text-left text-sm font-light leading-relaxed text-brand-black">
+                {`A sua formação não termina aqui: o apoio técnico, continua, tire sempre as suas duvidas connosco.`}
+              </p>
+            </article>
+
+            <article className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="relative h-40 w-full overflow-hidden rounded-md">
+                <Image
+                  src="/training-card-3-custom.png"
+                  alt="Workshops gratuitos"
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
+              <p className="mt-4 whitespace-pre-line text-left text-sm font-light leading-relaxed text-brand-black">
+                {`Workshops gratuitos para formandas BIO Sculpture, refresh e aumento de conhecimentos.`}
+              </p>
+            </article>
+
+            <article className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="relative h-40 w-full overflow-hidden rounded-md">
+                <Image
+                  src="/training-card-4-custom.png"
+                  alt="Cursos certificados pela plataforma SIGO"
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
+              <p className="mt-4 whitespace-pre-line text-left text-sm font-light leading-relaxed text-brand-black">
+                {`Cursos certificados pela plataforma SIGO, para emissão de Certificado Profissional, mais certificado internacional da marca`}
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+      
       <div className="min-h-screen bg-brand-white">
         {/* Main Content Section */}
         <section id="programas-formacao" className="py-8 md:py-12 px-4">
           <div className="container mx-auto max-w-6xl">
             <div className="text-center mb-8">
-              <h2 className="text-3xl md:text-4xl font-medium mb-3 text-brand-black">{t("training.trainingPrograms")}</h2>
+              <h2 className="mb-3 text-4xl font-light tracking-tight text-brand-black md:text-5xl">{t("training.trainingPrograms")}</h2>
               <div className="w-24 h-1 bg-brand-champagne mx-auto mb-4"></div>
               <p className="text-base md:text-lg font-light text-brand-black leading-relaxed max-w-3xl mx-auto">
                 {t("training.trainingProgramsDesc")}
@@ -407,211 +658,56 @@ export default function TrainingPage() {
             </div>
 
             {isLoading ? (
-              <div className="flex items-center justify-center min-h-[400px]">
+              <div className="flex min-h-[320px] items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
               </div>
             ) : programs.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-600 dark:text-gray-400">
-                  {t("training.noTrainingPrograms")}
-                </p>
+              <div className="py-12 text-center">
+                <p className="text-gray-600 dark:text-gray-400">{t("training.noTrainingPrograms")}</p>
               </div>
             ) : (
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden">
-                <div className="grid lg:grid-cols-3 divide-x divide-gray-200 dark:divide-gray-700">
-                  {/* Left Side - Training Programs List */}
-                  <div className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                      {t("training.trainingPrograms")}
-                    </h3>
-                    <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
-                      {programs.map((program) => (
-                        <button
-                          key={program.id}
-                          onClick={() => handleProgramSelect(program.id)}
-                          className={`
-                            w-full flex gap-3 p-3 rounded-lg text-left transition-all
-                            ${selectedProgramId === program.id
-                              ? "border-2 border-brand-champagne"
-                              : "border-2 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                            }
-                          `}
-                        >
-                          {program.image && (
-                            <div className="relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden">
-                              <img
-                                src={program.image}
-                                alt={program.title}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1 line-clamp-1">
-                              {program.title}
-                            </h3>
-                            {program.description && (
-                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
-                                {program.description}
-                              </p>
-                            )}
-                            <div className="flex items-center justify-between text-xs text-gray-700 dark:text-gray-300">
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                <span>{program.totalHours || program.duration || 0}h</span>
-                              </div>
-                              <span className="font-semibold text-blue-600 dark:text-blue-400">
-                                €{program.price.toFixed(2)}
-                              </span>
-                            </div>
-                            {selectedProgramId === program.id && (
-                              <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                                <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                                  <Calendar className="h-3 w-3" />
-                                  <span>{program.upcomingSessions} {program.upcomingSessions !== 1 ? t("training.availableSessionsPlural") : t("training.availableSessions")}</span>
-                                </div>
-                                {program.includedProducts && program.includedProducts.length > 0 && (
-                                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                                    {program.includedProducts.length} {program.includedProducts.length !== 1 ? t("training.productsIncludedPlural") : t("training.productsIncluded")}
-                                  </p>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Middle - Calendar */}
-                  <div className="p-6">
-                    {!selectedProgramId ? (
-                      <div className="text-center py-12">
-                        <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {t("training.selectProgram")}
-                        </p>
-                      </div>
-                    ) : sessions.length === 0 ? (
-                      <div className="text-center py-12">
-                        <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {t("training.noUpcomingSessions")}
-                        </p>
-                      </div>
-                    ) : (
-                      <TrainingCalendar
-                        sessions={sessions}
-                        onDateClick={handleDateClick}
-                        selectedDate={selectedDate}
-                      />
-                    )}
-                  </div>
-
-                  {/* Right Side - Available Times/Sessions */}
-                  <div className="p-6">
-                    {!selectedDate || sessionsForSelectedDate.length === 0 ? (
-                      <div className="text-center py-12">
-                        <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {!selectedProgramId 
-                            ? t("training.selectTrainingProgram")
-                            : !selectedDate
-                            ? t("training.clickDateViewTimes")
-                            : t("training.noSessionsForDate")}
-                        </p>
-                      </div>
-                    ) : (
-                      <div>
-                        <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                          {t("training.selectDateTime")}
-                        </h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                          {formatDate(sessionsForSelectedDate[0].startDate)}
-                        </p>
-                        
-                        <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-                          {sessionsForSelectedDate.map((sessionItem) => (
-                            <button
-                              key={sessionItem.id}
-                              onClick={() => {
-                                if (sessionItem.availableSpots > 0) {
-                                  if (session?.user) {
-                                    setSelectedSession(sessionItem);
-                                  }
-                                }
-                              }}
-                              disabled={sessionItem.availableSpots === 0}
-                              className={`
-                                w-full p-3 rounded-lg border-2 text-left transition-all
-                                ${sessionItem.availableSpots === 0
-                                  ? "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 opacity-50 cursor-not-allowed"
-                                  : selectedSession?.id === sessionItem.id
-                                  ? "border-green-500 bg-green-50 dark:bg-green-900/20"
-                                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-green-400 dark:hover:border-green-600 hover:bg-green-50/50 dark:hover:bg-green-900/10 cursor-pointer"
-                                }
-                              `}
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
-                                  {formatTime(sessionItem.startDate)} - {formatTime(sessionItem.endDate)}
-                                </span>
-                                <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                                  €{sessionItem.program.price.toFixed(2)}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                                {sessionItem.location && (
-                                  <span className="flex items-center gap-1">
-                                    <MapPin className="h-3 w-3" />
-                                    {sessionItem.location}
-                                  </span>
-                                )}
-                                {sessionItem.format && (
-                                  <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">
-                                    {sessionItem.format === "ONLINE" ? t("training.online") : sessionItem.format === "PRESENTIAL" ? t("training.inPerson") : t("training.hybrid")}
-                                  </span>
-                                )}
-                                <span className="flex items-center gap-1">
-                                  <Users className="h-3 w-3" />
-                                  {sessionItem.availableSpots} {t("training.spots")}
-                                </span>
-                              </div>
-                              {sessionItem.availableSpots === 0 && (
-                                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                                  {t("training.fullyBooked")}
-                                </p>
-                              )}
-                            </button>
-                          ))}
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {programs.map((program) => (
+                  <Link
+                    key={program.id}
+                    href={`/training/${program.id}`}
+                    className="group overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md"
+                  >
+                    <div className="relative h-48 w-full overflow-hidden bg-gray-100">
+                      {program.image ? (
+                        <img
+                          src={program.image}
+                          alt={program.title}
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-sm text-gray-500">
+                          Sem imagem
                         </div>
-                        {!session?.user && (
-                          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                            <Link href="/login" className="block">
-                              <Button className="w-full" variant="outline" size="sm">
-                                {t("training.loginToBook")}
-                              </Button>
-                            </Link>
-                          </div>
-                        )}
+                      )}
+                    </div>
+                    <div className="space-y-3 p-4">
+                      <h3 className="line-clamp-2 text-lg font-semibold text-brand-black">{program.title}</h3>
+                      {program.description && (
+                        <p className="line-clamp-3 text-sm leading-relaxed text-gray-700">{program.description}</p>
+                      )}
+                      <div className="flex items-center justify-between pt-1 text-sm text-gray-700">
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          {program.totalHours || program.duration || 0}h
+                        </span>
+                        <span className="font-semibold text-brand-black">€{program.price.toFixed(2)}</span>
                       </div>
-                    )}
-                  </div>
-                </div>
+                    </div>
+                  </Link>
+                ))}
               </div>
             )}
           </div>
         </section>
-      </div>
 
-      {/* Booking Modal */}
-      {selectedSession && (
-        <BookingModal
-          session={selectedSession}
-          onClose={() => setSelectedSession(null)}
-          onBook={handleBookSession}
-        />
-      )}
+        <TestimonialV2 />
+      </div>
     </>
   );
 }
