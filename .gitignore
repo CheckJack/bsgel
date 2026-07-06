@@ -19,6 +19,10 @@
 .DS_Store
 *.pem
 
+# large media (exceeds GitHub 100MB limit)
+Bio Sculpture Brand Video.mp4
+public/Bio Sculpture Brand Video.mp4
+
 # debug
 npm-debug.log*
 yarn-debug.log*
