@@ -73,7 +73,7 @@ export function IngredientScrollSection({ ingredients }: IngredientScrollSection
             ref={(el) => {
               sectionRefs.current[index] = el as HTMLDivElement | null;
             }}
-            className="relative w-full h-screen flex items-center transition-colors duration-700 ease-in-out snap-start snap-always"
+            className="relative h-[100dvh] min-h-[420px] w-full snap-start snap-always flex items-center transition-colors duration-700 ease-in-out sm:min-h-[520px]"
             style={{
               backgroundColor,
             }}

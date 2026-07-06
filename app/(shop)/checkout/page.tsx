@@ -7,6 +7,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/contexts/cart-context";
@@ -33,8 +34,8 @@ function CheckoutForm() {
   const elements = useElements();
   const router = useRouter();
   const { data: session } = useSession();
-  const { items, isLoading, clearCart } = useCart();
-  const { t } = useLanguage();
+  const { items, trainingItems, isLoading, clearCart } = useCart();
+  const { t, language } = useLanguage();
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     firstName: "",
     lastName: "",
@@ -57,12 +58,27 @@ function CheckoutForm() {
   } | null>(null);
   const [couponError, setCouponError] = useState("");
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
-  const [taxInfo, setTaxInfo] = useState<{
-    taxAmount: number;
-    taxRate: number;
-    taxRegion: string;
+  const [shippingInfo, setShippingInfo] = useState<{
+    shippingAmount: number;
+    shippingZone: string;
+    isFreeShipping: boolean;
   } | null>(null);
-  const [isCalculatingTax, setIsCalculatingTax] = useState(false);
+  const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
+  const [billingNif, setBillingNif] = useState("");
+  const [billingAddress, setBillingAddress] = useState("");
+  type PaymentChoice = "CARD" | "KLARNA" | "MBWAY" | "BANK";
+  const [paymentChoice, setPaymentChoice] = useState<PaymentChoice>("CARD");
+  const [offlineCopy, setOfflineCopy] = useState<{ mbway: string; bankTransfer: string }>({
+    mbway: "",
+    bankTransfer: "",
+  });
+
+  useEffect(() => {
+    fetch("/api/checkout/offline-payment-copy")
+      .then((r) => r.json())
+      .then((d) => setOfflineCopy({ mbway: d.mbway || "", bankTransfer: d.bankTransfer || "" }))
+      .catch(() => {});
+  }, []);
 
   // Load saved shipping address and update email when session loads
   useEffect(() => {
@@ -102,6 +118,12 @@ function CheckoutForm() {
                 email: session?.user?.email || "",
               }));
             }
+            if (data.user?.billingNif) {
+              setBillingNif(String(data.user.billingNif));
+            }
+            if (data.user?.billingAddress) {
+              setBillingAddress(String(data.user.billingAddress));
+            }
           }
         } catch (error) {
           console.error("Failed to load saved address:", error);
@@ -116,33 +138,40 @@ function CheckoutForm() {
     loadSavedAddress();
   }, [session]);
 
-  // Calculate tax when postal code or subtotal changes
+  const getSubtotal = () =>
+    items.reduce((sum, item) => sum + parseFloat(item.product.price) * item.quantity, 0) +
+    trainingItems.reduce((sum, item) => sum + parseFloat(item.program.price), 0);
+
+  const formatTrainingSessionDate = (value: string) =>
+    new Date(value).toLocaleDateString(language === "pt" ? "pt-PT" : "en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+
+  // Calculate shipping when postal code or subtotal changes
   useEffect(() => {
-    const calculateTaxForPostalCode = async () => {
-      const subtotal = items.reduce(
-        (sum, item) => sum + parseFloat(item.product.price) * item.quantity,
-        0
-      );
+    const calculateShippingForPostalCode = async () => {
+      const subtotal = getSubtotal();
       const discount = appliedCoupon ? parseFloat(appliedCoupon.discountAmount) : 0;
       const subtotalAfterDiscount = Math.max(0, subtotal - discount);
 
-      // Only calculate if we have a postal code and items
       if (!shippingAddress.postalCode || items.length === 0) {
-        setTaxInfo(null);
+        setShippingInfo(null);
         return;
       }
 
       // Extract postal code (handle both "XXXX-XXX" and "XXXXXXX" formats)
-      const postalCode = shippingAddress.postalCode.replace(/\D/g, "").slice(0, 4);
+      const postalCode = shippingAddress.postalCode.replace(/\D/g, "").slice(0, 7);
       
-      if (postalCode.length < 1) {
-        setTaxInfo(null);
+      if (postalCode.length < 7) {
+        setShippingInfo(null);
         return;
       }
 
-      setIsCalculatingTax(true);
+      setIsCalculatingShipping(true);
       try {
-        const res = await fetch("/api/tax/calculate", {
+        const shipRes = await fetch("/api/shipping/calculate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -150,30 +179,31 @@ function CheckoutForm() {
             postalCode: shippingAddress.postalCode,
           }),
         });
-
-        if (res.ok) {
-          const data = await res.json();
-          setTaxInfo(data);
+        if (shipRes.ok) {
+          const data = await shipRes.json();
+          setShippingInfo(data);
         } else {
-          console.error("Failed to calculate tax");
-          setTaxInfo(null);
+          console.error("Failed to calculate shipping");
+          setShippingInfo(null);
         }
       } catch (error) {
-        console.error("Error calculating tax:", error);
-        setTaxInfo(null);
+        console.error("Error calculating shipping:", error);
+        setShippingInfo(null);
       } finally {
-        setIsCalculatingTax(false);
+        setIsCalculatingShipping(false);
       }
     };
 
-    calculateTaxForPostalCode();
-  }, [shippingAddress.postalCode, items, appliedCoupon]);
+    calculateShippingForPostalCode();
+  }, [shippingAddress.postalCode, items, trainingItems, appliedCoupon]);
+
+  const cartLineCount = items.length + trainingItems.length;
 
   if (isLoading) {
     return <div className="text-center py-8">{t("checkout.loading")}</div>;
   }
 
-  if (items.length === 0) {
+  if (cartLineCount === 0) {
     return (
       <div className="text-center py-8">
         <p className="mb-4">{t("checkout.cartEmpty")}</p>
@@ -182,73 +212,133 @@ function CheckoutForm() {
     );
   }
 
-  const subtotal = items.reduce(
-    (sum, item) => sum + parseFloat(item.product.price) * item.quantity,
-    0
-  );
+  const subtotal = getSubtotal();
   const discount = appliedCoupon ? parseFloat(appliedCoupon.discountAmount) : 0;
   const subtotalAfterDiscount = Math.max(0, subtotal - discount);
-  const tax = taxInfo?.taxAmount || 0;
-  const total = subtotalAfterDiscount + tax;
+  const shipping = shippingInfo?.shippingAmount || 0;
+  const total = subtotalAfterDiscount + shipping;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (!stripe || !elements) {
+    const needsStripe = paymentChoice === "CARD" || paymentChoice === "KLARNA";
+    if (needsStripe && !stripe) {
       return;
     }
 
     setIsProcessing(true);
 
     try {
-      // Format shipping address as a string for order storage
       const formattedAddress = `${shippingAddress.firstName} ${shippingAddress.lastName}\n${shippingAddress.email}\n${shippingAddress.phone}\n${shippingAddress.addressLine1}${shippingAddress.addressLine2 ? `\n${shippingAddress.addressLine2}` : ""}\n${shippingAddress.postalCode} ${shippingAddress.city}\n${shippingAddress.district}\n${shippingAddress.country}`;
 
-      // Save shipping address to user profile as JSON for easy parsing later
       const addressJson = JSON.stringify(shippingAddress);
+      const nifTrim = billingNif.trim();
+      const billingTrim = billingAddress.trim();
       try {
         await fetch("/api/users/profile", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ shippingAddress: addressJson }),
+          body: JSON.stringify({
+            shippingAddress: addressJson,
+            billingNif: nifTrim,
+            billingAddress: billingTrim,
+          }),
         });
       } catch (error) {
         console.error("Failed to save address to profile:", error);
-        // Continue with payment even if saving address fails
       }
 
-      // Create payment intent
+      const orderBodyBase = {
+        shippingAddress: formattedAddress,
+        postalCode: shippingAddress.postalCode,
+        couponCode: appliedCoupon?.code || null,
+        billingNif: nifTrim,
+        billingAddress: billingTrim,
+      };
+
+      if (paymentChoice === "MBWAY" || paymentChoice === "BANK") {
+        const orderRes = await fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...orderBodyBase,
+            shopPaymentMethod: paymentChoice === "MBWAY" ? "MBWAY" : "BANK_TRANSFER",
+          }),
+        });
+        const errJson = orderRes.ok ? null : await orderRes.json().catch(() => ({} as { error?: string }));
+        if (!orderRes.ok) {
+          throw new Error(errJson?.error || "Failed to create order");
+        }
+        const order = await orderRes.json();
+        await clearCart();
+        router.push(`/orders/${order.id}`);
+        return;
+      }
+
+      if (paymentChoice === "KLARNA") {
+        const res = await fetch("/api/payments/create-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            shippingAddress: formattedAddress,
+            postalCode: shippingAddress.postalCode,
+            couponCode: appliedCoupon?.code || null,
+            paymentMode: "klarna",
+            shippingStructured: {
+              firstName: shippingAddress.firstName,
+              lastName: shippingAddress.lastName,
+              addressLine1: shippingAddress.addressLine1,
+              addressLine2: shippingAddress.addressLine2 || "",
+              city: shippingAddress.city,
+              postalCode: shippingAddress.postalCode,
+              district: shippingAddress.district,
+              country: shippingAddress.country,
+            },
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.clientSecret) {
+          throw new Error(data.error || "Failed to create payment intent");
+        }
+        const { error: kErr } = await stripe!.confirmKlarnaPayment(data.clientSecret, {
+          return_url: `${window.location.origin}/checkout/payment-return`,
+        });
+        if (kErr) {
+          setError(kErr.message || "Klarna payment failed");
+          setIsProcessing(false);
+          return;
+        }
+        return;
+      }
+
       const res = await fetch("/api/payments/create-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           shippingAddress: formattedAddress,
           postalCode: shippingAddress.postalCode,
           couponCode: appliedCoupon?.code || null,
+          paymentMode: "card",
         }),
       });
 
-      const { clientSecret, paymentIntentId } = await res.json();
+      const { clientSecret } = await res.json();
 
       if (!clientSecret) {
         throw new Error("Failed to create payment intent");
       }
 
-      const cardElement = elements.getElement(CardElement);
+      const cardElement = elements?.getElement(CardElement);
       if (!cardElement) {
         throw new Error("Card element not found");
       }
 
-      // Confirm payment
-      const { error: paymentError, paymentIntent } = await stripe.confirmCardPayment(
-        clientSecret,
-        {
-          payment_method: {
-            card: cardElement,
-          },
-        }
-      );
+      const { error: paymentError, paymentIntent } = await stripe!.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+        },
+      });
 
       if (paymentError) {
         setError(paymentError.message || "Payment failed");
@@ -257,14 +347,13 @@ function CheckoutForm() {
       }
 
       if (paymentIntent?.status === "succeeded") {
-        // Create order
         const orderRes = await fetch("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            shippingAddress: formattedAddress,
+            ...orderBodyBase,
             paymentIntentId: paymentIntent.id,
-            couponCode: appliedCoupon?.code || null,
+            shopPaymentMethod: "STRIPE_CARD",
           }),
         });
 
@@ -273,7 +362,8 @@ function CheckoutForm() {
           await clearCart();
           router.push(`/orders/${order.id}`);
         } else {
-          throw new Error("Failed to create order");
+          const ed = await orderRes.json().catch(() => ({} as { error?: string }));
+          throw new Error(ed.error || "Failed to create order");
         }
       }
     } catch (err: any) {
@@ -479,27 +569,111 @@ function CheckoutForm() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">{t("checkout.paymentInformation")}</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">{t("checkout.billingInformation")}</CardTitle>
+          <p className="text-sm text-muted-foreground font-normal mt-1">
+            {t("checkout.billingInformationHint")}
+          </p>
         </CardHeader>
-        <CardContent>
-          <div className="border rounded-md p-3 sm:p-4">
-            <CardElement
-              options={{
-                style: {
-                  base: {
-                    fontSize: "16px",
-                    color: "#424770",
-                    "::placeholder": {
-                      color: "#aab7c4",
-                    },
-                  },
-                  invalid: {
-                    color: "#9e2146",
-                  },
-                },
+        <CardContent className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">{t("checkout.billingNif")} *</label>
+            <Input
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder={t("checkout.billingNifPlaceholder")}
+              value={billingNif}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, "").slice(0, 9);
+                setBillingNif(digits);
               }}
+              required
+              maxLength={9}
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">{t("checkout.billingAddress")} *</label>
+            <Textarea
+              placeholder={t("checkout.billingAddressPlaceholder")}
+              value={billingAddress}
+              onChange={(e) => setBillingAddress(e.target.value)}
+              required
+              rows={4}
+              className="resize-y min-h-[100px]"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg sm:text-xl">{t("checkout.paymentInformation")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-sm font-medium">{t("checkout.paymentMethod")}</div>
+          <div className="grid gap-2">
+            {(
+              [
+                ["CARD", t("checkout.payCard")],
+                ["KLARNA", t("checkout.payKlarna")],
+                ["MBWAY", t("checkout.payMbway")],
+                ["BANK", t("checkout.payBank")],
+              ] as const
+            ).map(([value, label]) => (
+              <label
+                key={value}
+                className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 ${
+                  paymentChoice === value ? "border-black bg-gray-50" : "border-gray-200"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentChoice"
+                  className="mt-1"
+                  checked={paymentChoice === value}
+                  onChange={() => setPaymentChoice(value)}
+                />
+                <span>{label}</span>
+              </label>
+            ))}
+          </div>
+
+          {paymentChoice === "CARD" && (
+            <div className="border rounded-md p-3 sm:p-4">
+              <CardElement
+                options={{
+                  style: {
+                    base: {
+                      fontSize: "16px",
+                      color: "#424770",
+                      "::placeholder": {
+                        color: "#aab7c4",
+                      },
+                    },
+                    invalid: {
+                      color: "#9e2146",
+                    },
+                  },
+                }}
+              />
+            </div>
+          )}
+
+          {paymentChoice === "KLARNA" && (
+            <p className="text-sm text-muted-foreground">{t("checkout.klarnaHint")}</p>
+          )}
+
+          {(paymentChoice === "MBWAY" || paymentChoice === "BANK") && (
+            <div className="space-y-3 rounded-md border border-amber-200 bg-amber-50/80 p-3 sm:p-4 text-sm text-gray-800">
+              <p className="font-medium">{t("checkout.offlineInstructionsTitle")}</p>
+              <div
+                className="prose prose-sm max-w-none [&_a]:break-all"
+                dangerouslySetInnerHTML={{
+                  __html: paymentChoice === "MBWAY" ? offlineCopy.mbway : offlineCopy.bankTransfer,
+                }}
+              />
+              <p className="text-muted-foreground">{t("checkout.manualOrderPending")}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -582,21 +756,24 @@ function CheckoutForm() {
               <span>-{formatPrice(parseFloat(appliedCoupon.discountAmount))}</span>
             </div>
           )}
+          <p className="text-xs sm:text-sm text-gray-500">
+            Todos os produtos ja incluem IVA a 23%.
+          </p>
           <div className="flex justify-between text-sm sm:text-base">
             <span>
-              {isCalculatingTax ? (
-                <span className="text-gray-500">Tax (Calculating...)</span>
-              ) : taxInfo ? (
-                `Tax ${Math.round(taxInfo.taxRate)}% (${taxInfo.taxRegion})`
+              {isCalculatingShipping ? (
+                <span className="text-gray-500">{t("checkout.shipping")} (Calculating...)</span>
+              ) : shippingInfo?.isFreeShipping ? (
+                `${t("checkout.shipping")} (Free)`
               ) : (
-                "Tax"
+                t("checkout.shipping")
               )}
             </span>
             <span>
-              {isCalculatingTax ? (
+              {isCalculatingShipping ? (
                 <span className="text-gray-500">Calculating...</span>
               ) : (
-                formatPrice(tax)
+                formatPrice(shipping)
               )}
             </span>
           </div>
@@ -617,7 +794,10 @@ function CheckoutForm() {
         type="submit"
         className="w-full"
         size="lg"
-        disabled={!stripe || isProcessing}
+        disabled={
+          isProcessing ||
+          ((paymentChoice === "CARD" || paymentChoice === "KLARNA") && !stripe)
+        }
       >
         {isProcessing ? t("checkout.processing") : `${t("checkout.placeOrder")} ${formatPrice(total)}`}
       </Button>
@@ -628,7 +808,7 @@ function CheckoutForm() {
 export default function CheckoutPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { items, isLoading } = useCart();
+  const { items, trainingItems, isLoading } = useCart();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -636,7 +816,14 @@ export default function CheckoutPage() {
     }
   }, [status, router]);
 
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+
+  const formatTrainingSessionDate = (value: string) =>
+    new Date(value).toLocaleDateString(language === "pt" ? "pt-PT" : "en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
 
   if (status === "loading" || isLoading) {
     return <div className="container mx-auto px-4 py-8 text-center">{t("checkout.loading")}</div>;
@@ -665,10 +852,50 @@ export default function CheckoutPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4 sm:space-y-6">
-                {items.length === 0 ? (
+                {items.length === 0 && trainingItems.length === 0 ? (
                   <p className="text-center text-gray-500 py-4 text-sm sm:text-base">{t("checkout.cartEmpty")}</p>
                 ) : (
-                  items.map((item) => (
+                  <>
+                    {trainingItems.map((item) => (
+                      <div key={item.id} className="flex gap-3 sm:gap-4 pb-4 sm:pb-6 border-b last:border-b-0 last:pb-0">
+                        <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 bg-brand-champagne/15 rounded-lg overflow-hidden">
+                          {item.program.image ? (
+                            <Image
+                              src={item.program.image}
+                              alt={item.program.title}
+                              fill
+                              sizes="(max-width: 640px) 80px, 96px"
+                              className="object-cover"
+                              unoptimized={
+                                item.program.image.startsWith("data:") ||
+                                item.program.image.startsWith("blob:")
+                              }
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-brand-champagne text-xs font-medium">
+                              {t("cart.trainingBadge")}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-base sm:text-lg mb-1 break-words">
+                            {item.program.title}
+                          </h3>
+                          <p className="text-xs sm:text-sm text-gray-500 mb-1">{t("cart.trainingProgram")}</p>
+                          <p className="text-xs sm:text-sm text-gray-500 mb-1">
+                            {formatTrainingSessionDate(item.session.startDate)}
+                            {item.session.location ? ` · ${item.session.location}` : ""}
+                          </p>
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0">
+                            <span className="text-xs sm:text-sm text-gray-500">{t("checkout.quantity")} 1</span>
+                            <span className="font-semibold text-sm sm:text-base">
+                              {formatPrice(item.program.price)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {items.map((item) => (
                   <div key={item.id} className="flex gap-3 sm:gap-4 pb-4 sm:pb-6 border-b last:border-b-0 last:pb-0">
                     {/* Product Image */}
                     <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
@@ -693,11 +920,6 @@ export default function CheckoutPage() {
                     {/* Product Info */}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-base sm:text-lg mb-1 break-words">{item.product.name}</h3>
-                      {item.product.description && (
-                        <p className="text-xs sm:text-sm text-gray-600 line-clamp-2 mb-2">
-                          {item.product.description}
-                        </p>
-                      )}
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0">
                         <span className="text-xs sm:text-sm text-gray-500">{t("checkout.quantity")} {item.quantity}</span>
                         <span className="font-semibold text-sm sm:text-base">
@@ -706,7 +928,8 @@ export default function CheckoutPage() {
                       </div>
                     </div>
                   </div>
-                  ))
+                    ))}
+                  </>
                 )}
               </div>
             </CardContent>

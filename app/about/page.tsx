@@ -1,69 +1,8 @@
 "use client";
 
 import { HeroSlider } from "@/components/layout/hero-slider";
-import { useState, useEffect } from "react";
+import Image from "next/image";
 import { useLanguage } from "@/contexts/language-context";
-
-
-function RotatingWordsSection() {
-  const { t } = useLanguage();
-  const words = [t("home.healthy"), t("home.quality"), t("home.longevity")];
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isVisible, setIsVisible] = useState(true);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Fade out current word (1 second)
-      setIsVisible(false);
-      setTimeout(() => {
-        // Change to next word while invisible
-        setCurrentIndex((prev) => (prev + 1) % words.length);
-        // Ensure it stays invisible initially
-        setIsVisible(false);
-        // Show blank for 2 seconds, then fade in slowly
-        setTimeout(() => {
-          // Fade in next word gradually (1 second transition)
-          requestAnimationFrame(() => {
-            setIsVisible(true);
-          });
-        }, 2000);
-      }, 1000);
-    }, 8000);
-
-    return () => clearInterval(interval);
-  }, [words.length]);
-
-  return (
-    <section className="relative pt-32 pb-32 px-4 min-h-[60vh] flex items-center justify-center overflow-hidden">
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        preload="metadata"
-        className="absolute inset-0 w-full h-full object-cover z-0"
-      >
-        <source src="/dssfvszvx.mp4" type="video/mp4" />
-      </video>
-      <div className="relative z-10 text-center px-4">
-        <div className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl xl:text-9xl font-medium text-brand-white" style={{ fontFamily: 'var(--font-jost), sans-serif' }}>
-          <span className="inline-block relative min-w-[200px] sm:min-w-[300px] md:min-w-[400px] lg:min-w-[500px] xl:min-w-[600px] h-[1.2em]">
-            <span
-              key={currentIndex}
-              className="absolute inset-0 flex items-center justify-center transition-opacity duration-1000 ease-in-out"
-              style={{
-                opacity: isVisible ? 1 : 0,
-                transition: 'opacity 1s ease-in-out'
-              }}
-            >
-              {words[currentIndex]}
-            </span>
-          </span>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 export default function AboutPage() {
   const { t } = useLanguage();
@@ -77,7 +16,7 @@ export default function AboutPage() {
 
   return (
     <>
-      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-screen" showDarkOverlay={false} />
+      <HeroSlider slides={slides} autoPlayInterval={5000} className="h-[85dvh] min-h-[420px] sm:h-[90dvh] md:h-screen" showDarkOverlay={false} />
       <div className="min-h-screen bg-brand-white">
 
       {/* Mission Section */}
@@ -89,8 +28,79 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Rotating Words Section */}
-      <RotatingWordsSection />
+      <section className="pb-16 sm:pb-20 md:pb-24 px-4 sm:px-6">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-2 lg:gap-12">
+            <div className="relative overflow-hidden rounded-lg bg-gray-100">
+              <Image
+                src="/elmien-about.jpg"
+                alt="Bio Sculpture specialist"
+                width={740}
+                height={1024}
+                className="h-full w-full object-cover"
+                priority
+                unoptimized
+              />
+            </div>
+
+            <div>
+              <h2 className="text-3xl sm:text-4xl font-light tracking-tight text-brand-black">
+                About Us
+              </h2>
+              <p className="mt-4 text-base sm:text-lg font-light leading-relaxed text-brand-black whitespace-pre-line">
+                {`Desde a infancia, Elmien era fascinada por unhas bonitas. Esse fascinio tornou-se a sua paixao. Depois de concluir os seus estudos na CIDESCO Beauty Academy, Elmien abriu o seu primeiro salao. Sem conseguir encontrar produtos de cuidados de unhas premium que correspondessem aos seus padroes, continuou a sua formacao nos EUA, frequentando cursos em sistemas de unhas artificiais. Elmien concluiu que, se queria um produto de referencia que cumprisse todos os requisitos, teria de o desenvolver de raiz.
+
+O seu objetivo nao era apenas criar unhas bonitas, mas tambem promover a saude da unha natural. Ao consultar os melhores cientistas nas respetivas areas e ao aplicar as tecnologias mais avancadas disponiveis, nasceu o Bio Sculpture Gel. De um inicio humilde, com paixao, trabalho arduo e a fe de uma verdadeira pioneira, tornou-se hoje uma das principais solucoes de cuidados de unhas.`}
+              </p>
+
+              <div className="mt-6 space-y-3">
+                <details className="group rounded-md border border-gray-200 bg-white p-4">
+                  <summary className="cursor-pointer list-none text-sm sm:text-base font-medium text-brand-black">
+                    Ambito
+                  </summary>
+                  <p className="mt-3 text-sm sm:text-base font-light leading-relaxed text-gray-700">
+                    A Bio Sculpture SA (Pty) Ltd concebe, desenvolve, fabrica e comercializa produtos de cuidado de unhas e beleza.
+                    Esforcamo-nos por manter um Sistema de Gestao da Qualidade alinhado com as normas ISO 9001:2015 e ISO 22716
+                    em todos os aspetos e fases das nossas operacoes. A Bio Sculpture assegura que os produtos, cosmeticos e equipa
+                    cumprem a ISO 9001:2015 e tambem as Boas Praticas de Fabrico (GMP) ISO 22716.
+                  </p>
+                </details>
+
+                <details className="group rounded-md border border-gray-200 bg-white p-4">
+                  <summary className="cursor-pointer list-none text-sm sm:text-base font-medium text-brand-black">
+                    Declaracao da Politica de Qualidade
+                  </summary>
+                  <p className="mt-3 text-sm sm:text-base font-light leading-relaxed text-gray-700">
+                    PARA AUMENTAR A SATISFACAO DO CLIENTE, IREMOS:
+                  </p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm sm:text-base font-light leading-relaxed text-gray-700">
+                    <li>Reforcar a especializacao da nossa equipa atraves de formacao periodica.</li>
+                    <li>Rever e melhorar continuamente os sistemas.</li>
+                    <li>Adotar principios de Gestao da Qualidade Total e melhorar processos, produtos e servicos.</li>
+                    <li>Fornecer produtos e servicos que cumpram ou superem os requisitos de qualidade dos clientes.</li>
+                    <li>Rever e atualizar os objetivos e os resultados alcancados.</li>
+                    <li>Comunicar a politica do Sistema de Gestao da Qualidade a todos os colaboradores e partes interessadas.</li>
+                    <li>Entregar produtos na quantidade certa e no prazo, sempre.</li>
+                    <li>Promover um ambiente seguro e saudavel.</li>
+                    <li>Comprometer-nos com o cumprimento de todos os regulamentos aplicaveis.</li>
+                  </ul>
+                </details>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-10 flex justify-center">
+            <Image
+              src="/elmien-signature.webp"
+              alt="Assinatura Elmien"
+              width={360}
+              height={120}
+              className="h-auto w-[320px] sm:w-[420px] md:w-[520px]"
+              unoptimized
+            />
+          </div>
+        </div>
+      </section>
       </div>
     </>
   );

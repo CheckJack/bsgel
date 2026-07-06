@@ -2,7 +2,7 @@
 
 export function NailPolishDisplay() {
   return (
-    <section className="w-full h-[60vh] sm:h-[70vh] md:h-[80vh] lg:h-screen relative overflow-hidden">
+    <section className="relative h-[50vh] min-h-[280px] w-full overflow-hidden sm:h-[60vh] md:h-[70vh] lg:h-[85vh] xl:h-screen">
       {/* Video Background */}
       <video
         autoPlay

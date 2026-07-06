@@ -16,6 +16,7 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 // Import translations
 import { en } from "@/lib/translations/en";
 import { pt } from "@/lib/translations/pt";
+import { allowsPreferences } from "@/lib/cookie-consent";
 
 const translations = { en, pt };
 
@@ -69,7 +70,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setMounted(true);
     // Load language preference from localStorage (only on client)
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && allowsPreferences()) {
       try {
         const savedLanguage = localStorage.getItem("language") as Language | null;
         if (savedLanguage && (savedLanguage === "en" || savedLanguage === "pt")) {
@@ -81,12 +82,28 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  useEffect(() => {
+    const onConsentChange = () => {
+      if (allowsPreferences()) {
+        try {
+          const savedLanguage = localStorage.getItem("language") as Language | null;
+          if (savedLanguage && (savedLanguage === "en" || savedLanguage === "pt")) {
+            setLanguageState(savedLanguage);
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+    window.addEventListener("cookieConsentChanged", onConsentChange);
+    return () => window.removeEventListener("cookieConsentChanged", onConsentChange);
+  }, []);
+
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && allowsPreferences()) {
       try {
         localStorage.setItem("language", lang);
-        // Trigger a custom event to notify components of language change
         window.dispatchEvent(new CustomEvent("languageChanged", { detail: { language: lang } }));
       } catch (error) {
         console.error("Failed to save language to localStorage:", error);

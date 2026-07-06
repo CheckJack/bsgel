@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Link from "next/link";
 import Image from "next/image";
-import { Star } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { Loader2, Star } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { useLanguage } from "@/contexts/language-context";
+import { useCart } from "@/contexts/cart-context";
+import { toast } from "@/components/ui/toast";
 
 interface ProductCardProps {
   id: string;
@@ -27,7 +30,7 @@ const isVideo = (url: string) => {
   return /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url) || url.startsWith('data:video/');
 };
 
-function StarRating({ rating = 4.5 }: { rating?: number }) {
+function StarRating({ rating = 0 }: { rating?: number }) {
   const fullStars = Math.floor(rating);
   const hasHalfStar = rating % 1 >= 0.5;
 
@@ -35,19 +38,19 @@ function StarRating({ rating = 4.5 }: { rating?: number }) {
     <div className="flex items-center gap-0.5">
       {[...Array(5)].map((_, i) => {
         if (i < fullStars) {
-          return <Star key={i} className="h-3.5 w-3.5 fill-pink-500 text-pink-500" />;
-        } else if (i === fullStars && hasHalfStar) {
+          return <Star key={i} className="h-3 w-3 fill-pink-500 text-pink-500" />;
+        }
+        if (i === fullStars && hasHalfStar) {
           return (
-            <div key={i} className="relative h-3.5 w-3.5">
-              <Star className="h-3.5 w-3.5 text-gray-300 absolute inset-0" />
+            <div key={i} className="relative h-3 w-3">
+              <Star className="absolute inset-0 h-3 w-3 fill-gray-200 text-gray-200" />
               <div className="absolute inset-0 overflow-hidden" style={{ width: "50%" }}>
-                <Star className="h-3.5 w-3.5 fill-pink-500 text-pink-500" />
+                <Star className="h-3 w-3 fill-pink-500 text-pink-500" />
               </div>
             </div>
           );
-        } else {
-          return <Star key={i} className="h-3.5 w-3.5 text-gray-300" />;
         }
+        return <Star key={i} className="h-3 w-3 fill-gray-200 text-gray-200" />;
       })}
     </div>
   );
@@ -64,14 +67,20 @@ export function ProductCard({
   outOfStock,
   hemaFree,
   description: _description,
-  rating,
-  reviewCount
+  rating: _rating,
+  reviewCount: _reviewCount
 }: ProductCardProps) {
   const { t, language } = useLanguage();
+  const router = useRouter();
+  const { data: session } = useSession();
+  const { addItem } = useCart();
+  const [isAdding, setIsAdding] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const resolvedRating = typeof rating === "number" ? rating : 0;
-  const resolvedReviewCount = typeof reviewCount === "number" ? reviewCount : 0;
+  const resolvedRating = typeof _rating === "number" ? _rating : 0;
+  const resolvedReviewCount = typeof _reviewCount === "number" ? _reviewCount : 0;
+  const variantLabel =
+    outOfStock ? t("products.outOfStock") : hemaFree ? t("products.hemaFree") : language === "pt" ? "Variante" : "Variant";
   
   // Combine image and images array, with image as first item
   const allMedia = image ? [image, ...images] : images;
@@ -92,12 +101,23 @@ export function ProductCard({
 
   return (
     <div 
-      className="flex flex-col h-full bg-white overflow-hidden px-4 sm:px-6 pt-4 sm:pt-6"
+      className="flex h-full w-full flex-col"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Product Image - Full size square */}
-      <Link href={`/products/${id}`} className="relative w-full aspect-square bg-[#F5F3F0] overflow-hidden rounded-lg">
+      <div
+        role="link"
+        tabIndex={0}
+        aria-label={name}
+        className="relative mb-3 block aspect-square w-full cursor-pointer overflow-hidden bg-[#F5F3F0] md:mb-4"
+        onClick={() => router.push(`/products/${id}`)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            router.push(`/products/${id}`);
+          }
+        }}
+      >
         {firstMedia ? (
           <>
             {/* First media (always visible) */}
@@ -158,78 +178,84 @@ export function ProductCard({
           </div>
         )}
         {(outOfStock || hemaFree) && (
-          <div className="absolute top-3 right-3 flex flex-col gap-1 z-10">
+          <div className="absolute right-3 top-3 z-10 flex flex-col gap-1">
             {outOfStock && (
-              <div className="bg-brand-champagne text-white text-xs px-2 py-1 rounded">
+              <div className="rounded bg-pink-900 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-white">
                 {t("products.outOfStock")}
               </div>
             )}
             {hemaFree && (
-              <div className="bg-brand-champagne text-white text-xs px-2 py-1 rounded">
+              <div className="rounded bg-pink-900 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-white">
                 {t("products.hemaFree")}
               </div>
             )}
           </div>
         )}
-      </Link>
+      </div>
 
-      {/* Product Details - Clean, minimal design matching reference */}
-      <div className="pt-4 sm:pt-6 pb-4 sm:pb-6 bg-white flex flex-col flex-1 w-full">
-        {/* Product Heading - Main title */}
-        <Link href={`/products/${id}`} className="mb-2 group">
-          <h2 className="text-base sm:text-lg font-semibold text-black leading-tight group-hover:text-brand-champagne transition-colors line-clamp-1">
-            {name}
-          </h2>
-        </Link>
-
-        {/* Price */}
-        <div className="flex items-center gap-2 mb-1.5">
-          {salePrice ? (
-            <>
-              <span className="text-sm sm:text-base font-medium text-gray-500 line-through">
-                {formatPrice(price)}
-              </span>
-              <span className="text-base sm:text-[18px] font-semibold text-black">
-                {formatPrice(salePrice)}
-              </span>
-            </>
-          ) : (
-            <span className="text-base sm:text-[18px] font-semibold text-black">
-              {price ? formatPrice(price) : t("products.priceOnRequest")}
-            </span>
-          )}
+      <div className="flex justify-between md:text-md">
+        <div className="mr-4">
+          <button
+            type="button"
+            className="text-left"
+            onClick={() => router.push(`/products/${id}`)}
+          >
+            <h3 className="font-semibold hover:text-brand-champagne">{name}</h3>
+          </button>
+          <div className="text-sm text-brand-black/70">{variantLabel}</div>
         </div>
-
-        {/* Rating and Review Count */}
-        <div className="flex items-center gap-2 mb-4 sm:mb-5">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col items-end gap-1">
+          <div className="text-md font-semibold md:text-lg">
+            {salePrice ? formatPrice(salePrice) : price ? formatPrice(price) : t("products.priceOnRequest")}
+          </div>
+          <div className="flex items-center gap-1 text-xs text-brand-black/70">
             <StarRating rating={resolvedRating} />
-            <span className="text-xs sm:text-sm text-gray-500">
-              {resolvedReviewCount > 0
-                ? `${resolvedReviewCount} ${resolvedReviewCount === 1 ? t("products.review") : t("products.reviews")}`
-                : language === "pt"
-                ? "Sem avaliacoes"
-                : "No reviews yet"}
+            <span>
+              {resolvedRating.toFixed(1)} ({resolvedReviewCount})
             </span>
           </div>
         </div>
+      </div>
 
-        {/* Bottom Section: Add to Cart button only */}
-        <div className="mt-auto">
-          {/* Full-width Add to Cart button - Black */}
-          <Link href={`/products/${id}`} className="block">
-            <button 
-              className="w-full bg-black hover:bg-gray-800 active:bg-gray-900 text-white py-3 sm:py-3.5 px-4 rounded-md transition-all duration-200 font-medium text-sm touch-manipulation min-h-[44px]"
-              onClick={(e) => {
-                e.preventDefault();
-                window.location.href = `/products/${id}`;
-              }}
-            >
-              <span className="sm:hidden">{language === "pt" ? "Adicionar" : "Add"}</span>
-              <span className="hidden sm:inline">{t("products.addToCart")}</span>
-            </button>
-          </Link>
-        </div>
+      <div className="mt-3 w-full md:mt-4">
+        <button
+          type="button"
+          disabled={outOfStock || isAdding}
+          className="inline-flex min-h-[42px] w-full items-center justify-center gap-2 border border-brand-black bg-brand-black px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-black/90 disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (outOfStock) return;
+            if (!session) {
+              router.push(`/login?callbackUrl=${encodeURIComponent(`/products/${id}`)}`);
+              return;
+            }
+            setIsAdding(true);
+            try {
+              const ok = await addItem(id, 1);
+              if (ok) {
+                window.dispatchEvent(new CustomEvent("openCartDrawer"));
+                toast(
+                  language === "pt" ? "Adicionado ao carrinho" : "Added to cart",
+                  "success",
+                  2500
+                );
+              } else {
+                toast(
+                  language === "pt"
+                    ? "Não foi possível adicionar. Verifique permissões ou tente de novo."
+                    : "Could not add to cart. Check permissions or try again.",
+                  "error"
+                );
+              }
+            } finally {
+              setIsAdding(false);
+            }
+          }}
+        >
+          {isAdding ? <Loader2 className="h-4 w-4 animate-spin shrink-0" aria-hidden /> : null}
+          {t("products.addToCart")}
+        </button>
       </div>
     </div>
   );

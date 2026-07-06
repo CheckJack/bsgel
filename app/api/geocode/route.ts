@@ -7,15 +7,19 @@ export async function GET(request: Request) {
     const city = searchParams.get("city");
     const postalCode = searchParams.get("postalCode");
 
-    if (!address || !city) {
+    const addressTrim = address?.trim() || "";
+    const cityTrim = city?.trim() || "";
+    const postalTrim = postalCode?.trim() || "";
+
+    if (!addressTrim || (!cityTrim && !postalTrim)) {
       return NextResponse.json(
-        { error: "Address and city are required" },
+        { error: "Address and at least one of city or postal code are required" },
         { status: 400 }
       );
     }
 
-    // Build query string - try multiple formats for better results
-    const queryParts = [address, city, postalCode, "Portugal"].filter(Boolean);
+    // Build query string - try multiple formats for better results (Portugal)
+    const queryParts = [addressTrim, postalTrim, cityTrim, "Portugal"].filter(Boolean);
     const query = queryParts.join(", ");
 
     console.log("Geocoding query:", query);
@@ -65,9 +69,9 @@ export async function GET(request: Request) {
     }
 
     // If no results, try a simpler query with just city
-    if (queryParts.length > 2) {
+    if (queryParts.length > 2 && cityTrim) {
       console.log("Trying simpler query with just city...");
-      const simpleQuery = `${city}, Portugal`;
+      const simpleQuery = `${cityTrim}, Portugal`;
       const simpleResponse = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(simpleQuery)}&limit=1&countrycodes=pt`,
         {

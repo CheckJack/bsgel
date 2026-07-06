@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useLanguage } from "@/contexts/language-context";
 
 export default function ContactPage() {
@@ -8,32 +7,15 @@ export default function ContactPage() {
 
   return (
     <>
-      <section className="relative h-[36vh] w-full overflow-hidden md:h-[44vh]">
-        <Image
-          src="/contact-hero-custom.png"
-          alt={t("contact.title")}
-          fill
-          className="object-cover"
-          priority
-          unoptimized
-        />
-        <div className="relative z-10 flex h-full items-center">
-          <div className="container mx-auto flex h-full max-w-7xl items-center px-4">
-            <h1 className="text-4xl font-medium text-black sm:text-5xl md:text-6xl">
-              {t("contact.title")}
-            </h1>
-          </div>
-        </div>
-      </section>
-      <div className="min-h-screen bg-brand-white flex flex-col">
+      <div className="bg-brand-white">
 
       {/* Contact Information Section */}
-      <section className="flex-1 flex items-center py-16 sm:py-20 md:py-32 px-4 sm:px-6">
+      <section className="px-4 pb-12 pt-8 sm:px-6 sm:pb-16 sm:pt-10 md:pb-20 md:pt-12">
         <div className="container mx-auto max-w-6xl w-full">
           <div className="grid md:grid-cols-2 gap-8 sm:gap-12">
             {/* Contact Form */}
             <div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-4 sm:mb-6 text-brand-black">{t("contact.sendUsMessage")}</h2>
+              <h2 className="font-display mb-4 text-2xl font-normal tracking-tight text-brand-black sm:mb-6 sm:text-3xl md:text-4xl">{t("contact.sendUsMessage")}</h2>
               <div className="w-24 h-1 bg-brand-champagne mb-6 sm:mb-8"></div>
               <form className="space-y-6">
                 <div>
@@ -99,7 +81,7 @@ export default function ContactPage() {
 
             {/* Contact Information */}
             <div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium mb-4 sm:mb-6 text-brand-black">{t("contact.getInTouch")}</h2>
+              <h2 className="font-display mb-4 text-2xl font-normal tracking-tight text-brand-black sm:mb-6 sm:text-3xl md:text-4xl">{t("contact.getInTouch")}</h2>
               <div className="w-24 h-1 bg-brand-champagne mb-6 sm:mb-8"></div>
               <div className="space-y-6 sm:space-y-8">
                 <div>

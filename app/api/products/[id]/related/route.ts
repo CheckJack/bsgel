@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { sanitizeProductList } from "@/lib/products/list-images"
 
 export async function GET(
   req: Request,
@@ -206,7 +207,7 @@ export async function GET(
       };
     })
 
-    return NextResponse.json({ products: finalRelatedProducts })
+    return NextResponse.json({ products: sanitizeProductList(finalRelatedProducts) })
   } catch (error: any) {
     console.error("Failed to fetch related products:", error)
     console.error("Error details:", {

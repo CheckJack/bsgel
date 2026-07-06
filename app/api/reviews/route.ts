@@ -59,21 +59,8 @@ export async function GET(req: Request) {
         has: showcasingSection,
       };
     } else {
-      // No filter - return empty
-      return NextResponse.json({
-        reviews: [],
-        pagination: {
-          page,
-          limit,
-          total: 0,
-          totalPages: 0,
-        },
-        stats: {
-          overallRating: 0,
-          totalReviews: 0,
-          breakdown: [],
-        },
-      });
+      // No filter provided: return reviews across all products.
+      // Keep productWhere empty so all products are considered.
     }
 
     // First, get all product IDs that match the filter
@@ -191,32 +178,41 @@ export async function GET(req: Request) {
       total = 0;
     }
 
-    // Calculate rating breakdown
-    let allApprovedReviews: any[] = [];
+    // Calculate rating breakdown with a single grouped query
+    let breakdown = [5, 4, 3, 2, 1].map((stars) => ({ stars, count: 0 }));
+    let averageRating = 0;
+
     try {
-      allApprovedReviews = await db.productReview.findMany({
-        where: {
-          productId: { in: productIds },
-          status: "APPROVED",
-        },
-        select: {
-          rating: true,
-        },
-      });
-    } catch (error: any) {
-      allApprovedReviews = [];
+      const breakdownRows = await db.$queryRaw<
+        Array<{ rating: number; count: bigint }>
+      >`
+        SELECT rating, COUNT(*)::int as count
+        FROM "ProductReview"
+        WHERE "productId" = ANY(${productIds}::text[])
+          AND status = 'APPROVED'
+        GROUP BY rating
+      `;
+
+      const countByRating = new Map(
+        breakdownRows.map((row) => [row.rating, Number(row.count)])
+      );
+
+      breakdown = [5, 4, 3, 2, 1].map((stars) => ({
+        stars,
+        count: countByRating.get(stars) || 0,
+      }));
+
+      if (total > 0) {
+        const weightedSum = breakdownRows.reduce(
+          (sum, row) => sum + row.rating * Number(row.count),
+          0
+        );
+        averageRating = weightedSum / total;
+      }
+    } catch {
+      breakdown = [5, 4, 3, 2, 1].map((stars) => ({ stars, count: 0 }));
+      averageRating = 0;
     }
-
-    const breakdown = [5, 4, 3, 2, 1].map((stars) => ({
-      stars,
-      count: allApprovedReviews.filter((r) => r.rating === stars).length,
-    }));
-
-    const averageRating =
-      allApprovedReviews.length > 0
-        ? allApprovedReviews.reduce((sum, r) => sum + r.rating, 0) /
-          allApprovedReviews.length
-        : 0;
 
     // Map reviews to response format
     const mappedReviews = reviews.map((review) => ({

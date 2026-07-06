@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { formatPrice, stripHtml } from "@/lib/utils";
 import { X, Search, Loader2 } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useLanguage } from "@/contexts/language-context";
+import { setAppScrollLocked } from "@/lib/mobile-scroll-root";
 
 interface SearchDrawerProps {
   isOpen: boolean;
@@ -28,13 +30,18 @@ interface Product {
 
 export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Handle fade in/out effects with smooth transitions
   useEffect(() => {
@@ -93,11 +100,14 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
   // Prevent body scroll when drawer is open
   useEffect(() => {
     if (isOpen) {
+      setAppScrollLocked(true);
       document.body.style.overflow = "hidden";
     } else {
+      setAppScrollLocked(false);
       document.body.style.overflow = "unset";
     }
     return () => {
+      setAppScrollLocked(false);
       document.body.style.overflow = "unset";
     };
   }, [isOpen]);
@@ -123,70 +133,74 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
     router.push(`/products?search=${encodeURIComponent(searchQuery)}`);
   };
 
-  if (!shouldRender) return null;
+  if (!shouldRender || !mounted) return null;
 
-  return (
-    <>
-      {/* Backdrop */}
+  return createPortal(
+    <div
+      className={`fixed inset-0 z-[1500] max-lg:ios-overlay-bleed ${isVisible ? "" : "pointer-events-none"}`}
+      aria-hidden={!isVisible}
+    >
       <div
-        className={`fixed inset-0 bg-black/50 z-50 transition-opacity duration-[400ms] ${
+        className={`absolute inset-0 bg-black/30 transition-opacity duration-[400ms] max-lg:hidden ${
           isVisible ? "ease-out opacity-100" : "ease-in opacity-0"
         }`}
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Search Drawer */}
-      <div className="fixed top-0 left-0 right-0 z-50">
+      <div className="absolute inset-x-0 top-0 max-lg:inset-0">
         <div
-          className={`bg-black/80 backdrop-blur-md shadow-2xl transform transition-all duration-[400ms] ${
+          className={`bg-brand-white shadow-2xl transform transition-all duration-[400ms] lg:border-b lg:border-black/10 max-lg:flex max-lg:h-full max-lg:min-h-[var(--ios-viewport-height,100lvh)] max-lg:flex-col ${
             isOpen && isVisible
               ? "ease-out translate-y-0 opacity-100"
               : "ease-in -translate-y-full opacity-0"
           }`}
+          onClick={(e) => e.stopPropagation()}
         >
-          <div className="container mx-auto px-4 py-6">
+          <div className="container mx-auto flex min-h-0 flex-1 flex-col px-4 py-6 max-lg:h-full lg:block">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white m-0">{t("search.title")}</h2>
+              <h2 className="font-display m-0 text-3xl font-normal tracking-tight text-brand-black md:text-4xl">{t("search.title")}</h2>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+                className="p-2 hover:bg-black/5 rounded-full transition-colors"
                 aria-label="Close search"
               >
-                <X className="h-6 w-6 text-white" />
+                <X className="h-6 w-6 text-brand-black" />
               </button>
             </div>
 
             {/* Search Input */}
             <div className="relative mb-6">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 z-10" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-brand-black/40 z-10" />
               <Input
                 ref={inputRef}
                 type="text"
                 placeholder={t("search.placeholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-3 text-lg bg-white/10 backdrop-blur-sm text-white border-gray-600/50 focus:border-brand-sweet-bianca/60 focus-visible:ring-brand-sweet-bianca/40 placeholder:text-gray-400"
+                className="pl-10 pr-4 py-3 text-lg bg-brand-white text-brand-black border-black/15 focus:border-brand-champagne focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-brand-black/40"
               />
             </div>
 
             {/* Results */}
-            <div className="max-h-[60vh] overflow-y-auto search-results-scroll pr-3">
+            <div className="min-h-0 flex-1 overflow-y-auto search-results-scroll pr-3 lg:max-h-[60vh] lg:flex-none">
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-white" />
-                  <span className="ml-2 text-white">Searching...</span>
+                  <Loader2 className="h-6 w-6 animate-spin text-brand-black" />
+                  <span className="ml-2 text-brand-black">
+                    {language === "pt" ? "A pesquisar..." : "Searching..."}
+                  </span>
                 </div>
               ) : searchQuery.trim() === "" ? (
-                <div className="text-center py-12 text-white">
-                  <Search className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                <div className="text-center py-12 text-brand-black/70">
+                  <Search className="h-12 w-12 mx-auto mb-4 text-brand-black/30" />
                   <p className="text-lg">{t("search.startTyping")}</p>
                 </div>
               ) : products.length === 0 ? (
-                <div className="text-center py-12 text-white">
+                <div className="text-center py-12 text-brand-black/70">
                   <p className="text-lg mb-2">{t("search.noResults")}</p>
-                  <p className="text-sm">Try a different search term</p>
+                  <p className="text-sm text-brand-black/50">Try a different search term</p>
                 </div>
               ) : (
                 <>
@@ -194,7 +208,7 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                     {products.map((product, index) => (
                       <div
                         key={product.id}
-                        className="flex items-center gap-3 border border-gray-700 rounded-lg px-3 py-2.5 hover:bg-gray-900 transition-all cursor-pointer"
+                        className="flex items-center gap-3 border border-black/10 rounded-lg px-3 py-2.5 hover:bg-black/[0.03] transition-all cursor-pointer"
                         onClick={() => handleProductClick(product.id)}
                         style={{
                           animation: isVisible
@@ -223,20 +237,20 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                         )}
 
                         <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-1">
-                          <h3 className="truncate font-semibold text-sm leading-snug text-white hover:underline sm:text-base">
+                          <h3 className="truncate font-semibold text-sm leading-snug text-brand-black hover:underline sm:text-base">
                             {product.name}
                           </h3>
                           {product.category && (
-                            <p className="text-xs text-gray-400 leading-tight">
+                            <p className="text-xs text-brand-black/50 leading-tight">
                               {product.category.name}
                             </p>
                           )}
                           {product.description && (
-                            <p className="line-clamp-1 text-xs leading-snug text-gray-300 sm:text-sm">
+                            <p className="line-clamp-1 text-xs leading-snug text-brand-black/60 sm:text-sm">
                               {stripHtml(product.description)}
                             </p>
                           )}
-                          <p className="text-base font-bold leading-tight text-white">
+                          <p className="text-base font-bold leading-tight text-brand-black">
                             {formatPrice(product.price)}
                           </p>
                         </div>
@@ -244,10 +258,10 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                     ))}
                   </div>
                   {products.length > 0 && (
-                    <div className="mt-6 pt-6 border-t border-gray-700">
+                    <div className="mt-6 pt-6 border-t border-black/10">
                       <Button
                         variant="outline"
-                        className="w-full border-gray-700 bg-gray-800/50 text-white hover:bg-gray-800"
+                        className="w-full"
                         onClick={handleViewAllResults}
                       >
                         {t("search.viewAllResults")} ({products.length})
@@ -260,7 +274,8 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
           </div>
         </div>
       </div>
-    </>
+    </div>,
+    document.body
   );
 }
 

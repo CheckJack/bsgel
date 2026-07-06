@@ -1,155 +1,89 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ProductCard } from "@/components/product/product-card";
-import Link from "next/link";
+import { useCallback, useMemo } from "react";
 import { useLanguage } from "@/contexts/language-context";
+import {
+  HomeProductsCarousel,
+  type CarouselProduct,
+} from "@/components/layout/home-products-carousel";
 
-interface Product {
-  id: string;
-  name: string;
-  price: string;
-  salePrice?: string | null;
-  image: string | null;
-  images?: string[];
-  featured?: boolean;
-  description?: string | null;
-  rating?: number;
-  reviewCount?: number;
+const HOMEPAGE_FEATURED_EXCLUDED_NAME_PARTS = [
+  "passion berry",
+  "agenda cheia",
+  "mini kit experiência",
+  "workshop verniz gel",
+  "curso terapeuta",
+  "curso técnicas de verniz gel",
+  "curso tecnicas de verniz gel",
+];
+
+function isExcludedFromHomepageFeatured(product: CarouselProduct): boolean {
+  const name = product.name.toLowerCase();
+  const category = product.category?.name?.toLowerCase() ?? "";
+  if (category.includes("formação") || category.includes("formacao")) return true;
+  return HOMEPAGE_FEATURED_EXCLUDED_NAME_PARTS.some((part) => name.includes(part));
+}
+
+function formatProducts(items: (CarouselProduct & { price?: unknown; salePrice?: unknown })[]) {
+  return items.map((product) => ({
+    ...product,
+    price: product.price?.toString() || "0",
+    salePrice: product.salePrice?.toString() ?? null,
+  }));
+}
+
+async function fetchFeaturedProducts(): Promise<CarouselProduct[]> {
+  const loadProducts = async (query: string) => {
+    const res = await fetch(query);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.products || []) as (CarouselProduct & { price?: unknown; salePrice?: unknown })[];
+  };
+
+  const TARGET_COUNT = 12;
+  const seen = new Set<string>();
+  const merged: (CarouselProduct & { price?: unknown; salePrice?: unknown })[] = [];
+
+  const addProducts = (items: (CarouselProduct & { price?: unknown; salePrice?: unknown })[]) => {
+    for (const product of items) {
+      if (seen.has(product.id)) continue;
+      if (isExcludedFromHomepageFeatured(product)) continue;
+      seen.add(product.id);
+      merged.push(product);
+      if (merged.length >= TARGET_COUNT) return;
+    }
+  };
+
+  addProducts(await loadProducts(`/api/products?featured=true&limit=${TARGET_COUNT * 2}`));
+
+  if (merged.length < TARGET_COUNT) {
+    addProducts(await loadProducts(`/api/products?sortBy=newest&limit=${TARGET_COUNT * 3}`));
+  }
+
+  return formatProducts(merged);
 }
 
 export function FeaturedProducts() {
   const { t } = useLanguage();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const loadProducts = useCallback(() => fetchFeaturedProducts(), []);
 
-  useEffect(() => {
-    const fetchLatestProducts = async () => {
-      try {
-        const res = await fetch("/api/products?sortBy=newest&limit=8");
-        if (res.ok) {
-          const data = await res.json();
-          // Ensure price is formatted as string
-          const formattedProducts = (data.products || []).map((product: any) => ({
-            ...product,
-            price: product.price?.toString() || "0",
-            salePrice: product.salePrice?.toString() || null,
-          }));
-
-          setProducts(formattedProducts.slice(0, 4));
-        }
-      } catch (error) {
-        console.error("Failed to fetch featured products:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchLatestProducts();
-  }, []);
-
-  if (isLoading) {
-    return (
-      <section className="w-full py-16 sm:py-20 px-4 sm:px-6 bg-white">
-        <div className="container mx-auto max-w-[1920px]">
-          <div className="text-center mb-12 sm:mb-16">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-light text-brand-black mb-4 tracking-tight">
-              {t("home.featuredProducts")}
-            </h2>
-          </div>
-          <div className="text-center py-12 text-brand-black font-light">
-            {t("home.loadingProducts")}
-          </div>
-        </div>
-      </section>
-    );
-  }
+  const labels = useMemo(
+    () => ({
+      ariaLabel: t("home.featuredProducts"),
+      tagline: t("home.featuredProductsTagline"),
+      heading: t("home.featuredProducts"),
+      description: t("home.featuredProductsDesc"),
+      viewAllHref: "/products?featured=true",
+      viewAllLabel: t("home.viewAllProducts"),
+      loading: t("home.loadingProducts"),
+      empty: t("home.noFeaturedProducts"),
+      emptyViewAllHref: "/products",
+      emptyViewAllLabel: t("home.viewAllProducts"),
+    }),
+    [t]
+  );
 
   return (
-    <section className="w-full py-16 sm:py-20 px-4 sm:px-6 bg-white">
-      <div className="container mx-auto max-w-[1920px]">
-        {/* Header */}
-        <div className="text-center mb-12 sm:mb-16">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-light text-brand-black mb-4 tracking-tight">
-            {t("home.featuredProducts")}
-          </h2>
-          <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto font-light">
-            {t("home.featuredProductsDesc")}
-          </p>
-        </div>
-
-        {/* Products Grid */}
-        {products.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-brand-black font-light text-lg mb-4">{t("home.noFeaturedProducts")}</p>
-            <Link
-              href="/products"
-              className="inline-flex items-center text-brand-black hover:text-brand-champagne font-medium text-base sm:text-lg transition-colors duration-300 font-light"
-            >
-              <span className="mr-2">{t("home.viewAllProducts")}</span>
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 8l4 4m0 0l-4 4m4-4H3"
-                />
-              </svg>
-            </Link>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  id={product.id}
-                  name={product.name}
-                  price={product.price}
-                  salePrice={product.salePrice}
-                  image={product.image}
-                  images={product.images}
-                  featured={product.featured}
-                  outOfStock={(product as any).outOfStock}
-                  hemaFree={(product as any).hemaFree}
-                  description={product.description}
-                  rating={product.rating}
-                  reviewCount={product.reviewCount}
-                />
-              ))}
-            </div>
-
-            {/* View All Link */}
-            <div className="text-center mt-12">
-              <Link
-                href="/products?featured=true"
-                className="inline-flex items-center text-brand-black hover:text-brand-champagne font-medium text-base sm:text-lg transition-colors duration-300 font-light"
-              >
-                <span className="mr-2">{t("home.viewAllProducts")}</span>
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 8l4 4m0 0l-4 4m4-4H3"
-                  />
-                </svg>
-              </Link>
-            </div>
-          </>
-        )}
-      </div>
-    </section>
+    <HomeProductsCarousel labels={labels} loadProducts={loadProducts} viewportFit />
   );
 }
-

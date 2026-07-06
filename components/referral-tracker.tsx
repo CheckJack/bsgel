@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { allowsMarketing } from "@/lib/cookie-consent";
 
 export function ReferralTracker() {
   const searchParams = useSearchParams();
@@ -45,20 +46,20 @@ export function ReferralTracker() {
           return;
         }
 
-        // Store in localStorage
-        try {
-          localStorage.setItem("referralCode", trimmedCode);
-        } catch (storageError) {
-          console.warn("Failed to store referral code in localStorage:", storageError);
-        }
-        
-        // Store in cookie (30 days expiry)
-        try {
-          const expiryDate = new Date();
-          expiryDate.setTime(expiryDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-          document.cookie = `referralCode=${trimmedCode}; path=/; expires=${expiryDate.toUTCString()}; SameSite=Lax`;
-        } catch (cookieError) {
-          console.warn("Failed to store referral code in cookie:", cookieError);
+        if (allowsMarketing()) {
+          try {
+            localStorage.setItem("referralCode", trimmedCode);
+          } catch (storageError) {
+            console.warn("Failed to store referral code in localStorage:", storageError);
+          }
+
+          try {
+            const expiryDate = new Date();
+            expiryDate.setTime(expiryDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+            document.cookie = `referralCode=${trimmedCode}; path=/; expires=${expiryDate.toUTCString()}; SameSite=Lax`;
+          } catch (cookieError) {
+            console.warn("Failed to store referral code in cookie:", cookieError);
+          }
         }
         
         // Track click (fire and forget - don't block on this)
@@ -82,6 +83,12 @@ export function ReferralTracker() {
     processReferralCode();
   }, [searchParams, hasProcessed]);
 
-  return null; // This component doesn't render anything
+  useEffect(() => {
+    const onConsentChange = () => setHasProcessed(false);
+    window.addEventListener("cookieConsentChanged", onConsentChange);
+    return () => window.removeEventListener("cookieConsentChanged", onConsentChange);
+  }, []);
+
+  return null;
 }
 

@@ -6,7 +6,16 @@ import { canUserPurchaseProduct } from "@/lib/certifications"
 import { formatPrice } from "@/lib/utils"
 import { getReferralByUserId, activateReferral } from "@/lib/affiliate"
 import { calculatePoints, awardPoints } from "@/lib/points"
-import { calculateTax } from "@/lib/tax"
+import { calculateShipping } from "@/lib/shipping"
+import { ManualPaymentReviewStatus, ShopPaymentMethod } from "@prisma/client"
+import { clampCartItemsToStock, decrementStockForOrder, validateCartStock } from "@/lib/stock"
+import {
+  cartWithTrainingInclude,
+  clearUserCart,
+  confirmTrainingBookings,
+  getCartSubtotal,
+  isCartEmpty,
+} from "@/lib/cart-training"
 
 export async function GET(req: Request) {
   try {
@@ -131,7 +140,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { shippingAddress, paymentIntentId, couponCode } = await req.json()
+    const body = await req.json()
+    const {
+      shippingAddress,
+      paymentIntentId,
+      couponCode,
+      billingNif,
+      billingAddress,
+      shopPaymentMethod: shopPaymentMethodRaw,
+    } = body
+
+    const offlineMethod =
+      shopPaymentMethodRaw === "MBWAY" || shopPaymentMethodRaw === "BANK_TRANSFER"
+    if (offlineMethod && paymentIntentId) {
+      return NextResponse.json(
+        { error: "Invalid payment combination for offline method" },
+        { status: 400 }
+      )
+    }
 
     // Get user info to check if email is banned
     const user = await db.user.findUnique({
@@ -159,28 +185,48 @@ export async function POST(req: Request) {
     // Get user's cart
     const cart = await db.cart.findUnique({
       where: { userId: session.user.id },
-      include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
-      },
+      include: cartWithTrainingInclude,
     })
 
-    if (!cart || cart.items.length === 0) {
+    if (!cart || isCartEmpty(cart)) {
       return NextResponse.json(
         { error: "Cart is empty" },
         { status: 400 }
       )
     }
 
-    // Validate all cart items have required certifications (double-check before order creation)
-    for (const item of cart.items) {
+    if (cart.items.length > 0) {
+      await clampCartItemsToStock(session.user.id)
+      const stockError = await validateCartStock(session.user.id)
+      if (stockError) {
+        return NextResponse.json(
+          {
+            error: stockError.code,
+            message:
+              stockError.code === "OUT_OF_STOCK"
+                ? "A product in your cart is out of stock"
+                : "Not enough stock for a product in your cart",
+            available: stockError.available,
+            productId: stockError.productId,
+          },
+          { status: 409 }
+        )
+      }
+    }
+
+    const cartAfterClamp = await db.cart.findUnique({
+      where: { userId: session.user.id },
+      include: cartWithTrainingInclude,
+    })
+    if (!cartAfterClamp || isCartEmpty(cartAfterClamp)) {
+      return NextResponse.json({ error: "Cart is empty" }, { status: 400 })
+    }
+
+    for (const item of cartAfterClamp.items) {
       const accessCheck = await canUserPurchaseProduct(session.user.id, item.productId)
       if (!accessCheck.canPurchase) {
         return NextResponse.json(
-          { 
+          {
             error: accessCheck.error || `You do not have permission to purchase ${item.product.name}. Please remove it from your cart.`,
             productId: item.productId,
             productName: item.product.name,
@@ -190,22 +236,15 @@ export async function POST(req: Request) {
       }
     }
 
-    // Calculate subtotal
-    const subtotal = cart.items.reduce(
-      (sum, item) => {
-        if (!item.product || !item.product.price) {
-          console.error(`Product or price missing for cart item ${item.id}`)
-          return sum
-        }
-        return sum + Number(item.product.price) * item.quantity
-      },
-      0
-    )
+    const subtotal = getCartSubtotal(cartAfterClamp)
 
-    // Get discount and tax info from payment intent if available, or calculate it
+    // Get discount and amounts info from payment intent if available, or calculate it
     let discountAmount = 0
-    let appliedCouponCode = couponCode || null
+    const couponFromBody =
+      typeof couponCode === "string" && couponCode.trim() ? couponCode.trim() : null
+    let appliedCouponCode = couponFromBody
     let taxAmount = 0
+    let shippingAmount = 0
     let taxRate: number | null = null
     let taxRegion: string | null = null
     let postalCode: string | null = null
@@ -234,6 +273,9 @@ export async function POST(req: Request) {
         if (paymentIntent.metadata.postalCode) {
           postalCode = paymentIntent.metadata.postalCode
         }
+        if (paymentIntent.metadata.shippingAmount) {
+          shippingAmount = parseFloat(paymentIntent.metadata.shippingAmount)
+        }
       } catch (error) {
         console.error("Failed to retrieve payment intent:", error)
       }
@@ -242,49 +284,36 @@ export async function POST(req: Request) {
     // Calculate subtotal after discount
     const subtotalAfterDiscount = Math.max(0, subtotal - discountAmount)
 
-    // Calculate tax if not already calculated from payment intent
-    if (taxAmount === 0 || taxRate === null) {
-      // Extract postal code from shipping address if not available from payment intent
-      if (!postalCode && shippingAddress) {
-        // Try to extract postal code from shipping address string
-        // Format is typically: "Name\nEmail\nPhone\nAddress\nPostalCode City\nDistrict\nCountry"
-        const addressLines = shippingAddress.split("\n")
-        if (addressLines.length >= 5) {
-          // Postal code is typically in the 5th line (index 4) before city
-          const postalCodeLine = addressLines[4]
-          if (postalCodeLine) {
-            // Extract postal code (format: XXXX-XXX or XXXX)
-            const match = postalCodeLine.match(/\d{4}(?:-\d{3})?/)
-            if (match) {
-              postalCode = match[0]
-            }
+    // Extract postal code if needed for shipping calculation.
+    if (!postalCode && shippingAddress) {
+      const addressLines = shippingAddress.split("\n")
+      if (addressLines.length >= 5) {
+        const postalCodeLine = addressLines[4]
+        if (postalCodeLine) {
+          const match = postalCodeLine.match(/\d{4}(?:-\d{3})?/)
+          if (match) {
+            postalCode = match[0]
           }
         }
       }
+    }
 
-      if (postalCode) {
-        try {
-          const taxResult = await calculateTax(subtotalAfterDiscount, postalCode)
-          taxAmount = taxResult.taxAmount
-          taxRate = taxResult.taxRate
-          taxRegion = taxResult.taxRegion
-        } catch (error) {
-          console.error("Failed to calculate tax:", error)
-          // Default to 23% (Mainland Portugal) if calculation fails
-          taxAmount = subtotalAfterDiscount * 0.23
-          taxRate = 23.0
-          taxRegion = "Mainland Portugal"
-        }
-      } else {
-        // Default to 23% (Mainland Portugal) if no postal code
-        taxAmount = subtotalAfterDiscount * 0.23
-        taxRate = 23.0
-        taxRegion = "Mainland Portugal"
+    // Prices already include IVA 23%, so tax is informational only.
+    taxAmount = 0
+    taxRate = 23.0
+    taxRegion = "IVA 23% included"
+
+    if (shippingAmount === 0 && postalCode) {
+      try {
+        const shipping = await calculateShipping(subtotalAfterDiscount, postalCode)
+        shippingAmount = shipping.shippingAmount
+      } catch (error) {
+        console.error("Failed to calculate shipping:", error)
       }
     }
 
-    // Calculate total including tax
-    const total = subtotalAfterDiscount + taxAmount
+    // Calculate total (tax already included) + shipping
+    const total = subtotalAfterDiscount + taxAmount + shippingAmount
 
     // Check for affiliate referral
     const referral = await getReferralByUserId(session.user.id)
@@ -294,23 +323,42 @@ export async function POST(req: Request) {
       affiliateReferralId = referral.id
     }
 
-    // Increment coupon usage count if coupon was applied
-    if (appliedCouponCode) {
+    // Increment coupon usage when payment is already settled (Stripe) or immediate;
+    // MBWay / bank transfer defer until admin confirms.
+    if (appliedCouponCode && !offlineMethod) {
       try {
         await db.coupon.updateMany({
           where: { code: appliedCouponCode },
           data: { usedCount: { increment: 1 } },
         })
-        
-        // Update redemption status to USED if this is a reward redemption coupon
+
         await db.pointsRedemption.updateMany({
           where: { couponCode: appliedCouponCode.toUpperCase().trim() },
           data: { status: "USED" },
         })
       } catch (error) {
         console.error("Failed to update coupon usage count:", error)
-        // Don't fail order creation if coupon update fails
       }
+    }
+
+    const billingNifNorm =
+      typeof billingNif === "string" && billingNif.trim() ? billingNif.trim() : null
+    const billingAddressNorm =
+      typeof billingAddress === "string" && billingAddress.trim()
+        ? billingAddress.trim()
+        : null
+
+    let shopPaymentMethod: ShopPaymentMethod | null = null
+    let manualPaymentStatus: ManualPaymentReviewStatus | null = null
+    if (offlineMethod) {
+      shopPaymentMethod =
+        shopPaymentMethodRaw === "MBWAY" ? ShopPaymentMethod.MBWAY : ShopPaymentMethod.BANK_TRANSFER
+      manualPaymentStatus = ManualPaymentReviewStatus.PENDING
+    } else if (paymentIntentId) {
+      shopPaymentMethod =
+        shopPaymentMethodRaw === "STRIPE_KLARNA"
+          ? ShopPaymentMethod.STRIPE_KLARNA
+          : ShopPaymentMethod.STRIPE_CARD
     }
 
     // Create order
@@ -319,16 +367,31 @@ export async function POST(req: Request) {
         userId: session.user.id,
         total,
         shippingAddress: shippingAddress || null,
+        billingNif: billingNifNorm,
+        billingAddress: billingAddressNorm,
         paymentIntentId: paymentIntentId || null,
+        shopPaymentMethod,
+        manualPaymentStatus,
+        appliedCouponCode: appliedCouponCode,
         affiliateReferralId,
         taxRate: taxRate,
         taxAmount: taxAmount,
+        shippingAmount,
         taxRegion: taxRegion,
         items: {
-          create: cart.items.map((item) => ({
+          create: cartAfterClamp.items.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
             price: item.product.price,
+          })),
+        },
+        trainingItems: {
+          create: cartAfterClamp.trainingItems.map((item) => ({
+            sessionId: item.sessionId,
+            programId: item.session.programId,
+            bookingId: item.bookingId,
+            price: item.session.program.price,
+            quantity: 1,
           })),
         },
       },
@@ -338,12 +401,29 @@ export async function POST(req: Request) {
             product: true,
           },
         },
+        trainingItems: {
+          include: {
+            program: true,
+            session: true,
+          },
+        },
       },
     })
 
+    if (cartAfterClamp.items.length > 0) {
+      await decrementStockForOrder(
+        cartAfterClamp.items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        }))
+      )
+    }
+
+    await confirmTrainingBookings(cartAfterClamp.trainingItems)
+
     // Handle affiliate referral points (if not using webhook)
     // Note: This is a fallback - webhook handles Stripe orders, but this ensures it works for non-Stripe orders
-    if (referral && !paymentIntentId) {
+    if (referral && !paymentIntentId && !offlineMethod) {
       // Only process if order wasn't created via Stripe (webhook handles Stripe orders)
       try {
         const currentReferral = await db.affiliateReferral.findUnique({
@@ -395,7 +475,7 @@ export async function POST(req: Request) {
     }
 
     // Award points to order owner for own purchase (if not using webhook)
-    if (!paymentIntentId) {
+    if (!paymentIntentId && !offlineMethod) {
       // Only if not using Stripe (webhook handles Stripe orders)
       try {
         const ownPurchasePoints = await calculatePoints("OWN_PURCHASE", Number(total))
@@ -415,17 +495,18 @@ export async function POST(req: Request) {
     }
 
     // Clear cart
-    await db.cartItem.deleteMany({
-      where: { cartId: cart.id },
-    })
+    await clearUserCart(cart.id)
 
     // Create notification for admin users when a new order is placed
     try {
+      const offlineNote = offlineMethod
+        ? " (awaiting MBWay / bank transfer — confirm payment in admin)"
+        : ""
       await db.notification.create({
         data: {
           type: "ORDER",
-          title: "New Order",
-          message: `New order #${order.id.slice(0, 8)} from ${user?.name || user?.email || "Customer"} - ${formatPrice(total)}`,
+          title: offlineMethod ? "New order — manual payment" : "New Order",
+          message: `New order #${order.id.slice(0, 8)} from ${user?.name || user?.email || "Customer"} - ${formatPrice(total)}${offlineNote}`,
           linkUrl: `/admin/orders/${order.id}`,
           metadata: {
             orderId: order.id,

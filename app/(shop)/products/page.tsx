@@ -8,10 +8,13 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { ProductCard } from "@/components/product/product-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { Pagination } from "@/components/ui/pagination";
 import { ProductReviews } from "@/components/product/product-reviews";
+import { ShopEmptyProducts } from "@/components/shop/shop-empty-products";
 import { useLanguage } from "@/contexts/language-context";
+import { fetchShopCategories } from "@/lib/shop-categories";
 
 interface Product {
   id: string;
@@ -69,11 +72,8 @@ function ProductsPageContent() {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await fetch("/api/categories");
-      if (res.ok) {
-        const data = await res.json();
-        setCategories(data.categories || []);
-      }
+      const data = await fetchShopCategories();
+      setCategories(data);
     } catch (error) {
       console.error("Failed to fetch categories:", error);
       setCategories([]);
@@ -159,9 +159,12 @@ function ProductsPageContent() {
   }, [fetchProducts]);
 
   useEffect(() => {
-    fetchProducts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, searchQuery, minPrice, maxPrice, sortBy, showFeatured, currentPage]);
+    if (!showFilters) return;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showFilters]);
 
   const clearFilters = () => {
     setSelectedCategory(null);
@@ -180,7 +183,7 @@ function ProductsPageContent() {
       <div className="bg-brand-white min-h-screen">
         <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-12">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6 md:mb-8">
-            <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-medium text-brand-black">{t("shop.title")}</h1>
+            <h1 className="font-display text-2xl font-normal tracking-tight text-brand-black sm:text-3xl md:text-4xl">{t("shop.title")}</h1>
             <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
               <Button
                 variant="outline"
@@ -237,11 +240,91 @@ function ProductsPageContent() {
             </div>
           </div>
 
-          {/* Advanced Filters Panel */}
-          {showFilters && (
-            <div className="bg-brand-white border border-brand-champagne/30 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 md:mb-8">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                {/* Price Range */}
+          {/* Sort and Results Count - Always Visible */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-4 sm:mb-6">
+            {totalProducts > 0 && (
+              <div className="text-xs sm:text-sm font-light text-brand-black">
+                {t("shop.showing")} {((currentPage - 1) * 12) + 1} {t("shop.to")} {Math.min(currentPage * 12, totalProducts)} {t("shop.of")} {totalProducts} {t("shop.products")}
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <label className="text-xs sm:text-sm font-medium text-brand-black">{t("shop.sort")}</label>
+              <Select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full sm:w-48"
+              >
+                <option value="newest">{t("shop.newestFirst")}</option>
+                <option value="oldest">{t("shop.oldestFirst")}</option>
+                <option value="price-asc">{t("shop.priceLowToHigh")}</option>
+                <option value="price-desc">{t("shop.priceHighToLow")}</option>
+                <option value="name-asc">{t("shop.nameAtoZ")}</option>
+                <option value="name-desc">{t("shop.nameZtoA")}</option>
+              </Select>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="text-center py-12 text-brand-black font-light">{t("shop.loadingProducts")}</div>
+          ) : products.length === 0 ? (
+            <ShopEmptyProducts
+              hasActiveFilters={Boolean(hasActiveFilters)}
+              onClearFilters={clearFilters}
+              browseHref="/products"
+            />
+          ) : (
+            <>
+              <div className="grid grid-cols-1 justify-items-start gap-x-5 gap-y-12 md:grid-cols-2 md:gap-x-8 md:gap-y-16 lg:grid-cols-3 lg:gap-x-12">
+                {products.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    id={product.id}
+                    name={product.name}
+                    price={product.price}
+                    salePrice={product.salePrice}
+                    image={product.image}
+                    images={product.images}
+                    featured={product.featured}
+                    outOfStock={(product as any).outOfStock}
+                    hemaFree={(product as any).hemaFree}
+                    description={product.description}
+                    rating={product.rating}
+                    reviewCount={product.reviewCount}
+                  />
+                ))}
+              </div>
+              <div className="mt-12">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            </>
+          )}
+        </div>
+
+        {showFilters && (
+          <div className="fixed inset-0 z-[120]">
+            <button
+              className="absolute inset-0 bg-black/40"
+              onClick={() => setShowFilters(false)}
+              aria-label={t("common.close")}
+            />
+            <div className="absolute left-0 top-0 h-full w-full max-w-md overflow-y-auto bg-brand-white shadow-xl">
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-brand-champagne/20 bg-brand-white px-4 py-4 sm:px-6">
+                <h2 className="text-xl font-medium text-brand-black">{t("shop.filters")}</h2>
+                <button
+                  type="button"
+                  onClick={() => setShowFilters(false)}
+                  className="flex size-9 items-center justify-center rounded-full border border-black/10 text-brand-black transition-colors hover:border-brand-champagne hover:bg-brand-champagne/10"
+                  aria-label={t("common.close")}
+                >
+                  <X className="size-4" aria-hidden />
+                </button>
+              </div>
+
+              <div className="space-y-6 px-4 py-5 sm:px-6">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-brand-black">{t("shop.priceRange")}</label>
                   <div className="flex gap-2">
@@ -264,7 +347,6 @@ function ProductsPageContent() {
                   </div>
                 </div>
 
-                {/* Sort By */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-brand-black">{t("shop.sortBy")}</label>
                   <Select
@@ -280,7 +362,6 @@ function ProductsPageContent() {
                   </Select>
                 </div>
 
-                {/* Featured Filter */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-brand-black">{t("shop.options")}</label>
                   <div className="flex items-center space-x-2 pt-2">
@@ -297,7 +378,6 @@ function ProductsPageContent() {
                   </div>
                 </div>
 
-                {/* Active Filters Summary */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-brand-black">{t("shop.activeFilters")}</label>
                   <div className="flex flex-wrap gap-2 pt-2">
@@ -327,79 +407,20 @@ function ProductsPageContent() {
                   </div>
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* Sort and Results Count - Always Visible */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-4 sm:mb-6">
-            {totalProducts > 0 && (
-              <div className="text-xs sm:text-sm font-light text-brand-black">
-                {t("shop.showing")} {((currentPage - 1) * 12) + 1} {t("shop.to")} {Math.min(currentPage * 12, totalProducts)} {t("shop.of")} {totalProducts} {t("shop.products")}
+              <div className="sticky bottom-0 border-t border-brand-champagne/20 bg-brand-white px-4 py-3 sm:px-6">
+                <div className="flex items-center justify-between gap-3">
+                  <Button variant="outline" onClick={clearFilters}>
+                    {t("shop.clearAll")}
+                  </Button>
+                  <Button onClick={() => setShowFilters(false)}>
+                    Apply
+                  </Button>
+                </div>
               </div>
-            )}
-            <div className="flex items-center gap-2">
-              <label className="text-xs sm:text-sm font-medium text-brand-black">{t("shop.sort")}</label>
-              <Select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="w-full sm:w-48"
-              >
-                <option value="newest">{t("shop.newestFirst")}</option>
-                <option value="oldest">{t("shop.oldestFirst")}</option>
-                <option value="price-asc">{t("shop.priceLowToHigh")}</option>
-                <option value="price-desc">{t("shop.priceHighToLow")}</option>
-                <option value="name-asc">{t("shop.nameAtoZ")}</option>
-                <option value="name-desc">{t("shop.nameZtoA")}</option>
-              </Select>
             </div>
           </div>
-
-          {isLoading ? (
-            <div className="text-center py-12 text-brand-black font-light">{t("shop.loadingProducts")}</div>
-          ) : products.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-brand-black mb-4 font-light">{t("shop.noProductsFound")}</p>
-              {hasActiveFilters && (
-                <Button
-                  variant="outline"
-                  onClick={clearFilters}
-                  className="mt-2"
-                >
-                  {t("shop.clearFiltersToSeeAll")}
-                </Button>
-              )}
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
-                {products.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    id={product.id}
-                    name={product.name}
-                    price={product.price}
-                    salePrice={product.salePrice}
-                    image={product.image}
-                    images={product.images}
-                    featured={product.featured}
-                    outOfStock={(product as any).outOfStock}
-                    hemaFree={(product as any).hemaFree}
-                    description={product.description}
-                    rating={product.rating}
-                    reviewCount={product.reviewCount}
-                  />
-                ))}
-              </div>
-              <div className="mt-12">
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                />
-              </div>
-            </>
-          )}
-        </div>
+        )}
 
         {/* Product Reviews Section */}
         <div className="mt-20 pt-12 border-t border-gray-200">

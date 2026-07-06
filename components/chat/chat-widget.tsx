@@ -1,10 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { MessageCircle, X, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/language-context";
+import { hasStoredConsent } from "@/lib/cookie-consent";
+import { HOME_ENTRY_LOADER_COMPLETE_EVENT } from "@/lib/home-entry-loader";
 
 interface ChatMessage {
   id: string;
@@ -21,6 +25,7 @@ interface ChatMessage {
 
 export function ChatWidget() {
   const { data: session, status } = useSession();
+  const { t, language } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
@@ -30,6 +35,9 @@ export function ChatWidget() {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [cookieBannerOpen, setCookieBannerOpen] = useState(false);
+  const [consentGiven, setConsentGiven] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // Get viewed message IDs from localStorage
@@ -51,7 +59,10 @@ export function ChatWidget() {
 
   // Check if we should hide the widget on admin pages or if user is an admin
   const isAdmin = session?.user?.role === "ADMIN";
-  const shouldHide = pathname?.startsWith("/admin") || isAdmin || false;
+  const shouldHide =
+    pathname?.startsWith("/admin") || pathname === "/salons" || isAdmin || false;
+  const isAuthPage = pathname === "/login" || pathname === "/register";
+  const liftAboveAuth = isAuthPage && isMobile;
 
   const fetchMessages = useCallback(async () => {
     if (!session) return;
@@ -69,19 +80,19 @@ export function ChatWidget() {
         // Don't update unread count when chat is open (user is viewing messages)
         // Unread count is only updated when chat is closed via fetchUnreadCount
       } else {
-        const errorData = await res.json().catch(() => ({ error: "Failed to fetch messages" }));
-        const errorMessage = errorData.error || `Failed to fetch messages (${res.status})`;
+        const errorData = await res.json().catch(() => ({ error: null }));
+        const errorMessage = errorData.error || t("chat.fetchFailedWithStatus", { status: String(res.status) });
         setError(errorMessage);
         console.error("Failed to fetch messages:", errorMessage, res.status);
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to fetch messages. Please try again.";
+      const errorMessage = error instanceof Error ? error.message : t("chat.fetchFailed");
       setError(errorMessage);
       console.error("Failed to fetch messages:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [session]);
+  }, [session, t]);
 
   // Fetch unread count periodically when widget is closed and user is logged in
   const fetchUnreadCount = useCallback(async () => {
@@ -157,6 +168,43 @@ export function ChatWidget() {
     }
   }, [session, isOpen, shouldHide, fetchUnreadCount]);
 
+  useEffect(() => {
+    const syncCookieBannerState = () => {
+      setCookieBannerOpen(document.body.hasAttribute("data-cookie-banner-open"));
+      setConsentGiven(hasStoredConsent());
+    };
+
+    syncCookieBannerState();
+
+    const observer = new MutationObserver(syncCookieBannerState);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["data-cookie-banner-open"],
+    });
+
+    const onConsent = () => {
+      setConsentGiven(true);
+      setCookieBannerOpen(false);
+    };
+
+    window.addEventListener(HOME_ENTRY_LOADER_COMPLETE_EVENT, syncCookieBannerState);
+    window.addEventListener("cookieConsentChanged", onConsent);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener(HOME_ENTRY_LOADER_COMPLETE_EVENT, syncCookieBannerState);
+      window.removeEventListener("cookieConsentChanged", onConsent);
+    };
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1023px)");
+    const update = () => setIsMobile(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
   const handleOpen = () => {
     if (status === "unauthenticated") {
       router.push("/login");
@@ -198,13 +246,13 @@ export function ChatWidget() {
         await fetchMessages();
       } else {
         // Handle error response
-        const errorData = await res.json().catch(() => ({ error: "Failed to send message" }));
-        const errorMessage = errorData.error || `Failed to send message (${res.status})`;
+        const errorData = await res.json().catch(() => ({ error: null }));
+        const errorMessage = errorData.error || t("chat.sendFailedWithStatus", { status: String(res.status) });
         setError(errorMessage);
         console.error("Failed to send message:", errorMessage, res.status);
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to send message. Please try again.";
+      const errorMessage = error instanceof Error ? error.message : t("chat.sendFailed");
       setError(errorMessage);
       console.error("Failed to send message:", error);
     } finally {
@@ -219,63 +267,52 @@ export function ChatWidget() {
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
+    const locale = language === "pt" ? "pt-PT" : "en-US";
 
-    if (minutes < 1) return "Just now";
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString();
+    if (minutes < 1) return t("chat.justNow");
+    if (minutes < 60) return t("chat.minutesAgo", { minutes: String(minutes) });
+    if (hours < 24) return t("chat.hoursAgo", { hours: String(hours) });
+    if (days < 7) return t("chat.daysAgo", { days: String(days) });
+    return date.toLocaleDateString(locale);
   };
 
-  // Don't render anything on admin pages
-  if (shouldHide) {
+  // Don't render anything on admin pages or while cookie consent is pending
+  if (shouldHide || cookieBannerOpen || !consentGiven) {
     return null;
   }
 
-  return (
+  const widget = (
     <>
       {/* Floating Button */}
+      {!isOpen && (
       <button
         onClick={handleOpen}
-        className="z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-[#857D71] text-white shadow-lg transition-all hover:bg-[#6d685f] hover:scale-110 focus:outline-none focus:ring-2 focus:ring-[#857D71] focus:ring-offset-2 relative"
-        style={{ 
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          left: 'auto',
-          top: 'auto',
-          margin: 0,
-          padding: 0
-        }}
-        aria-label="Open chat"
+        data-chat-widget="trigger"
+        className={`fixed bottom-4 right-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#857D71] text-white shadow-lg transition-all hover:bg-[#6d685f] hover:scale-110 focus:outline-none focus:ring-2 focus:ring-[#857D71] focus:ring-offset-2 sm:bottom-6 sm:right-6 ${liftAboveAuth ? "z-[10050]" : "z-[9999]"}`}
+        aria-label={t("chat.open")}
       >
         <MessageCircle className="h-6 w-6" />
-        {/* Only show badge when chat is closed and there are unread messages */}
-        {!isOpen && unreadCount > 0 && (
+        {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow-lg animate-pulse">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
+      )}
 
       {/* Chat Window */}
       {isOpen && (
-        <div 
-          className="fixed z-[9999] flex flex-col bg-white shadow-2xl dark:bg-gray-800 bottom-0 right-0 h-screen w-screen sm:bottom-6 sm:right-6 sm:h-[600px] sm:w-[400px] sm:rounded-lg"
-          style={{
-            left: 'auto'
-          }}
-        >
+        <div data-chat-widget="panel" className={`fixed bottom-0 right-0 flex h-[min(100dvh,520px)] w-screen flex-col bg-white shadow-2xl dark:bg-gray-800 sm:bottom-6 sm:right-6 sm:h-[480px] sm:w-[400px] sm:rounded-lg ${liftAboveAuth ? "z-[10050]" : "z-[9999]"}`}>
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-[#857D71] text-white p-3 sm:p-4 rounded-t-lg sm:rounded-t-lg">
             <div className="flex-1 min-w-0 pr-2">
-              <h3 className="font-semibold text-sm sm:text-base">Chat with us</h3>
-              <p className="text-xs text-gray-300 hidden sm:block">We&apos;ll respond as soon as possible</p>
+              <h3 className="font-semibold text-sm sm:text-base">{t("chat.title")}</h3>
+              <p className="text-xs text-gray-300 hidden sm:block">{t("chat.subtitle")}</p>
             </div>
             <button
               onClick={handleClose}
               className="p-1 hover:bg-[#6d685f] rounded transition-colors flex-shrink-0"
-              aria-label="Close chat"
+              aria-label={t("chat.close")}
             >
               <X className="h-5 w-5" />
             </button>
@@ -290,8 +327,8 @@ export function ChatWidget() {
             ) : messages.length === 0 ? (
               <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 px-4">
                 <p className="text-center text-sm sm:text-base">
-                  No messages yet. <br />
-                  Start a conversation!
+                  {t("chat.emptyLine1")} <br />
+                  {t("chat.emptyStart")}
                 </p>
               </div>
             ) : (
@@ -305,7 +342,7 @@ export function ChatWidget() {
                     <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
                       <span>{formatTime(msg.createdAt)}</span>
                       {msg.readByAdmin && (
-                        <span className="text-green-500">✓ Read</span>
+                        <span className="text-green-500">{t("chat.read")}</span>
                       )}
                     </div>
                   </div>
@@ -317,7 +354,7 @@ export function ChatWidget() {
                         <p className="text-sm break-words">{msg.adminResponse}</p>
                       </div>
                       <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Admin
+                        {t("chat.admin")}
                       </span>
                     </div>
                   )}
@@ -342,8 +379,8 @@ export function ChatWidget() {
                   setNewMessage(e.target.value);
                   setError(null); // Clear error when user types
                 }}
-                placeholder="Type your message..."
-                className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 sm:px-4 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder={t("chat.placeholder")}
+                className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 sm:px-4 py-2 text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-sm"
                 disabled={isSending}
               />
               <Button
@@ -363,5 +400,11 @@ export function ChatWidget() {
       )}
     </>
   );
+
+  if (liftAboveAuth && typeof document !== "undefined") {
+    return createPortal(widget, document.body);
+  }
+
+  return widget;
 }
 

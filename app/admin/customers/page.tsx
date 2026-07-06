@@ -18,6 +18,8 @@ interface Customer {
   id: string;
   email: string;
   name: string | null;
+  phone?: string | null;
+  marketingConsent?: boolean;
   role: string;
   certificationId?: string | null;
   certification: Certification | null;
@@ -53,8 +55,10 @@ export default function AdminCustomersPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    phone: "",
     password: "",
     confirmPassword: "",
+    marketingConsent: false,
     certificationId: "" as string | null,
   });
   const [editFormData, setEditFormData] = useState({
@@ -204,7 +208,7 @@ export default function AdminCustomersPage() {
     setError("");
 
     // Validation
-    if (!formData.name || !formData.email || !formData.password) {
+    if (!formData.name || !formData.email || !formData.phone || !formData.password) {
       setError("Please fill in all required fields");
       return;
     }
@@ -228,6 +232,8 @@ export default function AdminCustomersPage() {
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
+          phone: formData.phone,
+          marketingConsent: formData.marketingConsent,
           password: formData.password,
           certificationId: formData.certificationId || null,
         }),
@@ -238,8 +244,10 @@ export default function AdminCustomersPage() {
         setFormData({
           name: "",
           email: "",
+          phone: "",
           password: "",
           confirmPassword: "",
+          marketingConsent: false,
           certificationId: null,
         });
         setShowAddModal(false);
@@ -631,7 +639,13 @@ export default function AdminCustomersPage() {
                     Email
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    Telefone
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Certification
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    Marketing
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Created
@@ -645,7 +659,7 @@ export default function AdminCustomersPage() {
                 {paginatedCustomers.length === 0 ? (
                   <tr>
                       <td
-                        colSpan={8}
+                        colSpan={10}
                         className="px-6 py-12 text-center text-gray-500 dark:text-gray-400"
                       >
                         No customers found
@@ -747,6 +761,13 @@ export default function AdminCustomersPage() {
                         </div>
                       </td>
 
+                      {/* Phone Column */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-900 dark:text-gray-100">
+                          {customer.phone || "—"}
+                        </span>
+                      </td>
+
                       {/* Certification Column */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col gap-2">
@@ -801,6 +822,19 @@ export default function AdminCustomersPage() {
                             return null;
                           })()}
                         </div>
+                      </td>
+
+                      {/* Marketing Consent Column */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            customer.marketingConsent
+                              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                              : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+                          }`}
+                        >
+                          {customer.marketingConsent ? "Sim" : "Não"}
+                        </span>
                       </td>
 
                       {/* Created Column */}
@@ -954,8 +988,10 @@ export default function AdminCustomersPage() {
                     setFormData({
                       name: "",
                       email: "",
+                      phone: "",
                       password: "",
                       confirmPassword: "",
+                      marketingConsent: false,
                       certificationId: null,
                     });
                   }}
@@ -1010,6 +1046,44 @@ export default function AdminCustomersPage() {
                     className="w-full"
                     required
                   />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="phone"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Telefone *
+                  </label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="+351 9xx xxx xxx"
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
+                    className="w-full"
+                    required
+                  />
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <input
+                    id="marketingConsent"
+                    type="checkbox"
+                    checked={formData.marketingConsent}
+                    onChange={(e) =>
+                      setFormData({ ...formData, marketingConsent: e.target.checked })
+                    }
+                    className="mt-1 h-4 w-4"
+                  />
+                  <label
+                    htmlFor="marketingConsent"
+                    className="text-sm text-gray-700 dark:text-gray-300"
+                  >
+                    Aceita comunicações de marketing (email/SMS)
+                  </label>
                 </div>
 
                 <div>
@@ -1119,8 +1193,10 @@ export default function AdminCustomersPage() {
                       setFormData({
                         name: "",
                         email: "",
+                        phone: "",
                         password: "",
                         confirmPassword: "",
+                        marketingConsent: false,
                         certificationId: null,
                       });
                     }}
@@ -1199,6 +1275,24 @@ export default function AdminCustomersPage() {
                     </label>
                     <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
                       {selectedCustomer.email}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Telefone
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
+                      {selectedCustomer.phone || "Não informado"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Consentimento de Marketing
+                    </label>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
+                      {selectedCustomer.marketingConsent ? "Sim" : "Não"}
                     </p>
                   </div>
 

@@ -11,10 +11,10 @@ import { useCart } from "@/contexts/cart-context";
 import { useLanguage } from "@/contexts/language-context";
 
 export default function CartPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { data: session } = useSession();
   const router = useRouter();
-  const { items, isLoading, updateQuantity, removeItem, itemCount } = useCart();
+  const { items, trainingItems, isLoading, updateQuantity, removeItem, removeTrainingItem, itemCount } = useCart();
 
   if (!session) {
     return (
@@ -43,13 +43,17 @@ export default function CartPage() {
     );
   }
 
-  const subtotal = items.reduce(
-    (sum, item) => sum + parseFloat(item.product.price) * item.quantity,
-    0
-  );
-  // Tax is calculated at checkout based on postal code
-  // Not showing tax in cart page since we don't have postal code yet
+  const subtotal =
+    items.reduce((sum, item) => sum + parseFloat(item.product.price) * item.quantity, 0) +
+    trainingItems.reduce((sum, item) => sum + parseFloat(item.program.price), 0);
   const total = subtotal;
+
+  const formatTrainingSessionDate = (value: string) =>
+    new Date(value).toLocaleDateString(language === "pt" ? "pt-PT" : "en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
 
   return (
     <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -57,6 +61,58 @@ export default function CartPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         <div className="lg:col-span-2 space-y-4">
+          {trainingItems.map((item) => (
+            <Card key={item.id}>
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Link
+                    href={`/training/${item.program.id}`}
+                    className="relative w-full sm:w-24 h-48 sm:h-24 flex-shrink-0 bg-brand-champagne/15 rounded overflow-hidden"
+                  >
+                    {item.program.image ? (
+                      <Image
+                        src={item.program.image}
+                        alt={item.program.title}
+                        fill
+                        sizes="(max-width: 640px) 100vw, 96px"
+                        className="object-cover rounded"
+                        unoptimized={
+                          item.program.image.startsWith("data:") ||
+                          item.program.image.startsWith("blob:")
+                        }
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-brand-champagne text-xs font-medium">
+                        {t("cart.trainingBadge")}
+                      </div>
+                    )}
+                  </Link>
+                  <div className="flex-1 min-w-0">
+                    <Link href={`/training/${item.program.id}`}>
+                      <h3 className="font-semibold text-base sm:text-lg hover:underline break-words">
+                        {item.program.title}
+                      </h3>
+                    </Link>
+                    <p className="text-gray-600 mb-1 text-sm sm:text-base">{t("cart.trainingProgram")}</p>
+                    <p className="text-gray-500 mb-2 text-sm">
+                      {formatTrainingSessionDate(item.session.startDate)}
+                      {item.session.location ? ` · ${item.session.location}` : ""}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      onClick={() => removeTrainingItem(item.id)}
+                      className="text-red-600 hover:text-red-700 text-sm sm:text-base px-0"
+                    >
+                      {t("cart.remove")}
+                    </Button>
+                  </div>
+                  <div className="text-left sm:text-right mt-2 sm:mt-0">
+                    <p className="font-bold text-base sm:text-lg">{formatPrice(item.program.price)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
           {items.map((item) => (
             <Card key={item.id}>
               <CardContent className="p-4 sm:p-6">

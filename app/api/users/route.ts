@@ -44,6 +44,8 @@ export async function GET(req: Request) {
         id: true,
         email: true,
         name: true,
+        phone: true,
+        marketingConsent: true,
         role: true,
         createdAt: true,
         updatedAt: true,
@@ -107,6 +109,8 @@ export async function GET(req: Request) {
         id: user.id,
         email: user.email,
         name: user.name,
+        phone: user.phone,
+        marketingConsent: user.marketingConsent,
         role: user.role,
         permissions: null, // Field doesn't exist in database, return null
         isActive: true, // Field doesn't exist in database, default to true

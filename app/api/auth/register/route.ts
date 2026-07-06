@@ -11,6 +11,8 @@ const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   name: z.string().min(1, "Name is required"),
+  phone: z.string().min(1, "Phone is required"),
+  marketingConsent: z.boolean().optional(),
   userType: z.enum(["customer", "professional"]).optional(),
   role: z.enum(["USER", "ADMIN"]).optional(),
   permissions: z.record(z.enum(["allow", "deny"])).optional(),
@@ -24,7 +26,7 @@ const registerSchema = z.object({
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { email, password, name, userType, role, permissions, certificate, certificationId, referralCode } = registerSchema.parse(body)
+    const { email, password, name, phone, marketingConsent, userType, role, permissions, certificate, certificationId, referralCode } = registerSchema.parse(body)
 
     // Normalize email for checking
     const normalizedEmail = email.trim().toLowerCase()
@@ -81,6 +83,8 @@ export async function POST(req: Request) {
       email: normalizedEmail,
       password: hashedPassword,
       name: name.trim(),
+      phone: phone.trim(),
+      marketingConsent: !!marketingConsent,
       role: role || "USER", // Set role to ADMIN if provided, otherwise default to USER
       permissions: permissions || null,
       isActive: true,

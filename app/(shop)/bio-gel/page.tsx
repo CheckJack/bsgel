@@ -2,11 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { CategoryHeroBadge } from "@/components/layout/category-hero-badge";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
+import { ShopProductsHeader } from "@/components/shop/shop-products-header";
+import { ShopProductsTitle } from "@/components/shop/shop-products-title";
+import { ShopEmptyProducts } from "@/components/shop/shop-empty-products";
 import { Pagination } from "@/components/ui/pagination";
-import { Select } from "@/components/ui/select";
 import { useLanguage } from "@/contexts/language-context";
+import { useShopFilters } from "@/hooks/use-shop-filters";
+import { fetchShopCategories } from "@/lib/shop-categories";
 
 interface Product {
   id: string;
@@ -31,48 +36,55 @@ export default function BioGelPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [categoryId, setCategoryId] = useState<string | undefined>();
-  const [sortBy, setSortBy] = useState("newest");
+  const filters = useShopFilters();
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters.sortBy, filters.minPrice, filters.maxPrice, filters.showFeatured]);
 
   useEffect(() => {
     fetchBioGelProducts();
-  }, [currentPage, sortBy]);
+  }, [currentPage, filters.sortBy, filters.minPrice, filters.maxPrice, filters.showFeatured]);
+
   const fetchBioGelProducts = async () => {
     setIsLoading(true);
     try {
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: "10",
+      });
+      filters.appendToSearchParams(params);
       // First, try to find a "BIO Gel" category
-      const categoriesRes = await fetch("/api/categories");
-      if (categoriesRes.ok) {
-        const categoriesData = await categoriesRes.json();
-        const bioGelCategory = categoriesData.categories?.find(
-          (cat: { name: string }) => cat.name.toLowerCase() === "bio gel" || cat.name.toLowerCase() === "biogel"
-        );
+      const categoriesData = { categories: await fetchShopCategories() };
+      const bioGelCategory = categoriesData.categories?.find(
+        (cat: { name: string }) => cat.name.toLowerCase() === "bio gel" || cat.name.toLowerCase() === "biogel"
+      );
 
-        if (bioGelCategory) {
-          setCategoryId(bioGelCategory.id);
-          // If category exists, fetch all products in that category with pagination
-          const res = await fetch(`/api/products?categoryId=${bioGelCategory.id}&page=${currentPage}&limit=10&sortBy=${encodeURIComponent(sortBy)}`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.pagination) {
-              setProducts(data.products || []);
-              setTotalPages(data.pagination.totalPages || 1);
-            } else {
-              setProducts(Array.isArray(data) ? data : data.products || []);
-              setTotalPages(1);
-            }
+      if (bioGelCategory) {
+        setCategoryId(bioGelCategory.id);
+        params.set("categoryId", bioGelCategory.id);
+        const res = await fetch(`/api/products?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.pagination) {
+            setProducts(data.products || []);
+            setTotalPages(data.pagination.totalPages || 1);
+          } else {
+            setProducts(Array.isArray(data) ? data : data.products || []);
+            setTotalPages(1);
           }
-        } else {
-          // Otherwise, search for products with "bio gel" or "biogel" in the name with pagination
-          const res = await fetch(`/api/products?search=bio gel&page=${currentPage}&limit=10&sortBy=${encodeURIComponent(sortBy)}`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.pagination) {
-              setProducts(data.products || []);
-              setTotalPages(data.pagination.totalPages || 1);
-            } else {
-              setProducts(Array.isArray(data) ? data : data.products || []);
-              setTotalPages(1);
-            }
+        }
+      } else {
+        params.set("search", "bio gel");
+        const res = await fetch(`/api/products?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.pagination) {
+            setProducts(data.products || []);
+            setTotalPages(data.pagination.totalPages || 1);
+          } else {
+            setProducts(Array.isArray(data) ? data : data.products || []);
+            setTotalPages(1);
           }
         }
       }
@@ -89,47 +101,44 @@ export default function BioGelPage() {
   return (
     <>
       <section className="relative h-[36vh] w-full overflow-hidden md:h-[44vh]">
-        <Image src="/bio-gel-hero-custom.png" alt="BIO Gel" fill className="object-cover" priority unoptimized />
-        <div className="relative z-10 flex h-full items-center">
-          <div className="container mx-auto flex h-full max-w-7xl items-center px-4">
-            <h1 className="text-4xl font-medium text-white sm:text-5xl md:text-6xl">BIO Gel</h1>
-          </div>
-        </div>
+        <CategoryHeroBadge />
+        <Image src="/j7j57qehr.png" alt="BIO Gel" fill className="object-cover lg:hidden" priority unoptimized />
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          aria-label="BIO Gel"
+          className="absolute inset-0 hidden h-full w-full object-cover lg:block"
+        >
+          <source src="/bio-gel-hero.mp4" type="video/mp4" />
+        </video>
       </section>
 
       <section id="products" className="relative w-full min-h-screen bg-brand-white py-12 sm:py-16">
         <div className="container mx-auto px-4 sm:px-6 max-w-7xl">
-          <div className="mb-12 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-            <div>
-              <h2 className="text-2xl font-medium text-brand-black sm:text-3xl md:text-4xl">
-                BIO Gel BIO Sculpture
-              </h2>
-              <div className="mt-3 h-1 w-16 bg-brand-champagne"></div>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-brand-black">{t("shop.sortBy")}</label>
-              <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="w-full sm:w-48">
-                <option value="newest">{t("shop.newestFirst")}</option>
-                <option value="oldest">{t("shop.oldestFirst")}</option>
-                <option value="price-asc">{t("shop.priceLowToHigh")}</option>
-                <option value="price-desc">{t("shop.priceHighToLow")}</option>
-                <option value="name-asc">{t("shop.nameAtoZ")}</option>
-                <option value="name-desc">{t("shop.nameZtoA")}</option>
-              </Select>
-            </div>
-          </div>
+          <ShopProductsHeader
+            filters={filters}
+            title={
+              <>
+                <ShopProductsTitle>BIO Gel BIO Sculpture</ShopProductsTitle>
+              </>
+            }
+          />
           
           {isLoading ? (
             <div className="text-center py-12">
               <p className="text-gray-600">{t("productPages.loadingProducts")}</p>
             </div>
           ) : products.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600">{t("productPages.noBioGelProducts")}</p>
-            </div>
+            <ShopEmptyProducts
+              hasActiveFilters={filters.hasActiveFilters}
+              onClearFilters={() => filters.clearFilters()}
+            />
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 justify-items-start gap-x-5 gap-y-12 md:grid-cols-2 md:gap-x-8 md:gap-y-16 lg:grid-cols-3 lg:gap-x-12">
                 {products.map((product) => (
                   <ProductCard
                     key={product.id}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { normalizeOptionalHttpUrl } from "@/lib/salon-social-url";
 
 export async function GET(
   req: Request,
@@ -25,6 +26,9 @@ export async function GET(
       phone: true,
       email: true,
       website: true,
+      instagram: true,
+      facebook: true,
+      pinterest: true,
       latitude: true,
       longitude: true,
       image: true,
@@ -114,7 +118,7 @@ export async function PATCH(
   try {
     const session = await getServerSession(authOptions);
     const body = await req.json();
-    const { name, address, city, postalCode, phone, email, website, latitude, longitude, image, logo, images, description, workingHours, isActive, isBioDiamond, changeReason, changes } = body;
+    const { name, address, city, postalCode, phone, email, website, instagram, facebook, pinterest, latitude, longitude, image, logo, images, description, workingHours, isActive, isBioDiamond, changeReason, changes } = body;
 
     // Check if salon exists
     const existingSalon = await db.salon.findUnique({
@@ -164,7 +168,10 @@ export async function PATCH(
     if (postalCode !== undefined) updateData.postalCode = toNullIfEmpty(postalCode);
     if (phone !== undefined) updateData.phone = toNullIfEmpty(phone);
     if (email !== undefined) updateData.email = toNullIfEmpty(email);
-    if (website !== undefined) updateData.website = toNullIfEmpty(website);
+    if (website !== undefined) updateData.website = normalizeOptionalHttpUrl(website);
+    if (instagram !== undefined) updateData.instagram = normalizeOptionalHttpUrl(instagram);
+    if (facebook !== undefined) updateData.facebook = normalizeOptionalHttpUrl(facebook);
+    if (pinterest !== undefined) updateData.pinterest = normalizeOptionalHttpUrl(pinterest);
     if (latitude !== undefined) {
       updateData.latitude = latitude !== null && latitude !== undefined && latitude !== "" ? parseFloat(latitude) : null;
     }
@@ -217,17 +224,24 @@ export async function PATCH(
       },
     });
 
-    // If admin made changes and salon has an owner, create notification
-    if (session?.user?.role === "ADMIN" && salon.userId && (changeReason || (changes && changes.length > 0))) {
+    // If admin made changes and salon has an owner, create notification (optional custom reason for legacy clients)
+    const changesList = changes && Array.isArray(changes) ? changes : [];
+    if (
+      session?.user?.role === "ADMIN" &&
+      salon.userId &&
+      (changesList.length > 0 || (typeof changeReason === "string" && changeReason.trim()))
+    ) {
       try {
-        const changesList = changes && Array.isArray(changes) ? changes : [];
-        
-        const notificationMessage = `Bio Sculpture Portugal requires you to make changes in your salon "${salon.name}". Click to view details.`;
-        
+        const reasonTrimmed =
+          typeof changeReason === "string" ? changeReason.trim() : "";
+        const notificationMessage = reasonTrimmed
+          ? `Updates were made to your salon "${salon.name}". Reason: ${reasonTrimmed}`
+          : `Your salon listing "${salon.name}" was updated by an administrator.`;
+
         await db.notification.create({
           data: {
             type: "SYSTEM",
-            title: "Salon Changes Required",
+            title: "Salon listing updated",
             message: notificationMessage,
             userId: salon.userId,
             linkUrl: "/dashboard/salon",
@@ -236,7 +250,7 @@ export async function PATCH(
               salonName: salon.name,
               updatedBy: session.user.id,
               changes: changesList,
-              reason: changeReason || null,
+              reason: reasonTrimmed || null,
             },
           },
         });
@@ -333,15 +347,18 @@ export async function DELETE(
       where: { id: id },
     });
 
-    // If admin deleted with a reason and salon has an owner, create notification
-    if (session.user.role === "ADMIN" && deleteReason && existingSalon.userId) {
+    // If admin deleted and salon had an owner, notify (optional reason for legacy clients)
+    if (session.user.role === "ADMIN" && existingSalon.userId) {
       try {
-        const notificationMessage = `Bio Sculpture Portugal has deleted your salon "${existingSalon.name}". The reason was: ${deleteReason}`;
-        
+        const reasonTrimmed = deleteReason.trim();
+        const notificationMessage = reasonTrimmed
+          ? `Your salon "${existingSalon.name}" was removed. Reason: ${reasonTrimmed}`
+          : `Your salon "${existingSalon.name}" was removed from the directory by an administrator.`;
+
         await db.notification.create({
           data: {
             type: "SYSTEM",
-            title: "Salon Deleted",
+            title: "Salon deleted",
             message: notificationMessage,
             userId: existingSalon.userId,
             linkUrl: "/dashboard/salon",
@@ -349,7 +366,7 @@ export async function DELETE(
               salonId: id,
               salonName: existingSalon.name,
               deletedBy: session.user.id,
-              reason: deleteReason,
+              reason: reasonTrimmed || null,
             },
           },
         });

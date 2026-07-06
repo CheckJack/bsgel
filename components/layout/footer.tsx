@@ -3,17 +3,20 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { 
-  Facebook, 
-  Instagram, 
-  Twitter, 
-  Youtube, 
-  Mail, 
-  Phone, 
+import {
+  Facebook,
+  Instagram,
+  Twitter,
+  Youtube,
+  Mail,
+  Phone,
   MapPin,
-  Send
+  Send,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/language-context";
+
+const linkClass =
+  "text-sm text-brand-black/70 transition-colors hover:text-brand-champagne-dark";
 
 export function Footer() {
   const { t } = useLanguage();
@@ -27,11 +30,10 @@ export function Footer() {
     setSubscribeStatus("idle");
 
     try {
-      // TODO: Implement newsletter subscription API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       setSubscribeStatus("success");
       setEmail("");
-    } catch (error) {
+    } catch {
       setSubscribeStatus("error");
     } finally {
       setIsSubscribing(false);
@@ -39,29 +41,28 @@ export function Footer() {
   };
 
   return (
-    <footer className="bg-black text-white mt-auto">
-      {/* Main Footer Content */}
-      <div className="w-full px-4 sm:px-6 md:px-12 lg:px-16 py-8 sm:py-12 lg:py-16">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 sm:gap-8 lg:gap-12">
-          
-          {/* Brand Section */}
+    <footer className="mt-auto border-t border-black/10 bg-brand-white text-brand-black">
+      <div className="w-full px-4 py-8 sm:px-6 sm:py-12 md:px-12 lg:px-16 lg:py-16">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 md:grid-cols-3 lg:grid-cols-6 lg:gap-12">
           <div className="sm:col-span-2 lg:col-span-2">
-            <Link href="/" className="inline-block mb-4">
+            <Link href="/" className="mb-4 inline-block">
               <Image
-                src="/logo.png"
+                src="/bio-sculpture-black.png"
                 alt="Bio Sculpture"
-                width={160}
-                height={40}
-                className="h-10 w-auto brightness-0 invert"
+                width={7442}
+                height={756}
+                sizes="(max-width: 640px) 240px, 280px"
+                className="h-auto w-[180px] max-w-full object-contain xs:w-[220px] sm:w-[280px]"
               />
             </Link>
-            <p className="text-white/90 text-sm leading-relaxed mb-6">
+            <p className="mb-6 text-sm leading-relaxed text-brand-black/70">
               {t("footer.description")}
             </p>
-            
-            {/* Newsletter */}
+
             <div className="mb-6">
-              <h4 className="font-medium text-base mb-3">{t("footer.stayConnected")}</h4>
+              <h4 className="mb-3 text-base font-medium text-brand-black">
+                {t("footer.stayConnected")}
+              </h4>
               <form onSubmit={handleNewsletterSubmit} className="flex gap-2">
                 <input
                   type="email"
@@ -69,221 +70,187 @@ export function Footer() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={t("footer.yourEmail")}
                   required
-                  className="flex-1 px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-md 
-                           text-white placeholder:text-white/60 focus:outline-none focus:ring-2 
-                           focus:ring-white/40 focus:border-transparent transition-all"
+                  className="flex-1 rounded-md border border-black/15 bg-brand-white px-3 py-2 text-sm text-brand-black placeholder:text-brand-black/40 focus:border-brand-champagne focus:outline-none focus:ring-2 focus:ring-brand-champagne/30"
                 />
                 <button
                   type="submit"
                   disabled={isSubscribing}
-                  className="px-4 py-2 bg-white text-[#857D71] rounded-md hover:bg-white/90 
-                           transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-md bg-brand-champagne px-4 py-2 text-brand-white transition-colors hover:bg-brand-champagne-dark disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label={t("footer.subscribeToNewsletter")}
                 >
                   <Send className="h-4 w-4" />
                 </button>
               </form>
               {subscribeStatus === "success" && (
-                <p className="text-xs text-white/90 mt-2">{t("footer.thankYouForSubscribing")}</p>
+                <p className="mt-2 text-xs text-brand-black/70">
+                  {t("footer.thankYouForSubscribing")}
+                </p>
               )}
               {subscribeStatus === "error" && (
-                <p className="text-xs text-red-300 mt-2">{t("footer.somethingWentWrong")}</p>
+                <p className="mt-2 text-xs text-red-600">{t("footer.somethingWentWrong")}</p>
               )}
             </div>
 
-            {/* Social Media */}
             <div>
-              <h4 className="font-medium text-base mb-3">{t("footer.followUs")}</h4>
+              <h4 className="mb-3 text-base font-medium text-brand-black">
+                {t("footer.followUs")}
+              </h4>
               <div className="flex gap-3">
-                <a
-                  href="https://facebook.com/biosculpture"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center 
-                           justify-center transition-colors"
-                  aria-label="Facebook"
-                >
-                  <Facebook className="h-4 w-4" />
-                </a>
-                <a
-                  href="https://instagram.com/biosculpture"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center 
-                           justify-center transition-colors"
-                  aria-label="Instagram"
-                >
-                  <Instagram className="h-4 w-4" />
-                </a>
-                <a
-                  href="https://twitter.com/biosculpture"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center 
-                           justify-center transition-colors"
-                  aria-label="Twitter"
-                >
-                  <Twitter className="h-4 w-4" />
-                </a>
-                <a
-                  href="https://youtube.com/biosculpture"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center 
-                           justify-center transition-colors"
-                  aria-label="YouTube"
-                >
-                  <Youtube className="h-4 w-4" />
-                </a>
+                {[
+                  { href: "https://facebook.com/biosculpture", label: "Facebook", Icon: Facebook },
+                  { href: "https://instagram.com/biosculpture", label: "Instagram", Icon: Instagram },
+                  { href: "https://twitter.com/biosculpture", label: "Twitter", Icon: Twitter },
+                  { href: "https://youtube.com/biosculpture", label: "YouTube", Icon: Youtube },
+                ].map(({ href, label, Icon }) => (
+                  <a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 bg-black/[0.03] text-brand-black transition-colors hover:border-black/20 hover:bg-black/[0.06]"
+                    aria-label={label}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </a>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* Shop Section */}
           <div>
-            <h3 className="font-medium text-base mb-4">{t("footer.shop")}</h3>
+            <h3 className="mb-4 text-base font-medium text-brand-black">{t("footer.shop")}</h3>
             <ul className="space-y-2.5">
               <li>
-                <Link href="/bio-gel" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/bio-gel" className={linkClass}>
                   Biogel
                 </Link>
               </li>
               <li>
-                <Link href="/evo" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/evo" className={linkClass}>
                   Evo
                 </Link>
               </li>
               <li>
-                <Link href="/ethos" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/ethos" className={linkClass}>
                   Cuidados das unhas
                 </Link>
               </li>
               <li>
-                <Link href="/gemini" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/gemini" className={linkClass}>
                   Verniz Clássico
                 </Link>
               </li>
               <li>
-                <Link href="/spa" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/spa" className={linkClass}>
                   Spa
                 </Link>
               </li>
               <li>
-                <Link href="/products" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/products" className={linkClass}>
                   {t("footer.allProducts")}
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Resources Section */}
           <div>
-            <h3 className="font-medium text-base mb-4">{t("footer.resources")}</h3>
+            <h3 className="mb-4 text-base font-medium text-brand-black">{t("footer.resources")}</h3>
             <ul className="space-y-2.5">
               <li>
-                <Link href="/diagnosis" className="text-sm text-white/90 hover:text-white transition-colors">
-                  {t("footer.nailDiagnosis")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/salons" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/salons" className={linkClass}>
                   {t("footer.findASalon")}
                 </Link>
               </li>
               <li>
-                <Link href="/blog" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/blog" className={linkClass}>
                   {t("footer.blog")}
                 </Link>
               </li>
               <li>
-                <Link href="/training" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/training" className={linkClass}>
                   {t("footer.training")}
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Company Section */}
           <div>
-            <h3 className="font-medium text-base mb-4">{t("footer.company")}</h3>
+            <h3 className="mb-4 text-base font-medium text-brand-black">{t("footer.company")}</h3>
             <ul className="space-y-2.5">
               <li>
-                <Link href="/about" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/about" className={linkClass}>
                   {t("footer.aboutUs")}
                 </Link>
               </li>
               <li>
-                <Link href="/about/biosculpture/philosophy" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/about/biosculpture/philosophy" className={linkClass}>
                   {t("footer.philosophy")}
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/contact" className={linkClass}>
                   {t("footer.contact")}
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/dashboard" className={linkClass}>
                   {t("footer.myAccount")}
                 </Link>
               </li>
               <li>
-                <Link href="/orders" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/orders" className={linkClass}>
                   {t("footer.orders")}
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Contact & Legal Section */}
           <div>
-            <h3 className="font-medium text-base mb-4">{t("footer.getInTouch")}</h3>
-            <ul className="space-y-3 mb-6">
+            <h3 className="mb-4 text-base font-medium text-brand-black">{t("footer.getInTouch")}</h3>
+            <ul className="mb-6 space-y-3">
               <li className="flex items-start gap-2">
-                <Mail className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                <a 
-                  href="mailto:info@biosculpture.pt" 
-                  className="text-sm text-white/90 hover:text-white transition-colors"
-                >
+                <Mail className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-black/50" />
+                <a href="mailto:info@biosculpture.pt" className={linkClass}>
                   info@biosculpture.pt
                 </a>
               </li>
               <li className="flex items-start gap-2">
-                <Phone className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                <a 
-                  href="tel:+351935172295" 
-                  className="text-sm text-white/90 hover:text-white transition-colors"
-                >
-                  +351 935 172 295 <span className="text-white/70">(rede móvel nacional)</span>
+                <Phone className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-black/50" />
+                <a href="tel:+351935172295" className={linkClass}>
+                  +351 935 172 295{" "}
+                  <span className="text-brand-black/50">(rede móvel nacional)</span>
                 </a>
               </li>
               <li className="flex items-start gap-2">
-                <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                <span className="text-sm text-white/90">
-                  Bio Sculpture Portugal
-                </span>
+                <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-black/50" />
+                <span className="text-sm text-brand-black/70">Bio Sculpture Portugal</span>
               </li>
             </ul>
 
-            <h4 className="font-medium text-base mb-3">{t("footer.legal")}</h4>
+            <h4 className="mb-3 text-base font-medium text-brand-black">{t("footer.legal")}</h4>
             <ul className="space-y-2.5">
               <li>
-                <Link href="/privacy" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/privacy" className={linkClass}>
                   {t("footer.privacyPolicy")}
                 </Link>
               </li>
               <li>
-                <Link href="/terms-and-returns" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/cookies" className={linkClass}>
+                  {t("footer.cookiePolicy")}
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms-and-returns" className={linkClass}>
                   {t("footer.termsAndReturns")}
                 </Link>
               </li>
               <li>
-                <Link href="/consumer-dispute-resolution" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/consumer-dispute-resolution" className={linkClass}>
                   {t("footer.consumerDisputeResolution")}
                 </Link>
               </li>
               <li>
-                <Link href="/complaints-book" className="text-sm text-white/90 hover:text-white transition-colors">
+                <Link href="/complaints-book" className={linkClass}>
                   {t("footer.complaintsBook")}
                 </Link>
               </li>
@@ -292,85 +259,38 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Bottom Bar */}
-      <div className="border-t border-white/20">
-        <div className="w-full px-4 sm:px-6 md:px-12 lg:px-16 py-4 sm:py-6">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
-            {/* Copyright */}
-            <p className="text-sm text-white/80 text-center md:text-left">
+      <div className="border-t border-black/10">
+        <div className="w-full px-4 py-4 sm:px-6 sm:py-6 md:px-12 lg:px-16">
+          <div className="flex flex-col items-center justify-between gap-3 sm:flex-row sm:gap-4">
+            <p className="text-center text-sm text-brand-black/60 sm:text-left">
               &copy; {new Date().getFullYear()} Bio Sculpture. {t("footer.allRightsReserved")}
             </p>
 
-            {/* Payment Methods */}
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <span className="text-xs text-white/70 mr-1 sm:mr-2">{t("footer.weAccept")}</span>
+              <span className="mr-1 text-xs text-brand-black/50 sm:mr-2">{t("footer.weAccept")}</span>
               <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
-                <div className="bg-white rounded px-1.5 py-1">
-                  <Image
-                    src="/visa-65d650f7.svg"
-                    alt="Visa"
-                    width={32}
-                    height={20}
-                    className="h-4 w-auto"
-                    unoptimized
-                    priority={false}
-                  />
-                </div>
-                <div className="bg-white rounded px-1.5 py-1">
-                  <Image
-                    src="/master-54b5a7ce.svg"
-                    alt="Mastercard"
-                    width={32}
-                    height={20}
-                    className="h-4 w-auto"
-                    unoptimized
-                    priority={false}
-                  />
-                </div>
-                <div className="bg-white rounded px-1.5 py-1">
-                  <Image
-                    src="/maestro-61c41725.svg"
-                    alt="Maestro"
-                    width={32}
-                    height={20}
-                    className="h-4 w-auto"
-                    unoptimized
-                    priority={false}
-                  />
-                </div>
-                <div className="bg-white rounded px-1.5 py-1">
-                  <Image
-                    src="/paypal-a7c68b85.svg"
-                    alt="PayPal"
-                    width={32}
-                    height={20}
-                    className="h-4 w-auto"
-                    unoptimized
-                    priority={false}
-                  />
-                </div>
-                <div className="bg-white rounded px-1.5 py-1">
-                  <Image
-                    src="/google_pay-34c30515 (1).svg"
-                    alt="Google Pay"
-                    width={32}
-                    height={20}
-                    className="h-4 w-auto"
-                    unoptimized
-                    priority={false}
-                  />
-                </div>
-                <div className="bg-white rounded px-1.5 py-1">
-                  <Image
-                    src="/apple_pay-1721ebad (1).svg"
-                    alt="Apple Pay"
-                    width={32}
-                    height={20}
-                    className="h-4 w-auto"
-                    unoptimized
-                    priority={false}
-                  />
-                </div>
+                {[
+                  { src: "/visa-65d650f7.svg", alt: "Visa" },
+                  { src: "/master-54b5a7ce.svg", alt: "Mastercard" },
+                  { src: "/maestro-61c41725.svg", alt: "Maestro" },
+                  { src: "/paypal-a7c68b85.svg", alt: "PayPal" },
+                  { src: "/google_pay-34c30515 (1).svg", alt: "Google Pay" },
+                  { src: "/apple_pay-1721ebad (1).svg", alt: "Apple Pay" },
+                ].map((payment) => (
+                  <div
+                    key={payment.alt}
+                    className="rounded border border-black/10 bg-white px-1.5 py-1"
+                  >
+                    <Image
+                      src={payment.src}
+                      alt={payment.alt}
+                      width={32}
+                      height={20}
+                      className="h-4 w-auto"
+                      unoptimized
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -379,4 +299,3 @@ export function Footer() {
     </footer>
   );
 }
-

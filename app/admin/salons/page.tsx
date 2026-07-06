@@ -24,16 +24,25 @@ import {
   Clock,
   X,
   RefreshCw,
+  Plus,
   FileDown,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
   Filter,
-  Star,
+  Diamond,
   Calendar,
   CheckSquare,
   Square,
+  Instagram,
+  Facebook,
 } from "lucide-react";
+
+const SALON_IMAGE_SIZE_HINTS = {
+  thumbnail: "Recommended: 800 × 400 px (2:1) — listing cards",
+  logo: "Recommended: 512 × 512 px (1:1) — salon profile",
+  banner: "Recommended: 1920 × 1080 px (16:9) — detail hero; center key content",
+} as const;
 
 interface Salon {
   id: string;
@@ -44,6 +53,9 @@ interface Salon {
   phone?: string;
   email?: string;
   website?: string;
+  instagram?: string | null;
+  facebook?: string | null;
+  pinterest?: string | null;
   latitude?: number;
   longitude?: number;
   image?: string;
@@ -65,6 +77,11 @@ interface Salon {
     email: string;
   } | null;
 }
+
+type EditSalonForm = Omit<Partial<Salon>, "image" | "logo"> & {
+  image?: string | null;
+  logo?: string | null;
+};
 
 type StatusFilter = "ALL" | "PENDING_REVIEW" | "APPROVED" | "REJECTED";
 type SortField = "name" | "city" | "status" | "createdAt" | "isBioDiamond";
@@ -91,22 +108,111 @@ export default function AdminSalonsPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showImageDeleteModal, setShowImageDeleteModal] = useState(false);
   const [imageToDelete, setImageToDelete] = useState<{type: 'main' | 'logo' | 'gallery', index?: number} | null>(null);
-  const [imageDeleteReason, setImageDeleteReason] = useState("");
-  const [imageDeleteReasons, setImageDeleteReasons] = useState<Record<string, string>>({});
-  const [changeReason, setChangeReason] = useState("");
   const [reviewAction, setReviewAction] = useState<"approve" | "reject" | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
-  const [deleteReason, setDeleteReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [editFormData, setEditFormData] = useState<Partial<Salon>>({});
+  const [isCreating, setIsCreating] = useState(false);
+  const [editFormData, setEditFormData] = useState<EditSalonForm>({});
+  const [createFormData, setCreateFormData] = useState({
+    name: "",
+    address: "",
+    city: "",
+    postalCode: "",
+    phone: "",
+    email: "",
+    website: "",
+    instagram: "",
+    facebook: "",
+    pinterest: "",
+    description: "",
+    latitude: "",
+    longitude: "",
+    isBioDiamond: false,
+  });
+  const [createThumbnail, setCreateThumbnail] = useState<string | null>(null);
+  const [createLogo, setCreateLogo] = useState<string | null>(null);
+  const [createBanner, setCreateBanner] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSalons();
   }, []);
+
+  /** Debounced geocode for Create Salon when address + postal code are set (city included when present). */
+  useEffect(() => {
+    if (!showCreateModal) return;
+    const address = createFormData.address.trim();
+    const postalCode = createFormData.postalCode.trim();
+    const city = createFormData.city.trim();
+    if (!address || !postalCode || address.length < 5 || postalCode.length < 4) {
+      return;
+    }
+
+    const ac = new AbortController();
+    const t = window.setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ address, postalCode });
+        if (city) params.set("city", city);
+        const res = await fetch(`/api/geocode?${params.toString()}`, { signal: ac.signal });
+        const data = await res.json();
+        if (!res.ok) return;
+        if (typeof data.lat === "number" && typeof data.lng === "number") {
+          setCreateFormData((prev) => ({
+            ...prev,
+            latitude: String(data.lat),
+            longitude: String(data.lng),
+          }));
+        }
+      } catch (e: unknown) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+      }
+    }, 900);
+
+    return () => {
+      window.clearTimeout(t);
+      ac.abort();
+    };
+  }, [showCreateModal, createFormData.address, createFormData.city, createFormData.postalCode]);
+
+  /** Same geocoding while editing a salon (updates map coords when address / postal change). */
+  useEffect(() => {
+    if (!showEditModal || !selectedSalon) return;
+    const address = (editFormData.address ?? "").trim();
+    const postalCode = (editFormData.postalCode ?? "").trim();
+    const city = (editFormData.city ?? "").trim();
+    if (!address || !postalCode || address.length < 5 || postalCode.length < 4) {
+      return;
+    }
+
+    const ac = new AbortController();
+    const t = window.setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ address, postalCode });
+        if (city) params.set("city", city);
+        const res = await fetch(`/api/geocode?${params.toString()}`, { signal: ac.signal });
+        const data = await res.json();
+        if (!res.ok) return;
+        if (typeof data.lat === "number" && typeof data.lng === "number") {
+          setEditFormData((prev) => ({
+            ...prev,
+            latitude: data.lat,
+            longitude: data.lng,
+          }));
+        }
+      } catch (e: unknown) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+      }
+    }, 900);
+
+    return () => {
+      window.clearTimeout(t);
+      ac.abort();
+    };
+  }, [showEditModal, selectedSalon, editFormData.address, editFormData.city, editFormData.postalCode]);
 
   // Handle URL parameters for filter and salonId
   useEffect(() => {
@@ -392,25 +498,19 @@ export default function AdminSalonsPage() {
     }
   };
 
-  const handleDelete = async (id: string, reason: string) => {
-    if (!reason.trim()) {
-      toast("Please provide a reason for deletion", "error");
-      return;
-    }
-
+  const handleDelete = async (id: string) => {
     setIsProcessing(true);
     try {
       const res = await fetch(`/api/salons/${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: reason.trim() }),
+        body: JSON.stringify({}),
       });
 
       if (res.ok) {
         toast("Salon deleted successfully", "success");
         await fetchSalons();
         setShowDeleteModal(false);
-        setDeleteReason("");
         setSelectedSalon(null);
       } else {
         const data = await res.json();
@@ -454,32 +554,41 @@ export default function AdminSalonsPage() {
       if (editFormData.website !== undefined && editFormData.website !== originalSalon.website) {
         changes.push(`Website: "${originalSalon.website || 'N/A'}" → "${editFormData.website || 'N/A'}"`);
       }
+      if (editFormData.instagram !== undefined && editFormData.instagram !== originalSalon.instagram) {
+        changes.push("Instagram link updated");
+      }
+      if (editFormData.facebook !== undefined && editFormData.facebook !== originalSalon.facebook) {
+        changes.push("Facebook link updated");
+      }
+      if (editFormData.pinterest !== undefined && editFormData.pinterest !== originalSalon.pinterest) {
+        changes.push("Pinterest link updated");
+      }
+      {
+        const latChanged =
+          editFormData.latitude !== undefined &&
+          Number(originalSalon.latitude ?? NaN) !== Number(editFormData.latitude ?? NaN);
+        const lngChanged =
+          editFormData.longitude !== undefined &&
+          Number(originalSalon.longitude ?? NaN) !== Number(editFormData.longitude ?? NaN);
+        if (latChanged || lngChanged) {
+          changes.push("Map coordinates updated");
+        }
+      }
       if (editFormData.description !== undefined && editFormData.description !== originalSalon.description) {
         changes.push("Description was updated");
       }
-      if (editFormData.image === undefined && originalSalon.image) {
-        const reason = imageDeleteReasons['main'] || 'No reason provided';
-        changes.push(`Main image was removed. Reason: ${reason}`);
+      if (editFormData.image === null && originalSalon.image) {
+        changes.push("Thumbnail was removed");
       }
-      if (editFormData.logo === undefined && originalSalon.logo) {
-        const reason = imageDeleteReasons['logo'] || 'No reason provided';
-        changes.push(`Logo was removed. Reason: ${reason}`);
+      if (editFormData.logo === null && originalSalon.logo) {
+        changes.push("Logo was removed");
       }
       if (editFormData.images !== undefined) {
         const originalCount = (originalSalon.images || []).length;
         const newCount = (editFormData.images || []).length;
         if (newCount < originalCount) {
           const removedCount = originalCount - newCount;
-          const galleryReasons: string[] = [];
-          for (let i = 0; i < removedCount; i++) {
-            const reasonKey = `gallery_${i}`;
-            const reason = imageDeleteReasons[reasonKey] || 'No reason provided';
-            galleryReasons.push(`Image ${i + 1}: ${reason}`);
-          }
-          changes.push(`Gallery images: ${originalCount} → ${newCount} (${removedCount} removed)`);
-          if (galleryReasons.length > 0) {
-            changes.push(`Gallery removal reasons:\n${galleryReasons.map(r => `  • ${r}`).join('\n')}`);
-          }
+          changes.push(`Banner images: ${originalCount} → ${newCount} (${removedCount} removed)`);
         }
       }
       if (editFormData.isBioDiamond !== undefined && editFormData.isBioDiamond !== originalSalon.isBioDiamond) {
@@ -494,7 +603,6 @@ export default function AdminSalonsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...editFormData,
-          changeReason: changeReason,
           changes: changes,
         }),
       });
@@ -508,8 +616,6 @@ export default function AdminSalonsPage() {
         setShowEditModal(false);
         setShowDetailModal(true);
         setEditFormData({});
-        setChangeReason("");
-        setImageDeleteReasons({});
       } else {
         const data = await res.json();
         toast(data.error || "Failed to update salon", "error");
@@ -577,6 +683,73 @@ export default function AdminSalonsPage() {
       toast("Failed to export salons", "error");
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleCreateSalon = async () => {
+    if (!createFormData.name.trim() || !createFormData.address.trim() || !createFormData.city.trim()) {
+      toast("Name, address, and city are required", "warning");
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const res = await fetch("/api/salons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: createFormData.name.trim(),
+          address: createFormData.address.trim(),
+          city: createFormData.city.trim(),
+          postalCode: createFormData.postalCode.trim() || null,
+          phone: createFormData.phone.trim() || null,
+          email: createFormData.email.trim() || null,
+          website: createFormData.website.trim() || null,
+          instagram: createFormData.instagram.trim() || null,
+          facebook: createFormData.facebook.trim() || null,
+          pinterest: createFormData.pinterest.trim() || null,
+          description: createFormData.description.trim() || null,
+          latitude: createFormData.latitude ? parseFloat(createFormData.latitude) : null,
+          longitude: createFormData.longitude ? parseFloat(createFormData.longitude) : null,
+          isBioDiamond: createFormData.isBioDiamond,
+          image: createThumbnail,
+          logo: createLogo,
+          images: createBanner ? [createBanner] : [],
+        }),
+      });
+
+      if (res.ok) {
+        toast("Salon created successfully", "success");
+        setShowCreateModal(false);
+        setCreateFormData({
+          name: "",
+          address: "",
+          city: "",
+          postalCode: "",
+          phone: "",
+          email: "",
+          website: "",
+          instagram: "",
+          facebook: "",
+          pinterest: "",
+          description: "",
+          latitude: "",
+          longitude: "",
+          isBioDiamond: false,
+        });
+        setCreateThumbnail(null);
+        setCreateLogo(null);
+        setCreateBanner(null);
+        await fetchSalons();
+      } else {
+        const data = await res.json();
+        toast(data.error || "Failed to create salon", "error");
+      }
+    } catch (error) {
+      console.error("Failed to create salon:", error);
+      toast("Failed to create salon", "error");
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -714,15 +887,216 @@ export default function AdminSalonsPage() {
             Manage salon listings and review pending requests
           </p>
         </div>
-        {stats.pending > 0 && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-            <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-            <span className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-              {stats.pending} pending review{stats.pending !== 1 ? "s" : ""}
-            </span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Salon
+          </Button>
+          {stats.pending > 0 && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+              <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+              <span className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                {stats.pending} pending review{stats.pending !== 1 ? "s" : ""}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Create Salon Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Create Salon</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowCreateModal(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <Input
+                  placeholder="Name *"
+                  value={createFormData.name}
+                  onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
+                />
+                <Input
+                  placeholder="City *"
+                  value={createFormData.city}
+                  onChange={(e) => setCreateFormData({ ...createFormData, city: e.target.value })}
+                />
+              </div>
+              <Input
+                placeholder="Address *"
+                value={createFormData.address}
+                onChange={(e) => setCreateFormData({ ...createFormData, address: e.target.value })}
+              />
+              <div className="grid md:grid-cols-2 gap-4">
+                <Input
+                  placeholder="Postal Code"
+                  value={createFormData.postalCode}
+                  onChange={(e) => setCreateFormData({ ...createFormData, postalCode: e.target.value })}
+                />
+                <Input
+                  placeholder="Phone"
+                  value={createFormData.phone}
+                  onChange={(e) => setCreateFormData({ ...createFormData, phone: e.target.value })}
+                />
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <Input
+                  placeholder="Email"
+                  value={createFormData.email}
+                  onChange={(e) => setCreateFormData({ ...createFormData, email: e.target.value })}
+                />
+                <Input
+                  placeholder="Website (optional)"
+                  value={createFormData.website}
+                  onChange={(e) => setCreateFormData({ ...createFormData, website: e.target.value })}
+                />
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Social links (optional). Use full URLs, e.g. https://www.instagram.com/your_salon
+              </p>
+              <div className="grid md:grid-cols-2 gap-4">
+                <Input
+                  placeholder="Instagram URL"
+                  value={createFormData.instagram}
+                  onChange={(e) => setCreateFormData({ ...createFormData, instagram: e.target.value })}
+                />
+                <Input
+                  placeholder="Facebook URL"
+                  value={createFormData.facebook}
+                  onChange={(e) => setCreateFormData({ ...createFormData, facebook: e.target.value })}
+                />
+              </div>
+              <Input
+                placeholder="Pinterest URL"
+                value={createFormData.pinterest}
+                onChange={(e) => setCreateFormData({ ...createFormData, pinterest: e.target.value })}
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
+                Latitude and longitude fill automatically when address and postal code are set (Portugal lookup). You can still edit them manually.
+              </p>
+              <div className="grid md:grid-cols-2 gap-4">
+                <Input
+                  placeholder="Latitude"
+                  value={createFormData.latitude}
+                  onChange={(e) => setCreateFormData({ ...createFormData, latitude: e.target.value })}
+                />
+                <Input
+                  placeholder="Longitude"
+                  value={createFormData.longitude}
+                  onChange={(e) => setCreateFormData({ ...createFormData, longitude: e.target.value })}
+                />
+              </div>
+              <Textarea
+                placeholder="Description"
+                rows={3}
+                value={createFormData.description}
+                onChange={(e) => setCreateFormData({ ...createFormData, description: e.target.value })}
+              />
+
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Thumbnail</p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const base64 = await new Promise<string>((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result as string);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                      });
+                      setCreateThumbnail(base64);
+                    }}
+                    className="text-sm"
+                  />
+                  <p className="text-xs text-gray-500">{SALON_IMAGE_SIZE_HINTS.thumbnail}</p>
+                  {createThumbnail && (
+                    <img src={createThumbnail} alt="Thumbnail preview" className="h-24 w-full object-cover rounded border" />
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Logo</p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const base64 = await new Promise<string>((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result as string);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                      });
+                      setCreateLogo(base64);
+                    }}
+                    className="text-sm"
+                  />
+                  <p className="text-xs text-gray-500">{SALON_IMAGE_SIZE_HINTS.logo}</p>
+                  {createLogo && (
+                    <img src={createLogo} alt="Logo preview" className="h-24 w-full object-contain rounded border bg-gray-50" />
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Banner</p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const base64 = await new Promise<string>((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result as string);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                      });
+                      setCreateBanner(base64);
+                    }}
+                    className="text-sm"
+                  />
+                  <p className="text-xs text-gray-500">{SALON_IMAGE_SIZE_HINTS.banner}</p>
+                  {createBanner && (
+                    <img src={createBanner} alt="Banner preview" className="h-24 w-full object-cover rounded border" />
+                  )}
+                </div>
+              </div>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={createFormData.isBioDiamond}
+                  onChange={(e) => setCreateFormData({ ...createFormData, isBioDiamond: e.target.checked })}
+                />
+                <span className="text-sm">Bio Diamond</span>
+              </label>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowCreateModal(false)} disabled={isCreating}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCreateSalon} disabled={isCreating}>
+                  {isCreating ? "Creating..." : "Create Salon"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Bulk Actions Bar */}
       {selectedSalons.size > 0 && (
@@ -1022,7 +1396,7 @@ export default function AdminSalonsPage() {
                             </div>
                             {salon.isBioDiamond && (
                               <span className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                                <Star className="h-3 w-3" />
+                                <Diamond className="h-3 w-3" />
                                 Bio Diamond
                               </span>
                             )}
@@ -1164,6 +1538,9 @@ export default function AdminSalonsPage() {
               phone: selectedSalon.phone,
               email: selectedSalon.email,
               website: selectedSalon.website,
+              instagram: selectedSalon.instagram ?? "",
+              facebook: selectedSalon.facebook ?? "",
+              pinterest: selectedSalon.pinterest ?? "",
               description: selectedSalon.description,
               latitude: selectedSalon.latitude,
               longitude: selectedSalon.longitude,
@@ -1205,8 +1582,6 @@ export default function AdminSalonsPage() {
             setEditFormData({});
             setShowDeleteModal(true);
           }}
-          changeReason={changeReason}
-          onChangeReasonChange={setChangeReason}
           onImageDelete={(type, index) => {
             setImageToDelete({ type, index });
             setShowImageDeleteModal(true);
@@ -1236,12 +1611,9 @@ export default function AdminSalonsPage() {
       {showDeleteModal && selectedSalon && (
         <DeleteSalonModal
           salon={selectedSalon}
-          deleteReason={deleteReason}
-          onDeleteReasonChange={setDeleteReason}
-          onConfirm={() => handleDelete(selectedSalon.id, deleteReason)}
+          onConfirm={() => handleDelete(selectedSalon.id)}
           onCancel={() => {
             setShowDeleteModal(false);
-            setDeleteReason("");
             setSelectedSalon(null);
           }}
           isProcessing={isProcessing}
@@ -1253,23 +1625,11 @@ export default function AdminSalonsPage() {
         <DeleteImageModal
           imageType={imageToDelete.type}
           imageIndex={imageToDelete.index}
-          deleteReason={imageDeleteReason}
-          onDeleteReasonChange={setImageDeleteReason}
           onConfirm={() => {
-            const reasonKey = imageToDelete.type === 'gallery' 
-              ? `${imageToDelete.type}_${imageToDelete.index}` 
-              : imageToDelete.type;
-            
-            // Store the deletion reason
-            setImageDeleteReasons(prev => ({
-              ...prev,
-              [reasonKey]: imageDeleteReason
-            }));
-
             if (imageToDelete.type === 'main') {
-              setEditFormData({ ...editFormData, image: undefined });
+              setEditFormData({ ...editFormData, image: null });
             } else if (imageToDelete.type === 'logo') {
-              setEditFormData({ ...editFormData, logo: undefined });
+              setEditFormData({ ...editFormData, logo: null });
             } else if (imageToDelete.type === 'gallery' && imageToDelete.index !== undefined) {
               const newImages = [...(editFormData.images || [])];
               newImages.splice(imageToDelete.index, 1);
@@ -1277,12 +1637,10 @@ export default function AdminSalonsPage() {
             }
             setShowImageDeleteModal(false);
             setImageToDelete(null);
-            setImageDeleteReason("");
           }}
           onCancel={() => {
             setShowImageDeleteModal(false);
             setImageToDelete(null);
-            setImageDeleteReason("");
           }}
         />
       )}
@@ -1333,10 +1691,10 @@ function SalonDetailModal({
                     <div>
                       <img
                         src={salon.image}
-                        alt="Main"
+                        alt="Thumbnail"
                         className="w-full h-32 object-cover rounded-lg"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Main Image</p>
+                      <p className="text-xs text-gray-500 mt-1">Thumbnail</p>
                     </div>
                   )}
                   {salon.logo && (
@@ -1353,9 +1711,10 @@ function SalonDetailModal({
                     <div key={idx}>
                       <img
                         src={img}
-                        alt={`Gallery ${idx + 1}`}
+                        alt={`Banner ${idx + 1}`}
                         className="w-full h-32 object-cover rounded-lg"
                       />
+                      <p className="text-xs text-gray-500 mt-1">Banner</p>
                     </div>
                   ))}
                 </div>
@@ -1420,6 +1779,53 @@ function SalonDetailModal({
                     className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                   >
                     {salon.website}
+                  </a>
+                </div>
+              )}
+              {salon.instagram && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                    <Instagram className="h-4 w-4" />
+                    Instagram
+                  </h3>
+                  <a
+                    href={salon.instagram}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
+                  >
+                    {salon.instagram}
+                  </a>
+                </div>
+              )}
+              {salon.facebook && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                    <Facebook className="h-4 w-4" />
+                    Facebook
+                  </h3>
+                  <a
+                    href={salon.facebook}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
+                  >
+                    {salon.facebook}
+                  </a>
+                </div>
+              )}
+              {salon.pinterest && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Pinterest
+                  </h3>
+                  <a
+                    href={salon.pinterest}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
+                  >
+                    {salon.pinterest}
                   </a>
                 </div>
               )}
@@ -1529,22 +1935,26 @@ function EditSalonModal({
   onSave,
   onCancel,
   onDelete,
-  changeReason,
-  onChangeReasonChange,
   onImageDelete,
   isProcessing,
 }: {
   salon: Salon;
-  formData: Partial<Salon>;
-  onFormDataChange: (data: Partial<Salon>) => void;
+  formData: EditSalonForm;
+  onFormDataChange: (data: EditSalonForm) => void;
   onSave: () => void;
   onCancel: () => void;
   onDelete: (id: string) => void;
-  changeReason: string;
-  onChangeReasonChange: (reason: string) => void;
   onImageDelete: (type: 'main' | 'logo' | 'gallery', index?: number) => void;
   isProcessing: boolean;
 }) {
+  const toBase64 = async (file: File) =>
+    await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -1628,8 +2038,109 @@ function EditSalonModal({
                   Website
                 </label>
                 <Input
+                  placeholder="https://..."
                   value={formData.website || ""}
                   onChange={(e) => onFormDataChange({ ...formData, website: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Social links are optional. They appear on the public salon page only when filled.
+            </p>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <Instagram className="h-4 w-4 shrink-0" aria-hidden />
+                  Instagram
+                </label>
+                <Input
+                  placeholder="https://www.instagram.com/..."
+                  value={formData.instagram ?? ""}
+                  onChange={(e) => onFormDataChange({ ...formData, instagram: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <Facebook className="h-4 w-4 shrink-0" aria-hidden />
+                  Facebook
+                </label>
+                <Input
+                  placeholder="https://www.facebook.com/..."
+                  value={formData.facebook ?? ""}
+                  onChange={(e) => onFormDataChange({ ...formData, facebook: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Pinterest
+              </label>
+              <Input
+                placeholder="https://www.pinterest.com/..."
+                value={formData.pinterest ?? ""}
+                onChange={(e) => onFormDataChange({ ...formData, pinterest: e.target.value })}
+              />
+            </div>
+
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Latitude and longitude fill automatically when address and postal code are set (Portugal lookup). You can still edit them manually.
+            </p>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Latitude
+                </label>
+                <Input
+                  type="number"
+                  step="any"
+                  placeholder="Latitude"
+                  value={
+                    formData.latitude === undefined ||
+                    formData.latitude === null ||
+                    Number.isNaN(Number(formData.latitude))
+                      ? ""
+                      : String(formData.latitude)
+                  }
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "") {
+                      onFormDataChange({ ...formData, latitude: undefined });
+                      return;
+                    }
+                    const n = parseFloat(v);
+                    if (Number.isFinite(n)) {
+                      onFormDataChange({ ...formData, latitude: n });
+                    }
+                  }}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Longitude
+                </label>
+                <Input
+                  type="number"
+                  step="any"
+                  placeholder="Longitude"
+                  value={
+                    formData.longitude === undefined ||
+                    formData.longitude === null ||
+                    Number.isNaN(Number(formData.longitude))
+                      ? ""
+                      : String(formData.longitude)
+                  }
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "") {
+                      onFormDataChange({ ...formData, longitude: undefined });
+                      return;
+                    }
+                    const n = parseFloat(v);
+                    if (Number.isFinite(n)) {
+                      onFormDataChange({ ...formData, longitude: n });
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -1645,31 +2156,31 @@ function EditSalonModal({
               />
             </div>
 
-            {/* Change Reason */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Reason for Changes <span className="text-gray-500 text-xs">(Optional - will be sent to salon owner)</span>
-              </label>
-              <Textarea
-                value={changeReason}
-                onChange={(e) => onChangeReasonChange(e.target.value)}
-                placeholder="Explain what you changed and why (this will be sent to the salon owner)..."
-                rows={3}
-              />
-            </div>
-
             {/* Images Management */}
             <div className="space-y-4">
-              {/* Main Image */}
-              {formData.image && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Main Image
-                  </label>
+              {/* Thumbnail (main listing image) */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Thumbnail
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const base64 = await toBase64(file);
+                    onFormDataChange({ ...formData, image: base64 });
+                    e.currentTarget.value = "";
+                  }}
+                  className="text-sm"
+                />
+                <p className="text-xs text-gray-500">{SALON_IMAGE_SIZE_HINTS.thumbnail}</p>
+                {formData.image && (
                   <div className="relative inline-block">
                     <img
                       src={formData.image}
-                      alt="Main"
+                      alt="Thumbnail"
                       className="w-32 h-32 object-cover rounded-lg border border-gray-300"
                     />
                     <Button
@@ -1682,15 +2193,28 @@ function EditSalonModal({
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Logo */}
-              {formData.logo && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Logo
-                  </label>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Logo
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const base64 = await toBase64(file);
+                    onFormDataChange({ ...formData, logo: base64 });
+                    e.currentTarget.value = "";
+                  }}
+                  className="text-sm"
+                />
+                <p className="text-xs text-gray-500">{SALON_IMAGE_SIZE_HINTS.logo}</p>
+                {formData.logo && (
                   <div className="relative inline-block">
                     <img
                       src={formData.logo}
@@ -1707,21 +2231,35 @@ function EditSalonModal({
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
-              {/* Gallery Images */}
-              {formData.images && formData.images.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Gallery Images
-                  </label>
+              {/* Banner images */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Banner
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length === 0) return;
+                    const newImages = await Promise.all(files.map((f) => toBase64(f)));
+                    onFormDataChange({ ...formData, images: [...(formData.images || []), ...newImages] });
+                    e.currentTarget.value = "";
+                  }}
+                  className="text-sm"
+                />
+                <p className="text-xs text-gray-500">{SALON_IMAGE_SIZE_HINTS.banner}</p>
+                {formData.images && formData.images.length > 0 && (
                   <div className="grid grid-cols-4 gap-4">
                     {formData.images.map((img, idx) => (
                       <div key={idx} className="relative">
                         <img
                           src={img}
-                          alt={`Gallery ${idx + 1}`}
+                          alt={`Banner ${idx + 1}`}
                           className="w-full h-24 object-cover rounded-lg border border-gray-300"
                         />
                         <Button
@@ -1736,8 +2274,8 @@ function EditSalonModal({
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-6">
@@ -1798,15 +2336,11 @@ function EditSalonModal({
 // Delete Salon Modal Component
 function DeleteSalonModal({
   salon,
-  deleteReason,
-  onDeleteReasonChange,
   onConfirm,
   onCancel,
   isProcessing,
 }: {
   salon: Salon;
-  deleteReason: string;
-  onDeleteReasonChange: (reason: string) => void;
   onConfirm: () => void;
   onCancel: () => void;
   isProcessing: boolean;
@@ -1818,26 +2352,9 @@ function DeleteSalonModal({
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
             Delete Salon
           </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Are you sure you want to delete "{salon.name}"? This action cannot be undone. The salon owner will be notified of this deletion.
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            Are you sure you want to delete "{salon.name}"? This action cannot be undone.
           </p>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Reason for Deletion <span className="text-red-500">*</span>
-            </label>
-            <Textarea
-              value={deleteReason}
-              onChange={(e) => onDeleteReasonChange(e.target.value)}
-              placeholder="Please provide a reason for deleting this salon..."
-              rows={4}
-              className="w-full"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              This reason will be sent to the salon owner via notification.
-            </p>
-          </div>
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onCancel} disabled={isProcessing}>
@@ -1845,7 +2362,7 @@ function DeleteSalonModal({
             </Button>
             <Button
               onClick={onConfirm}
-              disabled={isProcessing || !deleteReason.trim()}
+              disabled={isProcessing}
               className="bg-red-600 hover:bg-red-700"
             >
               {isProcessing ? (
@@ -1868,22 +2385,18 @@ function DeleteSalonModal({
 function DeleteImageModal({
   imageType,
   imageIndex,
-  deleteReason,
-  onDeleteReasonChange,
   onConfirm,
   onCancel,
 }: {
   imageType: 'main' | 'logo' | 'gallery';
   imageIndex?: number;
-  deleteReason: string;
-  onDeleteReasonChange: (reason: string) => void;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
   const imageTypeLabels = {
-    main: 'Main Image',
+    main: 'Thumbnail',
     logo: 'Logo',
-    gallery: 'Gallery Image',
+    gallery: 'Banner',
   };
 
   return (
@@ -1893,26 +2406,9 @@ function DeleteImageModal({
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
             Delete {imageTypeLabels[imageType]}
           </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Are you sure you want to delete this {imageTypeLabels[imageType].toLowerCase()}? The salon owner will be notified of this change.
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            Are you sure you want to delete this {imageTypeLabels[imageType].toLowerCase()}?
           </p>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Reason for Deletion <span className="text-red-500">*</span>
-            </label>
-            <Textarea
-              value={deleteReason}
-              onChange={(e) => onDeleteReasonChange(e.target.value)}
-              placeholder="Please provide a reason for deleting this image..."
-              rows={4}
-              className="w-full"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              This reason will be sent to the salon owner via notification.
-            </p>
-          </div>
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onCancel}>
@@ -1920,7 +2416,6 @@ function DeleteImageModal({
             </Button>
             <Button
               onClick={onConfirm}
-              disabled={!deleteReason.trim()}
               className="bg-red-600 hover:bg-red-700"
             >
               Delete Image

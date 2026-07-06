@@ -331,7 +331,7 @@ export function IngredientSlider({ ingredients }: IngredientSliderProps) {
   return (
     <section 
       ref={containerRef}
-      className="relative w-full h-screen overflow-hidden transition-colors duration-700 ease-in-out" 
+      className="relative h-[100dvh] min-h-[480px] w-full overflow-hidden transition-colors duration-700 ease-in-out sm:min-h-[560px]" 
       style={{ backgroundColor }}
     >
       {/* Main Slider Container */}

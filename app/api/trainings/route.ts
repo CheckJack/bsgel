@@ -62,9 +62,7 @@ export async function GET(req: Request) {
             },
           },
         },
-        orderBy: {
-          createdAt: "desc",
-        },
+        orderBy: [{ displayOrder: "asc" }, { createdAt: "desc" }],
       })
     } catch (error: any) {
       // If table doesn't exist, return empty array
@@ -82,6 +80,7 @@ export async function GET(req: Request) {
       content: program.content,
       days: program.days ? (Array.isArray(program.days) ? program.days : JSON.parse(program.days as string)) : null,
       totalHours: program.totalHours,
+      displayOrder: program.displayOrder,
       price: Number(program.price), // Convert Decimal to number
       image: program.image,
       isActive: program.isActive,
@@ -183,6 +182,11 @@ export async function POST(req: Request) {
       }
     }
 
+    const maxOrder = await db.trainingProgram.aggregate({
+      _max: { displayOrder: true },
+    })
+    const nextOrder = (maxOrder._max.displayOrder ?? 0) + 1
+
     let program;
     try {
       program = await db.trainingProgram.create({
@@ -192,6 +196,7 @@ export async function POST(req: Request) {
         content: content?.trim() || null,
         days: days as any, // Store as JSON
         totalHours: totalHours,
+        displayOrder: nextOrder,
         price: parseFloat(price),
         image: image || null,
         isActive: isActive !== undefined ? Boolean(isActive) : true,

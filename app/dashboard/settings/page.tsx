@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import { Camera, Save, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/language-context";
@@ -35,6 +36,8 @@ export default function SettingsPage() {
     district: "",
     country: "Portugal",
   });
+  const [billingNif, setBillingNif] = useState("");
+  const [billingAddress, setBillingAddress] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -86,6 +89,12 @@ export default function SettingsPage() {
                 ...prev,
                 email: session?.user?.email || "",
               }));
+            }
+            if (data.user?.billingNif) {
+              setBillingNif(String(data.user.billingNif));
+            }
+            if (data.user?.billingAddress) {
+              setBillingAddress(String(data.user.billingAddress));
             }
           }
         } catch (error) {
@@ -156,6 +165,8 @@ export default function SettingsPage() {
 
       // Include shipping address
       updateData.shippingAddress = JSON.stringify(shippingAddress);
+      updateData.billingNif = billingNif.trim();
+      updateData.billingAddress = billingAddress.trim();
 
       // Handle image upload if new image is selected
       if (imageFile) {
@@ -475,6 +486,37 @@ export default function SettingsPage() {
                 <Input
                   value={shippingAddress.country}
                   onChange={(e) => setShippingAddress((prev) => ({ ...prev, country: e.target.value }))}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("clientPanel.settings.billingDetails")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">{t("clientPanel.settings.billingNif")}</label>
+                <Input
+                  inputMode="numeric"
+                  value={billingNif}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "").slice(0, 9);
+                    setBillingNif(digits);
+                  }}
+                  maxLength={9}
+                  placeholder="123456789"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">{t("clientPanel.settings.billingAddress")}</label>
+                <Textarea
+                  value={billingAddress}
+                  onChange={(e) => setBillingAddress(e.target.value)}
+                  rows={4}
+                  className="resize-y min-h-[100px]"
+                  placeholder={t("checkout.billingAddressPlaceholder")}
                 />
               </div>
             </CardContent>

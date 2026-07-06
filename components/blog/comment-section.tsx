@@ -5,8 +5,9 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessageSquare, Send, User, LogIn } from "lucide-react";
+import { Send, User, LogIn } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
+import { formatNewsDate } from "@/components/blog/news-utils";
 
 interface Comment {
   id: string;
@@ -27,6 +28,7 @@ interface CommentSectionProps {
 export function CommentSection({ blogSlug }: CommentSectionProps) {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { t, language } = useLanguage();
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,22 +36,21 @@ export function CommentSection({ blogSlug }: CommentSectionProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const fetchComments = async () => {
+      try {
+        const res = await fetch(`/api/blogs/slug/${blogSlug}/comments`);
+        if (res.ok) {
+          setComments(await res.json());
+        }
+      } catch (fetchError) {
+        console.error("Failed to fetch comments:", fetchError);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchComments();
   }, [blogSlug]);
-
-  const fetchComments = async () => {
-    try {
-      const res = await fetch(`/api/blogs/slug/${blogSlug}/comments`);
-      if (res.ok) {
-        const data = await res.json();
-        setComments(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch comments:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,10 +60,7 @@ export function CommentSection({ blogSlug }: CommentSectionProps) {
       return;
     }
 
-    if (!commentContent.trim()) {
-      setError("Please enter a comment");
-      return;
-    }
+    if (!commentContent.trim()) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -70,38 +68,23 @@ export function CommentSection({ blogSlug }: CommentSectionProps) {
     try {
       const res = await fetch(`/api/blogs/slug/${blogSlug}/comments`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: commentContent }),
       });
 
       if (res.ok) {
-        const newComment = await res.json();
-        setComments([newComment, ...comments]);
+        setComments([await res.json(), ...comments]);
         setCommentContent("");
-        setError(null);
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to post comment");
+        setError(data.error || t("bioNews.loadError"));
       }
-    } catch (error) {
-      console.error("Failed to post comment:", error);
-      setError("Failed to post comment. Please try again.");
+    } catch (submitError) {
+      console.error("Failed to post comment:", submitError);
+      setError(t("bioNews.loadError"));
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
   };
 
   const getUserDisplayName = (user: Comment["user"]) => {
@@ -109,130 +92,104 @@ export function CommentSection({ blogSlug }: CommentSectionProps) {
   };
 
   return (
-    <div className="mt-16">
-      <div className="flex items-center gap-2 mb-6">
-        <MessageSquare className="h-6 w-6" />
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">
-          Comments ({comments.length})
-        </h2>
-      </div>
+    <section className="border-t border-black/10 bg-[#f7f6f4]">
+      <div className="container mx-auto max-w-7xl px-4 py-12 sm:px-6">
+        <div className="mx-auto max-w-3xl">
+      <h2 className="font-display text-2xl text-brand-black">
+        {t("bioNews.comments")} ({comments.length})
+      </h2>
 
-      {/* Comment Form */}
       {status === "loading" ? (
-        <Card className="mb-8">
-          <CardContent className="p-6">
-            <div className="animate-pulse">Loading...</div>
-          </CardContent>
-        </Card>
+        <p className="mt-6 font-header text-sm text-brand-black/50">{t("bioNews.loading")}</p>
       ) : session ? (
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="text-lg">Leave a Comment</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <div>
-                  <textarea
-                    value={commentContent}
-                    onChange={(e) => setCommentContent(e.target.value)}
-                    placeholder="Write your comment here..."
-                    rows={4}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white resize-none"
-                    disabled={isSubmitting}
-                  />
-                </div>
-                {error && (
-                  <div className="text-sm text-red-600 dark:text-red-400">
-                    {error}
-                  </div>
-                )}
-                <div className="flex justify-end">
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting || !commentContent.trim()}
-                  >
-                    {isSubmitting ? (
-                      "Posting..."
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4 mr-2" />
-                        Post Comment
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+        <form onSubmit={handleSubmit} className="mt-8">
+          <label htmlFor="news-comment" className="sr-only">
+            {t("bioNews.leaveComment")}
+          </label>
+          <textarea
+            id="news-comment"
+            value={commentContent}
+            onChange={(e) => setCommentContent(e.target.value)}
+            placeholder={t("bioNews.commentPlaceholder")}
+            rows={4}
+            className="w-full resize-none border border-black/10 bg-brand-white px-4 py-3 font-header text-sm text-brand-black outline-none transition-colors focus:border-brand-champagne"
+            disabled={isSubmitting}
+          />
+          {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+          <div className="mt-4 flex justify-end">
+            <Button
+              type="submit"
+              disabled={isSubmitting || !commentContent.trim()}
+              className="rounded-full bg-brand-black px-6 font-header text-sm hover:bg-brand-black/90"
+            >
+              {isSubmitting ? (
+                t("bioNews.posting")
+              ) : (
+                <>
+                  <Send className="mr-2 size-4" aria-hidden />
+                  {t("bioNews.postComment")}
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
       ) : (
-        <Card className="mb-8">
-          <CardContent className="p-6 text-center">
-            <LogIn className="h-8 w-8 mx-auto mb-4 text-gray-400" />
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              You must be logged in to leave a comment.
-            </p>
-            <Link href="/login">
-              <Button>Log In</Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <div className="mt-8 rounded-2xl bg-[#faf8f6] px-6 py-8 text-center">
+          <LogIn className="mx-auto mb-3 size-7 text-brand-black/30" aria-hidden />
+          <p className="font-header text-sm text-brand-black/65">{t("bioNews.loginToComment")}</p>
+          <Link href="/login" className="mt-4 inline-block">
+            <Button className="rounded-full bg-brand-black px-6 font-header text-sm hover:bg-brand-black/90">
+              {t("bioNews.logIn")}
+            </Button>
+          </Link>
+        </div>
       )}
 
-      {/* Comments List */}
       {isLoading ? (
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black dark:border-white mx-auto"></div>
+        <div className="mt-8 flex justify-center">
+          <div className="size-8 animate-spin rounded-full border-2 border-brand-black/10 border-t-brand-champagne" />
         </div>
       ) : comments.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-            <p className="text-gray-600 dark:text-gray-400">
-              No comments yet. Be the first to comment!
-            </p>
-          </CardContent>
-        </Card>
+        <p className="mt-8 font-header text-sm text-brand-black/50">{t("bioNews.noComments")}</p>
       ) : (
-        <div className="space-y-4">
+        <ul className="mt-10 space-y-8">
           {comments.map((comment) => (
-            <Card key={comment.id}>
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0">
-                    {comment.user.image ? (
-                      <img
-                        src={comment.user.image}
-                        alt={getUserDisplayName(comment.user)}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                        <User className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                      </div>
-                    )}
+            <li key={comment.id} className="flex gap-4">
+              <div className="shrink-0">
+                {comment.user.image ? (
+                  <img
+                    src={comment.user.image}
+                    alt={getUserDisplayName(comment.user)}
+                    className="size-11 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex size-11 items-center justify-center rounded-full bg-brand-sweet-bianca">
+                    <User className="size-5 text-brand-black/40" aria-hidden />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                        {getUserDisplayName(comment.user)}
-                      </h3>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {formatDate(comment.createdAt)}
-                      </span>
-                    </div>
-                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
-                      {comment.content}
-                    </p>
-                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1 border-b border-black/8 pb-8">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <span className="font-header text-sm font-medium text-brand-black">
+                    {getUserDisplayName(comment.user)}
+                  </span>
+                  <time
+                    dateTime={comment.createdAt}
+                    className="font-header text-xs text-brand-black/45"
+                  >
+                    {formatNewsDate(comment.createdAt, language, "short")}
+                  </time>
                 </div>
-              </CardContent>
-            </Card>
+                <p className="mt-2 whitespace-pre-wrap break-words font-header text-sm leading-relaxed text-brand-black/80">
+                  {comment.content}
+                </p>
+              </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
-    </div>
+        </div>
+      </div>
+    </section>
   );
 }
-

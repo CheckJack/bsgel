@@ -14,7 +14,7 @@ const testimonials: Testimonial[] = [
   {
     text: "Esta formação transformou por completo a forma como avalio e trato cada unha. As clientes notam a diferença desde a primeira sessão.",
     image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150&h=150",
-    name: "Briana Patton",
+    name: "Beatriz Ferreira",
     role: "Nail Therapist",
   },
   {
@@ -26,7 +26,7 @@ const testimonials: Testimonial[] = [
   {
     text: "O apoio após a formação é incrível. Sempre que tenho dúvidas, recebo orientação rápida e objetiva.",
     image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=150&h=150",
-    name: "Saman Malik",
+    name: "Sofia Almeida",
     role: "Profissional Certificada",
   },
   {
@@ -38,13 +38,13 @@ const testimonials: Testimonial[] = [
   {
     text: "A formação ajudou-me a diferenciar o meu trabalho no mercado. O foco em saúde da unha faz toda a diferença.",
     image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150&h=150",
-    name: "Zainab Hussain",
+    name: "Ines Carvalho",
     role: "Nail Specialist",
   },
   {
     text: "Conteúdo excelente, prática orientada e resultados reais. Recomendo para quem quer evoluir com confiança.",
     image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=150&h=150",
-    name: "Aliza Khan",
+    name: "Mariana Costa",
     role: "Formanda",
   },
   {
@@ -56,7 +56,7 @@ const testimonials: Testimonial[] = [
   {
     text: "A qualidade pedagógica e o acompanhamento contínuo tornam esta formação uma escolha segura.",
     image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150&h=150",
-    name: "Sana Sheikh",
+    name: "Patricia Mendes",
     role: "Profissional BIO",
   },
   {
@@ -153,7 +153,7 @@ export default function TestimonialV2() {
 
           <h2
             id="testimonials-heading"
-            className="mt-6 text-center text-4xl font-light tracking-tight text-neutral-900 md:whitespace-nowrap md:text-5xl"
+            className="font-display mt-6 text-center text-3xl font-normal tracking-tight text-neutral-900 sm:text-4xl md:text-5xl md:text-balance"
           >
             O que dizem as nossas formandas
           </h2>

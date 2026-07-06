@@ -26,14 +26,29 @@ interface HeroSliderProps {
   className?: string;
   showDarkOverlay?: boolean;
   scrollControlled?: boolean;
+  onFirstSlideReady?: () => void;
 }
 
-export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDarkOverlay = true, scrollControlled = false }: HeroSliderProps) {
+export function HeroSlider({
+  slides,
+  autoPlayInterval = 5000,
+  className,
+  showDarkOverlay = true,
+  scrollControlled = false,
+  onFirstSlideReady,
+}: HeroSliderProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const firstSlideReadyReportedRef = useRef(false);
+
+  const reportFirstSlideReady = () => {
+    if (firstSlideReadyReportedRef.current) return;
+    firstSlideReadyReportedRef.current = true;
+    onFirstSlideReady?.();
+  };
 
   useEffect(() => {
     if (!isAutoPlaying || slides.length <= 1) return;
@@ -161,22 +176,38 @@ export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDar
 
   // Only apply 100vh styles if no custom className is provided (default behavior)
   const hasCustomHeight = className && className !== "h-screen";
-  const containerStyle: React.CSSProperties = hasCustomHeight 
-    ? { position: 'relative', top: 0, left: 0, right: 0 }
-    : { 
-        height: '100vh', 
-        minHeight: '100vh',
-        position: 'relative',
+  const containerStyle: React.CSSProperties = hasCustomHeight
+    ? { position: "relative", top: 0, left: 0, right: 0 }
+    : {
+        height: "100vh",
+        minHeight: "100vh",
+        position: "relative",
         top: 0,
         left: 0,
-        right: 0
+        right: 0,
       };
+
+  const firstSlideFallback =
+    slides[0]?.type === "image"
+      ? slides[0].src || slides[0].srcTablet || slides[0].srcMobile
+      : undefined;
+  const mergedContainerStyle: React.CSSProperties = {
+    ...containerStyle,
+    ...(firstSlideFallback
+      ? {
+          backgroundImage: `url("${firstSlideFallback}")`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }
+      : {}),
+  };
 
   return (
     <div 
       ref={containerRef}
-      className={`relative w-full ${className || "h-screen"} overflow-hidden group bg-[#eeeeee]`}
-      style={containerStyle}
+      className={`relative w-full ${className || "h-screen"} overflow-hidden group`}
+      style={mergedContainerStyle}
     >
       {/* Slide Content */}
       <div className="absolute inset-0 w-full h-full" style={{ top: 0, left: 0, right: 0, bottom: 0 }}>
@@ -205,6 +236,8 @@ export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDar
                   playsInline
                   className="absolute inset-0 w-full h-full object-cover"
                   style={{ top: 0, left: 0, width: "100%", height: "100%" }}
+                  onLoadedData={index === 0 ? reportFirstSlideReady : undefined}
+                  onError={index === 0 ? reportFirstSlideReady : undefined}
                 >
                   <source src={slide.src} type="video/mp4" />
                 </video>
@@ -216,28 +249,34 @@ export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDar
                         src={slide.srcMobile}
                         alt={slide.title || "Hero image"}
                         fill
-                        className="object-cover md:hidden"
+                        className="!object-cover md:hidden"
                         priority={index === 0}
                         unoptimized
                         sizes="100vw"
+                        onLoadingComplete={index === 0 ? reportFirstSlideReady : undefined}
+                        onError={index === 0 ? reportFirstSlideReady : undefined}
                       />
                       <Image
                         src={slide.srcTablet}
                         alt={slide.title || "Hero image"}
                         fill
-                        className="object-cover hidden md:block lg:hidden"
+                        className="!object-cover hidden md:block lg:hidden"
                         priority={index === 0}
                         unoptimized
                         sizes="100vw"
+                        onLoadingComplete={index === 0 ? reportFirstSlideReady : undefined}
+                        onError={index === 0 ? reportFirstSlideReady : undefined}
                       />
                       <Image
                         src={slide.src}
                         alt={slide.title || "Hero image"}
                         fill
-                        className="object-cover hidden lg:block"
+                        className="!object-cover hidden lg:block"
                         priority={index === 0}
                         unoptimized
                         sizes="100vw"
+                        onLoadingComplete={index === 0 ? reportFirstSlideReady : undefined}
+                        onError={index === 0 ? reportFirstSlideReady : undefined}
                       />
                     </>
                   ) : slide.srcMobile ? (
@@ -246,19 +285,23 @@ export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDar
                         src={slide.srcMobile}
                         alt={slide.title || "Hero image"}
                         fill
-                        className="object-cover md:hidden"
+                        className="!object-cover md:hidden"
                         priority={index === 0}
                         unoptimized
                         sizes="100vw"
+                        onLoadingComplete={index === 0 ? reportFirstSlideReady : undefined}
+                        onError={index === 0 ? reportFirstSlideReady : undefined}
                       />
                       <Image
                         src={slide.src}
                         alt={slide.title || "Hero image"}
                         fill
-                        className="object-cover hidden md:block"
+                        className="!object-cover hidden md:block"
                         priority={index === 0}
                         unoptimized
                         sizes="100vw"
+                        onLoadingComplete={index === 0 ? reportFirstSlideReady : undefined}
+                        onError={index === 0 ? reportFirstSlideReady : undefined}
                       />
                     </>
                   ) : (
@@ -266,10 +309,12 @@ export function HeroSlider({ slides, autoPlayInterval = 5000, className, showDar
                       src={slide.src}
                       alt={slide.title || "Hero image"}
                       fill
-                      className="object-cover"
+                      className="!object-cover"
                       priority={index === 0}
                       unoptimized
                       sizes="100vw"
+                      onLoadingComplete={index === 0 ? reportFirstSlideReady : undefined}
+                      onError={index === 0 ? reportFirstSlideReady : undefined}
                     />
                   )}
                 </div>

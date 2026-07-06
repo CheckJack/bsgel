@@ -7,7 +7,16 @@ import { getReferralByUserId, activateReferral } from "@/lib/affiliate"
 import { calculatePoints, awardPoints } from "@/lib/points"
 import { checkAndNotifyMilestones } from "@/lib/notifications/affiliate-milestones"
 import { autoPromoteAffiliate } from "@/lib/affiliate-tiers"
-import { calculateTax } from "@/lib/tax"
+import { calculateShipping } from "@/lib/shipping"
+import { decrementStockForOrder, validateCartStock } from "@/lib/stock"
+import {
+  cartWithTrainingInclude,
+  clearUserCart,
+  confirmTrainingBookings,
+  getCartSubtotal,
+  isCartEmpty,
+} from "@/lib/cart-training"
+import { ShopPaymentMethod } from "@prisma/client"
 
 export async function POST(req: Request) {
   const body = await req.text()
@@ -40,93 +49,65 @@ export async function POST(req: Request) {
   // Handle the event
   if (event.type === "payment_intent.succeeded") {
     const paymentIntent = event.data.object as any
-    const { userId, shippingAddress, couponCode, discountAmount, postalCode, taxAmount, taxRate, taxRegion } = paymentIntent.metadata
+    const {
+      userId,
+      shippingAddress,
+      couponCode,
+      discountAmount,
+      postalCode,
+      shippingAmount,
+      shopPaymentMethod: shopPaymentMethodMeta,
+    } = paymentIntent.metadata
 
     // Get user's cart
     const cart = await db.cart.findUnique({
       where: { userId },
-      include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
-      },
+      include: cartWithTrainingInclude,
     })
 
-    if (cart && cart.items.length > 0) {
-      // Calculate subtotal
-      const subtotal = cart.items.reduce(
-        (sum, item) => {
-          if (!item.product || !item.product.price) {
-            console.error(`Product or price missing for cart item ${item.id}`)
-            return sum
-          }
-          return sum + Number(item.product.price) * item.quantity
-        },
-        0
-      )
+    if (cart && !isCartEmpty(cart)) {
+      if (cart.items.length > 0) {
+        const stockError = await validateCartStock(userId)
+        if (stockError) {
+          console.error("Webhook order blocked: insufficient stock", stockError)
+          return NextResponse.json({ received: true, stockBlocked: true })
+        }
+      }
+
+      const subtotal = getCartSubtotal(cart)
 
       // Get discount from metadata or calculate from payment intent amount
       const discount = discountAmount ? parseFloat(discountAmount) : 0
       const subtotalAfterDiscount = Math.max(0, subtotal - discount)
       
-      // Calculate tax if not already in metadata
+      // Tax is already included in product prices (23% IVA), keep informational only.
       let calculatedTaxAmount = 0
+      let calculatedShippingAmount = 0
       let calculatedTaxRate: number | null = null
       let calculatedTaxRegion: string | null = null
 
-      if (taxAmount && taxRate && taxRegion) {
-        // Use tax info from payment intent metadata
-        calculatedTaxAmount = parseFloat(taxAmount)
-        calculatedTaxRate = parseFloat(taxRate)
-        calculatedTaxRegion = taxRegion
-      } else {
-        // Calculate tax based on postal code
-        let postalCodeToUse = postalCode
+      calculatedTaxAmount = 0
+      calculatedTaxRate = 23.0
+      calculatedTaxRegion = "IVA 23% included"
 
-        // Extract postal code from shipping address if not in metadata
-        if (!postalCodeToUse && shippingAddress) {
-          const addressLines = shippingAddress.split("\n")
-          if (addressLines.length >= 5) {
-            const postalCodeLine = addressLines[4]
-            if (postalCodeLine) {
-              const match = postalCodeLine.match(/\d{4}(?:-\d{3})?/)
-              if (match) {
-                postalCodeToUse = match[0]
-              }
-            }
-          }
-        }
-
-        if (postalCodeToUse) {
-          try {
-            const taxResult = await calculateTax(subtotalAfterDiscount, postalCodeToUse)
-            calculatedTaxAmount = taxResult.taxAmount
-            calculatedTaxRate = taxResult.taxRate
-            calculatedTaxRegion = taxResult.taxRegion
-          } catch (error) {
-            console.error("Failed to calculate tax:", error)
-            // Default to 23% (Mainland Portugal) if calculation fails
-            calculatedTaxAmount = subtotalAfterDiscount * 0.23
-            calculatedTaxRate = 23.0
-            calculatedTaxRegion = "Mainland Portugal"
-          }
-        } else {
-          // Default to 23% (Mainland Portugal) if no postal code
-          calculatedTaxAmount = subtotalAfterDiscount * 0.23
-          calculatedTaxRate = 23.0
-          calculatedTaxRegion = "Mainland Portugal"
+      if (shippingAmount) {
+        calculatedShippingAmount = parseFloat(shippingAmount)
+      } else if (postalCode) {
+        try {
+          const shippingResult = await calculateShipping(subtotalAfterDiscount, postalCode)
+          calculatedShippingAmount = shippingResult.shippingAmount
+        } catch (error) {
+          console.error("Failed to calculate shipping:", error)
         }
       }
       
       // Use the actual payment amount from Stripe (which already has discount and tax applied)
       const actualTotal = paymentIntent.amount / 100
 
-      // Get user info for notification
+      // Get user info for notification + saved billing (Stripe metadata is too small for full morada)
       const user = await db.user.findUnique({
         where: { id: userId },
-        select: { name: true, email: true },
+        select: { name: true, email: true, billingNif: true, billingAddress: true },
       })
 
       // Check for affiliate referral
@@ -137,16 +118,26 @@ export async function POST(req: Request) {
         affiliateReferralId = referral.id
       }
 
+      const stripeShopMethod =
+        shopPaymentMethodMeta === "STRIPE_KLARNA"
+          ? ShopPaymentMethod.STRIPE_KLARNA
+          : ShopPaymentMethod.STRIPE_CARD
+
       // Create order first
       const order = await db.order.create({
         data: {
           userId,
           total: actualTotal, // Use the actual payment amount
           shippingAddress: shippingAddress || null,
+          billingNif: user?.billingNif?.trim() || null,
+          billingAddress: user?.billingAddress?.trim() || null,
           paymentIntentId: paymentIntent.id,
+          shopPaymentMethod: stripeShopMethod,
+          appliedCouponCode: couponCode?.trim() ? String(couponCode).trim() : null,
           affiliateReferralId,
           taxRate: calculatedTaxRate,
           taxAmount: calculatedTaxAmount,
+          shippingAmount: calculatedShippingAmount,
           taxRegion: calculatedTaxRegion,
           status: "PROCESSING",
           items: {
@@ -156,8 +147,28 @@ export async function POST(req: Request) {
               price: item.product.price,
             })),
           },
+          trainingItems: {
+            create: cart.trainingItems.map((item) => ({
+              sessionId: item.sessionId,
+              programId: item.session.programId,
+              bookingId: item.bookingId,
+              price: item.session.program.price,
+              quantity: 1,
+            })),
+          },
         },
       })
+
+      if (cart.items.length > 0) {
+        await decrementStockForOrder(
+          cart.items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+          }))
+        )
+      }
+
+      await confirmTrainingBookings(cart.trainingItems)
 
       // Handle affiliate referral points after order creation
       if (referral) {
@@ -240,9 +251,7 @@ export async function POST(req: Request) {
       }
 
       // Clear cart
-      await db.cartItem.deleteMany({
-        where: { cartId: cart.id },
-      })
+      await clearUserCart(cart.id)
 
       // Create notification for admin users when a new order is placed
       try {

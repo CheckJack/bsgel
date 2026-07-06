@@ -3,13 +3,21 @@ import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 text-center">
-      <h1 className="text-6xl font-bold mb-4">404</h1>
-      <h2 className="text-2xl font-semibold mb-4">Page Not Found</h2>
-      <p className="text-gray-600 mb-8">The page you&apos;re looking for doesn&apos;t exist.</p>
-      <Link href="/">
-        <Button>Go Home</Button>
-      </Link>
+    <div className="min-h-screen bg-brand-white flex items-center justify-center px-4">
+      <div className="w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+        <p className="text-sm font-medium tracking-wide text-brand-champagne mb-2">Erro 404</p>
+        <h1 className="text-4xl sm:text-5xl font-semibold text-brand-black mb-3">
+          Página não encontrada
+        </h1>
+        <p className="text-gray-600 mb-8">
+          A página que procura não existe ou foi movida. Pode voltar para a página inicial.
+        </p>
+        <Link href="/" className="inline-flex">
+          <Button className="bg-brand-black text-white hover:bg-brand-black/90">
+            Ir para a página inicial
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 }

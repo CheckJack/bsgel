@@ -128,7 +128,7 @@ export function AboutMegaMenu({ isOpen, onClose, onMouseEnter }: AboutMegaMenuPr
   return (
     <div
       data-mega-menu
-      className="absolute top-full left-0 w-full bg-black/80 backdrop-blur-md z-50"
+      className="absolute top-full left-0 w-full border-t border-black/10 bg-brand-white shadow-lg z-50"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onClose}
     >
@@ -144,7 +144,7 @@ export function AboutMegaMenu({ isOpen, onClose, onMouseEnter }: AboutMegaMenuPr
                     href={page.href}
                     data-mega-menu-link
                     onClick={handleLinkClick}
-                    className="block text-sm font-medium text-brand-sweet-bianca mb-2 uppercase tracking-wide hover:text-white transition-colors cursor-pointer"
+                    className="block text-sm font-medium text-brand-black mb-2 uppercase tracking-wide hover:text-brand-champagne transition-colors cursor-pointer"
                   >
                     {page.name}
                   </Link>
@@ -156,7 +156,7 @@ export function AboutMegaMenu({ isOpen, onClose, onMouseEnter }: AboutMegaMenuPr
                           href={child.href}
                           data-mega-menu-link
                           onClick={handleLinkClick}
-                          className="block text-sm font-normal text-white hover:text-brand-sweet-bianca transition-colors cursor-pointer"
+                          className="block text-sm font-normal text-brand-black/70 hover:text-brand-champagne transition-colors cursor-pointer"
                         >
                           {child.name}
                         </Link>
@@ -178,7 +178,7 @@ export function AboutMegaMenu({ isOpen, onClose, onMouseEnter }: AboutMegaMenuPr
           <div className="col-span-6 grid grid-cols-2 gap-4">
             {/* Image Panel 1 */}
             {isLoadingCards ? (
-              <div className="relative w-full h-full min-h-[400px] rounded-lg overflow-hidden bg-gray-800 animate-pulse"></div>
+              <div className="relative w-full h-full min-h-[400px] rounded-lg overflow-hidden bg-gray-100 animate-pulse"></div>
             ) : (() => {
               const card1 = cards.find((c) => c.position === 1);
               if (card1 && card1.isActive) {
@@ -254,7 +254,7 @@ export function AboutMegaMenu({ isOpen, onClose, onMouseEnter }: AboutMegaMenuPr
 
             {/* Image Panel 2 */}
             {isLoadingCards ? (
-              <div className="relative w-full h-full min-h-[400px] rounded-lg overflow-hidden bg-gray-800 animate-pulse"></div>
+              <div className="relative w-full h-full min-h-[400px] rounded-lg overflow-hidden bg-gray-100 animate-pulse"></div>
             ) : (() => {
               const card2 = cards.find((c) => c.position === 2);
               if (card2 && card2.isActive) {

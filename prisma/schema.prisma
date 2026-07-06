@@ -12,6 +12,8 @@ model User {
   email              String              @unique
   password           String
   name               String?
+  phone              String?
+  marketingConsent   Boolean             @default(false)
   image              String?
   role               UserRole            @default(USER)
   permissions        Json?
@@ -20,6 +22,8 @@ model User {
   certificationId    String?
   certificateUrl     String?
   shippingAddress    String?
+  billingNif         String?
+  billingAddress     String?             @db.Text
   pointsBalance      Int                 @default(0)
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
@@ -36,6 +40,7 @@ model User {
   productReviews     ProductReview[]
   salon              Salon?
   trainingBookings   TrainingBooking[]
+  stockAlerts        StockBackInStockAlert[]
   certification      Certification?      @relation(fields: [certificationId], references: [id])
 
   @@index([certificationId])
@@ -77,7 +82,9 @@ model Product {
   updatedAt          DateTime                 @updatedAt
   hemaFree           Boolean                  @default(false)
   outOfStock         Boolean                  @default(false)
+  stockQuantity      Int                      @default(0)
   cartItems          CartItem[]
+  stockAlerts        StockBackInStockAlert[]
   orderItems         OrderItem[]
   category           Category?                @relation(fields: [categoryId], references: [id])
   reviews            ProductReview[]
@@ -89,6 +96,22 @@ model Product {
   @@index([price])
   @@index([createdAt])
   @@index([categoryId, featured])
+  @@index([stockQuantity])
+  @@index([showcasingSections], type: Gin)
+}
+
+model StockBackInStockAlert {
+  id         String    @id @default(cuid())
+  userId     String
+  productId  String
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId])
+  @@index([notifiedAt])
 }
 
 model ProductSubcategory {
@@ -105,12 +128,13 @@ model ProductSubcategory {
 }
 
 model Cart {
-  id        String     @id @default(cuid())
-  userId    String     @unique
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items     CartItem[]
+  id            String             @id @default(cuid())
+  userId        String             @unique
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items         CartItem[]
+  trainingItems CartTrainingItem[]
 }
 
 model CartItem {
@@ -127,23 +151,32 @@ model CartItem {
 }
 
 model Order {
-  id                  String             @id @default(cuid())
-  userId              String
-  total               Decimal            @db.Decimal(10, 2)
-  status              OrderStatus        @default(PENDING)
-  paymentIntentId     String?            @unique
-  shippingAddress     String?
-  affiliateReferralId String?
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  taxAmount           Decimal?           @db.Decimal(10, 2)
-  taxRate             Decimal?           @db.Decimal(5, 2)
-  taxRegion           String?
-  affiliateReferral   AffiliateReferral? @relation(fields: [affiliateReferralId], references: [id])
-  user                User               @relation(fields: [userId], references: [id])
-  items               OrderItem[]
+  id                    String                     @id @default(cuid())
+  userId                String
+  total                 Decimal                    @db.Decimal(10, 2)
+  status                OrderStatus                @default(PENDING)
+  paymentIntentId       String?                    @unique
+  shippingAddress       String?
+  billingNif            String?
+  billingAddress        String?                    @db.Text
+  shopPaymentMethod     ShopPaymentMethod?
+  manualPaymentStatus   ManualPaymentReviewStatus?
+  appliedCouponCode     String?
+  affiliateReferralId   String?
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+  taxAmount             Decimal?                   @db.Decimal(10, 2)
+  shippingAmount        Decimal?                   @db.Decimal(10, 2)
+  taxRate               Decimal?                   @db.Decimal(5, 2)
+  taxRegion             String?
+  affiliateReferral     AffiliateReferral?       @relation(fields: [affiliateReferralId], references: [id])
+  user                  User                     @relation(fields: [userId], references: [id])
+  items                 OrderItem[]
+  trainingItems         OrderTrainingItem[]
 
   @@index([affiliateReferralId])
+  @@index([shopPaymentMethod])
+  @@index([manualPaymentStatus])
 }
 
 model OrderItem {
@@ -157,6 +190,43 @@ model OrderItem {
   product   Product  @relation(fields: [productId], references: [id])
 
   @@unique([orderId, productId])
+}
+
+model CartTrainingItem {
+  id        String           @id @default(cuid())
+  cartId    String
+  sessionId String
+  bookingId String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  cart      Cart             @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  session   TrainingSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  booking   TrainingBooking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@unique([cartId, sessionId])
+  @@index([cartId])
+  @@index([sessionId])
+  @@index([bookingId])
+}
+
+model OrderTrainingItem {
+  id        String           @id @default(cuid())
+  orderId   String
+  sessionId String
+  programId String
+  bookingId String?
+  price     Decimal          @db.Decimal(10, 2)
+  quantity  Int              @default(1)
+  createdAt DateTime         @default(now())
+  order     Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  session   TrainingSession  @relation(fields: [sessionId], references: [id])
+  program   TrainingProgram  @relation(fields: [programId], references: [id])
+  booking   TrainingBooking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([sessionId])
+  @@index([programId])
+  @@index([bookingId])
 }
 
 model Attribute {
@@ -204,6 +274,9 @@ model Salon {
   phone           String?
   email           String?
   website         String?
+  instagram       String?
+  facebook        String?
+  pinterest       String?
   latitude        Float?
   longitude       Float?
   image           String?
@@ -275,6 +348,7 @@ model Blog {
   excerpt            String?
   content            String
   image              String?
+  heroImage          String?
   author             String?
   status             BlogStatus @default(DRAFT)
   publishedAt        DateTime?
@@ -494,6 +568,22 @@ model Page {
   @@index([createdAt])
 }
 
+model SitePageSeo {
+  id          String   @id @default(cuid())
+  path        String   @unique
+  name        String
+  title       String?
+  description String?
+  permalink   String?
+  ogImage     String?
+  media       Json?
+  isDynamic   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([path])
+}
+
 model Affiliate {
   id                   String               @id @default(cuid())
   userId               String               @unique
@@ -660,6 +750,7 @@ model TrainingProgram {
   description String?
   content     String?
   days        Json?
+  displayOrder Int                     @default(0)
   totalHours  Int
   price       Decimal                  @db.Decimal(10, 2)
   image       String?
@@ -669,8 +760,10 @@ model TrainingProgram {
   bookings    TrainingBooking[]
   products    TrainingProgramProduct[]
   sessions    TrainingSession[]
+  orderItems  OrderTrainingItem[]
 
   @@index([isActive])
+  @@index([displayOrder])
   @@index([createdAt])
 }
 
@@ -701,6 +794,8 @@ model TrainingSession {
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   bookings        TrainingBooking[]
+  cartItems       CartTrainingItem[]
+  orderItems      OrderTrainingItem[]
   program         TrainingProgram   @relation(fields: [programId], references: [id], onDelete: Cascade)
 
   @@index([programId])
@@ -722,6 +817,8 @@ model TrainingBooking {
   program   TrainingProgram       @relation(fields: [programId], references: [id], onDelete: Cascade)
   session   TrainingSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cartItems CartTrainingItem[]
+  orderItems OrderTrainingItem[]
 
   @@unique([userId, sessionId])
   @@index([userId])
@@ -745,6 +842,32 @@ model TaxRegion {
   @@index([isActive])
   @@index([validFrom])
   @@index([validUntil])
+}
+
+model ShippingZone {
+  id                String   @id @default(cuid())
+  name              String
+  postalCodeStart   Int
+  postalCodeEnd     Int
+  shippingCost      Decimal  @db.Decimal(10, 2)
+  freeShippingThreshold Decimal? @db.Decimal(10, 2)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([postalCodeStart, postalCodeEnd])
+}
+
+model ShippingRule {
+  id                    String   @id @default(cuid())
+  name                  String
+  freeShippingThreshold Decimal? @db.Decimal(10, 2)
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([isActive])
 }
 
 model SystemSettings {
@@ -771,6 +894,19 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum ShopPaymentMethod {
+  STRIPE_CARD
+  STRIPE_KLARNA
+  MBWAY
+  BANK_TRANSFER
+}
+
+enum ManualPaymentReviewStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
 enum NotificationType {
   NEW_CUSTOMER
   NEW_PROFESSIONAL_CERTIFICATION
@@ -781,6 +917,8 @@ enum NotificationType {
   SYSTEM
   SALON_REJECTED
   SALON_APPROVED
+  STOCK_BACK_IN_STOCK
+  STOCK_LOW
 }
 
 enum ReviewStatus {

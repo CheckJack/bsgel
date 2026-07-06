@@ -257,7 +257,7 @@ export default function CustomerMessagesPage() {
         </div>
 
         {/* Message Detail & Response */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-[600px]">
+        <div className="lg:col-span-2 flex h-[min(600px,calc(100dvh-12rem))] min-h-[320px] flex-col overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
           {showNewMessageForm ? (
             <div className="flex flex-col h-full min-h-0">
               <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
@@ -450,7 +450,7 @@ export default function CustomerMessagesPage() {
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-center h-[600px] text-gray-500 dark:text-gray-400">
+            <div className="flex h-[min(600px,calc(100dvh-12rem))] min-h-[320px] items-center justify-center text-gray-500 dark:text-gray-400">
               <div className="text-center">
                 <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-50" />
                 <p>{t("clientPanel.messages.selectMessage")}</p>

@@ -2,7 +2,8 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { NotificationType } from "@prisma/client"
+import { ManualPaymentReviewStatus, NotificationType, ShopPaymentMethod } from "@prisma/client"
+import { applyRewardsAfterManualPaymentConfirmed } from "@/lib/manual-order-rewards"
 
 export async function GET(
   req: Request,
@@ -66,7 +67,7 @@ export async function PATCH(
     }
 
     const body = await req.json()
-    const { status, trackingNumber, carrier, estimatedDelivery } = body
+    const { status, trackingNumber, carrier, estimatedDelivery, manualPaymentAction } = body
 
     // Get the order first to check ownership and current status
     const existingOrder = await db.order.findUnique({
@@ -84,6 +85,103 @@ export async function PATCH(
 
     if (!existingOrder) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 })
+    }
+
+    if (session.user.role === "ADMIN" && manualPaymentAction) {
+      const action = String(manualPaymentAction).toLowerCase()
+      if (action !== "confirm" && action !== "cancel") {
+        return NextResponse.json({ error: "Invalid manualPaymentAction" }, { status: 400 })
+      }
+
+      const isManual =
+        existingOrder.shopPaymentMethod === ShopPaymentMethod.MBWAY ||
+        existingOrder.shopPaymentMethod === ShopPaymentMethod.BANK_TRANSFER
+
+      if (!isManual) {
+        return NextResponse.json(
+          { error: "Manual payment actions apply only to MBWay or bank transfer orders" },
+          { status: 400 }
+        )
+      }
+
+      if (action === "confirm") {
+        if (
+          existingOrder.manualPaymentStatus !== ManualPaymentReviewStatus.PENDING ||
+          existingOrder.status !== "PENDING"
+        ) {
+          return NextResponse.json(
+            { error: "Order is not awaiting payment confirmation" },
+            { status: 400 }
+          )
+        }
+
+        const updated = await db.order.update({
+          where: { id },
+          data: {
+            manualPaymentStatus: ManualPaymentReviewStatus.CONFIRMED,
+            status: "PROCESSING",
+          },
+          include: {
+            items: { include: { product: true } },
+          },
+        })
+
+        await applyRewardsAfterManualPaymentConfirmed({
+          userId: existingOrder.userId,
+          orderId: id,
+          total: Number(existingOrder.total),
+          appliedCouponCode: existingOrder.appliedCouponCode,
+        })
+
+        try {
+          await db.notification.create({
+            data: {
+              type: "ORDER_STATUS",
+              title: "Pagamento confirmado",
+              message: `O seu pedido #${id.slice(0, 8)} foi confirmado e está a ser processado.`,
+              userId: existingOrder.userId,
+              metadata: { orderId: id, orderStatus: "PROCESSING" },
+            },
+          })
+        } catch (e) {
+          console.error("Notify manual payment confirm:", e)
+        }
+
+        return NextResponse.json(updated)
+      }
+
+      if (action === "cancel") {
+        if (existingOrder.manualPaymentStatus === ManualPaymentReviewStatus.CANCELLED) {
+          return NextResponse.json({ error: "Order is already cancelled" }, { status: 400 })
+        }
+
+        const updated = await db.order.update({
+          where: { id },
+          data: {
+            manualPaymentStatus: ManualPaymentReviewStatus.CANCELLED,
+            status: "CANCELLED",
+          },
+          include: {
+            items: { include: { product: true } },
+          },
+        })
+
+        try {
+          await db.notification.create({
+            data: {
+              type: "ORDER_STATUS",
+              title: "Pedido cancelado",
+              message: `O seu pedido #${id.slice(0, 8)} foi cancelado.`,
+              userId: existingOrder.userId,
+              metadata: { orderId: id, orderStatus: "CANCELLED" },
+            },
+          })
+        } catch (e) {
+          console.error("Notify manual payment cancel:", e)
+        }
+
+        return NextResponse.json(updated)
+      }
     }
 
     // Users can only cancel their own orders (if status is PENDING or PROCESSING)

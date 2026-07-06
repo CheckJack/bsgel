@@ -26,6 +26,8 @@ interface Order {
   total: string;
   status: string;
   shippingAddress: string | null;
+  billingNif: string | null;
+  billingAddress: string | null;
   taxRate: number | null;
   taxAmount: string | null;
   taxRegion: string | null;
@@ -251,6 +253,19 @@ export default function OrderDetailPage() {
                 <div className="text-gray-900 dark:text-gray-100">
                   {formatAddress(order.shippingAddress)}
                 </div>
+              </div>
+            )}
+            {(order.billingNif || order.billingAddress) && (
+              <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Billing / invoice</p>
+                {order.billingNif && (
+                  <p className="text-gray-900 dark:text-gray-100">
+                    <span className="text-gray-500">NIF:</span> {order.billingNif}
+                  </p>
+                )}
+                {order.billingAddress && (
+                  <p className="text-gray-900 dark:text-gray-100 whitespace-pre-wrap mt-1">{order.billingAddress}</p>
+                )}
               </div>
             )}
           </CardContent>

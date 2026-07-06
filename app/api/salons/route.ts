@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { normalizeOptionalHttpUrl } from "@/lib/salon-social-url";
 
 export async function GET(request: Request) {
   try {
@@ -47,6 +48,9 @@ export async function GET(request: Request) {
         phone: true,
         email: true,
         website: true,
+        instagram: true,
+        facebook: true,
+        pinterest: true,
         latitude: true,
         longitude: true,
         image: true,
@@ -97,8 +101,16 @@ export async function GET(request: Request) {
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
+    const isAdmin = session?.user?.role === "ADMIN";
     const body = await req.json();
-    const { name, address, city, postalCode, phone, email, website, latitude, longitude, image, logo, images, description, workingHours, isBioDiamond } = body;
+    const { name, address, city, postalCode, phone, email, website, instagram, facebook, pinterest, latitude, longitude, image, logo, images, description, workingHours, isBioDiamond } = body;
+
+    if (!isAdmin) {
+      return NextResponse.json(
+        { error: "Only admins can create salon listings." },
+        { status: 403 }
+      );
+    }
 
     // Validate required fields
     if (!name || !address || !city) {
@@ -108,42 +120,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // If user is logged in (from client panel), associate salon with user
-    // If admin is creating (no session or admin), userId will be null
-    const userId = session?.user?.id && session.user.role !== "ADMIN" ? session.user.id : null;
-    const isAdmin = session?.user?.role === "ADMIN";
-
-    // Check if user is a professional (has certification) - only for non-admin users
-    // Only professionals can create salon listings
-    if (userId && !isAdmin && session) {
-      const hasCertification = !!session.user.certification;
-      if (!hasCertification) {
-        return NextResponse.json(
-          { error: "Only professionals can create salon listings. Please contact support to get certified." },
-          { status: 403 }
-        );
-      }
-    }
-
-    // Check if user already has a salon (only for non-admin users)
-    if (userId) {
-      const existingSalon = await db.salon.findUnique({
-        where: { userId },
-      });
-      if (existingSalon) {
-        return NextResponse.json(
-          { error: "You already have a salon listing. Please edit your existing salon instead." },
-          { status: 400 }
-        );
-      }
-    }
-
-    // For non-admin users, if an email is provided in the form, use it.
-    // Otherwise, default to their account email.
-    const salonEmail = email ? email : (userId && session?.user?.email ? session.user.email : null);
-
-    // Set status: PENDING_REVIEW for client-created salons, APPROVED for admin-created salons
-    const salonStatus = userId && !isAdmin ? "PENDING_REVIEW" : "APPROVED";
+    const userId = null;
+    const salonEmail = email || null;
+    const salonStatus = "APPROVED";
 
     // Helper function to convert empty strings to null and validate string types
     const toNullIfEmpty = (value: any) => {
@@ -191,7 +170,10 @@ export async function POST(req: Request) {
       postalCode: toNullIfEmpty(postalCode),
       phone: toNullIfEmpty(phone),
       email: toNullIfEmpty(salonEmail),
-      website: toNullIfEmpty(website),
+      website: normalizeOptionalHttpUrl(website),
+      instagram: normalizeOptionalHttpUrl(instagram),
+      facebook: normalizeOptionalHttpUrl(facebook),
+      pinterest: normalizeOptionalHttpUrl(pinterest),
       latitude: latitude !== null && latitude !== undefined && latitude !== "" ? parseFloat(String(latitude)) : null,
       longitude: longitude !== null && longitude !== undefined && longitude !== "" ? parseFloat(String(longitude)) : null,
       image: sanitizeBase64(image),
@@ -199,8 +181,8 @@ export async function POST(req: Request) {
       images: Array.isArray(images) ? images.filter((img: any) => typeof img === "string" && img.trim() !== "").map((img: string) => sanitizeBase64(img)).filter((img: any) => img !== null) : [],
       description: toNullIfEmpty(description),
       workingHours: workingHours || null,
-      isBioDiamond: isAdmin ? (isBioDiamond ?? false) : false, // Only admins can set BioDiamond
-      isActive: isAdmin, // Only active by default if created by admin
+      isBioDiamond: isBioDiamond ?? false,
+      isActive: true,
       status: salonStatus,
       userId: userId || null,
     };
@@ -314,33 +296,6 @@ export async function POST(req: Request) {
     const salon = await db.salon.create({
       data: salonData,
     });
-
-    // Create notification for admin users when a new salon is created by a professional
-    try {
-      if (userId && !isAdmin) {
-        // Fetch all admin users to send notifications to
-        const adminUsers = await db.user.findMany({
-          where: { role: "ADMIN" },
-          select: { id: true },
-        });
-
-        if (adminUsers.length > 0) {
-          await db.notification.createMany({
-            data: adminUsers.map(admin => ({
-              userId: admin.id,
-              type: "SYSTEM",
-              title: "New Salon Pending Review",
-              message: `New salon "${salon.name}" created by ${session?.user?.name || session?.user?.email} is pending review`,
-              linkUrl: `/admin/salons?filter=pending&salonId=${salon.id}`,
-              read: false,
-            }))
-          });
-          console.log("✅ Admin notifications created for new salon:", salon.id);
-        }
-      }
-    } catch (notificationError) {
-      console.error("❌ Failed to create admin notifications for new salon:", notificationError);
-    }
 
     return NextResponse.json(salon, { status: 201 });
   } catch (error: any) {

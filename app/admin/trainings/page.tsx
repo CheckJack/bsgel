@@ -8,8 +8,8 @@ import { toast } from "@/components/ui/toast";
 import {
   Search,
   Plus,
-  ChevronLeft,
-  ChevronRight,
+  ArrowUp,
+  ArrowDown,
   Edit,
   Trash2,
   Calendar,
@@ -24,6 +24,7 @@ interface TrainingProgram {
   duration: number;
   price: number;
   image: string | null;
+  displayOrder: number;
   isActive: boolean;
   upcomingSessions: number;
   totalBookings: number;
@@ -151,6 +152,39 @@ export default function AdminTrainingsPage() {
     }
   };
 
+  const handleMove = async (id: string, direction: "up" | "down") => {
+    try {
+      const currentIdx = programs.findIndex((p) => p.id === id);
+      if (currentIdx === -1) return;
+      const targetIdx = direction === "up" ? currentIdx - 1 : currentIdx + 1;
+      if (targetIdx < 0 || targetIdx >= programs.length) return;
+
+      const updated = [...programs];
+      const temp = updated[currentIdx];
+      updated[currentIdx] = updated[targetIdx];
+      updated[targetIdx] = temp;
+      const reindexed = updated.map((p, index) => ({ ...p, displayOrder: index + 1 }));
+      setPrograms(reindexed);
+
+      const orderedIds = reindexed.map((p) => p.id);
+      const res = await fetch("/api/trainings/reorder", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderedIds }),
+      });
+      if (!res.ok) {
+        toast("Failed to update order", "error");
+        fetchPrograms();
+        return;
+      }
+      toast("Program order updated", "success");
+    } catch (error) {
+      console.error("Failed to reorder programs:", error);
+      toast("Failed to update order", "error");
+      fetchPrograms();
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -255,6 +289,9 @@ export default function AdminTrainingsPage() {
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Order
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       Program
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
@@ -280,6 +317,30 @@ export default function AdminTrainingsPage() {
                       key={program.id}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-600 w-6 text-center">
+                            {program.displayOrder}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleMove(program.id, "up")}
+                            disabled={isLoading || programs[0]?.id === program.id}
+                          >
+                            <ArrowUp className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleMove(program.id, "down")}
+                            disabled={isLoading || programs[programs.length - 1]?.id === program.id}
+                          >
+                            <ArrowDown className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </td>
+
                       {/* Program Column */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3 min-w-0">

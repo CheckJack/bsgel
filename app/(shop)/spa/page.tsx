@@ -2,10 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import mobileSpaHero from "../../../egw97.png";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
-import { Select } from "@/components/ui/select";
+import { ShopProductsHeader } from "@/components/shop/shop-products-header";
+import { ShopProductsTitle } from "@/components/shop/shop-products-title";
+import { ShopEmptyProducts } from "@/components/shop/shop-empty-products";
 import { useLanguage } from "@/contexts/language-context";
+import { useShopFilters } from "@/hooks/use-shop-filters";
+import { fetchShopCategories } from "@/lib/shop-categories";
 
 interface Product {
   id: string;
@@ -28,38 +33,39 @@ export default function SpaPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [categoryId, setCategoryId] = useState<string | undefined>();
-  const [sortBy, setSortBy] = useState("newest");
+  const filters = useShopFilters();
 
   useEffect(() => {
     fetchSpaProducts();
-  }, [sortBy]);
+  }, [filters.sortBy, filters.minPrice, filters.maxPrice, filters.showFeatured]);
 
   const fetchSpaProducts = async () => {
     setIsLoading(true);
     try {
-      // First, try to find a "SPA" category
-      const categoriesRes = await fetch("/api/categories");
-      if (categoriesRes.ok) {
-        const categoriesData = await categoriesRes.json();
-        const spaCategory = categoriesData.categories?.find(
-          (cat: { name: string }) => cat.name.toLowerCase() === "spa"
-        );
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "12",
+      });
+      filters.appendToSearchParams(params);
+      const categoriesData = { categories: await fetchShopCategories() };
+      const spaCategory = categoriesData.categories?.find(
+        (cat: { name: string }) => cat.name.toLowerCase() === "spa"
+      );
 
-        if (spaCategory) {
-          setCategoryId(spaCategory.id);
-          // If category exists, fetch all products in that category
-          const res = await fetch(`/api/products?categoryId=${spaCategory.id}&sortBy=${encodeURIComponent(sortBy)}`);
-          if (res.ok) {
-            const data = await res.json();
-            setProducts(Array.isArray(data) ? data : data.products || []);
-          }
+      if (spaCategory) {
+        setCategoryId(spaCategory.id);
+        params.set("categoryId", spaCategory.id);
+      } else {
+        params.set("search", "spa");
+      }
+
+      const res = await fetch(`/api/products?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.pagination) {
+          setProducts(data.products || []);
         } else {
-          // Otherwise, search for products with "spa" in the name
-          const res = await fetch(`/api/products?search=spa&sortBy=${encodeURIComponent(sortBy)}`);
-          if (res.ok) {
-            const data = await res.json();
-            setProducts(Array.isArray(data) ? data : data.products || []);
-          }
+          setProducts(Array.isArray(data) ? data : data.products || []);
         }
       }
     } catch (error) {
@@ -73,46 +79,52 @@ export default function SpaPage() {
   return (
     <>
       <section className="relative h-[36vh] w-full overflow-hidden md:h-[44vh]">
-        <Image src="/spa-hero-custom.png" alt="SPA" fill className="object-cover" priority unoptimized />
-        <div className="relative z-10 flex h-full items-center">
-          <div className="container mx-auto flex h-full max-w-7xl items-center px-4">
-            <h1 className="text-4xl font-medium text-black sm:text-5xl md:text-6xl">SPA</h1>
-          </div>
+        <div className="pointer-events-none absolute right-4 top-4 z-10 sm:right-6 sm:top-6 md:right-8 md:top-8">
+          <Image
+            src="/spa-hero-badge.png"
+            alt={t("productPages.spa.heroBadgeAlt")}
+            width={739}
+            height={739}
+            className="h-auto w-20 sm:w-24 md:w-28 lg:w-36 xl:w-40"
+            unoptimized
+          />
         </div>
+        <Image src={mobileSpaHero} alt="SPA" fill className="object-cover md:hidden" priority unoptimized />
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          aria-label="SPA"
+          className="absolute inset-0 hidden h-full w-full object-cover md:block"
+        >
+          <source src="/spa-hero.mp4" type="video/mp4" />
+        </video>
       </section>
 
       <section id="products" className="relative w-full min-h-screen bg-brand-white py-16">
         <div className="container mx-auto px-4 max-w-7xl">
-          <div className="mb-12 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-            <div>
-              <h2 className="text-2xl font-medium text-brand-black sm:text-3xl md:text-4xl">
-                SPA BIO Sculpture
-              </h2>
-              <div className="mt-3 h-1 w-16 bg-brand-champagne"></div>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-brand-black">{t("shop.sortBy")}</label>
-              <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="w-full sm:w-48">
-                <option value="newest">{t("shop.newestFirst")}</option>
-                <option value="oldest">{t("shop.oldestFirst")}</option>
-                <option value="price-asc">{t("shop.priceLowToHigh")}</option>
-                <option value="price-desc">{t("shop.priceHighToLow")}</option>
-                <option value="name-asc">{t("shop.nameAtoZ")}</option>
-                <option value="name-desc">{t("shop.nameZtoA")}</option>
-              </Select>
-            </div>
-          </div>
+          <ShopProductsHeader
+            filters={filters}
+            title={
+              <>
+                <ShopProductsTitle>SPA BIO Sculpture</ShopProductsTitle>
+              </>
+            }
+          />
           
           {isLoading ? (
             <div className="text-center py-12">
               <p className="text-gray-600">{t("productPages.loadingProducts")}</p>
             </div>
           ) : products.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600">{t("productPages.noSpaProducts")}</p>
-            </div>
+            <ShopEmptyProducts
+              hasActiveFilters={filters.hasActiveFilters}
+              onClearFilters={() => filters.clearFilters()}
+            />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 justify-items-start gap-x-5 gap-y-12 md:grid-cols-2 md:gap-x-8 md:gap-y-16 lg:grid-cols-3 lg:gap-x-12">
               {products.map((product) => (
                 <ProductCard
                   key={product.id}

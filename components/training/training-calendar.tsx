@@ -29,6 +29,14 @@ interface TrainingCalendarProps {
   selectedDate: string | null;
 }
 
+const getLocalDateKey = (value: string | Date) => {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export function TrainingCalendar({ sessions, onDateClick, selectedDate }: TrainingCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -41,7 +49,7 @@ export function TrainingCalendar({ sessions, onDateClick, selectedDate }: Traini
   // Group sessions by date (YYYY-MM-DD)
   const sessionsByDate = new Map<string, TrainingSession[]>();
   sessions.forEach((session) => {
-    const dateKey = new Date(session.startDate).toISOString().split("T")[0];
+    const dateKey = getLocalDateKey(session.startDate);
     if (!sessionsByDate.has(dateKey)) {
       sessionsByDate.set(dateKey, []);
     }
@@ -63,7 +71,7 @@ export function TrainingCalendar({ sessions, onDateClick, selectedDate }: Traini
 
   // Check if date has sessions
   const getSessionsForDate = (date: Date): TrainingSession[] => {
-    const dateKey = date.toISOString().split("T")[0];
+    const dateKey = getLocalDateKey(date);
     return sessionsByDate.get(dateKey) || [];
   };
 
@@ -89,7 +97,7 @@ export function TrainingCalendar({ sessions, onDateClick, selectedDate }: Traini
   // Check if date is selected
   const isSelected = (date: Date): boolean => {
     if (!selectedDate) return false;
-    const dateKey = date.toISOString().split("T")[0];
+    const dateKey = getLocalDateKey(date);
     return dateKey === selectedDate;
   };
 

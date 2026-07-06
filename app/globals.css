@@ -2,7 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: "Aktiv Grotesk";
+  src: url("/fonts/AktivGrotesk-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Aktiv Grotesk";
+  src: url("/fonts/AktivGrotesk-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Feature Display Italic";
+  src: url("/fonts/FeatureDisplay-RegularItalic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
 :root {
+  --site-header-height: 113px;
+  --font-header: "Aktiv Grotesk", var(--font-jost), Tahoma, Calibri, Arial, sans-serif;
+  --font-feature-display-italic: "Feature Display Italic", Georgia, "Times New Roman", serif;
+
   /* BIO Sculpture Brand Colors */
   --brand-white: #FFFFFF;
   --brand-black: #000000;
@@ -18,13 +46,210 @@
   /* Default Theme */
   --background: var(--brand-white);
   --foreground: var(--brand-black);
+  --ios-viewport-height: 100dvh;
+}
+
+/* iOS Safari: full-bleed backdrop (real element in layout.tsx; ::before is a fallback) */
+html.ios-edge-to-edge {
+  background-color: var(--background);
+  color-scheme: light;
+}
+
+.ios-edge-bleed {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .ios-edge-bleed {
+    display: block;
+    position: fixed;
+    z-index: -1;
+    pointer-events: none;
+    background-color: #ffffff;
+    top: calc(-1 * env(safe-area-inset-top, 0px));
+    right: calc(-1 * env(safe-area-inset-right, 0px));
+    bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+    left: calc(-1 * env(safe-area-inset-left, 0px));
+    min-height: 100lvh;
+    min-width: 100%;
+  }
+}
+
+/* Salon map: same in-flow 100lvh fill as homepage hero on mobile */
+html:has([data-salons-map]) main.min-h-screen {
+  min-height: 0 !important;
+  overflow: hidden;
+  background-color: transparent !important;
+}
+
+[data-salons-map] {
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+[data-salons-map] .salon-map-shell,
+[data-salons-map] .salon-map-shell > .relative,
+[data-salons-map] .leaflet-container {
+  height: 100% !important;
+  min-height: 100% !important;
+}
+
+@media (max-width: 1023px) {
+  html:has([data-salons-map]) .app-scroll-root {
+    overflow: hidden;
+  }
+
+  html:has([data-salons-map]) [data-salons-map] .salon-map-shell .leaflet-top.leaflet-left {
+    top: auto !important;
+    bottom: calc(13rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  html:has([data-salons-map]) [data-salons-map] .salon-map-shell [data-salon-map-fullscreen] {
+    bottom: calc(13rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  html:has([data-salons-map]) [data-salons-map] .salon-map-shell:fullscreen .leaflet-top.leaflet-left {
+    top: calc(0.75rem + env(safe-area-inset-top, 0px)) !important;
+    bottom: auto !important;
+    left: 0.75rem !important;
+  }
+
+  html:has([data-salons-map]) [data-salons-map] .salon-map-shell:fullscreen [data-salon-map-fullscreen] {
+    top: calc(0.75rem + env(safe-area-inset-top, 0px)) !important;
+    bottom: auto !important;
+    right: 0.75rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  html:has([data-salons-map]) main.min-h-screen {
+    height: 0;
+  }
+}
+
+/* Auth pages: fill viewport below header without extra white space below */
+main.min-h-screen:has([data-auth-page]) {
+  min-height: 0;
+  height: calc(100dvh - var(--site-header-height, 113px));
+  overflow: hidden;
+}
+
+@media (max-width: 1023px) {
+  html:has([data-auth-page]),
+  html:has([data-auth-mobile-pane]),
+  html:has([data-auth-page]) body.ios-edge-to-edge-body {
+    background-color: #2a2520;
+  }
+
+  html:has([data-auth-page]) .ios-edge-bleed {
+    background-color: #2a2520;
+  }
+
+  .app-scroll-root:has([data-auth-page]) {
+    background-color: transparent;
+    overflow-x: hidden;
+    overflow-y: hidden;
+  }
+
+  main.min-h-screen:has([data-auth-page]) {
+    height: 0;
+    min-height: 0;
+    max-height: none;
+    overflow: hidden;
+    background-color: transparent;
+  }
+
+  [data-auth-page] {
+    position: relative;
+    z-index: 10;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    background-color: transparent;
+  }
+
+  .auth-mobile-form-pane {
+    position: fixed;
+    z-index: 12;
+    top: var(--site-header-height, 113px);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  }
+
+  .auth-mobile-form-pane--login {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    overscroll-behavior: none;
+    padding-top: 1rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .auth-mobile-form-pane--login .auth-mobile-form-pane__inner {
+    width: 100%;
+    max-width: 28rem;
+    margin: 0 auto;
+  }
+
+  .auth-mobile-form-pane--register {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    padding-top: 1.5rem;
+    padding-bottom: max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 1rem));
+  }
+
+  .auth-mobile-form-pane--register .auth-mobile-form-pane__inner {
+    display: flex;
+    width: 100%;
+    max-width: 28rem;
+    margin: 0 auto;
+    justify-content: center;
+  }
+
+  .auth-mobile-bg-bleed {
+    position: fixed;
+    z-index: 1;
+    top: var(--site-header-height, 113px);
+    right: calc(-1 * env(safe-area-inset-right, 0px));
+    bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+    left: calc(-1 * env(safe-area-inset-left, 0px));
+    width: auto;
+    height: var(
+      --auth-mobile-bg-height,
+      calc(100lvh - var(--site-header-height, 113px) + env(safe-area-inset-bottom, 0px))
+    );
+    min-height: calc(
+      100lvh - var(--site-header-height, 113px) + env(safe-area-inset-bottom, 0px)
+    );
+  }
+
+  html:has([data-auth-page]) .mobile-app-shell,
+  html:has([data-auth-mobile-pane]) .mobile-app-shell {
+    z-index: 10;
+    background-color: transparent;
+  }
 }
 
 html {
   overflow-x: hidden;
   max-width: 100vw;
+  background-color: #ffffff;
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
 }
 
 body {
@@ -36,6 +261,133 @@ body {
   max-width: 100vw;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+}
+
+body.ios-edge-to-edge-body {
+  background-color: transparent;
+}
+
+/* Block scroll during homepage entry loader only (never lock both axes site-wide) */
+html.home-entry-loader-scroll-lock {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+  height: 100%;
+  background-color: #857d71;
+}
+
+html.home-entry-loader-scroll-lock body {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+  background-color: #857d71;
+}
+
+html.home-entry-loader-scroll-lock .app-scroll-root {
+  overflow: hidden !important;
+}
+
+html.home-entry-loader-active,
+html.home-entry-loader-active body {
+  background-color: #857d71;
+}
+
+/* Full-viewport homepage entry loader (iOS Safari / dynamic toolbars) */
+.home-entry-loader-screen {
+  position: fixed;
+  z-index: 10000;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  max-width: 100vw;
+  min-height: 100dvh;
+  min-height: 100svh;
+  min-height: 100lvh;
+  min-height: -webkit-fill-available;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  pointer-events: auto;
+  background-color: transparent;
+}
+
+.home-entry-loader-screen .loader-bg {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: 100svh;
+  min-height: 100lvh;
+  min-height: -webkit-fill-available;
+}
+
+@media (max-width: 1023px) {
+  .home-entry-loader-screen {
+    top: calc(-1 * env(safe-area-inset-top, 0px));
+    right: calc(-1 * env(safe-area-inset-right, 0px));
+    bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+    left: calc(-1 * env(safe-area-inset-left, 0px));
+    width: auto;
+    min-height: 100lvh;
+    min-height: var(--ios-viewport-height, 100lvh);
+  }
+
+  .home-entry-loader-screen .loader-bg {
+    min-height: 100%;
+    min-height: 100lvh;
+    min-height: var(--ios-viewport-height, 100lvh);
+  }
+
+  html.home-entry-loader-scroll-lock,
+  html.home-entry-loader-scroll-lock body,
+  html.home-entry-loader-active,
+  html.home-entry-loader-active body {
+    background-color: #857d71;
+    min-height: 100lvh;
+    min-height: var(--ios-viewport-height, 100lvh);
+  }
+}
+
+/* Promo popups: full-bleed backdrop on iOS without affecting centered dialog */
+@media (max-width: 1023px) {
+  .promo-popup-backdrop {
+    top: calc(-1 * env(safe-area-inset-top, 0px));
+    right: calc(-1 * env(safe-area-inset-right, 0px));
+    bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+    left: calc(-1 * env(safe-area-inset-left, 0px));
+    width: auto;
+    min-height: calc(
+      100lvh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px)
+    );
+    min-height: calc(
+      var(--ios-viewport-height, 100lvh) + env(safe-area-inset-top, 0px) +
+        env(safe-area-inset-bottom, 0px)
+    );
+  }
+}
+
+/* Full-screen overlays on iOS: bleed into safe areas (no white gaps) */
+@media (max-width: 1023px) {
+  .ios-overlay-bleed {
+    top: calc(-1 * env(safe-area-inset-top, 0px));
+    right: calc(-1 * env(safe-area-inset-right, 0px));
+    left: calc(-1 * env(safe-area-inset-left, 0px));
+    bottom: auto;
+    width: auto;
+    height: calc(
+      var(--ios-viewport-height, 100lvh) + env(safe-area-inset-top, 0px) +
+        env(safe-area-inset-bottom, 0px)
+    );
+    min-height: calc(
+      100lvh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px)
+    );
+  }
 }
 
 /* Responsive typography scaling */
@@ -143,16 +495,133 @@ select {
 }
 
 /* Ensure minimum touch target size (44x44px recommended by Apple/Google) */
-button, a, input[type="button"], input[type="submit"], [role="button"] {
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+[role="button"] {
   min-height: 44px;
   min-width: 44px;
 }
 
 @media (pointer: fine) {
-  /* Only apply on devices with precise pointing (mouse) */
-  button, a, input[type="button"], input[type="submit"], [role="button"] {
+  button,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  [role="button"] {
     min-height: auto;
     min-width: auto;
+  }
+}
+
+/* Decorative carousel dots — keep small on touch devices */
+button.carousel-dot {
+  min-height: 0 !important;
+  min-width: 0 !important;
+}
+
+/* Header icon buttons + links: identical size (links skip global button min-height) */
+button.header-nav-action,
+a.header-nav-action {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  padding: 0 !important;
+}
+
+@media (pointer: coarse) {
+  button.header-nav-action,
+  a.header-nav-action {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    max-width: 44px !important;
+    max-height: 44px !important;
+  }
+}
+
+@media (pointer: fine) {
+  button.header-nav-action,
+  a.header-nav-action {
+    width: 2.25rem !important;
+    height: 2.25rem !important;
+    min-width: 2.25rem !important;
+    min-height: 2.25rem !important;
+    max-width: 2.25rem !important;
+    max-height: 2.25rem !important;
+  }
+}
+
+main {
+  overflow-x: clip;
+}
+
+/* Product detail: sticky purchase panel while gallery scrolls */
+main:has([data-product-header]) {
+  overflow: visible;
+}
+
+header[data-product-header] {
+  overflow: visible;
+}
+
+/* Mobile: fixed app shell + inner scroll (prevents iOS pull-to-refresh) */
+@media (max-width: 1023px) {
+  [data-site-header] {
+    top: var(--visual-viewport-offset-top, 0px);
+  }
+
+  html {
+    overflow: hidden;
+    overscroll-behavior: none;
+    min-height: 100lvh;
+    background-color: #ffffff;
+  }
+
+  body.ios-edge-to-edge-body {
+    margin: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background-color: transparent;
+  }
+
+  .mobile-app-shell {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 100lvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .app-scroll-root {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+    background-color: #ffffff;
+  }
+
+  .app-scroll-root main.min-h-screen {
+    min-height: 0 !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .mobile-app-shell {
+    display: contents;
+  }
+
+  .app-scroll-root {
+    display: contents;
   }
 }
 
@@ -184,10 +653,12 @@ button, a, input[type="button"], input[type="submit"], [role="button"] {
   }
 }
 
-/* Ensure all inputs and form elements are touch-friendly on mobile */
-@media (max-width: 768px) {
-  input, textarea, select, button {
-    font-size: 16px; /* Prevents zoom on iOS */
+/* iOS: inputs below 16px trigger auto-zoom on focus — keep mobile fields at 16px+ */
+@media (max-width: 1023px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]),
+  textarea,
+  select {
+    font-size: 16px !important;
   }
 }
 
@@ -208,6 +679,119 @@ button, a, input[type="button"], input[type="submit"], [role="button"] {
 
 .leaflet-control {
   z-index: 10 !important;
+}
+
+/* Salon map: zoom control bottom-left, aligned with fullscreen button */
+.salon-map-shell .leaflet-top.leaflet-left {
+  top: auto !important;
+  bottom: 12px !important;
+  left: 12px !important;
+}
+
+.salon-map-shell .leaflet-control-zoom {
+  border: 1px solid #d1d5db !important;
+  border-radius: 0.375rem !important;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+  overflow: hidden;
+}
+
+.salon-map-shell .leaflet-control-zoom a {
+  width: 40px !important;
+  height: 40px !important;
+  line-height: 40px !important;
+  font-size: 18px !important;
+  color: #000 !important;
+  background: rgb(255 255 255 / 0.95) !important;
+  border-bottom: 1px solid #d1d5db !important;
+}
+
+.salon-map-shell .leaflet-control-zoom a:last-child {
+  border-bottom: none !important;
+}
+
+.salon-map-shell .leaflet-control-zoom a.leaflet-disabled {
+  background: rgb(255 255 255 / 0.75) !important;
+  color: #9ca3af !important;
+}
+
+.salon-map-shell .leaflet-bar a:hover,
+.salon-map-shell .leaflet-bar a:focus {
+  background: rgb(255 255 255 / 0.95) !important;
+  color: #000 !important;
+}
+
+@media (min-width: 1024px) {
+  .salon-map-shell .leaflet-top.leaflet-left {
+    bottom: auto !important;
+    top: 12px !important;
+    left: 12px !important;
+  }
+}
+
+/* Remove default Leaflet tooltip shell for salon hover card */
+.leaflet-tooltip.salon-hover-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.leaflet-tooltip.salon-hover-tooltip::before {
+  display: none !important;
+}
+
+/* Remove default Leaflet popup shell for salon click card */
+.leaflet-popup.salon-hover-popup .leaflet-popup-content-wrapper {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+.leaflet-popup.salon-hover-popup .leaflet-popup-content {
+  margin: 0 !important;
+}
+
+.leaflet-popup.salon-hover-popup .leaflet-popup-tip-container {
+  display: none !important;
+}
+
+.leaflet-popup.salon-hover-popup .leaflet-popup-close-button {
+  top: 8px !important;
+  right: 8px !important;
+  width: 24px !important;
+  height: 24px !important;
+  font-size: 18px !important;
+  line-height: 22px !important;
+  color: #fff !important;
+  background: rgba(0, 0, 0, 0.45) !important;
+  border-radius: 9999px !important;
+  text-align: center !important;
+  z-index: 2 !important;
+}
+
+.leaflet-popup.salon-hover-popup .leaflet-popup-close-button:hover {
+  background: rgba(0, 0, 0, 0.65) !important;
+  color: #fff !important;
+}
+
+.salon-map-shell:fullscreen {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  border-radius: 0;
+  background: #fff;
+  z-index: 10060;
+}
+
+.salon-map-shell:fullscreen .leaflet-container {
+  height: 100% !important;
+  min-height: 100% !important;
+}
+
+.salon-map-shell:fullscreen > .relative {
+  height: 100%;
 }
 
 /* TipTap Editor Styles */
@@ -928,6 +1512,58 @@ div[class*="slider"] img {
   }
 }
 
+@keyframes colour-swatch-sparkle {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.75) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(18deg);
+  }
+}
+
+@keyframes colour-swatch-shimmer {
+  0% {
+    transform: translateX(-120%) skewX(-18deg);
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: translateX(120%) skewX(-18deg);
+    opacity: 0;
+  }
+}
+
+.colour-swatch-sparkle {
+  animation: colour-swatch-sparkle 2.2s ease-in-out infinite;
+}
+
+.colour-swatch-sparkle-delay-1 {
+  animation-delay: 0.45s;
+}
+
+.colour-swatch-sparkle-delay-2 {
+  animation-delay: 0.9s;
+}
+
+.colour-swatch-sparkle-delay-3 {
+  animation-delay: 1.35s;
+}
+
+.colour-swatch-shimmer {
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 65%
+  );
+  animation: colour-swatch-shimmer 2.8s ease-in-out infinite;
+}
+
   @keyframes noise-animation {
   0% {
     transform: translate(0, 0);
@@ -963,4 +1599,45 @@ div[class*="slider"] img {
     transform: translate(1%, 0);
     }
   }
+}
+
+.shop-price-range-slider input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+}
+
+.shop-price-range-slider input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  background: transparent;
+}
+
+.shop-price-range-slider input[type="range"]::-moz-range-track {
+  height: 6px;
+  background: transparent;
+}
+
+.shop-price-range-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  pointer-events: auto;
+  height: 16px;
+  width: 16px;
+  margin-top: -5px;
+  border-radius: 9999px;
+  border: 2px solid #fff;
+  background: #857d71;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+  cursor: grab;
+}
+
+.shop-price-range-slider input[type="range"]::-moz-range-thumb {
+  pointer-events: auto;
+  height: 16px;
+  width: 16px;
+  border-radius: 9999px;
+  border: 2px solid #fff;
+  background: #857d71;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+  cursor: grab;
 }

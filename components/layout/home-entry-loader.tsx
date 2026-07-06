@@ -1,60 +1,107 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
+import {
+  HOME_ENTRY_LOADER_SCROLL_LOCK_CLASS,
+  setHomeLoaderChromeActive,
+  syncAppViewportHeight,
+} from "@/lib/home-entry-loader";
+
+const EXIT_MS = 500;
 
 interface HomeEntryLoaderProps {
   onComplete: () => void;
+  onExitStart?: () => void;
+  readyToExit?: boolean;
   durationMs?: number;
 }
 
-export function HomeEntryLoader({ onComplete, durationMs = 1800 }: HomeEntryLoaderProps) {
+export function HomeEntryLoader({
+  onComplete,
+  onExitStart,
+  readyToExit = true,
+  durationMs = 1800,
+}: HomeEntryLoaderProps) {
+  const [mounted, setMounted] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
+  const [showLogo, setShowLogo] = useState(false);
+  const [minDurationPassed, setMinDurationPassed] = useState(false);
+
   useEffect(() => {
-    const timer = setTimeout(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    setHomeLoaderChromeActive(true);
+    document.documentElement.classList.add(HOME_ENTRY_LOADER_SCROLL_LOCK_CLASS);
+    syncAppViewportHeight();
+
+    const onViewportChange = () => syncAppViewportHeight();
+    window.addEventListener("resize", onViewportChange);
+    window.visualViewport?.addEventListener("resize", onViewportChange);
+    window.visualViewport?.addEventListener("scroll", onViewportChange);
+
+    return () => {
+      window.removeEventListener("resize", onViewportChange);
+      window.visualViewport?.removeEventListener("resize", onViewportChange);
+      window.visualViewport?.removeEventListener("scroll", onViewportChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    const logoTimer = window.setTimeout(() => setShowLogo(true), 200);
+    const minDurationTimer = window.setTimeout(() => setMinDurationPassed(true), durationMs);
+
+    return () => {
+      window.clearTimeout(logoTimer);
+      window.clearTimeout(minDurationTimer);
+    };
+  }, [durationMs]);
+
+  useEffect(() => {
+    if (!minDurationPassed || !readyToExit || isExiting) return;
+    setIsExiting(true);
+  }, [isExiting, minDurationPassed, readyToExit]);
+
+  useEffect(() => {
+    if (!isExiting) return;
+    onExitStart?.();
+    const completeTimer = window.setTimeout(() => {
       onComplete();
-    }, durationMs);
+    }, EXIT_MS);
+    return () => window.clearTimeout(completeTimer);
+  }, [isExiting, onComplete, onExitStart]);
 
-    return () => clearTimeout(timer);
-  }, [onComplete, durationMs]);
+  if (!mounted) {
+    return null;
+  }
 
-  return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-white">
-      <div className="flex flex-col items-center gap-8">
+  return createPortal(
+    <div className="home-entry-loader-screen overflow-hidden" aria-hidden={isExiting}>
+      <div
+        className={cn(
+          "loader-bg bg-[#857D71] transition-transform duration-500 ease-in-out",
+          isExiting ? "-translate-y-full" : "translate-y-0"
+        )}
+      >
         <Image
-          src="/logo.png"
+          src="/bio-sculpture-white-hires-loader.png"
           alt="Bio Sculpture"
-          width={320}
-          height={34}
-          className="h-8 w-auto sm:h-10 md:h-12"
+          width={540}
+          height={92}
+          className={cn(
+            "h-auto w-[min(68vw,240px)] sm:w-[300px] md:w-[360px]",
+            showLogo && !isExiting && "transition-opacity duration-700 ease-out",
+            showLogo || isExiting ? "opacity-100" : "opacity-0"
+          )}
           priority
           unoptimized
         />
-
-        <div className="flex items-center gap-3">
-          <span className="h-3 w-3 animate-loaderPulse rounded-full bg-[#d2b48c] [animation-delay:0ms]" />
-          <span className="h-3 w-3 animate-loaderPulse rounded-full bg-[#f1d4aa] [animation-delay:200ms]" />
-          <span className="h-3 w-3 animate-loaderPulse rounded-full bg-[#b98a5d] [animation-delay:400ms]" />
-          <span className="h-3 w-3 animate-loaderPulse rounded-full bg-[#9d7651] [animation-delay:600ms]" />
-        </div>
       </div>
-
-      <style jsx>{`
-        @keyframes loaderPulse {
-          0%,
-          100% {
-            transform: scale(0.85);
-            opacity: 0.45;
-          }
-          50% {
-            transform: scale(1.25);
-            opacity: 1;
-          }
-        }
-
-        .animate-loaderPulse {
-          animation: loaderPulse 1.2s ease-in-out infinite;
-        }
-      `}</style>
-    </div>
+    </div>,
+    document.body
   );
 }

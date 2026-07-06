@@ -4,7 +4,13 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { stripe } from "@/lib/stripe"
 import { canUserPurchaseProduct } from "@/lib/certifications"
-import { calculateTax } from "@/lib/tax"
+import { calculateShipping } from "@/lib/shipping"
+import { clampCartItemsToStock, validateCartStock } from "@/lib/stock"
+import {
+  cartWithTrainingInclude,
+  getCartSubtotal,
+  isCartEmpty,
+} from "@/lib/cart-training"
 
 export async function POST(req: Request) {
   try {
@@ -15,7 +21,8 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    const { shippingAddress, postalCode, couponCode } = body
+    const { shippingAddress, postalCode, couponCode, paymentMode, shippingStructured } = body
+    const useKlarna = paymentMode === "klarna"
 
     // Validate input
     if (couponCode !== undefined && couponCode !== null && (typeof couponCode !== "string" || couponCode.trim().length === 0)) {
@@ -30,6 +37,24 @@ export async function POST(req: Request) {
         { error: "Shipping address must be a valid string if provided" },
         { status: 400 }
       )
+    }
+
+    if (useKlarna) {
+      const s = shippingStructured
+      if (
+        !s ||
+        typeof s !== "object" ||
+        typeof s.firstName !== "string" ||
+        typeof s.lastName !== "string" ||
+        typeof s.addressLine1 !== "string" ||
+        typeof s.city !== "string" ||
+        typeof s.postalCode !== "string"
+      ) {
+        return NextResponse.json(
+          { error: "Klarna requires a complete shipping address (shippingStructured)" },
+          { status: 400 }
+        )
+      }
     }
 
     // Get user info to check if email is banned
@@ -58,55 +83,46 @@ export async function POST(req: Request) {
     // Get user's cart
     const cart = await db.cart.findUnique({
       where: { userId: session.user.id },
-      include: {
-        items: {
-          include: {
-            product: {
-              include: {
-                category: true,
-              },
-            },
-          },
-        },
-      },
+      include: cartWithTrainingInclude,
     })
 
-    if (!cart || cart.items.length === 0) {
+    if (!cart || isCartEmpty(cart)) {
       return NextResponse.json(
         { error: "Cart is empty" },
         { status: 400 }
       )
     }
 
-    // Validate all cart items have required certifications
-    for (const item of cart.items) {
-      const accessCheck = await canUserPurchaseProduct(session.user.id, item.productId)
-      if (!accessCheck.canPurchase) {
+    if (cart.items.length > 0) {
+      await clampCartItemsToStock(session.user.id)
+      const stockError = await validateCartStock(session.user.id)
+      if (stockError) {
         return NextResponse.json(
-          { 
-            error: accessCheck.error || `You do not have permission to purchase ${item.product.name}. Please remove it from your cart.`,
-            productId: item.productId,
-            productName: item.product.name,
+          {
+            error: stockError.code,
+            available: stockError.available,
+            productId: stockError.productId,
           },
-          { status: 403 }
+          { status: 409 }
         )
+      }
+
+      for (const item of cart.items) {
+        const accessCheck = await canUserPurchaseProduct(session.user.id, item.productId)
+        if (!accessCheck.canPurchase) {
+          return NextResponse.json(
+            {
+              error: accessCheck.error || `You do not have permission to purchase ${item.product.name}. Please remove it from your cart.`,
+              productId: item.productId,
+              productName: item.product.name,
+            },
+            { status: 403 }
+          )
+        }
       }
     }
 
-    // Calculate subtotal
-    const subtotal = cart.items.reduce(
-      (sum, item) => {
-        if (!item.product || !item.product.price) {
-          console.error(`Product or price missing for cart item ${item.id}`)
-          return sum
-        }
-        return sum + Number(item.product.price) * item.quantity
-      },
-      0
-    )
-
-    // Delivery cost (fixed for now - should be calculated based on shipping address in production)
-    const deliveryCost = 10.0
+    const subtotal = getCartSubtotal(cart)
 
     // Validate and apply coupon if provided
     let discountAmount = 0
@@ -162,7 +178,7 @@ export async function POST(req: Request) {
 
         // Check minimum purchase amount (considering delivery if needed)
         const purchaseAmountForCheck = coupon.minPurchaseIncludesDelivery 
-          ? subtotal + deliveryCost 
+          ? subtotal
           : subtotal
         const meetsMinPurchase = 
           !coupon.minPurchaseAmount || purchaseAmountForCheck >= Number(coupon.minPurchaseAmount)
@@ -187,36 +203,29 @@ export async function POST(req: Request) {
     // Calculate subtotal after discount
     const subtotalAfterDiscount = Math.max(0, subtotal - discountAmount)
 
-    // Calculate tax based on postal code
-    let taxAmount = 0
-    let taxRate = 0
-    let taxRegion = "Mainland Portugal"
-    
-    if (postalCode) {
-      try {
-        const taxResult = await calculateTax(subtotalAfterDiscount, postalCode)
-        taxAmount = taxResult.taxAmount
-        taxRate = taxResult.taxRate
-        taxRegion = taxResult.taxRegion
-      } catch (error) {
-        console.error("Failed to calculate tax:", error)
-        // Default to 23% (Mainland Portugal) if calculation fails
-        taxAmount = subtotalAfterDiscount * 0.23
-        taxRate = 23.0
-      }
-    } else {
-      // Default to 23% (Mainland Portugal) if no postal code
-      taxAmount = subtotalAfterDiscount * 0.23
-      taxRate = 23.0
-    }
+    const shippingResult = postalCode
+      ? await calculateShipping(subtotalAfterDiscount, postalCode)
+      : {
+          shippingAmount: 0,
+          shippingZone: "Unknown zone",
+          isFreeShipping: false,
+          freeShippingThreshold: null,
+        }
 
-    // Calculate final total including tax
-    const total = subtotalAfterDiscount + taxAmount
+    // Prices already include 23% IVA, so no extra tax is added at checkout.
+    const taxAmount = 0
+    const taxRate = 23.0
+    const taxRegion = "IVA 23% included"
 
-    // Create Stripe Payment Intent
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(total * 100), // Convert to cents
+    // Calculate final total (tax already included in product prices) + shipping
+    const total = subtotalAfterDiscount + taxAmount + shippingResult.shippingAmount
+
+    const shopPaymentMethodMeta = useKlarna ? "STRIPE_KLARNA" : "STRIPE_CARD"
+
+    const intentCreateParams: Parameters<typeof stripe.paymentIntents.create>[0] = {
+      amount: Math.round(total * 100),
       currency: "eur",
+      payment_method_types: useKlarna ? ["klarna"] : ["card"],
       metadata: {
         userId: session.user.id,
         cartId: cart.id,
@@ -224,11 +233,35 @@ export async function POST(req: Request) {
         postalCode: postalCode || "",
         couponCode: appliedCouponCode || "",
         discountAmount: discountAmount.toFixed(2),
+        shippingAmount: shippingResult.shippingAmount.toFixed(2),
+        shippingZone: shippingResult.shippingZone,
+        isFreeShipping: shippingResult.isFreeShipping ? "true" : "false",
         taxAmount: taxAmount.toFixed(2),
         taxRate: taxRate.toFixed(2),
         taxRegion: taxRegion,
+        shopPaymentMethod: shopPaymentMethodMeta,
       },
-    })
+    }
+
+    if (useKlarna && shippingStructured && typeof shippingStructured === "object") {
+      const s = shippingStructured as Record<string, string>
+      const countryRaw = (s.country || "Portugal").toLowerCase()
+      const country =
+        countryRaw.includes("portugal") || countryRaw === "pt" ? "PT" : "PT"
+      intentCreateParams.shipping = {
+        name: `${s.firstName} ${s.lastName}`.trim(),
+        address: {
+          line1: s.addressLine1,
+          line2: s.addressLine2 || undefined,
+          city: s.city,
+          state: s.district || undefined,
+          postal_code: (s.postalCode || "").replace(/\s+/g, ""),
+          country,
+        },
+      }
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create(intentCreateParams)
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,

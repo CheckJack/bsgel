@@ -4,6 +4,13 @@ import { Bell, X, Trash2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/language-context";
+import {
+  headerNavActionClass,
+  headerNavBadgeClass,
+  headerNavIconClass,
+} from "@/components/layout/header-nav-actions";
 
 interface Notification {
   id: string;
@@ -17,14 +24,24 @@ interface Notification {
   metadata?: any;
 }
 
-export function NotificationDropdown() {
+export function NotificationDropdown({
+  onOpenChange,
+}: {
+  onOpenChange?: (open: boolean) => void;
+}) {
   const { data: session } = useSession();
   const router = useRouter();
+  const { t } = useLanguage();
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [deletingAll, setDeletingAll] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
+
+  const setOpen = (open: boolean) => {
+    setShowNotifications(open);
+    onOpenChange?.(open);
+  };
 
   // Fetch notifications
   useEffect(() => {
@@ -34,7 +51,7 @@ export function NotificationDropdown() {
       try {
         const response = await fetch("/api/notifications");
         const data = await response.json();
-        
+
         if (response.ok) {
           const mappedNotifications: Notification[] = data.map((notif: any) => ({
             id: notif.id,
@@ -61,16 +78,14 @@ export function NotificationDropdown() {
     };
 
     fetchNotifications();
-    // Poll for new notifications every 30 seconds
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, [session]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
-        setShowNotifications(false);
+        setOpen(false);
       }
     };
 
@@ -103,21 +118,16 @@ export function NotificationDropdown() {
   };
 
   const handleNotificationClick = async (notification: Notification) => {
-    // Mark as read if unread
     if (!notification.read) {
       await markAsRead(notification.id);
     }
 
-    // Close dropdown
-    setShowNotifications(false);
+    setOpen(false);
 
-    // Navigate to link if provided
     if (notification.linkUrl) {
-      // Check if it's an external URL or internal
-      if (notification.linkUrl.startsWith('http://') || notification.linkUrl.startsWith('https://')) {
-        window.open(notification.linkUrl, '_blank', 'noopener,noreferrer');
+      if (notification.linkUrl.startsWith("http://") || notification.linkUrl.startsWith("https://")) {
+        window.open(notification.linkUrl, "_blank", "noopener,noreferrer");
       } else {
-        // Internal route
         router.push(notification.linkUrl);
       }
     }
@@ -140,7 +150,7 @@ export function NotificationDropdown() {
   };
 
   const deleteAllNotifications = async () => {
-    if (!confirm("Are you sure you want to delete all notifications? This action cannot be undone.")) {
+    if (!confirm(t("clientPanel.notifications.deleteAllConfirm"))) {
       return;
     }
 
@@ -163,7 +173,6 @@ export function NotificationDropdown() {
     }
   };
 
-  // Don't show if user is not logged in
   if (!session?.user) {
     return null;
   }
@@ -171,89 +180,76 @@ export function NotificationDropdown() {
   return (
     <div className="relative flex items-center overflow-visible" ref={notificationRef}>
       <button
-        onClick={() => setShowNotifications(!showNotifications)}
-        className="relative text-brand-white hover:text-brand-sweet-bianca transition-colors flex-shrink-0 flex items-center justify-center"
-        aria-label="Notifications"
+        onClick={() => setOpen(!showNotifications)}
+        className={cn(headerNavActionClass, "relative")}
+        aria-label={t("clientPanel.notifications.title")}
       >
-        <Bell className="h-6 w-6" />
+        <Bell className={headerNavIconClass} aria-hidden />
         {unreadCount > 0 && (
-          <span className="absolute -top-2 -right-2 bg-brand-sweet-bianca text-brand-black text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+          <span className={headerNavBadgeClass}>
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
 
-      {/* Notification Dropdown */}
       {showNotifications && (
-        <div className="absolute right-0 top-full mt-3 w-80 bg-black/80 backdrop-blur-md rounded-lg shadow-2xl border border-gray-700/50 z-[100] max-h-96 overflow-hidden flex flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-700/50">
-            <h3 className="text-lg font-semibold text-white">Notifications</h3>
+        <div className="absolute right-0 top-full z-[1200] mt-3 flex max-h-96 w-80 flex-col overflow-hidden border border-black/10 bg-brand-white shadow-xl">
+          <div className="flex items-center justify-between border-b border-black/10 p-4">
+            <h3 className="font-header text-base font-semibold text-brand-black">
+              {t("clientPanel.notifications.title")}
+            </h3>
             <button
-              onClick={() => setShowNotifications(false)}
-              className="w-8 h-8 rounded-full hover:bg-gray-800/50 flex items-center justify-center transition-colors"
-              aria-label="Close notifications"
+              onClick={() => setOpen(false)}
+              className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-black/5"
+              aria-label={t("clientPanel.notifications.close")}
             >
-              <X className="h-4 w-4 text-gray-400" />
+              <X className="h-4 w-4 text-brand-black/60" />
             </button>
           </div>
 
-          {/* Notifications List */}
-          <div className="overflow-y-auto flex-1 notification-scroll pr-2">
+          <div className="notification-scroll flex-1 overflow-y-auto pr-2">
             {notifications.length === 0 ? (
-              <div className="p-8 text-center text-gray-400">
-                <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-white">No notifications</p>
+              <div className="p-8 text-center">
+                <Bell className="mx-auto mb-4 h-12 w-12 text-brand-black/20" />
+                <p className="text-sm font-medium text-brand-black">
+                  {t("clientPanel.notifications.noNotificationsYet")}
+                </p>
+                <p className="mt-1 text-xs text-brand-black/55">
+                  {t("clientPanel.notifications.seeUpdates")}
+                </p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-700/50">
+              <div className="divide-y divide-black/10">
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`p-4 hover:bg-gray-800/50 transition-colors cursor-pointer ${
-                      !notification.read ? "bg-gray-800/30" : ""
-                    }`}
+                    className={cn(
+                      "cursor-pointer p-4 transition-colors hover:bg-black/5",
+                      !notification.read && "bg-brand-champagne/5"
+                    )}
                     onClick={() => handleNotificationClick(notification)}
                   >
                     <div className="flex items-start gap-3">
                       {notification.image ? (
-                        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-gray-700/50">
+                        <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg border border-black/10">
                           <img
                             src={notification.image}
                             alt={notification.title}
-                            className="w-full h-full object-cover"
+                            className="h-full w-full object-cover"
                           />
                         </div>
                       ) : (
                         <div
-                          className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                            !notification.read
-                              ? "bg-brand-sweet-bianca"
-                              : "bg-gray-500"
-                          }`}
+                          className={cn(
+                            "mt-2 h-2 w-2 flex-shrink-0 rounded-full",
+                            !notification.read ? "bg-brand-champagne" : "bg-brand-black/20"
+                          )}
                         />
                       )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-semibold text-white">
-                            {notification.title}
-                          </p>
-                          {!notification.image && (
-                            <div
-                              className={`w-2 h-2 rounded-full mt-1 flex-shrink-0 ${
-                                !notification.read
-                                  ? "bg-brand-sweet-bianca"
-                                  : "bg-gray-500"
-                              }`}
-                            />
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-300 mt-1">
-                          {notification.message}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-2">
-                          {notification.time}
-                        </p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-brand-black">{notification.title}</p>
+                        <p className="mt-1 text-sm text-brand-black/70">{notification.message}</p>
+                        <p className="mt-2 text-xs text-brand-black/45">{notification.time}</p>
                       </div>
                     </div>
                   </div>
@@ -262,23 +258,24 @@ export function NotificationDropdown() {
             )}
           </div>
 
-          {/* Footer */}
           {notifications.length > 0 && (
-            <div className="p-3 border-t border-gray-700/50">
+            <div className="border-t border-black/10 p-3">
               <div className="flex gap-2">
                 <button
                   onClick={markAllAsRead}
-                  className="flex-1 text-sm text-center text-brand-sweet-bianca hover:text-brand-sweet-bianca/80 font-medium py-2 border-r border-gray-700/50 transition-colors"
+                  className="flex-1 border-r border-black/10 py-2 text-center text-sm font-medium text-brand-black transition-colors hover:text-brand-champagne-dark"
                 >
-                  Mark all as read
+                  {t("clientPanel.notifications.markAllAsRead")}
                 </button>
                 <button
                   onClick={deleteAllNotifications}
                   disabled={deletingAll}
-                  className="flex-1 text-sm text-center text-red-400 hover:text-red-300 font-medium py-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+                  className="flex flex-1 items-center justify-center gap-2 py-2 text-center text-sm font-medium text-red-600 transition-colors hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Trash2 className="h-3 w-3" />
-                  {deletingAll ? "Deleting..." : "Delete all"}
+                  {deletingAll
+                    ? t("clientPanel.notifications.deleting")
+                    : t("clientPanel.notifications.deleteAll")}
                 </button>
               </div>
             </div>
@@ -288,4 +285,3 @@ export function NotificationDropdown() {
     </div>
   );
 }
-

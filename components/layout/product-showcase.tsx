@@ -107,7 +107,7 @@ export function ProductShowcase({ products }: ProductShowcaseProps) {
                 const isHovered = hoveredIndex === index;
                 const slideContent = (
                   <div
-                    className="group relative h-[500px] sm:h-[550px] md:h-[600px] rounded-2xl overflow-hidden cursor-pointer bg-gray-100 shadow-sm hover:shadow-xl transition-all duration-500"
+                    className="group relative h-[380px] cursor-pointer overflow-hidden rounded-2xl bg-gray-100 shadow-sm transition-all duration-500 hover:shadow-xl sm:h-[450px] md:h-[550px] lg:h-[600px]"
                     onMouseEnter={() => setHoveredIndex(index)}
                     onMouseLeave={() => setHoveredIndex(null)}
                   >

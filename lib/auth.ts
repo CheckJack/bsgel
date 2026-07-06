@@ -213,14 +213,15 @@ export const authOptions: NextAuthOptions = {
       return session
     },
     async redirect({ url, baseUrl }) {
-      // If there's a callback URL, use it
-      if (url && url.startsWith(baseUrl)) {
-        return url
+      if (url.startsWith("/")) {
+        return url;
       }
-      
-      // Default to dashboard (role-based redirect is handled in login page)
-      // This callback is only used when redirect: true, but we use redirect: false
-      return `${baseUrl}/dashboard`
+
+      if (url.startsWith(baseUrl)) {
+        return url;
+      }
+
+      return baseUrl;
     },
   },
   pages: {

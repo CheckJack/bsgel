@@ -3,13 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Card, CardContent } from "@/components/ui/card";
-import { X, Upload } from "lucide-react";
+import { BlogImageUpload, imagePreviewToDataUrl, type ImagePreview } from "@/components/admin/blog-image-upload";
 
 interface Blog {
   id: string;
@@ -18,6 +17,7 @@ interface Blog {
   excerpt: string | null;
   content: string;
   image: string | null;
+  heroImage: string | null;
   author: string | null;
   status: string;
   publishedAt: string | null;
@@ -25,11 +25,6 @@ interface Blog {
   reviewedBy?: string | null;
   reviewedAt?: string | null;
   reviewComments?: string | null;
-}
-
-interface ImagePreview {
-  url: string;
-  file?: File;
 }
 
 export default function EditBlogPage() {
@@ -48,6 +43,7 @@ export default function EditBlogPage() {
     status: "DRAFT" as "DRAFT" | "PUBLISHED" | "PENDING_REVIEW" | "APPROVED" | "REJECTED",
   });
   const [image, setImage] = useState<ImagePreview | null>(null);
+  const [heroImage, setHeroImage] = useState<ImagePreview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -108,6 +104,9 @@ export default function EditBlogPage() {
         if (data.image) {
           setImage({ url: data.image });
         }
+        if (data.heroImage) {
+          setHeroImage({ url: data.heroImage });
+        }
         if (data.assignedReviewerId) {
           setAssignedReviewerId(data.assignedReviewerId);
         }
@@ -122,36 +121,6 @@ export default function EditBlogPage() {
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type.startsWith("image/")) {
-      const url = URL.createObjectURL(file);
-      setImage({ url, file });
-    }
-  };
-
-  const handleImageRemove = () => {
-    if (image) {
-      if (image.file) {
-        URL.revokeObjectURL(image.url);
-      }
-      setImage(null);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith("image/")) {
-      const url = URL.createObjectURL(file);
-      setImage({ url, file });
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -164,20 +133,10 @@ export default function EditBlogPage() {
     setIsSaving(true);
 
     try {
-      // Convert image file to base64 if it's a new file
-      let imageUrl = image?.url || null;
-      if (image?.file) {
-        imageUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            resolve(reader.result as string);
-          };
-          reader.onerror = () => {
-            reject(new Error("Failed to read image file"));
-          };
-          reader.readAsDataURL(image.file!);
-        });
-      }
+      const [imageUrl, heroImageUrl] = await Promise.all([
+        imagePreviewToDataUrl(image),
+        imagePreviewToDataUrl(heroImage),
+      ]);
 
       const blogData = {
         title: formData.title,
@@ -185,6 +144,7 @@ export default function EditBlogPage() {
         excerpt: formData.excerpt || null,
         content: formData.content || "",
         image: imageUrl,
+        heroImage: heroImageUrl,
         author: formData.author || null,
         status: formData.status,
         publishedAt:
@@ -339,6 +299,7 @@ export default function EditBlogPage() {
                   content={formData.content}
                   onChange={(html) => setFormData({ ...formData, content: html })}
                   placeholder="Write your blog post content here... Use the toolbar to format your text."
+                  imageUploadHint="Recommended size: 1200 × 675 px (16:9) for inline images in the post body."
                 />
                 <p className="mt-2 text-xs text-gray-500">
                   Use the toolbar above to format your content with headings, lists, links, images, and more.
@@ -459,51 +420,21 @@ export default function EditBlogPage() {
             </CardContent>
           </Card>
 
-          {/* Featured Image */}
-          <Card className="bg-white dark:bg-gray-800">
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Featured Image
-              </h3>
-              {image ? (
-                <div className="relative w-full aspect-video rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700">
-                  <Image
-                    src={image.url}
-                    alt="Featured image"
-                    fill
-                    className="object-cover"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleImageRemove}
-                    className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : (
-                <div
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  className="relative w-full aspect-video rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors bg-gray-50 dark:bg-gray-700"
-                >
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                  />
-                  <Upload className="h-8 w-8 text-gray-400 dark:text-gray-500 mb-2" />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center px-2">
-                    Drop your image here or click to browse
-                  </p>
-                </div>
-              )}
-              <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-                Featured image will be displayed in blog listings and at the top of the post.
-              </p>
-            </CardContent>
-          </Card>
+          <BlogImageUpload
+            title="Thumbnail / Featured Image"
+            description="Displayed in blog listings, related posts, and admin previews."
+            image={image}
+            onImageChange={setImage}
+            inputId="blog-thumbnail-image-edit"
+          />
+
+          <BlogImageUpload
+            title="Hero Photo"
+            description="Displayed as the full-width banner at the top of the blog post."
+            image={heroImage}
+            onImageChange={setHeroImage}
+            inputId="blog-hero-image-edit"
+          />
 
           {/* Action Buttons */}
           <div className="flex flex-col gap-3">

@@ -1,67 +1,66 @@
 "use client";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { SalonMap } from "@/components/layout/salon-map";
-import { Search, MapPin, Phone, Mail, Globe, Clock, Sparkles, X } from "lucide-react";
+import { SalonDetailPanel, type SalonDetail } from "@/components/salon/salon-detail-panel";
+import { Search, MapPin, Diamond, Info, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useLanguage } from "@/contexts/language-context";
+import { cn } from "@/lib/utils";
+import { syncIosViewportHeight, setAppScrollLocked } from "@/lib/mobile-scroll-root";
 
-interface Salon {
-  id: string;
-  name: string;
-  address: string;
-  city: string;
-  postalCode?: string;
-  phone?: string;
-  email?: string;
-  website?: string;
+interface Salon extends SalonDetail {
   latitude?: number;
   longitude?: number;
-  image?: string;
-  logo?: string;
-  images?: string[];
-  description?: string;
-  workingHours?: any;
   isActive: boolean;
-  isBioDiamond?: boolean;
   status: string;
 }
 
-export default function FindSalonPage() {
+const PANEL_WIDTH = 384;
+
+function useIsMobile(breakpoint = 1023) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia(`(max-width: ${breakpoint}px)`);
+    const update = () => setIsMobile(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, [breakpoint]);
+
+  return isMobile;
+}
+
+function FindSalonPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t } = useLanguage();
+  const isMobile = useIsMobile();
   const [salons, setSalons] = useState<Salon[]>([]);
-  const [filteredSalons, setFilteredSalons] = useState<Salon[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
   const [showBioDiamondOnly, setShowBioDiamondOnly] = useState(false);
-  const [selectedSalonId, setSelectedSalonId] = useState<string | null>(null);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [bioDiamondInfoOpen, setBioDiamondInfoOpen] = useState(false);
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
 
-  // Get unique cities from salons
+  const selectedSalonId = searchParams.get("salon");
+
   const cities = useMemo(() => {
     const citySet = new Set<string>();
     salons.forEach((salon) => {
-      if (salon.city) {
-        citySet.add(salon.city);
-      }
+      if (salon.city) citySet.add(salon.city);
     });
     return Array.from(citySet).sort();
   }, [salons]);
 
-  // Fetch salons on mount
-  useEffect(() => {
-    fetchSalons();
-  }, []);
-
-  // Filter salons based on search query, city, and Bio Diamond filter
-  useEffect(() => {
+  const filteredSalons = useMemo(() => {
     let filtered = [...salons];
 
-    // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -73,18 +72,82 @@ export default function FindSalonPage() {
       );
     }
 
-    // Apply city filter
     if (selectedCity) {
       filtered = filtered.filter((salon) => salon.city === selectedCity);
     }
 
-    // Apply Bio Diamond filter
     if (showBioDiamondOnly) {
       filtered = filtered.filter((salon) => salon.isBioDiamond === true);
     }
 
-    setFilteredSalons(filtered);
+    return filtered;
   }, [salons, searchQuery, selectedCity, showBioDiamondOnly]);
+
+  const selectedSalon = useMemo(
+    () => salons.find((salon) => salon.id === selectedSalonId) ?? null,
+    [salons, selectedSalonId]
+  );
+
+  const panelOpen = Boolean(selectedSalon);
+
+  useEffect(() => {
+    fetchSalons();
+  }, []);
+
+  useEffect(() => {
+    setFiltersExpanded(!isMobile);
+  }, [isMobile]);
+
+  useEffect(() => {
+    const previousHtmlBg = document.documentElement.style.backgroundColor;
+    document.documentElement.style.backgroundColor = "#ddd";
+
+    return () => {
+      document.documentElement.style.backgroundColor = previousHtmlBg;
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      window.dispatchEvent(new Event("resize"));
+    }, 150);
+    const timer2 = window.setTimeout(() => {
+      window.dispatchEvent(new Event("resize"));
+    }, 500);
+    return () => {
+      window.clearTimeout(timer);
+      window.clearTimeout(timer2);
+    };
+  }, [isLoading]);
+
+  useEffect(() => {
+    setAppScrollLocked(true);
+
+    const sync = () => {
+      syncIosViewportHeight();
+      window.dispatchEvent(new Event("resize"));
+    };
+    sync();
+    window.addEventListener("resize", sync, { passive: true });
+    window.visualViewport?.addEventListener("resize", sync, { passive: true });
+    window.visualViewport?.addEventListener("scroll", sync, { passive: true });
+
+    return () => {
+      setAppScrollLocked(false);
+      window.removeEventListener("resize", sync);
+      window.visualViewport?.removeEventListener("resize", sync);
+      window.visualViewport?.removeEventListener("scroll", sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (selectedSalonId && !isLoading && salons.length > 0) {
+      const exists = salons.some((salon) => salon.id === selectedSalonId);
+      if (!exists) {
+        router.replace("/salons", { scroll: false });
+      }
+    }
+  }, [selectedSalonId, isLoading, salons, router]);
 
   const fetchSalons = async () => {
     setIsLoading(true);
@@ -101,282 +164,224 @@ export default function FindSalonPage() {
     }
   };
 
-  const handleMarkerClick = (salonId: string) => {
-    setSelectedSalonId(salonId);
-    // Scroll to the salon card in the right sidebar
-    setTimeout(() => {
-      const element = document.getElementById(`salon-${salonId}`);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "center" });
-        element.classList.add("ring-2", "ring-brand-champagne");
-        setTimeout(() => {
-          element.classList.remove("ring-2", "ring-brand-champagne");
-        }, 2000);
+  const selectSalon = useCallback(
+    (salonId: string) => {
+      if (isMobile) {
+        setFiltersExpanded(false);
       }
-    }, 100);
-  };
+      router.replace(`/salons?salon=${encodeURIComponent(salonId)}`, { scroll: false });
+    },
+    [isMobile, router]
+  );
 
-  const formatWorkingHours = (workingHours: any): string => {
-    if (!workingHours || typeof workingHours !== "object") {
-      return t("findSalon.contactForHours");
-    }
-
-    const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-    const dayNames: { [key: string]: string } = {
-      monday: t("findSalon.dayNames.monday"),
-      tuesday: t("findSalon.dayNames.tuesday"),
-      wednesday: t("findSalon.dayNames.wednesday"),
-      thursday: t("findSalon.dayNames.thursday"),
-      friday: t("findSalon.dayNames.friday"),
-      saturday: t("findSalon.dayNames.saturday"),
-      sunday: t("findSalon.dayNames.sunday"),
-    };
-
-    const hoursList: string[] = [];
-    days.forEach((day) => {
-      const dayData = workingHours[day];
-      if (dayData && !dayData.closed) {
-        hoursList.push(`${dayNames[day]}: ${dayData.open || "?"}-${dayData.close || "?"}`);
-      }
-    });
-
-    return hoursList.length > 0 ? hoursList.join(", ") : t("findSalon.contactForHours");
-  };
+  const closePanel = useCallback(() => {
+    router.replace("/salons", { scroll: false });
+  }, [router]);
 
   const clearFilters = () => {
     setSearchQuery("");
     setSelectedCity("");
     setShowBioDiamondOnly(false);
+    setBioDiamondInfoOpen(false);
   };
 
   const hasActiveFilters = searchQuery || selectedCity || showBioDiamondOnly;
 
-  return (
-    <div className="min-h-screen bg-brand-white">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-b from-brand-champagne/10 to-brand-white py-12 sm:py-16 px-4 sm:px-6">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-6 sm:mb-8">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-medium mb-3 sm:mb-4 text-brand-black">
-              {t("findSalon.title")}
-            </h1>
-            <div className="w-24 h-1 bg-brand-champagne mx-auto mb-4 sm:mb-6"></div>
-            <p className="text-base sm:text-lg font-light text-brand-champagne max-w-2xl mx-auto px-4">
-              {t("findSalon.description")}
-            </p>
+  const salonCountLabel = isLoading
+    ? t("findSalon.loadingSalons")
+    : filteredSalons.length === 1
+      ? t("findSalon.foundSalons", { count: String(filteredSalons.length) })
+      : t("findSalon.foundSalonsPlural", { count: String(filteredSalons.length) });
+
+  const filtersCard = (
+    <div className="rounded-xl border border-gray-200/90 bg-white/95 shadow-lg backdrop-blur-sm">
+      <button
+        type="button"
+        onClick={() => setFiltersExpanded((open) => !open)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <div className="min-w-0">
+          <p className="font-display text-base font-medium text-brand-black">{t("findSalon.title")}</p>
+          <p className="text-xs text-brand-champagne">{salonCountLabel}</p>
+        </div>
+        {filtersExpanded ? (
+          <ChevronUp className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+        ) : (
+          <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+        )}
+      </button>
+
+      {filtersExpanded && (
+        <div className="space-y-3 border-t border-gray-100 px-4 pb-4 pt-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder={t("findSalon.searchPlaceholder")}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 py-2.5 pl-9 pr-3 text-base text-brand-black focus:border-transparent focus:outline-none focus:ring-2 focus:ring-brand-champagne sm:text-sm"
+            />
           </div>
 
-          {/* Search and Filters */}
-          <div className="space-y-4">
-            {/* Search Bar */}
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+          <div className="relative">
+            <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <select
+              value={selectedCity}
+              onChange={(e) => setSelectedCity(e.target.value)}
+              className="w-full cursor-pointer appearance-none rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-3 text-base text-brand-black focus:outline-none focus:ring-2 focus:ring-brand-champagne sm:text-sm"
+            >
+              <option value="">{t("findSalon.allCities")}</option>
+              {cities.map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-brand-black">
               <input
-                type="text"
-                placeholder={t("findSalon.searchPlaceholder")}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-champagne focus:border-transparent text-brand-black"
+                type="checkbox"
+                checked={showBioDiamondOnly}
+                onChange={(e) => setShowBioDiamondOnly(e.target.checked)}
+                className="h-4 w-4 rounded text-brand-champagne focus:ring-brand-champagne"
               />
-            </div>
+              <Diamond className="h-4 w-4 text-brand-champagne" />
+              {t("findSalon.bioDiamondOnly")}
+            </label>
 
-            {/* Filters Row */}
-            <div className="flex flex-wrap gap-4 items-center">
-              {/* City Filter */}
-              <div className="relative flex-1 min-w-[200px]">
-                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none" />
-                <select
-                  value={selectedCity}
-                  onChange={(e) => setSelectedCity(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-champagne focus:border-transparent text-brand-black bg-white appearance-none cursor-pointer"
-                >
-                  <option value="">{t("findSalon.allCities")}</option>
-                  {cities.map((city) => (
-                    <option key={city} value={city}>
-                      {city}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <span className="group/info relative inline-flex">
+              <button
+                type="button"
+                onClick={() => isMobile && setBioDiamondInfoOpen((open) => !open)}
+                className="flex size-5 items-center justify-center rounded-full text-brand-champagne transition-colors hover:bg-brand-champagne/10 hover:text-brand-champagne-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-champagne/30"
+                aria-label={t("findSalon.bioDiamondInfoLabel")}
+                aria-expanded={bioDiamondInfoOpen}
+              >
+                <Info className="size-3.5" aria-hidden />
+              </button>
+              <span
+                role="tooltip"
+                className={cn(
+                  "absolute bottom-full left-1/2 z-20 mb-2 w-56 -translate-x-1/2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-xs leading-relaxed text-brand-black/75 shadow-lg sm:w-64",
+                  isMobile
+                    ? bioDiamondInfoOpen
+                      ? "opacity-100"
+                      : "pointer-events-none opacity-0"
+                    : "pointer-events-none opacity-0 transition-opacity duration-150 group-hover/info:opacity-100 group-focus-within/info:opacity-100"
+                )}
+              >
+                {t("findSalon.bioDiamondInfo")}
+              </span>
+            </span>
 
-              {/* Bio Diamond Filter */}
-              <label className="flex items-center gap-2 cursor-pointer px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={showBioDiamondOnly}
-                  onChange={(e) => setShowBioDiamondOnly(e.target.checked)}
-                  className="w-4 h-4 text-brand-champagne focus:ring-brand-champagne rounded"
-                />
-                <Sparkles className="h-4 w-4 text-brand-champagne" />
-                <span className="text-sm text-brand-black whitespace-nowrap">
-                  {t("findSalon.bioDiamondOnly")}
-                </span>
-              </label>
-
-              {/* Clear Filters */}
-              {hasActiveFilters && (
-                <button
-                  onClick={clearFilters}
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-brand-black hover:text-brand-champagne transition-colors ml-auto"
-                >
-                  <X className="h-4 w-4" />
-                  {t("findSalon.clearFilters")}
-                </button>
-              )}
-            </div>
-
-            {/* Results Count */}
-            <div className="text-sm text-brand-champagne">
-              {isLoading ? (
-                t("findSalon.loadingSalons")
-              ) : (
-                <>
-                  {filteredSalons.length === 1 
-                    ? t("findSalon.foundSalons", { count: String(filteredSalons.length) })
-                    : t("findSalon.foundSalonsPlural", { count: String(filteredSalons.length) })}
-                </>
-              )}
-            </div>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="ml-auto flex items-center gap-1 text-xs text-brand-champagne hover:text-brand-black"
+              >
+                <X className="h-3.5 w-3.5" />
+                {t("findSalon.clearFilters")}
+              </button>
+            )}
           </div>
-        </div>
-      </div>
 
-      {/* Content Section - Side by Side Layout */}
-      <div className="w-full px-4 pb-12">
-        <div className="container mx-auto max-w-6xl">
-          {isLoading ? (
-            <div className="text-center py-20">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-champagne"></div>
-              <p className="mt-4 text-brand-champagne">{t("findSalon.loadingSalons")}</p>
-            </div>
-          ) : filteredSalons.length === 0 ? (
-            <div className="text-center py-20">
-              <MapPin className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-2xl font-medium text-brand-black mb-2">{t("findSalon.noSalonsFound")}</h3>
-              <p className="text-brand-champagne mb-6">
-                {t("findSalon.noSalonsFoundDesc")}
-              </p>
-              {hasActiveFilters && (
-                <button
-                  onClick={clearFilters}
-                  className="px-6 py-2 bg-brand-black text-brand-white rounded-lg hover:bg-brand-champagne transition-colors"
-                >
-                  {t("findSalon.clearAllFilters")}
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 h-auto lg:h-[calc(100vh-400px)] min-h-[500px] lg:min-h-[600px]">
-              {/* Left Side - Map (Larger) */}
-              <div className="flex-[2] lg:w-[70%] h-[400px] sm:h-[500px] lg:h-full lg:min-h-0">
-                <div className="w-full h-full rounded-lg overflow-hidden border border-gray-300">
-                  <SalonMap salons={filteredSalons} onMarkerClick={handleMarkerClick} />
-                </div>
-              </div>
-
-              {/* Right Side - Salon List (Smaller) */}
-              <div className="flex-[1] lg:w-[30%] h-auto lg:h-full lg:overflow-y-auto">
-                <div className="space-y-3 sm:space-y-4 pr-0 sm:pr-2 pb-4">
-                  {filteredSalons.map((salon) => (
-                    <SalonCard
-                      key={salon.id}
-                      salon={salon}
-                      formatWorkingHours={formatWorkingHours}
-                      isSelected={selectedSalonId === salon.id}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Salon Card Component
-function SalonCard({
-  salon,
-  formatWorkingHours,
-  isSelected,
-}: {
-  salon: Salon;
-  formatWorkingHours: (hours: any) => string;
-  isSelected: boolean;
-}) {
-  const router = useRouter();
-  const { t } = useLanguage();
-
-  const handleCardClick = (e: React.MouseEvent) => {
-    // Don't navigate if clicking on a link (phone, email, website)
-    const target = e.target as HTMLElement;
-    if (
-      target.closest("a") ||
-      target.tagName === "A" ||
-      target.closest("button")
-    ) {
-      return;
-    }
-    router.push(`/salons/${salon.id}`);
-  };
-
-  return (
-    <div
-      id={`salon-${salon.id}`}
-      onClick={handleCardClick}
-      className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all cursor-pointer ${
-        isSelected ? "ring-2 ring-brand-champagne" : ""
-      }`}
-    >
-      {/* Salon Image */}
-      {salon.image && (
-        <div className="relative h-48 w-full overflow-hidden bg-gray-100">
-          <Image
-            src={salon.image}
-            alt={salon.name}
-            width={800}
-            height={400}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = "none";
-            }}
-          />
-          {salon.isBioDiamond && (
-            <div className="absolute top-2 right-2 bg-brand-champagne text-white px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
-              <Sparkles className="h-3 w-3" />
-              {t("findSalon.bioDiamondSalon")}
-            </div>
+          {isMobile && (
+            <p className="text-[11px] leading-relaxed text-brand-black/50">{t("findSalon.mapTouchHint")}</p>
           )}
         </div>
       )}
+    </div>
+  );
 
-      {/* Salon Content */}
-      <div className="p-6">
-        <h3 className="text-xs sm:text-sm font-medium text-brand-black mb-2 leading-snug line-clamp-3">
-          {salon.name}
-        </h3>
+  const mapContent = isLoading ? (
+    <div className="flex h-full items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="mx-auto inline-block h-12 w-12 animate-spin rounded-full border-b-2 border-brand-champagne" />
+        <p className="mt-4 text-brand-champagne">{t("findSalon.loadingSalons")}</p>
+      </div>
+    </div>
+  ) : filteredSalons.length === 0 ? (
+    <div className="flex h-full items-center justify-center bg-gray-50 px-4">
+      <div className="max-w-md text-center">
+        <MapPin className="mx-auto mb-4 h-16 w-16 text-gray-300" />
+        <h3 className="mb-2 text-xl font-medium text-brand-black sm:text-2xl">{t("findSalon.noSalonsFound")}</h3>
+        <p className="mb-6 text-sm text-brand-champagne sm:text-base">{t("findSalon.noSalonsFoundDesc")}</p>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="rounded-lg bg-brand-black px-6 py-2 text-brand-white transition-colors hover:bg-brand-champagne"
+          >
+            {t("findSalon.clearAllFilters")}
+          </button>
+        )}
+      </div>
+    </div>
+  ) : (
+    <SalonMap
+      salons={filteredSalons}
+      selectedSalonId={selectedSalonId}
+      focusPaddingLeft={panelOpen && !isMobile && !isMapFullscreen ? PANEL_WIDTH : 0}
+      onMarkerClick={selectSalon}
+      onMapBackgroundClick={closePanel}
+      fillContainer
+      fullscreenPanelOpen={panelOpen}
+      onFullscreenChange={setIsMapFullscreen}
+      fullscreenPanel={
+        <SalonDetailPanel
+          salon={selectedSalon}
+          open={panelOpen}
+          onClose={closePanel}
+          fullscreen
+        />
+      }
+    />
+  );
 
-        {/* Address */}
-        <div className="flex items-start gap-2 mb-3">
-          <MapPin className="h-4 w-4 text-brand-champagne flex-shrink-0 mt-1" />
-          <div className="text-sm text-brand-champagne">
-            <p>{salon.address}</p>
-            <p>
-              {salon.city}
-              {salon.postalCode && `, ${salon.postalCode}`}
-            </p>
+  return (
+    <div
+      data-salons-map
+      className={cn(
+        "relative flex w-full flex-col overflow-hidden bg-[#ddd]",
+        "max-lg:min-h-[calc(100lvh-var(--site-header-height,113px))]",
+        "lg:fixed lg:inset-0 lg:z-[90] lg:top-[var(--site-header-height,113px)] lg:bg-brand-white"
+      )}
+    >
+      <div className="relative min-h-0 flex-1 max-lg:min-h-[calc(100lvh-var(--site-header-height,113px))]">
+        <div className="absolute inset-0">{mapContent}</div>
+
+        {!(panelOpen && isMobile) && (
+          <div
+            className={cn(
+              "absolute z-[800] transition-[left,right] duration-300 ease-out top-3",
+              panelOpen && !isMobile
+                ? "left-[calc(24rem+0.75rem)] right-3"
+                : "left-3 right-3 lg:left-auto lg:right-3 lg:max-w-md"
+            )}
+          >
+            {filtersCard}
           </div>
-        </div>
-
-        {/* Description */}
-        {salon.description && (
-          <p className="text-sm text-gray-600 mb-4 line-clamp-2">{salon.description}</p>
         )}
 
+        <SalonDetailPanel
+          salon={selectedSalon}
+          open={panelOpen && !isMapFullscreen}
+          onClose={closePanel}
+          embedded
+        />
       </div>
     </div>
   );
 }
 
+export default function FindSalonPage() {
+  return (
+    <Suspense fallback={null}>
+      <FindSalonPageContent />
+    </Suspense>
+  );
+}

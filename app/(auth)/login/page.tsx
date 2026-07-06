@@ -4,20 +4,127 @@
 export const dynamic = 'force-dynamic';
 
 import { useState, useRef, useEffect, Suspense } from "react";
+import { createPortal } from "react-dom";
 import { signIn, getSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import mobileAuthBackground from "../../../1245667.png";
 import { Eye, EyeOff, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/language-context";
+import { cn } from "@/lib/utils";
+import { syncAuthMobileBgHeight, clearAuthMobileBgHeight } from "@/lib/mobile-scroll-root";
+
+function AuthMobileBackground() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+  if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
+    return null;
+  }
+
+  return createPortal(
+    <div className="auth-mobile-bg-bleed pointer-events-none relative overflow-hidden md:hidden" aria-hidden>
+      <Image
+        src={mobileAuthBackground}
+        alt=""
+        fill
+        className="object-cover"
+        priority
+      />
+      <div className="absolute inset-0 bg-black/30" />
+    </div>,
+    document.body
+  );
+}
+
+function useAuthLayoutMode() {
+  const [layout, setLayout] = useState<{ ready: boolean; isMobile: boolean }>({
+    ready: false,
+    isMobile: false,
+  });
+
+  useEffect(() => {
+    setLayout({
+      ready: true,
+      isMobile: window.matchMedia("(max-width: 1023px)").matches,
+    });
+
+    const media = window.matchMedia("(max-width: 1023px)");
+    const onChange = () => {
+      setLayout((current) => ({
+        ...current,
+        isMobile: media.matches,
+      }));
+    };
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+
+  return layout;
+}
+
+function AuthMobileFormPane({
+  isRegisterMode,
+  children,
+}: {
+  isRegisterMode: boolean;
+  children: React.ReactNode;
+}) {
+  const [mounted, setMounted] = useState(false);
+  const paneRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    syncAuthMobileBgHeight();
+    const onResize = () => syncAuthMobileBgHeight();
+    window.addEventListener("resize", onResize, { passive: true });
+    return () => {
+      window.removeEventListener("resize", onResize);
+      clearAuthMobileBgHeight();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (paneRef.current) paneRef.current.scrollTop = 0;
+  }, [isRegisterMode]);
+
+  if (!mounted) return null;
+  if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      ref={paneRef}
+      data-auth-mobile-pane
+      data-auth-mode={isRegisterMode ? "register" : "login"}
+      className={cn(
+        "auth-mobile-form-pane md:hidden",
+        isRegisterMode ? "auth-mobile-form-pane--register" : "auth-mobile-form-pane--login"
+      )}
+    >
+      <div className="auth-mobile-form-pane__inner">{children}</div>
+    </div>,
+    document.body
+  );
+}
 
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { t } = useLanguage();
+  const { ready: layoutReady, isMobile } = useAuthLayoutMode();
   
   // Check if we should show register form (from URL param or default)
   const [isRegisterMode, setIsRegisterMode] = useState(false);
@@ -44,7 +151,7 @@ function LoginPageContent() {
       // Could show a success message here if needed
     }
   }, [searchParams]);
-  
+
   // Login state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,8 +163,10 @@ function LoginPageContent() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    phone: "",
     password: "",
     confirmPassword: "",
+    marketingConsent: false,
     userType: "customer" as "customer" | "professional",
   });
   const [certificateFile, setCertificateFile] = useState<File | null>(null);
@@ -127,6 +236,19 @@ function LoginPageContent() {
     }
   }, [certificateFile, selectedCertificationId, formData.userType]);
 
+  useEffect(() => {
+    const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+    if (!isDesktop) return;
+
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+    };
+  }, []);
+
   const fetchCertifications = async () => {
     try {
       const res = await fetch("/api/certifications?public=true&isActive=true");
@@ -166,7 +288,12 @@ function LoginPageContent() {
         if (session?.user?.role === "ADMIN") {
           router.push("/admin");
         } else {
-          router.push("/dashboard");
+          const callbackUrl = searchParams?.get("callbackUrl");
+          const destination =
+            callbackUrl && callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")
+              ? callbackUrl
+              : "/";
+          router.push(destination);
         }
         router.refresh();
       }
@@ -286,7 +413,9 @@ function LoginPageContent() {
       const payload: {
         name: string;
         email: string;
+        phone: string;
         password: string;
+        marketingConsent: boolean;
         userType: string;
         certificate?: string;
         certificationId?: string | null;
@@ -294,7 +423,9 @@ function LoginPageContent() {
       } = {
         name: formData.name.trim(),
         email: formData.email.trim(),
+        phone: formData.phone.trim(),
         password: formData.password,
+        marketingConsent: formData.marketingConsent,
         userType: formData.userType,
       };
 
@@ -344,8 +475,10 @@ function LoginPageContent() {
         setFormData({
           name: "",
           email: "",
+          phone: "",
           password: "",
           confirmPassword: "",
+          marketingConsent: false,
           userType: "customer",
         });
         setCertificateFile(null);
@@ -364,25 +497,13 @@ function LoginPageContent() {
     }
   };
 
-  return (
-    <div className="flex flex-col md:flex-row min-h-screen w-full md:items-stretch">
-      {/* Left Container - Image */}
-      <div className="w-full md:w-1/2 h-48 md:h-auto relative flex-shrink-0 bg-gray-200 overflow-hidden">
-        <Image
-          src="/328 Peach Pitstop - hand and product (5).jpg"
-          alt="Bio Sculpture Nail Products"
-          fill
-          className="object-cover"
-          priority
-          sizes="(max-width: 768px) 100vw, 50vw"
-          placeholder="blur"
-          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
-        />
-      </div>
-
-      {/* Right Container - Login/Register Form */}
-      <div className="w-full md:w-1/2 flex items-start md:items-center justify-center px-4 sm:px-6 py-8 md:py-4 bg-white">
-        <Card className="w-full max-w-md my-4 sm:my-8">
+  const authFormCard = (
+        <Card
+          className={cn(
+            "relative z-10 mx-auto w-full max-w-md shrink-0",
+            isRegisterMode && "md:my-4"
+          )}
+        >
           <CardHeader>
             <CardTitle>{isRegisterMode ? t("auth.register") : t("auth.login")}</CardTitle>
             <CardDescription>
@@ -427,6 +548,19 @@ function LoginPageContent() {
                   />
                 </div>
                 <div>
+                  <label htmlFor="register-phone" className="block text-sm font-medium mb-1">
+                    Telefone
+                  </label>
+                  <Input
+                    id="register-phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                <div>
                   <label htmlFor="register-password" className="block text-sm font-medium mb-1">
                     {t("auth.password")}
                   </label>
@@ -438,6 +572,22 @@ function LoginPageContent() {
                     required
                     disabled={isLoading}
                   />
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <input
+                    id="marketing-consent"
+                    type="checkbox"
+                    checked={formData.marketingConsent}
+                    onChange={(e) =>
+                      setFormData({ ...formData, marketingConsent: e.target.checked })
+                    }
+                    disabled={isLoading}
+                    className="mt-1 h-4 w-4"
+                  />
+                  <label htmlFor="marketing-consent" className="text-sm text-gray-700">
+                    Aceito receber comunicações de marketing (email/SMS).
+                  </label>
                 </div>
                 <div>
                   <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1">
@@ -709,7 +859,7 @@ function LoginPageContent() {
                       setIsRegisterMode(false);
                       setError("");
                     }}
-                    className="text-black font-medium hover:underline"
+                    className="inline border-0 bg-transparent p-0 text-sm font-bold leading-inherit text-gray-600 underline hover:opacity-80"
                   >
                     {t("auth.login")}
                   </button>
@@ -723,7 +873,7 @@ function LoginPageContent() {
                       setIsRegisterMode(true);
                       setError("");
                     }}
-                    className="text-black font-medium hover:underline"
+                    className="inline border-0 bg-transparent p-0 text-sm font-bold leading-inherit text-gray-600 underline hover:opacity-80"
                   >
                     {t("auth.register")}
                   </button>
@@ -732,34 +882,53 @@ function LoginPageContent() {
             </p>
           </CardContent>
         </Card>
-      </div>
-    </div>
+  );
+
+  return (
+    <>
+      <AuthMobileBackground />
+      {!layoutReady ? (
+        <div data-auth-page className="hidden" aria-hidden />
+      ) : isMobile ? (
+        <>
+          <AuthMobileFormPane isRegisterMode={isRegisterMode}>
+            {authFormCard}
+          </AuthMobileFormPane>
+          <div data-auth-page className="hidden" aria-hidden />
+        </>
+      ) : (
+        <div
+          data-auth-page
+          className="relative flex h-full min-h-0 w-full flex-col overflow-hidden md:h-[calc(100dvh-var(--site-header-height,113px))] md:flex-row"
+        >
+          <div className="relative hidden h-full min-h-0 w-full flex-shrink-0 overflow-hidden bg-gray-200 md:block md:w-1/2">
+            <Image
+              src="/328 Peach Pitstop - hand and product (5).jpg"
+              alt="Bio Sculpture Nail Products"
+              fill
+              className="object-cover"
+              priority
+              sizes="(max-width: 768px) 100vw, 50vw"
+              placeholder="blur"
+              blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+            />
+          </div>
+          <div className="relative z-10 flex h-full min-h-0 w-full items-center justify-center overflow-y-auto px-6 py-4 md:w-1/2">
+            {authFormCard}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="flex flex-col md:flex-row min-h-screen w-full md:items-stretch">
-        <div className="w-full md:w-1/2 h-48 md:h-auto relative flex-shrink-0 bg-gray-200 overflow-hidden">
-          <Image
-            src="/328 Peach Pitstop - hand and product (5).jpg"
-            alt="Bio Sculpture Nail Products"
-            fill
-            className="object-cover"
-            priority
-            sizes="(max-width: 768px) 100vw, 50vw"
-            placeholder="blur"
-            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
-          />
-        </div>
-        <div className="w-full md:w-1/2 flex items-center justify-center px-4 sm:px-6 py-8 md:py-4 bg-white">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-            <p className="mt-4 text-sm text-gray-600">Loading...</p>
-          </div>
-        </div>
-      </div>
+      <>
+        <AuthMobileBackground />
+        <div data-auth-page className="hidden" aria-hidden />
+      </>
     }>
       <LoginPageContent />
     </Suspense>

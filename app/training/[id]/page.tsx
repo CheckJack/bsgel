@@ -2,10 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { ArrowLeft, MapPin, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TrainingCalendar } from "@/components/training/training-calendar";
+import { TrainingSessionChoiceModal } from "@/components/training/training-session-choice-modal";
+import { toast } from "@/components/ui/toast";
+import { useCart } from "@/contexts/cart-context";
+import { useLanguage } from "@/contexts/language-context";
+import { cn } from "@/lib/utils";
 
 interface TrainingSession {
   id: string;
@@ -44,13 +50,29 @@ interface TrainingProgram {
   includedProducts?: IncludedProduct[];
 }
 
+const getLocalDateKey = (value: string | Date) => {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export default function TrainingProgramDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const { data: session } = useSession();
+  const { t, language } = useLanguage();
+  const { refreshCart } = useCart();
   const [program, setProgram] = useState<TrainingProgram | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [sessionsForDate, setSessionsForDate] = useState<TrainingSession[]>([]);
+  const [pendingSession, setPendingSession] = useState<TrainingSession | null>(null);
+  const [isSubmittingChoice, setIsSubmittingChoice] = useState(false);
+
+  const locale = language === "pt" ? "pt-PT" : "en-GB";
 
   useEffect(() => {
     const fetchProgram = async () => {
@@ -81,24 +103,88 @@ export default function TrainingProgramDetailPage() {
   );
 
   const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString("pt-PT", {
+    new Date(dateString).toLocaleDateString(locale, {
       month: "short",
       day: "numeric",
       year: "numeric",
     });
 
   const formatTime = (dateString: string) =>
-    new Date(dateString).toLocaleTimeString("pt-PT", {
+    new Date(dateString).toLocaleTimeString(locale, {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
     });
 
+  const reserveSessionAndAddToCart = async (sessionItem: TrainingSession) => {
+    const res = await fetch(`/api/trainings/sessions/${sessionItem.id}/reserve`, {
+      method: "POST",
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || t("training.failedToBook"));
+    }
+
+    await refreshCart();
+    return data as { itemsAdded?: number; skippedProducts?: Array<{ productId: string; reason: string }> };
+  };
+
+  const handleSessionSelect = (sessionItem: TrainingSession) => {
+    if (sessionItem.availableSpots <= 0) {
+      toast(t("training.sessionFull"), "error");
+      return;
+    }
+
+    if (!session?.user) {
+      router.push(`/login?callbackUrl=${encodeURIComponent(`/training/${params.id}`)}`);
+      return;
+    }
+
+    setPendingSession(sessionItem);
+  };
+
+  const closeChoiceModal = () => {
+    if (isSubmittingChoice) return;
+    setPendingSession(null);
+  };
+
+  const handleContinueShopping = async () => {
+    if (!pendingSession) return;
+
+    setIsSubmittingChoice(true);
+    try {
+      await reserveSessionAndAddToCart(pendingSession);
+      toast(t("training.addedToCartContinue"), "success");
+      setPendingSession(null);
+      window.dispatchEvent(new CustomEvent("openCartDrawer"));
+    } catch (err: any) {
+      toast(err?.message || t("training.failedToBook"), "error");
+    } finally {
+      setIsSubmittingChoice(false);
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (!pendingSession) return;
+
+    setIsSubmittingChoice(true);
+    try {
+      await reserveSessionAndAddToCart(pendingSession);
+      setPendingSession(null);
+      router.push("/checkout");
+    } catch (err: any) {
+      toast(err?.message || t("training.failedToBook"), "error");
+    } finally {
+      setIsSubmittingChoice(false);
+    }
+  };
+
   const handleDateClick = (session: any) => {
-    const key = new Date(session.startDate).toISOString().split("T")[0];
+    const key = getLocalDateKey(session.startDate);
     setSelectedDate(key);
     const sameDay = (program?.sessions || []).filter(
-      (s) => new Date(s.startDate).toISOString().split("T")[0] === key
+      (s) => getLocalDateKey(s.startDate) === key
     );
     setSessionsForDate(sameDay);
   };
@@ -143,7 +229,7 @@ export default function TrainingProgramDetailPage() {
                   )}
                 </div>
                 <div>
-                  <h1 className="mb-3 text-lg font-semibold text-brand-black sm:text-xl md:text-2xl">
+                  <h1 className="mb-3 font-display text-2xl font-normal tracking-tight text-brand-black sm:text-3xl md:text-4xl">
                     {program.title}
                   </h1>
                   {program.description && (
@@ -164,7 +250,7 @@ export default function TrainingProgramDetailPage() {
 
               {sortedDays.length > 0 && (
                 <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                  <h2 className="mb-4 text-xl font-semibold text-brand-black">Dias de Formação</h2>
+                  <h2 className="mb-4 font-display text-xl font-normal tracking-tight text-brand-black">Dias de Formação</h2>
                   <div className="space-y-4">
                     {sortedDays.map((trainingDay, idx) => (
                       <div
@@ -190,7 +276,7 @@ export default function TrainingProgramDetailPage() {
 
               {Array.isArray(program.includedProducts) && program.includedProducts.length > 0 && (
                 <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                  <h2 className="mb-4 text-xl font-semibold text-brand-black">Produtos incluídos</h2>
+                  <h2 className="mb-4 font-display text-xl font-normal tracking-tight text-brand-black">Produtos incluídos</h2>
                   <div className="space-y-3">
                     {program.includedProducts.map((includedProduct) => (
                       <div
@@ -221,7 +307,7 @@ export default function TrainingProgramDetailPage() {
               )}
             </div>
 
-            <div className="xl:sticky xl:top-[140px]">
+            <div className="xl:sticky xl:top-[calc(var(--site-header-height,113px)+1.25rem)] xl:scroll-mt-[calc(var(--site-header-height,113px)+1.25rem)]">
               <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
                 {!selectedDate ? (
                   <div className="p-6">
@@ -249,33 +335,45 @@ export default function TrainingProgramDetailPage() {
                     </p>
 
                     <div className="max-h-[300px] space-y-3 overflow-y-auto sm:max-h-[360px]">
-                      {sessionsForDate.map((sessionItem) => (
-                        <div
-                          key={sessionItem.id}
-                          className="rounded-lg border border-gray-200 p-3"
-                        >
-                          <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                            <span className="text-sm font-medium text-gray-900">
-                              {formatTime(sessionItem.startDate)} - {formatTime(sessionItem.endDate)}
-                            </span>
-                            <span className="text-sm font-medium text-brand-black">
-                              €{program.price.toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
-                            {sessionItem.location && (
-                              <span className="inline-flex items-center gap-1">
-                                <MapPin className="h-3 w-3" />
-                                {sessionItem.location}
-                              </span>
+                      {sessionsForDate.map((sessionItem) => {
+                        const isFull = sessionItem.availableSpots <= 0;
+
+                        return (
+                          <button
+                            key={sessionItem.id}
+                            type="button"
+                            disabled={isFull || isSubmittingChoice}
+                            onClick={() => handleSessionSelect(sessionItem)}
+                            className={cn(
+                              "w-full rounded-lg border p-3 text-left transition-colors",
+                              isFull
+                                ? "cursor-not-allowed border-gray-200 bg-gray-50 opacity-60"
+                                : "border-gray-200 bg-white hover:border-brand-champagne/50 hover:bg-brand-sweet-bianca/20"
                             )}
-                            <span className="inline-flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              {sessionItem.availableSpots} lugares
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                          >
+                            <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                              <span className="text-sm font-medium text-gray-900">
+                                {formatTime(sessionItem.startDate)} - {formatTime(sessionItem.endDate)}
+                              </span>
+                              <span className="text-sm font-medium text-brand-black">
+                                €{program.price.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
+                              {sessionItem.location && (
+                                <span className="inline-flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {sessionItem.location}
+                                </span>
+                              )}
+                              <span className="inline-flex items-center gap-1">
+                                <Users className="h-3 w-3" />
+                                {sessionItem.availableSpots} {t("training.spots")}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -284,6 +382,21 @@ export default function TrainingProgramDetailPage() {
           </div>
         </div>
       </section>
+
+      {pendingSession && program && (
+        <TrainingSessionChoiceModal
+          open={Boolean(pendingSession)}
+          onClose={closeChoiceModal}
+          onCheckout={handleCheckout}
+          onContinueShopping={handleContinueShopping}
+          isSubmitting={isSubmittingChoice}
+          programTitle={program.title}
+          price={program.price}
+          startLabel={formatTime(pendingSession.startDate)}
+          endLabel={formatTime(pendingSession.endDate)}
+          location={pendingSession.location}
+        />
+      )}
     </main>
   );
 }

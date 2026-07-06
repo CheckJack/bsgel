@@ -1,88 +1,169 @@
 "use client";
 
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useLanguage } from "@/contexts/language-context";
 
-interface ShopCategoryItem {
-  href: string;
-  label: string;
-  image: string;
+interface ShopCategoriesStripProps {
+  autoScroll?: boolean;
 }
 
-export function ShopCategoriesStrip() {
+type CategoryItem = {
+  href: string;
+  labelKey: string;
+  image: string;
+};
+
+const CATEGORY_ITEMS: CategoryItem[] = [
+  { href: "/bio-gel", labelKey: "nav.shopMenu.bioGel", image: "/Lengthening.webp" },
+  { href: "/gemini", labelKey: "nav.shopMenu.gemini", image: "/GEMINI.webp" },
+  { href: "/colours", labelKey: "nav.shopMenu.colours", image: "/Biogel Colours.webp" },
+  { href: "/ethos", labelKey: "nav.shopMenu.ethos", image: "/ETHOS (1).webp" },
+  { href: "/spa", labelKey: "nav.shopMenu.spa", image: "/SPA.webp" },
+  { href: "/evo", labelKey: "nav.shopMenu.evo", image: "/EVO (1).webp" },
+  { href: "/bases", labelKey: "nav.shopMenu.bases", image: "/Bases.webp" },
+  { href: "/softs", labelKey: "nav.shopMenu.softs", image: "/Softs.webp" },
+  { href: "/eletronicos", labelKey: "nav.shopMenu.eletronicos", image: "/Electronics.webp" },
+  { href: "/solventes", labelKey: "nav.shopMenu.solventes", image: "/Solvents.webp" },
+  { href: "/tips", labelKey: "nav.shopMenu.tips", image: "/Tips.webp" },
+  { href: "/utensilios", labelKey: "nav.shopMenu.utensilios", image: "/Utensils.webp" },
+  { href: "/pinceis", labelKey: "nav.shopMenu.pinceis", image: "/Brushes (1).webp" },
+  { href: "/lima-buffs", labelKey: "nav.shopMenu.limaBuffs", image: "/Buffs and Files.webp" },
+];
+
+export function ShopCategoriesStrip({ autoScroll = true }: ShopCategoriesStripProps) {
+  void autoScroll;
   const { t } = useLanguage();
 
-  const categories: ShopCategoryItem[] = [
-    { href: "/bio-gel", label: t("nav.shopMenu.bioGel"), image: "/bio-gel-hero.svg" },
-    { href: "/gemini", label: t("nav.shopMenu.gemini"), image: "/gemini-hero.svg" },
-    { href: "/colours", label: t("nav.shopMenu.colours"), image: "/cores-hero.svg" },
-    { href: "/ethos", label: t("nav.shopMenu.ethos"), image: "/ethos-hero.svg" },
-    { href: "/spa", label: t("nav.shopMenu.spa"), image: "/spa-hero.svg" },
-    { href: "/evo", label: t("nav.shopMenu.evo"), image: "/evo-hero.svg" },
-    { href: "/bases", label: t("nav.shopMenu.bases"), image: "/bases-hero.svg" },
-    { href: "/builders", label: t("nav.shopMenu.builders"), image: "/builders-hero.svg" },
-    { href: "/softs", label: t("nav.shopMenu.softs"), image: "/softs-hero.svg" },
-    { href: "/extensao", label: t("nav.shopMenu.extensao"), image: "/extensao-hero.svg" },
-    { href: "/bundles", label: t("nav.shopMenu.bundles"), image: "/bundles-hero.svg" },
-    { href: "/eletronicos", label: t("nav.shopMenu.eletronicos"), image: "/eletronicos-hero.svg" },
-    { href: "/promocoes", label: t("nav.shopMenu.promocoes"), image: "/promocoes-hero.svg" },
-    { href: "/kits-treino", label: t("nav.shopMenu.kitsTreino"), image: "/kits-e-treino-hero.svg" },
-    { href: "/solventes", label: t("nav.shopMenu.solventes"), image: "/solventes-hero.svg" },
-    { href: "/nail-art", label: t("nav.shopMenu.nailArt"), image: "/nail-art-hero.svg" },
-    { href: "/tips", label: t("nav.shopMenu.tips"), image: "/tips-hero.svg" },
-    { href: "/utensilios", label: t("nav.shopMenu.utensilios"), image: "/utensilios-hero.svg" },
-    { href: "/pinceis", label: t("nav.shopMenu.pinceis"), image: "/pinceis-hero.svg" },
-    { href: "/lima-buffs", label: t("nav.shopMenu.limaBuffs"), image: "/lima-buffs-hero.svg" },
-  ];
+  const categories = useMemo(
+    () =>
+      CATEGORY_ITEMS.map((item) => ({
+        ...item,
+        label: t(item.labelKey),
+      })),
+    [t]
+  );
 
-  const animatedCategories = [...categories, ...categories];
+  const [current, setCurrent] = useState(0);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const hasInteractedRef = useRef(false);
+
+  const goTo = (index: number) => {
+    hasInteractedRef.current = true;
+    setCurrent((index + categories.length) % categories.length);
+  };
+
+  const goNext = () => goTo(current + 1);
+  const goPrev = () => goTo(current - 1);
+
+  useEffect(() => {
+    if (!hasInteractedRef.current) return;
+
+    const track = trackRef.current;
+    if (!track) return;
+
+    const slide = track.querySelector<HTMLElement>(`[data-slide-index="${current}"]`);
+    if (!slide) return;
+
+    track.scrollTo({
+      left: slide.offsetLeft,
+      behavior: "smooth",
+    });
+  }, [current]);
 
   return (
-    <section className="w-full overflow-hidden bg-white py-5 sm:py-6">
-      <div className="px-4 sm:px-6">
-        <div className="shop-categories-marquee flex w-max gap-6 sm:gap-7">
-          {animatedCategories.map((category, idx) => (
-            <Link
-              key={`${category.href}-${idx}`}
-              href={category.href}
-              className="flex h-[188px] w-[188px] shrink-0 flex-col overflow-hidden rounded-md border border-gray-200 bg-white text-center transition-colors hover:border-brand-champagne sm:h-[220px] sm:w-[220px]"
-            >
-              <div className="relative h-[122px] w-full sm:h-[146px]">
-                <Image
-                  src={category.image}
-                  alt={category.label}
-                  fill
-                  className="object-cover"
-                  sizes="118px"
-                  unoptimized
+    <section
+      className="flex w-full flex-col justify-center overflow-hidden bg-white"
+      style={{ minHeight: "100dvh" }}
+    >
+      <div className="grid w-full auto-cols-fr grid-cols-1 items-center gap-8 px-[5%] py-8 sm:gap-12 sm:py-10 md:gap-16 lg:grid-cols-2 lg:gap-0 lg:px-0 lg:py-12">
+        <div className="flex lg:justify-self-end">
+          <div className="w-full max-w-md lg:ml-[5vw] lg:mr-20">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand-black/70">
+              {t("home.featuredProductsTagline")}
+            </p>
+            <h2 className="mb-3 text-3xl font-bold tracking-tight text-brand-black md:mb-4 md:text-4xl lg:text-5xl">
+              {t("home.shopCategories")}
+            </h2>
+            <p className="text-sm text-brand-black/80 md:text-base">{t("home.shopCategoriesDesc")}</p>
+          </div>
+        </div>
+
+        <div
+          className="relative flex min-h-0 flex-col overflow-hidden lg:px-0"
+          role="region"
+          aria-roledescription="carousel"
+          aria-label={t("home.shopCategories")}
+        >
+          <div
+            ref={trackRef}
+            className="ml-0 flex flex-1 items-center overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {categories.map((category, index) => (
+              <div
+                key={category.href}
+                role="group"
+                aria-roledescription="slide"
+                data-slide-index={index}
+                className="flex min-w-0 shrink-0 grow-0 basis-[95%] items-center pl-0 pr-6 sm:basis-4/5 md:basis-1/2 md:pr-8 lg:basis-4/5"
+              >
+                <Link
+                  href={category.href}
+                  className="group flex w-full flex-col items-center outline-none transition-opacity hover:opacity-95 focus-visible:ring-2 focus-visible:ring-brand-champagne focus-visible:ring-offset-2"
+                >
+                  <div className="flex w-full items-center justify-center">
+                    <img
+                      src={category.image}
+                      alt={category.label}
+                      draggable={false}
+                      className="block h-auto w-auto max-h-[min(52vh,520px)] max-w-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+                    />
+                  </div>
+                  <p className="mt-4 text-center text-base font-medium text-brand-black sm:text-lg">
+                    {category.label}
+                  </p>
+                </Link>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 flex shrink-0 items-center justify-between sm:mt-12">
+            <div className="flex gap-2 md:gap-4">
+              <button
+                type="button"
+                aria-label="Previous slide"
+                onClick={goPrev}
+                className="inline-flex size-12 items-center justify-center rounded-full border border-black text-black transition-colors hover:bg-black/5"
+              >
+                <ArrowLeft className="size-6" />
+              </button>
+              <button
+                type="button"
+                aria-label="Next slide"
+                onClick={goNext}
+                className="inline-flex size-12 items-center justify-center rounded-full border border-black text-black transition-colors hover:bg-black/5"
+              >
+                <ArrowRight className="size-6" />
+              </button>
+            </div>
+
+            <div className="flex max-w-[50%] flex-wrap items-center justify-end gap-y-1 lg:absolute lg:right-16 lg:mt-5">
+              {categories.map((_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  aria-label={`Go to slide ${index + 1}`}
+                  onClick={() => goTo(index)}
+                  className={`mx-[3px] inline-block size-2 rounded-full ${
+                    current === index ? "bg-black" : "bg-neutral-300"
+                  }`}
                 />
-              </div>
-              <div className="flex flex-1 items-center justify-center px-2">
-                <span className="line-clamp-2 text-base font-medium text-brand-black sm:text-lg">
-                  {category.label}
-                </span>
-              </div>
-            </Link>
-          ))}
+              ))}
+            </div>
+          </div>
         </div>
       </div>
-      <style jsx>{`
-        .shop-categories-marquee {
-          animation: categories-marquee 45s linear infinite;
-        }
-        .shop-categories-marquee:hover {
-          animation-play-state: paused;
-        }
-        @keyframes categories-marquee {
-          0% {
-            transform: translateX(0);
-          }
-          100% {
-            transform: translateX(-50%);
-          }
-        }
-      `}</style>
     </section>
   );
 }

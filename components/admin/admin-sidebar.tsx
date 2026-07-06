@@ -21,22 +21,19 @@ import {
   TrendingUp,
   MapPin,
   MessageCircle,
-  Share2,
   BookOpen,
   Ticket,
   Bell,
   Award,
-  Grid3x3,
   Coins,
   Gift,
   Settings as SettingsIcon,
   ClipboardList,
   Star,
-  Mail,
   Calendar,
   Receipt
 } from "lucide-react";
-import { signOut } from "next-auth/react";
+import { signOutToLogin } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/contexts/language-context";
@@ -100,6 +97,12 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
               badge: null,
             },
             {
+              title: t("sidebar.stock"),
+              href: "/admin/stock",
+              icon: Package,
+              badge: null,
+            },
+            {
               title: t("sidebar.categories"),
               href: "/admin/categories",
               icon: FolderTree,
@@ -124,8 +127,8 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
               badge: null,
             },
             {
-              title: "Tax Configuration",
-              href: "/admin/tax-config",
+              title: "Shipping Configuration",
+              href: "/admin/shipping",
               icon: Receipt,
               badge: null,
             },
@@ -161,27 +164,9 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
               badge: null,
             },
             {
-              title: t("sidebar.socialMedia"),
-              href: "/admin/social-media",
-              icon: Share2,
-              badge: null,
-            },
-            {
-              title: "Email Campaigns",
-              href: "/admin/email-campaigns",
-              icon: Mail,
-              badge: null,
-            },
-            {
               title: t("sidebar.notifications"),
               href: "/admin/notifications",
               icon: Bell,
-              badge: null,
-            },
-            {
-              title: t("sidebar.megaMenuCards"),
-              href: "/admin/mega-menu-cards",
-              icon: Grid3x3,
               badge: null,
             },
           ],
@@ -598,7 +583,7 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
         <button
           onClick={() => {
             if (window.confirm("Are you sure you want to sign out?")) {
-              signOut({ callbackUrl: "/login" });
+              void signOutToLogin();
             }
           }}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium bg-red-600 text-white transition-colors hover:bg-red-700"

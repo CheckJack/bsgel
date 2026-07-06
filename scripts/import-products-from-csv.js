@@ -139,9 +139,9 @@ async function getOrCreateCategory(prisma, categorySlug) {
   // Map slugs to proper category names
   const categoryMap = {
     'bio-gel': { name: 'BIO Gel', slug: 'bio-gel' },
-    'ethos': { name: 'Ethos', slug: 'ethos' },
-    'evo': { name: 'Evo', slug: 'evo' },
-    'gemini': { name: 'Gemini', slug: 'gemini' },
+    'ethos': { name: 'Cuidados das Unhas', slug: 'ethos' },
+    'evo': { name: 'Verniz Gel', slug: 'evo' },
+    'gemini': { name: 'Verniz Tradicional', slug: 'gemini' },
     'spa': { name: 'Spa', slug: 'spa' },
   };
   

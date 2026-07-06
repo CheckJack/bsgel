@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { X, Upload } from "lucide-react";
+import { ADMIN_SHOWCASING_SECTIONS } from "@/lib/brand-lines";
 
 interface Category {
   id: string;
@@ -35,31 +36,13 @@ export default function NewProductPage() {
     categoryId: "",
     subcategoryIds: [] as string[],
     showcasingSections: [] as string[],
-    outOfStock: false,
+    stockQuantity: "0",
     hemaFree: false,
     hasDiscount: false,
     discountPrice: "",
   });
 
-  // Available showcasing sections
-  const showcasingSections = [
-    { value: "bases", label: "Bases" },
-    { value: "builders", label: "Builders" },
-    { value: "softs", label: "Softs" },
-    { value: "extensao", label: "Extensao" },
-    { value: "bundles", label: "Bundles" },
-    { value: "eletronicos", label: "Eletronicos" },
-    { value: "promocoes", label: "Promocoes" },
-    { value: "kits-treino", label: "Kits e Treino" },
-    { value: "solventes", label: "Solventes" },
-    { value: "nail-art", label: "Nail Art" },
-    { value: "tips", label: "Tips" },
-    { value: "utensilios", label: "Utensilios" },
-    { value: "pinceis", label: "Pinceis" },
-    { value: "lima-buffs", label: "Lima e Buffs" },
-    { value: "ethos", label: "Cuidados das unhas" },
-    { value: "gemini", label: "Verniz Classico" },
-  ];
+  const showcasingSections = [...ADMIN_SHOWCASING_SECTIONS];
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
@@ -214,11 +197,6 @@ export default function NewProductPage() {
     e.preventDefault();
     setError("");
 
-    if (formData.name.length > 20) {
-      setError("Product name cannot exceed 20 characters");
-      return;
-    }
-
     // Validate that selected sizes have prices and images
     if (selectedSizes.length === 0) {
       setError("Please select at least one size");
@@ -301,7 +279,7 @@ export default function NewProductPage() {
         categoryId: formData.categoryId || null,
         subcategoryIds: formData.subcategoryIds || [],
         featured: false,
-        outOfStock: formData.outOfStock,
+        stockQuantity: parseInt(formData.stockQuantity, 10) || 0,
         hemaFree: formData.hemaFree,
         attributes,
         showcasingSections: formData.showcasingSections || [],
@@ -402,18 +380,9 @@ export default function NewProductPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
                   }
-                  maxLength={20}
                   required
                   className="w-full"
                 />
-                <p className="mt-1 text-xs text-gray-500">
-                  Do not exceed 20 characters when entering the product name.
-                </p>
-                {formData.name.length > 0 && (
-                  <p className="mt-1 text-xs text-gray-400">
-                    {formData.name.length}/20 characters
-                  </p>
-                )}
               </div>
             </div>
 
@@ -576,17 +545,18 @@ export default function NewProductPage() {
                 Select tags for this product. Tags work independently and can be combined.
               </p>
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="new-outOfStock"
-                    checked={formData.outOfStock}
-                    onChange={(e) => setFormData({ ...formData, outOfStock: e.target.checked })}
-                    className="h-4 w-4"
-                  />
-                  <label htmlFor="new-outOfStock" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Out of Stock
+                <div>
+                  <label htmlFor="new-stockQuantity" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Stock quantity
                   </label>
+                  <input
+                    type="number"
+                    id="new-stockQuantity"
+                    min={0}
+                    value={formData.stockQuantity}
+                    onChange={(e) => setFormData({ ...formData, stockQuantity: e.target.value })}
+                    className="h-10 w-32 rounded-md border border-gray-300 px-3 dark:border-gray-600 dark:bg-gray-800"
+                  />
                 </div>
                 <div className="flex items-center gap-2">
                   <input

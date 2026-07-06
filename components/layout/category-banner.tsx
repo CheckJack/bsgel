@@ -41,7 +41,7 @@ export function CategoryBanner({ categories }: CategoryBannerProps) {
                   <div className="relative w-full h-full flex items-center justify-center">
                     <Image
                       src="/ETHOSLOGO.png"
-                      alt="ETHOS Logo"
+                      alt="Cuidados das Unhas"
                       width={200}
                       height={200}
                       className="object-contain w-[60%] sm:w-[50%] md:w-[45%] lg:w-auto h-auto max-w-[200px]"
@@ -71,7 +71,7 @@ export function CategoryBanner({ categories }: CategoryBannerProps) {
                   <div className="relative w-full h-full flex items-center justify-center">
                     <Image
                       src="/EVOLOGO.png"
-                      alt="EVO Logo"
+                      alt="Verniz Gel"
                       width={140}
                       height={140}
                       className="object-contain w-[50%] sm:w-[40%] md:w-[35%] lg:w-auto h-auto max-w-[140px]"
@@ -100,7 +100,7 @@ export function CategoryBanner({ categories }: CategoryBannerProps) {
                   <div className="relative w-full h-full flex items-center justify-center">
                     <Image
                       src="/geminilogo.png"
-                      alt="Gemini Logo"
+                      alt="Verniz Tradicional"
                       width={195}
                       height={195}
                       className="object-contain w-[60%] sm:w-[50%] md:w-[45%] lg:w-auto h-auto max-w-[195px]"

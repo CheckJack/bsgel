@@ -21,6 +21,8 @@ export async function GET(req: Request) {
         name: true,
         image: true,
         shippingAddress: true,
+        billingNif: true,
+        billingAddress: true,
       },
     });
 
@@ -54,6 +56,8 @@ const updateProfileSchema = z.object({
     ]).optional()
   ),
   shippingAddress: z.string().nullable().optional(),
+  billingNif: z.string().max(32).nullable().optional(),
+  billingAddress: z.string().max(8000).nullable().optional(),
 }).refine(
   (data) => {
     // If newPassword is provided and not empty, currentPassword must also be provided
@@ -101,6 +105,8 @@ export async function PATCH(req: Request) {
       password?: string;
       image?: string | null;
       shippingAddress?: string | null;
+      billingNif?: string | null;
+      billingAddress?: string | null;
     } = {};
 
     // Update name if provided
@@ -163,6 +169,16 @@ export async function PATCH(req: Request) {
       updateData.shippingAddress = validatedData.shippingAddress === "" || validatedData.shippingAddress === null ? null : validatedData.shippingAddress;
     }
 
+    if (validatedData.billingNif !== undefined) {
+      const v = validatedData.billingNif?.trim() ?? "";
+      updateData.billingNif = v === "" ? null : v;
+    }
+
+    if (validatedData.billingAddress !== undefined) {
+      const v = validatedData.billingAddress?.trim() ?? "";
+      updateData.billingAddress = v === "" ? null : validatedData.billingAddress;
+    }
+
     // Update user
     try {
       const updatedUser = await db.user.update({
@@ -175,6 +191,8 @@ export async function PATCH(req: Request) {
           image: true,
           role: true,
           shippingAddress: true,
+          billingNif: true,
+          billingAddress: true,
         },
       });
 

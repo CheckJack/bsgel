@@ -3,6 +3,54 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { canUserPurchaseProduct } from "@/lib/certifications"
+import { clampCartItemsToStock } from "@/lib/stock"
+import { resolveCartQuantity, upsertCartItem } from "@/lib/stock-cart"
+import {
+  cartWithTrainingInclude,
+  clearUserCart,
+  decimalToString,
+  serializeTrainingCartItem,
+} from "@/lib/cart-training"
+
+function serializeProductCartItems(
+  items: Array<{
+    id: string
+    quantity: number
+    product: {
+      id: string
+      name: string
+      price: unknown
+      image: string | null
+      description: string | null
+      categoryId: string | null
+      stockQuantity: number | null
+      outOfStock: boolean
+      category: { id: string; name: string; slug: string } | null
+    }
+  }>
+) {
+  return items.map((item) => ({
+    id: item.id,
+    product: {
+      id: item.product.id,
+      name: item.product.name,
+      price: decimalToString(item.product.price as never),
+      image: item.product.image,
+      description: item.product.description,
+      categoryId: item.product.categoryId,
+      stockQuantity: item.product.stockQuantity,
+      outOfStock: item.product.outOfStock,
+      category: item.product.category
+        ? {
+            id: item.product.category.id,
+            name: item.product.category.name,
+            slug: item.product.category.slug,
+          }
+        : null,
+    },
+    quantity: item.quantity,
+  }))
+}
 
 export async function GET() {
   try {
@@ -14,43 +62,25 @@ export async function GET() {
 
     const cart = await db.cart.findUnique({
       where: { userId: session.user.id },
-      include: {
-        items: {
-          include: {
-            product: {
-              include: {
-                category: true,
-              },
-            },
-          },
-        },
-      },
+      include: cartWithTrainingInclude,
     })
 
     if (!cart) {
-      return NextResponse.json({ items: [] })
+      return NextResponse.json({ items: [], trainingItems: [] })
+    }
+
+    await clampCartItemsToStock(session.user.id)
+    const refreshed = await db.cart.findUnique({
+      where: { userId: session.user.id },
+      include: cartWithTrainingInclude,
+    })
+    if (!refreshed) {
+      return NextResponse.json({ items: [], trainingItems: [] })
     }
 
     return NextResponse.json({
-      items: cart.items.map((item) => ({
-        id: item.id,
-        product: {
-          id: item.product.id,
-          name: item.product.name,
-          price: typeof item.product.price === 'object' && item.product.price !== null 
-            ? item.product.price.toString() 
-            : String(item.product.price || '0'),
-          image: item.product.image,
-          description: item.product.description,
-          categoryId: item.product.categoryId,
-          category: item.product.category ? {
-            id: item.product.category.id,
-            name: item.product.category.name,
-            slug: item.product.category.slug,
-          } : null,
-        },
-        quantity: item.quantity,
-      })),
+      items: serializeProductCartItems(refreshed.items),
+      trainingItems: refreshed.trainingItems.map(serializeTrainingCartItem),
     })
   } catch (error: any) {
     console.error("Failed to fetch cart:", error)
@@ -115,7 +145,6 @@ export async function POST(req: Request) {
       })
     }
 
-    // Check if item already exists in cart
     const existingItem = await db.cartItem.findUnique({
       where: {
         cartId_productId: {
@@ -125,24 +154,33 @@ export async function POST(req: Request) {
       },
     })
 
-    if (existingItem) {
-      // Update quantity
-      await db.cartItem.update({
-        where: { id: existingItem.id },
-        data: { quantity: existingItem.quantity + quantity },
+    const existingQty = existingItem?.quantity ?? 0
+    const resolved = await resolveCartQuantity(productId, quantity, existingQty)
+
+    if (!resolved.ok) {
+      const product = await db.product.findUnique({
+        where: { id: productId },
+        select: { stockQuantity: true },
       })
-    } else {
-      // Create new item
-      await db.cartItem.create({
-        data: {
-          cartId: cart.id,
-          productId,
-          quantity,
-        },
-      })
+      const available = product?.stockQuantity ?? 0
+      if (resolved.body.error === "INSUFFICIENT_STOCK" && available > existingQty) {
+        const clampedQty = available
+        await upsertCartItem(session.user.id, productId, clampedQty)
+        return NextResponse.json(
+          {
+            ...resolved.body,
+            partial: true,
+            addedQuantity: clampedQty - existingQty,
+          },
+          { status: 409 }
+        )
+      }
+      return NextResponse.json(resolved.body, { status: 409 })
     }
 
-    return NextResponse.json({ message: "Item added to cart" })
+    await upsertCartItem(session.user.id, productId, resolved.quantity)
+
+    return NextResponse.json({ message: "Item added to cart", quantity: resolved.quantity })
   } catch (error) {
     console.error("Failed to add item to cart:", error)
     return NextResponse.json(
@@ -165,9 +203,7 @@ export async function DELETE() {
     })
 
     if (cart) {
-      await db.cartItem.deleteMany({
-        where: { cartId: cart.id },
-      })
+      await clearUserCart(cart.id)
     }
 
     return NextResponse.json({ message: "Cart cleared" })

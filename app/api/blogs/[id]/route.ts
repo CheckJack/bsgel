@@ -40,7 +40,7 @@ export async function PATCH(
     }
 
     const body = await req.json()
-    const { title, slug, excerpt, content, image, author, status, publishedAt, assignedReviewerId } = body
+    const { title, slug, excerpt, content, image, heroImage, author, status, publishedAt, assignedReviewerId } = body
 
     // Check if blog exists
     const existingBlog = await db.blog.findUnique({
@@ -71,6 +71,7 @@ export async function PATCH(
     if (excerpt !== undefined) updateData.excerpt = excerpt
     if (content !== undefined) updateData.content = content
     if (image !== undefined) updateData.image = image
+    if (heroImage !== undefined) updateData.heroImage = heroImage
     if (author !== undefined) updateData.author = author
     if (status !== undefined) {
       updateData.status = status

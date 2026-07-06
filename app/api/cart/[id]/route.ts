@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { z } from "zod"
+import { validateQuantity } from "@/lib/stock"
 
 const updateCartItemSchema = z.object({
   quantity: z.number().int().positive(),
@@ -45,6 +46,33 @@ export async function PATCH(
 
     if (cartItem.cart.userId !== session.user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    const check = await validateQuantity(cartItem.productId, quantity)
+    if (!check.ok) {
+      if (check.code === "INSUFFICIENT_STOCK" && check.available > 0) {
+        await db.cartItem.update({
+          where: { id },
+          data: { quantity: check.available },
+        })
+        return NextResponse.json(
+          {
+            error: "INSUFFICIENT_STOCK",
+            available: check.available,
+            productId: cartItem.productId,
+            partial: true,
+          },
+          { status: 409 }
+        )
+      }
+      return NextResponse.json(
+        {
+          error: check.code,
+          available: check.available,
+          productId: cartItem.productId,
+        },
+        { status: 409 }
+      )
     }
 
     await db.cartItem.update({

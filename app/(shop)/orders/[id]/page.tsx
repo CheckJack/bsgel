@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
+import { useLanguage } from "@/contexts/language-context";
 
 interface OrderItem {
   id: string;
@@ -24,6 +25,10 @@ interface Order {
   total: string;
   status: string;
   shippingAddress: string | null;
+  billingNif: string | null;
+  billingAddress: string | null;
+  shopPaymentMethod?: string | null;
+  manualPaymentStatus?: string | null;
   taxRate: number | null;
   taxAmount: string | null;
   taxRegion: string | null;
@@ -35,6 +40,7 @@ export default function OrderConfirmationPage() {
   const params = useParams();
   const router = useRouter();
   const { data: session } = useSession();
+  const { t } = useLanguage();
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -90,13 +96,31 @@ export default function OrderConfirmationPage() {
     }
   };
 
+  const awaitingManualPayment =
+    (order.shopPaymentMethod === "MBWAY" || order.shopPaymentMethod === "BANK_TRANSFER") &&
+    order.status === "PENDING" &&
+    (order.manualPaymentStatus === "PENDING" || order.manualPaymentStatus == null);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-4xl font-bold mb-8">Order Confirmation</h1>
 
-      <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-md">
-        <p className="text-green-800 font-semibold">
-          Thank you for your order! Your payment has been processed successfully.
+      <div
+        className={`mb-6 p-4 rounded-md border ${
+          awaitingManualPayment
+            ? "bg-amber-50 border-amber-200 text-amber-950"
+            : "bg-green-50 border-green-200"
+        }`}
+      >
+        <p className={`font-semibold ${awaitingManualPayment ? "" : "text-green-800"}`}>
+          {awaitingManualPayment ? (
+            <>
+              {t("checkout.manualOrderThankYou")}{" "}
+              {t("checkout.manualOrderPending")}
+            </>
+          ) : (
+            <>Thank you for your order! Your payment has been processed successfully.</>
+          )}
         </p>
       </div>
 
@@ -121,6 +145,15 @@ export default function OrderConfirmationPage() {
                 <div>
                   <p className="text-sm text-gray-600">Shipping Address</p>
                   <p>{order.shippingAddress}</p>
+                </div>
+              )}
+              {(order.billingNif || order.billingAddress) && (
+                <div>
+                  <p className="text-sm text-gray-600">Billing / invoice</p>
+                  {order.billingNif && <p>NIF: {order.billingNif}</p>}
+                  {order.billingAddress && (
+                    <p className="whitespace-pre-wrap">{order.billingAddress}</p>
+                  )}
                 </div>
               )}
             </CardContent>

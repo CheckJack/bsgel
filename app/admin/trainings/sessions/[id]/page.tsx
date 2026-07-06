@@ -8,6 +8,22 @@ import { toast } from "@/components/ui/toast";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
+const toLocalDateTimeInput = (value: string | Date) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const localDateTimeInputToIso = (value: string) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+};
+
 export default function EditSessionPage() {
   const router = useRouter();
   const params = useParams();
@@ -38,8 +54,8 @@ export default function EditSessionPage() {
       const res = await fetch(`/api/trainings/sessions/${id}`);
       if (res.ok) {
         const data = await res.json();
-        const startDate = new Date(data.startDate).toISOString().slice(0, 16);
-        const endDate = new Date(data.endDate).toISOString().slice(0, 16);
+        const startDate = toLocalDateTimeInput(data.startDate);
+        const endDate = toLocalDateTimeInput(data.endDate);
         setFormData({
           programId: data.programId,
           startDate,
@@ -116,8 +132,8 @@ export default function EditSessionPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          startDate: formData.startDate,
-          endDate: formData.endDate,
+          startDate: localDateTimeInputToIso(formData.startDate),
+          endDate: localDateTimeInputToIso(formData.endDate),
           location: formData.location || null,
           format: formData.format,
           maxParticipants: parseInt(formData.maxParticipants),
@@ -176,7 +192,7 @@ export default function EditSessionPage() {
                 type="datetime-local"
                 id="startDate"
                 required
-                value={formData.startDate}
+                value={toLocalDateTimeInput(formData.startDate)}
                 onChange={(e) => handleStartDateChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -199,7 +215,7 @@ export default function EditSessionPage() {
                 type="datetime-local"
                 id="endDate"
                 required
-                value={formData.endDate}
+                value={toLocalDateTimeInput(formData.endDate)}
                 onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />

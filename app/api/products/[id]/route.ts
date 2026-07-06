@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { logAdminAction, extractRequestInfo, createChangeDetails } from "@/lib/admin-logger"
+import { updateProductStock } from "@/lib/stock"
 
 export async function GET(
   req: Request,
@@ -26,6 +27,7 @@ export async function GET(
           images: true,
           featured: true,
           outOfStock: true,
+          stockQuantity: true,
           hemaFree: true,
           categoryId: true,
           attributes: true,
@@ -291,7 +293,7 @@ export async function PATCH(
     }
 
     const body = await req.json()
-    const { id: newId, name, description, price, salePrice, image, images, categoryId, subcategoryIds, featured, outOfStock, hemaFree, attributes, showcasingSections } = body
+    const { id: newId, name, description, price, salePrice, image, images, categoryId, subcategoryIds, featured, outOfStock, hemaFree, attributes, showcasingSections, stockQuantity } = body
 
     // Handle ID change - must check for duplicates first
     if (newId !== undefined && typeof newId === "string" && newId.trim().length > 0) {
@@ -323,8 +325,16 @@ export async function PATCH(
     if (featured !== undefined) updateData.featured = featured
     // Product tags are mutually exclusive - only one can be set at a time
     // Only add these fields if columns exist in database (will be removed if they don't exist)
-    if (outOfStock !== undefined) {
+    if (stockQuantity !== undefined && stockQuantity !== null) {
+      const qty = parseInt(String(stockQuantity), 10)
+      if (!Number.isNaN(qty) && qty >= 0) {
+        await updateProductStock(id, qty)
+      }
+    } else if (outOfStock !== undefined) {
       updateData.outOfStock = outOfStock
+      if (outOfStock === true) {
+        updateData.stockQuantity = 0
+      }
     }
     if (hemaFree !== undefined) {
       updateData.hemaFree = hemaFree

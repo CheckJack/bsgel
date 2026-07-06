@@ -90,6 +90,7 @@ export async function GET(
       content: program.content,
       days: program.days ? (Array.isArray(program.days) ? program.days : JSON.parse(program.days as string)) : null,
       totalHours: program.totalHours,
+      displayOrder: program.displayOrder,
       price: Number(program.price), // Convert Decimal to number
       image: program.image,
       isActive: program.isActive,
@@ -134,7 +135,7 @@ export async function PUT(
     }
 
     const body = await req.json()
-    const { title, description, content, days, price, image, isActive, productIds } = body
+    const { title, description, content, days, price, image, isActive, productIds, displayOrder } = body
 
     // Check if program exists
     let existing;
@@ -185,6 +186,15 @@ export async function PUT(
         { status: 400 }
       )
     }
+    if (
+      displayOrder !== undefined &&
+      (!Number.isInteger(displayOrder) || displayOrder < 0)
+    ) {
+      return NextResponse.json(
+        { error: "displayOrder must be a non-negative integer" },
+        { status: 400 }
+      )
+    }
 
     // Validate product IDs if provided
     if (productIds !== undefined && Array.isArray(productIds) && productIds.length > 0) {
@@ -215,6 +225,7 @@ export async function PUT(
       updateData.totalHours = totalHours
     }
     if (price !== undefined) updateData.price = parseFloat(price)
+    if (displayOrder !== undefined) updateData.displayOrder = displayOrder
     if (image !== undefined) updateData.image = image || null
     if (isActive !== undefined) updateData.isActive = Boolean(isActive)
 

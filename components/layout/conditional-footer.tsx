@@ -25,7 +25,12 @@ export function ConditionalFooter() {
   if (pathname === "/diagnosis") {
     return null;
   }
-  
+
+  // Full-screen map experience
+  if (pathname === "/salons") {
+    return null;
+  }
+
   return <Footer />;
 }
 

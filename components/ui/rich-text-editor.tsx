@@ -26,6 +26,8 @@ import {
   Redo,
   Link as LinkIcon,
   Image as ImageIcon,
+  Upload,
+  X,
   AlignLeft,
   AlignCenter,
   AlignRight,
@@ -33,14 +35,27 @@ import {
   Palette,
 } from "lucide-react";
 import { Button } from "./button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { TextSelection } from "prosemirror-state";
+
+export const RICH_TEXT_INLINE_IMAGE_HINT =
+  "Recommended size: 1200 × 675 px (16:9). Images scale to fit the content width.";
 
 interface RichTextEditorProps {
   content: string;
   onChange: (content: string) => void;
   placeholder?: string;
   editable?: boolean;
+  imageUploadHint?: string;
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Failed to read image file"));
+    reader.readAsDataURL(file);
+  });
 }
 
 export function RichTextEditor({
@@ -48,11 +63,14 @@ export function RichTextEditor({
   onChange,
   placeholder = "Start typing your content here...",
   editable = true,
+  imageUploadHint = RICH_TEXT_INLINE_IMAGE_HINT,
 }: RichTextEditorProps) {
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [showImageDialog, setShowImageDialog] = useState(false);
-  const [imageUrl, setImageUrl] = useState("");
+  const [imagePreview, setImagePreview] = useState<{ url: string; file: File } | null>(null);
+  const [isInsertingImage, setIsInsertingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -450,11 +468,42 @@ export function RichTextEditor({
     }
   };
 
-  const addImage = () => {
-    if (imageUrl) {
-      editor?.chain().focus().setImage({ src: imageUrl }).run();
-      setImageUrl("");
-      setShowImageDialog(false);
+  const clearImagePreview = () => {
+    setImagePreview((prev) => {
+      if (prev?.url.startsWith("blob:")) {
+        URL.revokeObjectURL(prev.url);
+      }
+      return null;
+    });
+  };
+
+  const closeImageDialog = () => {
+    clearImagePreview();
+    setShowImageDialog(false);
+    setIsInsertingImage(false);
+  };
+
+  const handleImageFile = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    setImagePreview((prev) => {
+      if (prev?.url.startsWith("blob:")) {
+        URL.revokeObjectURL(prev.url);
+      }
+      return { url: URL.createObjectURL(file), file };
+    });
+  };
+
+  const addImage = async () => {
+    if (!imagePreview?.file || !editor) return;
+
+    setIsInsertingImage(true);
+    try {
+      const dataUrl = await fileToDataUrl(imagePreview.file);
+      editor.chain().focus().setImage({ src: dataUrl }).run();
+      closeImageDialog();
+    } catch (error) {
+      console.error("Failed to insert image:", error);
+      setIsInsertingImage(false);
     }
   };
 
@@ -477,7 +526,7 @@ export function RichTextEditor({
   return (
     <div className="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 relative">
       {editable && (
-        <div className="border-b border-gray-300 dark:border-gray-600 p-2 flex flex-wrap gap-1">
+        <div className="relative z-20 border-b border-gray-300 dark:border-gray-600 p-2 flex flex-wrap gap-1 overflow-visible">
           {/* Text Formatting */}
           <div className="flex gap-1 border-r border-gray-300 dark:border-gray-600 pr-2 mr-2">
             <Button
@@ -635,19 +684,124 @@ export function RichTextEditor({
                 const url = editor.getAttributes("link").href;
                 setLinkUrl(url || "");
                 setShowLinkDialog(true);
+                setShowImageDialog(false);
               }}
               className={editor.isActive("link") ? "bg-gray-200 dark:bg-gray-700" : ""}
             >
               <LinkIcon className="h-4 w-4" />
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowImageDialog(true)}
-            >
-              <ImageIcon className="h-4 w-4" />
-            </Button>
+            <div className="relative">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  clearImagePreview();
+                  setShowLinkDialog(false);
+                  setShowImageDialog((open) => !open);
+                }}
+                className={showImageDialog ? "bg-gray-200 dark:bg-gray-700" : ""}
+              >
+                <ImageIcon className="h-4 w-4" />
+              </Button>
+
+              {showImageDialog && (
+                <div className="absolute z-50 top-full left-0 mt-2 w-[min(calc(100vw-2rem),320px)] p-4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg">
+                  <div className="flex flex-col gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Insert image</p>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{imageUploadHint}</p>
+                    </div>
+
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) handleImageFile(file);
+                        event.target.value = "";
+                      }}
+                    />
+
+                    {imagePreview ? (
+                      <div className="relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-600">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={imagePreview.url}
+                          alt="Selected upload preview"
+                          className="max-h-40 w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={clearImagePreview}
+                          className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600"
+                          aria-label="Remove selected image"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => imageInputRef.current?.click()}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            imageInputRef.current?.click();
+                          }
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          const file = event.dataTransfer.files[0];
+                          if (file) handleImageFile(file);
+                        }}
+                        onDragOver={(event) => event.preventDefault()}
+                        className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-8 transition-colors hover:border-brand-champagne dark:border-gray-600 dark:bg-gray-700"
+                      >
+                        <Upload className="mb-2 h-7 w-7 text-gray-400 dark:text-gray-500" />
+                        <p className="text-center text-xs text-gray-600 dark:text-gray-300">
+                          Drop an image here or click to browse
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={addImage}
+                        disabled={!imagePreview || isInsertingImage}
+                      >
+                        {isInsertingImage ? "Inserting..." : "Insert image"}
+                      </Button>
+                      {imagePreview && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => imageInputRef.current?.click()}
+                          disabled={isInsertingImage}
+                        >
+                          Replace
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={closeImageDialog}
+                        disabled={isInsertingImage}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Undo/Redo */}
@@ -720,44 +874,6 @@ export function RichTextEditor({
                 size="sm"
                 variant="outline"
                 onClick={() => setShowLinkDialog(false)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Image Dialog */}
-      {showImageDialog && (
-        <div className="absolute z-50 top-full left-0 mt-2 p-4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg min-w-[300px]">
-          <div className="flex flex-col gap-2">
-            <input
-              type="url"
-              placeholder="Enter image URL"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addImage();
-                }
-                if (e.key === "Escape") {
-                  setShowImageDialog(false);
-                }
-              }}
-              autoFocus
-            />
-            <div className="flex gap-2">
-              <Button type="button" size="sm" onClick={addImage}>
-                Add Image
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => setShowImageDialog(false)}
               >
                 Cancel
               </Button>

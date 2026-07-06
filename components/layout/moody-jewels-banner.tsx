@@ -9,7 +9,7 @@ export function MoodyJewelsBanner() {
 
   return (
     <section className="w-full relative overflow-hidden">
-      <div className="relative w-full min-h-[500px] sm:min-h-[600px] md:min-h-[700px] lg:min-h-[800px] flex">
+      <div className="relative w-full min-h-[420px] sm:min-h-[500px] md:min-h-[650px] lg:min-h-[800px] flex">
         {/* Full Background Image */}
         <div className="absolute inset-0 w-full h-full">
           <Image

@@ -7,7 +7,7 @@ export default function BiosculpturePage() {
   return (
     <>
       {/* Hero Image Section */}
-      <div className="relative w-full h-[calc(100vh-60px)] md:h-[calc(100vh-70px)] overflow-hidden">
+      <div className="relative h-[calc(100dvh-var(--site-header-height,113px))] min-h-[420px] w-full overflow-hidden md:min-h-[520px]">
         <div className="absolute inset-0 w-full h-full">
           <Image
             src="/Add a heading (16).png"
@@ -23,7 +23,7 @@ export default function BiosculpturePage() {
         {/* Text Overlay - Bottom Left - Aligned with Logo */}
         <div className="absolute bottom-12 md:bottom-16 lg:bottom-20 left-0 right-0 z-10">
           <div className="container mx-auto px-4">
-            <p className="text-white text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-light leading-relaxed">
+            <p className="text-white text-3xl font-light leading-relaxed sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl">
               Primeiro Tratar,<br />
               Depois Embelezar
             </p>
@@ -39,7 +39,7 @@ export default function BiosculpturePage() {
 
       {/* "O que significa Tratar" Section */}
       <section 
-        className="relative w-full h-[600px] md:h-[700px] lg:h-[800px] flex items-center px-4 md:px-8 lg:px-16" 
+        className="relative flex w-full items-center px-4 py-12 sm:px-6 sm:py-16 md:h-[700px] md:px-8 md:py-0 lg:h-[800px] lg:px-16" 
         style={{ backgroundColor: '#ddd6d0' }}
       >
         <div className="container mx-auto max-w-4xl">
@@ -53,13 +53,10 @@ export default function BiosculpturePage() {
       </section>
 
       {/* "O Protocolo" Section */}
-      <section 
-        className="relative w-full h-[600px] md:h-[700px] lg:h-[800px] bg-brand-white"
-      >
-        <div className="w-full h-full">
-          <div className="grid md:grid-cols-2 gap-0 h-full">
-            {/* Text Content - Left Side (50%) */}
-            <div className="px-4 md:px-8 lg:px-16 flex items-center">
+      <section className="relative w-full bg-brand-white py-12 sm:py-16 md:py-0 md:h-[700px] lg:h-[800px]">
+        <div className="w-full md:h-full">
+          <div className="grid h-full grid-cols-1 gap-8 md:grid-cols-2 md:gap-0">
+            <div className="flex items-center px-4 sm:px-6 md:px-8 lg:px-16">
               <div>
                 <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium mb-6 md:mb-8 text-brand-black">
                   O Diagnóstico BIO: Tratamento por Prescrição
@@ -69,9 +66,8 @@ export default function BiosculpturePage() {
                 </p>
               </div>
             </div>
-            
-            {/* Image - Right Side (50%) */}
-            <div className="h-full w-full relative">
+
+            <div className="relative aspect-[4/3] min-h-[220px] w-full sm:min-h-[280px] md:aspect-auto md:h-full">
               <Image 
                 src="/fdfvd.png" 
                 alt="O Protocolo - Base Gel" 
@@ -85,13 +81,10 @@ export default function BiosculpturePage() {
       </section>
 
       {/* "De Tratamento" Section */}
-      <section 
-        className="relative w-full h-[600px] md:h-[700px] lg:h-[800px] bg-brand-white"
-      >
-        <div className="w-full h-full">
-          <div className="grid md:grid-cols-2 gap-0 h-full">
-            {/* Image - Left Side (50%) */}
-            <div className="h-full w-full relative">
+      <section className="relative w-full bg-brand-white py-12 sm:py-16 md:py-0 md:h-[700px] lg:h-[800px]">
+        <div className="w-full md:h-full">
+          <div className="grid h-full grid-cols-1 gap-8 md:grid-cols-2 md:gap-0">
+            <div className="relative order-2 aspect-[4/3] min-h-[220px] w-full sm:min-h-[280px] md:order-1 md:aspect-auto md:h-full">
               <Image 
                 src="/_zx.png" 
                 alt="De Tratamento - Base Gel Products" 
@@ -100,9 +93,8 @@ export default function BiosculpturePage() {
                 unoptimized
               />
             </div>
-            
-            {/* Text Content - Right Side (50%) */}
-            <div className="px-4 md:px-8 lg:px-16 flex items-center">
+
+            <div className="order-1 flex items-center px-4 sm:px-6 md:order-2 md:px-8 lg:px-16">
               <div>
                 <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium mb-6 md:mb-8 text-brand-black">
                   Cuidados de Tratamento
@@ -117,9 +109,7 @@ export default function BiosculpturePage() {
       </section>
 
       {/* "O momento de Embelezar" Section */}
-      <section 
-        className="relative w-full h-[600px] md:h-[700px] lg:h-[800px] overflow-hidden"
-      >
+      <section className="relative min-h-[480px] w-full overflow-hidden py-16 sm:min-h-[560px] md:h-[700px] md:py-0 lg:h-[800px]">
         {/* Background Image */}
         <div className="absolute inset-0 w-full h-full">
           <Image 
@@ -133,7 +123,7 @@ export default function BiosculpturePage() {
         
         {/* Semi-transparent Brown Overlay - Rectangle in Middle */}
         <div className="absolute inset-0 flex items-center justify-center p-4 md:p-8 lg:p-16">
-          <div className="bg-[rgba(139,69,19,0.7)] md:bg-[rgba(139,69,19,0.75)] m-2 md:m-4 lg:m-6 p-12 md:p-16 lg:p-20 max-w-6xl md:max-w-7xl rounded-lg md:rounded-xl lg:rounded-2xl">
+          <div className="m-2 max-w-6xl rounded-lg bg-[rgba(139,69,19,0.7)] p-8 sm:p-12 md:m-4 md:max-w-7xl md:rounded-xl md:bg-[rgba(139,69,19,0.75)] md:p-16 lg:m-6 lg:rounded-2xl lg:p-20">
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-medium mb-6 md:mb-8 text-white">
               A Fase de &quot;Embelezar&quot;
             </h2>

@@ -25,6 +25,11 @@ interface Order {
   total: string;
   status: string;
   shippingAddress: string | null;
+  billingNif?: string | null;
+  billingAddress?: string | null;
+  shopPaymentMethod?: string | null;
+  manualPaymentStatus?: string | null;
+  appliedCouponCode?: string | null;
   taxRate: number | null;
   taxAmount: string | null;
   taxRegion: string | null;
@@ -42,6 +47,7 @@ export default function AdminOrderDetailPage() {
   const { data: session } = useSession();
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [manualBusy, setManualBusy] = useState(false);
 
   // Mock order data for demonstration
   const mockOrder: Order = {
@@ -114,6 +120,23 @@ export default function AdminOrderDetailPage() {
       console.error("Failed to fetch order:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const patchManualPayment = async (action: "confirm" | "cancel") => {
+    if (!order || params.id === "7712309") return;
+    setManualBusy(true);
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ manualPaymentAction: action }),
+      });
+      if (res.ok) {
+        await fetchOrder();
+      }
+    } finally {
+      setManualBusy(false);
     }
   };
 
@@ -305,16 +328,72 @@ export default function AdminOrderDetailPage() {
             </CardContent>
           </Card>
 
+          {(order.billingNif || order.billingAddress) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold">Billing / invoice</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-gray-700">
+                {order.billingNif && (
+                  <p>
+                    <span className="text-gray-500">NIF:</span> {order.billingNif}
+                  </p>
+                )}
+                {order.billingAddress && (
+                  <p className="whitespace-pre-wrap">{order.billingAddress}</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Payment Method Section */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">Payment Method</CardTitle>
+              <CardTitle className="text-lg font-semibold">Payment</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-700">
-                Pay on Delivery (Cash/Card). Cash on delivery (COD) available. Card/Net banking
-                acceptance subject to device availability.
+            <CardContent className="space-y-3 text-sm text-gray-700">
+              <p>
+                <span className="text-gray-500">Method: </span>
+                {order.shopPaymentMethod || "Stripe (legacy)"}
               </p>
+              {order.appliedCouponCode && (
+                <p>
+                  <span className="text-gray-500">Coupon: </span>
+                  {order.appliedCouponCode}
+                </p>
+              )}
+              {(order.shopPaymentMethod === "MBWAY" || order.shopPaymentMethod === "BANK_TRANSFER") && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 space-y-2">
+                  <p className="font-semibold text-gray-900">Manual payment review</p>
+                  <p>
+                    Status:{" "}
+                    <span className="font-medium">
+                      {order.manualPaymentStatus || "PENDING"}
+                    </span>
+                  </p>
+                  {order.manualPaymentStatus === "PENDING" && order.status === "PENDING" && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Button
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700"
+                        disabled={manualBusy}
+                        onClick={() => patchManualPayment("confirm")}
+                      >
+                        Confirm payment received
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 border-red-200"
+                        disabled={manualBusy}
+                        onClick={() => patchManualPayment("cancel")}
+                      >
+                        Cancel order
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 

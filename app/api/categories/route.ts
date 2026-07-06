@@ -1,12 +1,31 @@
 import { NextResponse } from "next/server"
+import { unstable_cache } from "next/cache"
 import { db } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { logAdminAction, extractRequestInfo } from "@/lib/admin-logger"
 
+const getCachedCategoriesLite = unstable_cache(
+  async () =>
+    db.category.findMany({
+      select: { id: true, name: true, slug: true },
+      orderBy: { name: "asc" },
+    }),
+  ["shop-categories-lite"],
+  { revalidate: 300 }
+)
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
+
+    if (searchParams.get("lite") === "1") {
+      const categories = await getCachedCategoriesLite()
+      const headers = new Headers()
+      headers.set("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600")
+      return NextResponse.json({ categories }, { headers })
+    }
+
     const search = searchParams.get("search") || ""
     const pageParam = searchParams.get("page")
     const limitParam = searchParams.get("limit")

@@ -125,13 +125,6 @@ export function MegaMenu({ isOpen, onClose, onMouseEnter, onMouseLeave }: MegaMe
               >
                 {t("common.viewAllProducts")}
               </Link>
-              <Link
-                href="/diagnosis"
-                onClick={onClose}
-                className="text-sm font-medium text-gray-700 hover:text-brand-champagne transition-colors"
-              >
-                Nail Diagnosis
-              </Link>
             </div>
           </div>
         </div>

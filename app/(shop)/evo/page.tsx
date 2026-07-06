@@ -2,12 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import mobileEvoHero from "../../../egw98.png";
+import { GeminiHeroBadge } from "@/components/layout/category-hero-badge";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
-import { Button } from "@/components/ui/button";
+import { ShopProductsHeader } from "@/components/shop/shop-products-header";
+import { ShopProductsTitle } from "@/components/shop/shop-products-title";
+import { ShopEmptyProducts } from "@/components/shop/shop-empty-products";
 import { useLanguage } from "@/contexts/language-context";
-import { Filter } from "lucide-react";
-import { Select } from "@/components/ui/select";
+import { useShopFilters } from "@/hooks/use-shop-filters";
+import { fetchShopCategories } from "@/lib/shop-categories";
+import { BRAND_LINE_SLUGS, findCategoryByBrandSlug } from "@/lib/brand-lines";
 
 interface Product {
   id: string;
@@ -30,41 +35,37 @@ export default function EvoPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [categoryId, setCategoryId] = useState<string | undefined>();
-  const [showFilters, setShowFilters] = useState(false);
-  const [sortBy, setSortBy] = useState("newest");
+  const filters = useShopFilters();
 
   useEffect(() => {
     fetchEvoProducts();
-  }, [sortBy]);
-
-
+  }, [filters.sortBy, filters.minPrice, filters.maxPrice, filters.showFeatured]);
 
   const fetchEvoProducts = async () => {
     setIsLoading(true);
     try {
-      // First, try to find an "Evo" category
-      const categoriesRes = await fetch("/api/categories");
-      if (categoriesRes.ok) {
-        const categoriesData = await categoriesRes.json();
-        const evoCategory = categoriesData.categories?.find(
-          (cat: { name: string }) => cat.name.toLowerCase() === "evo"
-        );
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "12",
+      });
+      filters.appendToSearchParams(params);
+      const categoriesData = { categories: await fetchShopCategories() };
+      const evoCategory = findCategoryByBrandSlug(categoriesData.categories ?? [], BRAND_LINE_SLUGS.evo);
 
-        if (evoCategory) {
-          setCategoryId(evoCategory.id);
-          // If category exists, fetch all products in that category
-          const res = await fetch(`/api/products?categoryId=${evoCategory.id}&sortBy=${encodeURIComponent(sortBy)}`);
-          if (res.ok) {
-            const data = await res.json();
-            setProducts(Array.isArray(data) ? data : data.products || []);
-          }
+      if (evoCategory) {
+        setCategoryId(evoCategory.id);
+        params.set("categoryId", evoCategory.id);
+      } else {
+        params.set("search", "evo");
+      }
+
+      const res = await fetch(`/api/products?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.pagination) {
+          setProducts(data.products || []);
         } else {
-          // Otherwise, search for products with "evo" in the name
-          const res = await fetch(`/api/products?search=evo&sortBy=${encodeURIComponent(sortBy)}`);
-          if (res.ok) {
-            const data = await res.json();
-            setProducts(Array.isArray(data) ? data : data.products || []);
-          }
+          setProducts(Array.isArray(data) ? data : data.products || []);
         }
       }
     } catch (error) {
@@ -79,70 +80,45 @@ export default function EvoPage() {
 
   return (
     <>
-      <section className="relative w-full h-[36vh] md:h-[44vh] overflow-hidden">
-        <div className="absolute inset-0 w-full h-full">
-          <Image
-            src="/evo-hero-custom.png"
-            alt="Evo"
-            fill
-            className="object-cover"
-            priority
-            unoptimized
-          />
-        </div>
-        <div className="relative z-10 flex h-full items-center">
-          <div className="container mx-auto flex h-full max-w-7xl items-center px-4">
-            <h1 className="text-4xl font-medium text-white sm:text-5xl md:text-6xl">Evo</h1>
-          </div>
-        </div>
+      <section className="relative h-[36vh] w-full overflow-hidden md:h-[44vh]">
+        <GeminiHeroBadge />
+        <Image src={mobileEvoHero} alt={t("nav.shopMenu.evo")} fill className="object-cover md:hidden" priority unoptimized />
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          aria-label={t("nav.shopMenu.evo")}
+          className="absolute inset-0 hidden h-full w-full object-cover md:block"
+        >
+          <source src="/evo-hero.mp4" type="video/mp4" />
+        </video>
       </section>
 
       {/* Evo Products Grid Section */}
       <section id="products" className="relative w-full min-h-screen bg-brand-white py-16">
         <div className="container mx-auto px-4 max-w-7xl">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-12">
-            <div>
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-light text-brand-black mb-3">
-                {t("productPages.evoProducts")}
-              </h2>
-              <div className="h-1 w-16 bg-brand-champagne"></div>
-            </div>
-
-            <Button
-              variant="outline"
-              onClick={() => setShowFilters((prev) => !prev)}
-              className="flex items-center gap-2"
-            >
-              <Filter className="w-4 h-4" />
-              {t("shop.sortBy")}
-            </Button>
-          </div>
-
-          {showFilters && (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 sm:p-6 mb-8">
-              <div className="max-w-xs">
-                <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                  <option value="newest">{t("shop.newestFirst")}</option>
-                  <option value="oldest">{t("shop.oldestFirst")}</option>
-                  <option value="price-asc">{t("shop.priceLowToHigh")}</option>
-                  <option value="price-desc">{t("shop.priceHighToLow")}</option>
-                  <option value="name-asc">{t("shop.nameAtoZ")}</option>
-                  <option value="name-desc">{t("shop.nameZtoA")}</option>
-                </Select>
-              </div>
-            </div>
-          )}
+          <ShopProductsHeader
+            filters={filters}
+            title={
+              <>
+                <ShopProductsTitle>{t("productPages.evoProducts")}</ShopProductsTitle>
+              </>
+            }
+          />
           
           {isLoading ? (
             <div className="text-center py-12">
               <p className="text-gray-600">{t("productPages.loadingProducts")}</p>
             </div>
           ) : products.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600">{t("productPages.noEvoProducts")}</p>
-            </div>
+            <ShopEmptyProducts
+              hasActiveFilters={filters.hasActiveFilters}
+              onClearFilters={() => filters.clearFilters()}
+            />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 justify-items-start gap-x-5 gap-y-12 md:grid-cols-2 md:gap-x-8 md:gap-y-16 lg:grid-cols-3 lg:gap-x-12">
               {products.map((product) => (
                 <ProductCard
                   key={product.id}

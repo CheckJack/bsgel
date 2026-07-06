@@ -55,6 +55,7 @@ export async function POST(
         excerpt: originalBlog.excerpt,
         content: originalBlog.content,
         image: originalBlog.image,
+        heroImage: originalBlog.heroImage,
         author: originalBlog.author,
         status: "DRAFT", // Always duplicate as draft
         publishedAt: null, // Reset published date

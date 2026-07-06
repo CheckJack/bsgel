@@ -8,7 +8,6 @@ import {
   FileDown,
   Settings,
   Users,
-  MapPin,
   MessageCircle,
   Bell,
   LogOut,
@@ -18,7 +17,8 @@ import {
   Award,
   Tag,
 } from "lucide-react";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { signOutToLogin } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/contexts/language-context";
@@ -85,12 +85,6 @@ export function ClientSidebar({ isMobileOpen, onMobileClose }: ClientSidebarProp
           title: t("clientPanel.sidebar.notifications"),
           href: "/dashboard/notifications",
           icon: Bell,
-          badge: null,
-        },
-        {
-          title: t("clientPanel.sidebar.mySalon"),
-          href: "/dashboard/salon",
-          icon: MapPin,
           badge: null,
         },
         {
@@ -216,11 +210,6 @@ export function ClientSidebar({ isMobileOpen, onMobileClose }: ClientSidebarProp
           // If settings not loaded yet, hide to prevent flash
           if (!featureSettings) return false;
           return featureSettings.affiliateEnabled;
-        }
-        
-        // My Salon is only for professionals
-        if (item.href === "/dashboard/salon") {
-          return isProfessional;
         }
         
         // Always show: Dashboard, Order History, Messages, Settings
@@ -454,7 +443,7 @@ export function ClientSidebar({ isMobileOpen, onMobileClose }: ClientSidebarProp
         <button
           onClick={() => {
             if (window.confirm(t("clientPanel.sidebar.signOutConfirm"))) {
-              signOut({ callbackUrl: "/login" });
+              void signOutToLogin();
             }
           }}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100"

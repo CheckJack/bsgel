@@ -11,6 +11,7 @@ import { formatPrice } from "@/lib/utils";
 import { toast } from "@/components/ui/toast";
 import { Search, Lightbulb, ChevronLeft, ChevronRight, X, Download, Copy, Filter } from "lucide-react";
 import { useLanguage } from "@/contexts/language-context";
+import { ADMIN_SHOWCASING_SECTIONS } from "@/lib/brand-lines";
 
 interface AttributeValue {
   value: string;
@@ -68,25 +69,7 @@ function AdminProductsPageContent() {
     showcasingSections: [] as string[],
   });
 
-  // Available showcasing sections
-  const showcasingSections = [
-    { value: "bases", label: "Bases" },
-    { value: "builders", label: "Builders" },
-    { value: "softs", label: "Softs" },
-    { value: "extensao", label: "Extensao" },
-    { value: "bundles", label: "Bundles" },
-    { value: "eletronicos", label: "Eletronicos" },
-    { value: "promocoes", label: "Promocoes" },
-    { value: "kits-treino", label: "Kits e Treino" },
-    { value: "solventes", label: "Solventes" },
-    { value: "nail-art", label: "Nail Art" },
-    { value: "tips", label: "Tips" },
-    { value: "utensilios", label: "Utensilios" },
-    { value: "pinceis", label: "Pinceis" },
-    { value: "lima-buffs", label: "Lima e Buffs" },
-    { value: "ethos", label: "Cuidados das unhas" },
-    { value: "gemini", label: "Verniz Classico" },
-  ];
+  const showcasingSections = [...ADMIN_SHOWCASING_SECTIONS];
 
   // Format category/subcategory names: replace dots, hyphens, underscores with spaces and format properly
   const formatName = (name: string) => {

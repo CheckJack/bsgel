@@ -1,0 +1,315 @@
+import type { SiteRouteDefinition } from "@/lib/seo/types";
+
+/** All public storefront routes eligible for SEO management. */
+export const SITE_ROUTE_DEFINITIONS: SiteRouteDefinition[] = [
+  {
+    path: "/",
+    name: "Home",
+    defaultTitle: "Bio Sculpture | Premium Nail Products",
+    defaultDescription:
+      "Discover Bio Sculpture gel nails, training, and professional nail care. Shop colour builders, bases, spa, and salon-approved systems.",
+    defaultMedia: [
+      { id: "hero", label: "Hero carousel", src: "/hero-builder-hush.png", alt: "Bio Sculpture Colour Builder Gel" },
+    ],
+  },
+  {
+    path: "/products",
+    name: "Products",
+    defaultTitle: "Shop Nail Products | Bio Sculpture",
+    defaultDescription:
+      "Browse Bio Sculpture professional nail products — gels, bases, colours, tools, and spa care for salons and certified technicians.",
+  },
+  {
+    path: "/products/[id]",
+    name: "Product detail",
+    isDynamic: true,
+    defaultTitle: "{productName} | Bio Sculpture",
+    defaultDescription:
+      "View product details, pricing, and certification requirements for this Bio Sculpture nail product.",
+  },
+  {
+    path: "/cart",
+    name: "Cart",
+    defaultTitle: "Your Cart | Bio Sculpture",
+    defaultDescription: "Review items in your Bio Sculpture cart before checkout.",
+  },
+  {
+    path: "/checkout",
+    name: "Checkout",
+    defaultTitle: "Checkout | Bio Sculpture",
+    defaultDescription: "Complete your Bio Sculpture order securely.",
+  },
+  {
+    path: "/bio-gel",
+    name: "Bio Gel",
+    defaultTitle: "Bio Gel | Bio Sculpture",
+    defaultDescription: "Explore Bio Sculpture Bio Gel systems for healthy, strong, natural-looking nails.",
+  },
+  {
+    path: "/bio-gel/treatment-gels",
+    name: "Bio Gel — Treatment Gels",
+    defaultTitle: "Bio Gel Treatment Gels | Bio Sculpture",
+    defaultDescription: "Professional Bio Gel treatment gels for nail strengthening and care.",
+  },
+  {
+    path: "/colours",
+    name: "Colours",
+    defaultTitle: "Nail Colours | Bio Sculpture",
+    defaultDescription: "Shop Bio Sculpture nail colour collections for every style and season.",
+  },
+  {
+    path: "/colours/reds-browns",
+    name: "Colours — Reds & Browns",
+    defaultTitle: "Red & Brown Nail Colours | Bio Sculpture",
+    defaultDescription: "Shop red and brown Bio Sculpture nail colours for classic and bold looks.",
+  },
+  {
+    path: "/colours/pinks-purples",
+    name: "Colours — Pinks & Purples",
+    defaultTitle: "Pink & Purple Nail Colours | Bio Sculpture",
+    defaultDescription: "Browse pink and purple Bio Sculpture gel colours for salons and technicians.",
+  },
+  {
+    path: "/colours/whites-nudes",
+    name: "Colours — Whites & Nudes",
+    defaultTitle: "White & Nude Nail Colours | Bio Sculpture",
+    defaultDescription: "Natural white and nude Bio Sculpture colours for understated, elegant nails.",
+  },
+  {
+    path: "/colours/oranges-yellows",
+    name: "Colours — Oranges & Yellows",
+    defaultTitle: "Orange & Yellow Nail Colours | Bio Sculpture",
+    defaultDescription: "Vibrant orange and yellow Bio Sculpture nail colours for sunny, bold styles.",
+  },
+  {
+    path: "/colours/blues-greens",
+    name: "Colours — Blues & Greens",
+    defaultTitle: "Blue & Green Nail Colours | Bio Sculpture",
+    defaultDescription: "Cool blue and green Bio Sculpture gel colours for fresh, modern nail art.",
+  },
+  {
+    path: "/colours/fluorescents",
+    name: "Colours — Fluorescents",
+    defaultTitle: "Fluorescent Nail Colours | Bio Sculpture",
+    defaultDescription: "Neon and fluorescent Bio Sculpture colours that pop under any light.",
+  },
+  {
+    path: "/colours/brights",
+    name: "Colours — Brights",
+    defaultTitle: "Bright Nail Colours | Bio Sculpture",
+    defaultDescription: "High-impact bright Bio Sculpture nail colours for statement manicures.",
+  },
+  {
+    path: "/evo",
+    name: "Verniz Gel",
+    defaultTitle: "Verniz Gel | Bio Sculpture",
+    defaultDescription: "Verniz Gel by Bio Sculpture — vibrant colour and treatment gel systems.",
+  },
+  {
+    path: "/evo/treatment-base-gels",
+    name: "Verniz Gel — Treatment Base Gels",
+    defaultTitle: "Verniz Gel Treatment Base Gels | Bio Sculpture",
+    defaultDescription: "Verniz Gel treatment and base gels for strong, healthy nails under colour.",
+  },
+  {
+    path: "/evo/top-coats",
+    name: "Verniz Gel — Top Coats",
+    defaultTitle: "Verniz Gel Top Coats | Bio Sculpture",
+    defaultDescription: "Verniz Gel top coats for high-gloss, durable Bio Sculpture manicures.",
+  },
+  {
+    path: "/gemini",
+    name: "Verniz Tradicional",
+    defaultTitle: "Verniz Tradicional | Bio Sculpture",
+    defaultDescription: "Verniz Tradicional colour tones from Bio Sculpture.",
+  },
+  {
+    path: "/gemini/oranges-corals-yellows",
+    name: "Verniz Tradicional — Oranges, Corals & Yellows",
+    defaultTitle: "Verniz Tradicional Orange & Yellow Tones | Bio Sculpture",
+    defaultDescription: "Warm orange, coral, and yellow Verniz Tradicional colours from Bio Sculpture.",
+  },
+  {
+    path: "/gemini/nudes-neutrals-browns",
+    name: "Verniz Tradicional — Nudes, Neutrals & Browns",
+    defaultTitle: "Verniz Tradicional Nude & Neutral Tones | Bio Sculpture",
+    defaultDescription: "Nude, neutral, and brown Verniz Tradicional colours for timeless Bio Sculpture looks.",
+  },
+  {
+    path: "/gemini/pinks",
+    name: "Verniz Tradicional — Pinks",
+    defaultTitle: "Verniz Tradicional Pink Nail Colours | Bio Sculpture",
+    defaultDescription: "Pink Verniz Tradicional colours — soft blush to bold fuchsia from Bio Sculpture.",
+  },
+  {
+    path: "/gemini/reds",
+    name: "Verniz Tradicional — Reds",
+    defaultTitle: "Verniz Tradicional Red Nail Colours | Bio Sculpture",
+    defaultDescription: "Classic and statement red Verniz Tradicional colours for professional manicures.",
+  },
+  {
+    path: "/spa",
+    name: "Spa",
+    defaultTitle: "Spa Care | Bio Sculpture",
+    defaultDescription: "Bio Sculpture spa hand and foot care for salons and home use.",
+  },
+  {
+    path: "/spa/hand-care",
+    name: "Spa — Hand Care",
+    defaultTitle: "Spa Hand Care | Bio Sculpture",
+    defaultDescription: "Professional Bio Sculpture hand care products for spa and salon treatments.",
+  },
+  {
+    path: "/spa/foot-care",
+    name: "Spa — Foot Care",
+    defaultTitle: "Spa Foot Care | Bio Sculpture",
+    defaultDescription: "Bio Sculpture foot care range for pedicures and at-home spa rituals.",
+  },
+  {
+    path: "/ethos",
+    name: "Cuidados das Unhas",
+    defaultTitle: "Cuidados das Unhas | Bio Sculpture",
+    defaultDescription: "Cuidados das Unhas nail diagnosis and care by Bio Sculpture.",
+  },
+  {
+    path: "/salons",
+    name: "Find a Salon",
+    defaultTitle: "Find a Bio Sculpture Salon",
+    defaultDescription: "Locate certified Bio Sculpture salons near you.",
+  },
+  {
+    path: "/salons/[id]",
+    name: "Salon detail",
+    isDynamic: true,
+    defaultTitle: "{salonName} | Bio Sculpture Salon",
+    defaultDescription: "Salon profile, location, and services for this Bio Sculpture partner.",
+  },
+  {
+    path: "/builders",
+    name: "Construtores (section)",
+    isDynamic: true,
+    defaultTitle: "Colour Builder Gel | Bio Sculpture",
+    defaultDescription: "Shop Colour Builder Gel and builder systems from Bio Sculpture.",
+  },
+  {
+    path: "/blog",
+    name: "BIO News",
+    defaultTitle: "BIO News | Bio Sculpture",
+    defaultDescription: "Professional nail industry news, product updates, and insights from Bio Sculpture.",
+  },
+  {
+    path: "/blog/[slug]",
+    name: "BIO News article",
+    isDynamic: true,
+    defaultTitle: "{postTitle} | BIO News",
+    defaultDescription: "Read this story on BIO News by Bio Sculpture.",
+  },
+  {
+    path: "/contact",
+    name: "Contact",
+    defaultTitle: "Contact | Bio Sculpture",
+    defaultDescription: "Get in touch with Bio Sculpture for product and training enquiries.",
+  },
+  {
+    path: "/about",
+    name: "About",
+    defaultTitle: "About Bio Sculpture",
+    defaultDescription: "Learn about Bio Sculpture's mission, heritage, and professional nail care.",
+  },
+  {
+    path: "/about/biosculpture",
+    name: "About — Bio Sculpture",
+    defaultTitle: "Our Story | Bio Sculpture",
+    defaultDescription: "The Bio Sculpture brand story and commitment to healthy nails.",
+  },
+  {
+    path: "/training",
+    name: "Training",
+    defaultTitle: "Nail Training | Bio Sculpture",
+    defaultDescription: "Professional Bio Sculpture training courses and certification programmes.",
+  },
+  {
+    path: "/training/[id]",
+    name: "Training programme",
+    isDynamic: true,
+    defaultTitle: "{trainingName} | Bio Sculpture Training",
+    defaultDescription: "Training programme details, dates, and booking for Bio Sculpture courses.",
+  },
+  {
+    path: "/privacy",
+    name: "Privacy Policy",
+    defaultTitle: "Privacy Policy | Bio Sculpture",
+    defaultDescription: "How Bio Sculpture collects, uses, and protects your personal data.",
+  },
+  {
+    path: "/terms-and-returns",
+    name: "Terms & Returns",
+    defaultTitle: "Terms & Returns | Bio Sculpture",
+    defaultDescription: "Terms of sale, returns policy, and customer information for Bio Sculpture.",
+  },
+  {
+    path: "/cookies",
+    name: "Cookie Policy",
+    defaultTitle: "Cookie Policy | Bio Sculpture",
+    defaultDescription: "Information about cookies used on the Bio Sculpture website.",
+  },
+  {
+    path: "/complaints-book",
+    name: "Complaints Book",
+    defaultTitle: "Complaints Book | Bio Sculpture",
+    defaultDescription: "Submit a complaint or feedback to Bio Sculpture.",
+  },
+  {
+    path: "/consumer-dispute-resolution",
+    name: "Consumer Dispute Resolution",
+    defaultTitle: "Consumer Dispute Resolution | Bio Sculpture",
+    defaultDescription: "Consumer dispute resolution information for Bio Sculpture customers.",
+  },
+  {
+    path: "/find-your-salon",
+    name: "Find Your Salon",
+    defaultTitle: "Find Your Salon | Bio Sculpture",
+    defaultDescription: "Discover a Bio Sculpture salon for your next nail appointment.",
+  },
+  {
+    path: "/nail-diagnostics",
+    name: "Nail Diagnostics",
+    defaultTitle: "Nail Diagnostics | Bio Sculpture",
+    defaultDescription: "Analyse your nails with Bio Sculpture nail diagnostics tools.",
+  },
+  {
+    path: "/ethos/nail-diagnosis",
+    name: "Cuidados das Unhas — Nail Diagnosis",
+    defaultTitle: "Nail Diagnosis | Bio Sculpture Cuidados das Unhas",
+    defaultDescription: "Use Bio Sculpture Cuidados das Unhas nail diagnosis to understand your nail health.",
+  },
+  {
+    path: "/diagnosis",
+    name: "Diagnosis",
+    defaultTitle: "Nail Diagnosis | Bio Sculpture",
+    defaultDescription: "Start your Bio Sculpture nail health diagnosis questionnaire.",
+  },
+  {
+    path: "/diagnosis/results",
+    name: "Diagnosis Results",
+    defaultTitle: "Diagnosis Results | Bio Sculpture",
+    defaultDescription: "View your personalised Bio Sculpture nail diagnosis results and recommendations.",
+  },
+  {
+    path: "/orders/[id]",
+    name: "Order detail",
+    isDynamic: true,
+    defaultTitle: "Order | Bio Sculpture",
+    defaultDescription: "View your Bio Sculpture order status and details.",
+  },
+  {
+    path: "/checkout/payment-return",
+    name: "Payment Return",
+    defaultTitle: "Payment Confirmation | Bio Sculpture",
+    defaultDescription: "Payment return page for your Bio Sculpture checkout.",
+  },
+];
+
+export function findRouteDefinition(path: string) {
+  return SITE_ROUTE_DEFINITIONS.find((r) => r.path === path);
+}

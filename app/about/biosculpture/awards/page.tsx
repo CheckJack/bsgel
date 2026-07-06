@@ -8,9 +8,9 @@ export default function AwardsPage() {
     <div className="bg-brand-white">
 
       {/* Magazine Cover - Hero */}
-      <section className="min-h-screen flex items-end pb-20 pt-32">
-        <div className="container mx-auto px-8 max-w-7xl w-full">
-          <div className="grid lg:grid-cols-12 gap-16 items-end">
+      <section className="flex min-h-[70dvh] items-end pb-12 pt-24 sm:pb-16 sm:pt-28 md:min-h-screen md:pb-20 md:pt-32">
+        <div className="container mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-8">
+          <div className="grid items-end gap-8 sm:gap-12 lg:grid-cols-12 lg:gap-16">
             
             {/* Title Side */}
             <div className="lg:col-span-7 space-y-12">
@@ -19,7 +19,7 @@ export default function AwardsPage() {
                   Edição N.º 01 — 2024
                 </div>
                 
-                <h1 className="text-[10rem] md:text-[14rem] lg:text-[18rem] font-extralight leading-[0.8] tracking-tighter text-brand-black">
+                <h1 className="text-6xl font-extralight leading-[0.85] tracking-tighter text-brand-black xs:text-7xl sm:text-8xl md:text-[10rem] lg:text-[14rem] xl:text-[18rem]">
                   PRÉMIOS
                 </h1>
 
@@ -63,8 +63,8 @@ export default function AwardsPage() {
       </section>
 
       {/* Magazine Spread 01 - Featured Image */}
-      <section className="py-20">
-        <div className="container mx-auto px-8 max-w-7xl">
+      <section className="py-12 md:py-20">
+        <div className="container mx-auto px-4 sm:px-6 md:px-8 max-w-7xl">
           
           {/* Page Number */}
           <div className="flex justify-between items-center mb-8">
@@ -72,7 +72,7 @@ export default function AwardsPage() {
             <div className="text-xs text-brand-black/40">01</div>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-16">
+          <div className="grid gap-8 lg:grid-cols-3 lg:gap-16">
             
             {/* Image - 2/3 width */}
             <div className="lg:col-span-2">
@@ -127,8 +127,8 @@ export default function AwardsPage() {
       </section>
 
       {/* Product Showcase - Simple Grid */}
-      <section className="py-32">
-        <div className="container mx-auto px-8 max-w-7xl">
+      <section className="py-16 md:py-32">
+        <div className="container mx-auto px-4 sm:px-6 md:px-8 max-w-7xl">
           <div className="text-center mb-20 space-y-6">
             <h2 className="text-5xl font-extralight text-brand-black">Produtos Premiados</h2>
             <div className="w-16 h-px bg-brand-champagne mx-auto"></div>
@@ -178,9 +178,9 @@ export default function AwardsPage() {
       </section>
 
       {/* Founder - Split */}
-      <section className="py-32">
-        <div className="container mx-auto px-8 max-w-7xl">
-          <div className="grid md:grid-cols-2 gap-20 items-center">
+      <section className="py-16 md:py-32">
+        <div className="container mx-auto px-4 sm:px-6 md:px-8 max-w-7xl">
+          <div className="grid items-center gap-10 md:grid-cols-2 md:gap-20">
             <div className="aspect-[3/4] relative">
               <Image src="/EL.webp" alt="Elmien Scholtz" fill className="object-cover" />
             </div>

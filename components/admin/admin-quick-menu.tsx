@@ -14,14 +14,12 @@ import {
   BookOpen,
   Ticket,
   BarChart3,
-  Share2,
   Bell,
   FileText,
   Shield,
   Award,
   MapPin,
   Images,
-  Grid3x3,
   Tags,
   X,
 } from "lucide-react";
@@ -43,7 +41,6 @@ const quickMenuItems: QuickMenuItem[] = [
   { title: "Blogs", href: "/admin/blogs", icon: BookOpen },
   { title: "Coupons", href: "/admin/coupons", icon: Ticket },
   { title: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-  { title: "Social Media", href: "/admin/social-media", icon: Share2 },
   { title: "Notifications", href: "/admin/notifications", icon: Bell },
   { title: "Pages", href: "/admin/pages", icon: FileText },
   { title: "Roles", href: "/admin/roles", icon: Shield },
@@ -51,7 +48,6 @@ const quickMenuItems: QuickMenuItem[] = [
   { title: "Salons", href: "/admin/salons", icon: MapPin },
   { title: "Gallery", href: "/admin/gallery", icon: Images },
   { title: "Attributes", href: "/admin/attributes", icon: Tags },
-  { title: "Mega Menu Cards", href: "/admin/mega-menu-cards", icon: Grid3x3 },
 ];
 
 export function AdminQuickMenu() {

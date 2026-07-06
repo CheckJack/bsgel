@@ -6,12 +6,12 @@ import Link from "next/link";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import { Pagination } from "@/components/ui/pagination";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/language-context";
-import { Filter, X } from "lucide-react";
-
+import { ShopFiltersDrawer, ShopFiltersToolbar } from "@/components/shop/shop-filters";
+import { ShopProductsTitle } from "@/components/shop/shop-products-title";
+import { ShopEmptyProducts } from "@/components/shop/shop-empty-products";
+import { useShopFilters } from "@/hooks/use-shop-filters";
 interface Product {
   id: string;
   name: string;
@@ -35,10 +35,7 @@ export default function NudesNeutralsBrownsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState<string | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
-  const [sortBy, setSortBy] = useState("newest");
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
+  const filters = useShopFilters();
   const productsSectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [shouldShowId, setShouldShowId] = useState(false);
@@ -51,11 +48,12 @@ export default function NudesNeutralsBrownsPage() {
         showcasingSection: "nudes",
         page: currentPage.toString(),
         limit: "12",
-        sortBy: sortBy,
+        sortBy: filters.sortBy,
       });
 
-      if (minPrice) params.set("minPrice", minPrice);
-      if (maxPrice) params.set("maxPrice", maxPrice);
+      if (filters.minPrice) params.set("minPrice", filters.minPrice);
+      if (filters.maxPrice) params.set("maxPrice", filters.maxPrice);
+      if (filters.showFeatured) params.set("featured", "true");
 
       const res = await fetch(`/api/products?${params.toString()}`);
       
@@ -79,7 +77,7 @@ export default function NudesNeutralsBrownsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, sortBy, minPrice, maxPrice]);
+  }, [currentPage, filters.sortBy, filters.minPrice, filters.maxPrice]);
 
   useEffect(() => {
     fetchProducts();
@@ -99,14 +97,9 @@ export default function NudesNeutralsBrownsPage() {
     }
   }, []);
 
-  const clearFilters = () => {
-    setMinPrice("");
-    setMaxPrice("");
-    setSortBy("newest");
-    setCurrentPage(1);
-  };
+  
 
-  const hasActiveFilters = minPrice || maxPrice || sortBy !== "newest";
+  const hasActiveFilters = filters.hasActiveFilters;
 
   return (
     <>
@@ -135,7 +128,7 @@ export default function NudesNeutralsBrownsPage() {
             fill
             className="object-cover object-center"
             priority
-            sizes="100vw"
+            unoptimized
           />
         </div>
         
@@ -206,105 +199,14 @@ export default function NudesNeutralsBrownsPage() {
         <div className="container mx-auto px-4 max-w-7xl">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-12">
             <div>
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-light text-brand-black mb-3">
-                {t("nav.shopMenu.nudesNeutralsBrowns")}
-              </h2>
-              <div className="h-1 w-16 bg-brand-champagne"></div>
+              <ShopProductsTitle>{t("nav.shopMenu.nudesNeutralsBrowns")}</ShopProductsTitle>
             </div>
             
-            {/* Filter Toggle Button */}
-            <Button
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2"
-            >
-              <Filter className="w-4 h-4" />
-              {t("shop.sortBy")}
-              {hasActiveFilters && (
-                <span className="ml-1 w-2 h-2 rounded-full bg-brand-champagne"></span>
-              )}
-            </Button>
+            <ShopFiltersToolbar filters={filters} className="shrink-0" />
           </div>
 
-          {/* Filters Panel */}
-          {showFilters && (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 sm:p-6 mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-brand-black">{t("shop.sortBy")}</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowFilters(false)}
-                  className="h-8 w-8 p-0"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Price Range */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-brand-black">{t("shop.priceRange")}</label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      placeholder={t("shop.min")}
-                      value={minPrice}
-                      onChange={(e) => {
-                        setMinPrice(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      min="0"
-                      step="0.01"
-                    />
-                    <Input
-                      type="number"
-                      placeholder={t("shop.max")}
-                      value={maxPrice}
-                      onChange={(e) => {
-                        setMaxPrice(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-                </div>
+          <ShopFiltersDrawer filters={filters} />
 
-                {/* Sort By */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-brand-black">{t("shop.sortBy")}</label>
-                  <Select
-                    value={sortBy}
-                    onChange={(e) => {
-                      setSortBy(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                  >
-                    <option value="newest">{t("shop.newestFirst")}</option>
-                    <option value="oldest">{t("shop.oldestFirst")}</option>
-                    <option value="price-asc">{t("shop.priceLowToHigh")}</option>
-                    <option value="price-desc">{t("shop.priceHighToLow")}</option>
-                    <option value="name-asc">{t("shop.nameAtoZ")}</option>
-                    <option value="name-desc">{t("shop.nameZtoA")}</option>
-                  </Select>
-                </div>
-
-                {/* Clear Filters */}
-                {hasActiveFilters && (
-                  <div className="flex items-end">
-                    <Button
-                      variant="outline"
-                      onClick={clearFilters}
-                      className="w-full"
-                    >
-                      {t("shop.clearFilters")}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          
           {error ? (
             <div className="text-center py-12">
               <p className="text-red-600 mb-4">{error}</p>
@@ -318,17 +220,13 @@ export default function NudesNeutralsBrownsPage() {
               <p className="text-gray-600 mt-4">{t("products.loadingProducts")}</p>
             </div>
           ) : products.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600 mb-4">{t("products.noProductsFound")}</p>
-              {hasActiveFilters && (
-                <Button onClick={clearFilters} variant="outline">
-                  {t("shop.clearFilters")}
-                </Button>
-              )}
-            </div>
+            <ShopEmptyProducts
+              hasActiveFilters={hasActiveFilters}
+              onClearFilters={() => filters.clearFilters()}
+            />
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 justify-items-start gap-x-5 gap-y-12 md:grid-cols-2 md:gap-x-8 md:gap-y-16 lg:grid-cols-3 lg:gap-x-12">
                 {products.map((product) => (
                   <ProductCard
                     key={product.id}

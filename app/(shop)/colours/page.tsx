@@ -2,14 +2,23 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import Image from "next/image";
+import mobileColoursHero from "../../../egwkukukg.png";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import { Pagination } from "@/components/ui/pagination";
-import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/language-context";
-import { Filter, X } from "lucide-react";
+import { ShopFiltersDrawer, ShopFiltersToolbar } from "@/components/shop/shop-filters";
+import { ShopProductsTitle } from "@/components/shop/shop-products-title";
+import { ShopEmptyProducts } from "@/components/shop/shop-empty-products";
+import { ColourToneSwatches } from "@/components/shop/colour-tone-swatches";
+import { useShopFilters } from "@/hooks/use-shop-filters";
+import {
+  COLOUR_TONE_SECTIONS,
+  getColourToneById,
+} from "@/lib/colour-tones";
+import { fetchShopCategories, type ShopCategory } from "@/lib/shop-categories";
 
 interface Product {
   id: string;
@@ -21,16 +30,35 @@ interface Product {
   featured: boolean;
   rating?: number;
   reviewCount?: number;
+  showcasingSections?: string[];
   category: {
     id: string;
     name: string;
   } | null;
 }
 
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
+interface Category extends ShopCategory {}
+
+function ProductGrid({ products }: { products: Product[] }) {
+  return (
+    <div className="grid grid-cols-1 justify-items-start gap-x-5 gap-y-12 md:grid-cols-2 md:gap-x-8 md:gap-y-16 lg:grid-cols-3 lg:gap-x-12">
+      {products.map((product) => (
+        <ProductCard
+          key={product.id}
+          id={product.id}
+          name={product.name}
+          price={product.price}
+          image={product.image}
+          images={product.images}
+          featured={product.featured}
+          outOfStock={(product as { outOfStock?: boolean }).outOfStock}
+          hemaFree={(product as { hemaFree?: boolean }).hemaFree}
+          rating={product.rating}
+          reviewCount={product.reviewCount}
+        />
+      ))}
+    </div>
+  );
 }
 
 export default function ColoursPage() {
@@ -40,31 +68,24 @@ export default function ColoursPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState<string | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
-  const [sortBy, setSortBy] = useState("newest");
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
+  const filters = useShopFilters();
   const [selectedBrand, setSelectedBrand] = useState<string>("all");
+  const [selectedTone, setSelectedTone] = useState<string>("all");
   const [categories, setCategories] = useState<Category[]>([]);
   const [brandCategoryId, setBrandCategoryId] = useState<string | undefined>();
   const productsSectionRef = useRef<HTMLElement>(null);
-  const [shouldShowId, setShouldShowId] = useState(false);
 
-  // Fetch categories on mount
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const res = await fetch("/api/categories");
-        if (res.ok) {
-          const data = await res.json();
-          setCategories(data.categories || []);
-        }
-      } catch (error) {
-        console.error("Failed to fetch categories:", error);
-      }
-    };
-    fetchCategories();
+    fetchShopCategories()
+      .then(setCategories)
+      .catch((fetchError) => {
+        console.error("Failed to fetch categories:", fetchError);
+      });
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedBrand, selectedTone, filters.sortBy, filters.minPrice, filters.maxPrice, filters.showFeatured]);
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
@@ -73,32 +94,30 @@ export default function ColoursPage() {
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: "12",
-        sortBy: sortBy,
+        sortBy: filters.sortBy,
       });
 
-      // Filter by brand category if selected
       if (selectedBrand !== "all") {
-        // Try to find category by name (case-insensitive, handle variations)
         const brandCategory = categories.find((cat) => {
           const catNameLower = cat.name.toLowerCase().trim();
           const selectedLower = selectedBrand.toLowerCase().trim();
-          
-          // Handle variations: "bio gel" matches "bio gel", "biogel", "bio-gel", etc.
+
           if (selectedLower === "bio gel") {
-            return catNameLower === "bio gel" || 
-                   catNameLower === "biogel" || 
-                   catNameLower === "bio-gel" ||
-                   catNameLower.includes("bio") && catNameLower.includes("gel");
+            return (
+              catNameLower === "bio gel" ||
+              catNameLower === "biogel" ||
+              catNameLower === "bio-gel" ||
+              (catNameLower.includes("bio") && catNameLower.includes("gel"))
+            );
           }
-          
+
           return catNameLower === selectedLower;
         });
-        
+
         if (brandCategory) {
           params.set("categoryId", brandCategory.id);
           setBrandCategoryId(brandCategory.id);
         } else {
-          // Fallback: search by brand name if category not found
           params.set("search", selectedBrand);
           setBrandCategoryId(undefined);
         }
@@ -106,11 +125,21 @@ export default function ColoursPage() {
         setBrandCategoryId(undefined);
       }
 
-      if (minPrice) params.set("minPrice", minPrice);
-      if (maxPrice) params.set("maxPrice", maxPrice);
+      if (selectedTone !== "all") {
+        const tone = getColourToneById(selectedTone);
+        if (tone) {
+          params.set("showcasingSection", tone.showcasingSection);
+        }
+      } else {
+        params.set("showcasingSections", COLOUR_TONE_SECTIONS.join(","));
+      }
+
+      if (filters.minPrice) params.set("minPrice", filters.minPrice);
+      if (filters.maxPrice) params.set("maxPrice", filters.maxPrice);
+      if (filters.showFeatured) params.set("featured", "true");
 
       const res = await fetch(`/api/products?${params.toString()}`);
-      
+
       if (!res.ok) {
         throw new Error("Failed to fetch products");
       }
@@ -123,181 +152,154 @@ export default function ColoursPage() {
         setProducts(Array.isArray(data) ? data : data.products || []);
         setTotalPages(1);
       }
-    } catch (error) {
-      console.error("Failed to fetch products:", error);
+    } catch (fetchError) {
+      console.error("Failed to fetch products:", fetchError);
       setError("Failed to load products. Please try again later.");
       setProducts([]);
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, sortBy, minPrice, maxPrice, selectedBrand, categories]);
+  }, [
+    currentPage,
+    filters.sortBy,
+    filters.minPrice,
+    filters.maxPrice,
+    filters.showFeatured,
+    selectedBrand,
+    selectedTone,
+    categories,
+  ]);
 
   useEffect(() => {
     fetchProducts();
-    const timer = setTimeout(() => {
-      setShouldShowId(true);
-    }, 100);
-    return () => clearTimeout(timer);
   }, [fetchProducts]);
 
-  const clearFilters = () => {
-    setMinPrice("");
-    setMaxPrice("");
-    setSortBy("newest");
+  useEffect(() => {
+    if (window.location.hash !== "#products") return;
+
+    const scrollToProducts = () => {
+      productsSectionRef.current?.scrollIntoView({ behavior: "auto", block: "start" });
+    };
+
+    scrollToProducts();
+    const timer = window.setTimeout(scrollToProducts, 100);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const clearAllFilters = () => {
+    filters.clearFilters();
     setSelectedBrand("all");
+    setSelectedTone("all");
     setCurrentPage(1);
   };
 
-  const hasActiveFilters = minPrice || maxPrice || sortBy !== "newest" || selectedBrand !== "all";
+  const hasActiveFilters =
+    filters.hasActiveFilters || selectedBrand !== "all" || selectedTone !== "all";
+
+  const selectedToneLabel =
+    selectedTone === "all"
+      ? t("productPages.colours.allTones")
+      : t(getColourToneById(selectedTone)?.labelKey ?? "productPages.colours.allTones");
 
   return (
     <>
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `
-            (function() {
-              if (window.location.hash === '#products') {
-                window.history.replaceState(null, '', window.location.pathname);
-                window.scrollTo(0, 0);
-              }
-            })();
-          `,
-        }}
-      />
-      
       <section className="relative w-full h-[36vh] md:h-[44vh] overflow-hidden">
-        <div className="absolute inset-0 w-full h-full">
+        <div className="pointer-events-none absolute right-4 top-4 z-10 sm:right-6 sm:top-6 md:right-8 md:top-8">
           <Image
-            src="/colours-hero-custom.png"
-            alt={t("productPages.colours.heroDescription")}
-            fill
-            className="object-cover object-center"
-            priority
-            sizes="100vw"
+            src="/colours-hero-badge.png"
+            alt={t("productPages.colours.heroBadgeAlt")}
+            width={2083}
+            height={2083}
+            className="h-auto w-20 sm:w-24 md:w-28 lg:w-36 xl:w-40"
+            unoptimized
           />
         </div>
-        
-        <div className="relative z-10 flex h-full items-center">
-          <div className="container mx-auto flex h-full max-w-7xl items-center px-4">
-            <h1 className="text-4xl font-medium text-black sm:text-5xl md:text-6xl">Cores</h1>
-          </div>
+        <div className="absolute inset-0 w-full h-full">
+          <Image
+            src={mobileColoursHero}
+            alt={t("productPages.colours.heroDescription")}
+            fill
+            className="object-cover object-center md:hidden"
+            priority
+            unoptimized
+          />
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            aria-label={t("productPages.colours.heroDescription")}
+            className="hidden h-full w-full object-cover object-center md:block"
+          >
+            <source src="/colours-hero.mp4" type="video/mp4" />
+          </video>
         </div>
       </section>
-      
-      <section {...(shouldShowId && { id: "products" })} ref={productsSectionRef} className="relative w-full min-h-screen bg-gradient-to-b from-gray-50/30 via-white to-white pt-24 pb-16">
+
+      <section
+        id="products"
+        ref={productsSectionRef}
+        className="relative w-full min-h-screen bg-gradient-to-b from-gray-50/30 via-white to-white pt-24 pb-16 scroll-mt-24"
+      >
         <div className="container mx-auto px-4 max-w-7xl">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-12">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
             <div>
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-light text-brand-black mb-3">
-                {t("productPages.coloursProducts")}
-              </h2>
-              <div className="h-1 w-16 bg-brand-champagne"></div>
+              <ShopProductsTitle>{t("productPages.coloursProducts")}</ShopProductsTitle>
             </div>
-            
-            <Button
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2"
-            >
-              <Filter className="w-4 h-4" />
-              {t("shop.sortBy")}
-              {hasActiveFilters && (
-                <span className="ml-1 w-2 h-2 rounded-full bg-brand-champagne"></span>
-              )}
-            </Button>
+            <ShopFiltersToolbar
+              filters={filters}
+              className="shrink-0"
+              hasActiveFilters={hasActiveFilters}
+            />
           </div>
 
-          {showFilters && (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 sm:p-6 mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-brand-black">{t("shop.sortBy")}</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowFilters(false)}
-                  className="h-8 w-8 p-0"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-brand-black">{t("shop.priceRange")}</label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      placeholder={t("shop.min")}
-                      value={minPrice}
-                      onChange={(e) => {
-                        setMinPrice(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      min="0"
-                      step="0.01"
-                    />
-                    <Input
-                      type="number"
-                      placeholder={t("shop.max")}
-                      value={maxPrice}
-                      onChange={(e) => {
-                        setMaxPrice(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-brand-black">{t("shop.sortBy")}</label>
-                  <Select
-                    value={sortBy}
-                    onChange={(e) => {
-                      setSortBy(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                  >
-                    <option value="newest">{t("shop.newestFirst")}</option>
-                    <option value="oldest">{t("shop.oldestFirst")}</option>
-                    <option value="price-asc">{t("shop.priceLowToHigh")}</option>
-                    <option value="price-desc">{t("shop.priceHighToLow")}</option>
-                    <option value="name-asc">{t("shop.nameAtoZ")}</option>
-                    <option value="name-desc">{t("shop.nameZtoA")}</option>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-brand-black">Brand</label>
-                  <Select
-                    value={selectedBrand}
-                    onChange={(e) => {
-                      setSelectedBrand(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                  >
-                    <option value="all">{t("shop.all")}</option>
-                    <option value="evo">{t("nav.shopMenu.evo")}</option>
-                    <option value="gemini">{t("nav.shopMenu.gemini")}</option>
-                    <option value="bio gel">{t("nav.shopMenu.bioGel")}</option>
-                  </Select>
-                </div>
-
-                {hasActiveFilters && (
-                  <div className="flex items-end">
-                    <Button
-                      variant="outline"
-                      onClick={clearFilters}
-                      className="w-full"
-                    >
-                      {t("shop.clearFilters")}
-                    </Button>
-                  </div>
+          <ShopFiltersDrawer
+            filters={filters}
+            onClearAll={clearAllFilters}
+            activeFilterTags={
+              <>
+                {selectedTone !== "all" && (
+                  <span className="rounded bg-brand-champagne/20 px-2 py-1 text-xs font-light text-brand-black">
+                    {selectedToneLabel}
+                  </span>
                 )}
-              </div>
+                {selectedBrand !== "all" && (
+                  <span className="rounded bg-brand-champagne/20 px-2 py-1 text-xs font-light text-brand-black">
+                    {selectedBrand}
+                  </span>
+                )}
+              </>
+            }
+          >
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-brand-black">{t("shop.colourTone")}</label>
+              <ColourToneSwatches
+                selectedTone={selectedTone}
+                onToneChange={(toneId) => {
+                  setSelectedTone(toneId);
+                  setCurrentPage(1);
+                }}
+              />
+              <p className="text-xs font-light text-brand-black/55">{selectedToneLabel}</p>
             </div>
-          )}
-          
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-brand-black">{t("shop.brand")}</label>
+              <Select
+                value={selectedBrand}
+                onChange={(e) => {
+                  setSelectedBrand(e.target.value);
+                  setCurrentPage(1);
+                }}
+              >
+                <option value="all">{t("shop.all")}</option>
+                <option value="evo">{t("nav.shopMenu.evo")}</option>
+                <option value="gemini">{t("nav.shopMenu.gemini")}</option>
+                <option value="bio gel">{t("nav.shopMenu.bioGel")}</option>
+              </Select>
+            </div>
+          </ShopFiltersDrawer>
+
           {error ? (
             <div className="text-center py-12">
               <p className="text-red-600 mb-4">{error}</p>
@@ -311,33 +313,14 @@ export default function ColoursPage() {
               <p className="text-gray-600 mt-4">{t("products.loadingProducts")}</p>
             </div>
           ) : products.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600 mb-4">{t("products.noProductsFound")}</p>
-              {hasActiveFilters && (
-                <Button onClick={clearFilters} variant="outline">
-                  {t("shop.clearFilters")}
-                </Button>
-              )}
-            </div>
+            <ShopEmptyProducts
+              hasActiveFilters={hasActiveFilters}
+              onClearFilters={clearAllFilters}
+              browseHref="/products"
+            />
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {products.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    id={product.id}
-                    name={product.name}
-                    price={product.price}
-                    image={product.image}
-                    images={product.images}
-                    featured={product.featured}
-                    outOfStock={(product as any).outOfStock}
-                    hemaFree={(product as any).hemaFree}
-                    rating={product.rating}
-                    reviewCount={product.reviewCount}
-                  />
-                ))}
-              </div>
+              <ProductGrid products={products} />
               {totalPages > 1 && (
                 <div className="mt-12">
                   <Pagination

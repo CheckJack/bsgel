@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Star, CheckCircle2, Globe, ThumbsUp, ThumbsDown, ChevronLeft, ChevronRight, Send, RefreshCw } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -117,7 +117,6 @@ export function ProductReviews({
   totalReviews: initialTotalReviews, 
   reviews: initialReviews 
 }: ReviewsProps) {
-  const [activeTab, setActiveTab] = useState<"site" | "product">("product");
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState("most-recent");
   const [reviews, setReviews] = useState<Review[]>(initialReviews || []);
@@ -132,47 +131,71 @@ export function ProductReviews({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [translatingReviewId, setTranslatingReviewId] = useState<string | null>(null);
+  const [translatedReviews, setTranslatedReviews] = useState<
+    Record<string, { title?: string; content: string; companyResponse?: string }>
+  >({});
   const { data: session } = useSession();
   const router = useRouter();
   const { t } = useLanguage();
   const reviewsPerPage = 5;
+  const sectionRef = useRef<HTMLElement>(null);
+  const [shouldLoad, setShouldLoad] = useState(Boolean(initialReviews));
 
   useEffect(() => {
-    if (productId || (productIds && productIds.length > 0) || categoryId || showcasingSection) {
-      fetchReviews();
-    } else if (initialReviews) {
-      // Use provided reviews if available
+    if (initialReviews || shouldLoad) return;
+
+    const element = sectionRef.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShouldLoad(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "240px" }
+    );
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [initialReviews, shouldLoad]);
+
+  useEffect(() => {
+    if (initialReviews) {
       setReviews(initialReviews);
       setOverallRating(initialOverallRating || 0);
       setTotalReviews(initialTotalReviews || 0);
+      return;
     }
-  }, [productId, JSON.stringify(productIds || []), categoryId, showcasingSection]);
 
-  useEffect(() => {
-    if (productId || (productIds && productIds.length > 0) || categoryId || showcasingSection) {
-      fetchReviews();
-    }
-  }, [sortBy, currentPage, productId, JSON.stringify(productIds || []), categoryId, showcasingSection]);
+    if (!shouldLoad) return;
+    fetchReviews();
+  }, [
+    shouldLoad,
+    sortBy,
+    currentPage,
+    productId,
+    JSON.stringify(productIds || []),
+    categoryId,
+    showcasingSection,
+    initialReviews,
+    initialOverallRating,
+    initialTotalReviews,
+  ]);
 
   const fetchReviews = async () => {
-    if (!productId && (!productIds || productIds.length === 0) && !categoryId && !showcasingSection) return;
-    
     setIsLoading(true);
     try {
-      // Add cache-busting parameter to ensure fresh data
-      const cacheBuster = new Date().getTime();
-      
       let url = '';
       if (productId) {
-        // Use product-specific endpoint
-        url = `/api/products/${productId}/reviews?page=${currentPage}&limit=${reviewsPerPage}&sortBy=${sortBy}&_t=${cacheBuster}`;
+        url = `/api/products/${productId}/reviews?page=${currentPage}&limit=${reviewsPerPage}&sortBy=${sortBy}`;
       } else {
-        // Use category/showcasingSection endpoint
         const params = new URLSearchParams({
           page: currentPage.toString(),
           limit: reviewsPerPage.toString(),
           sortBy,
-          _t: cacheBuster.toString(),
         });
         if (categoryId) {
           params.set('categoryId', categoryId);
@@ -186,9 +209,7 @@ export function ProductReviews({
         url = `/api/reviews?${params.toString()}`;
       }
       
-      const res = await fetch(url, {
-        cache: 'no-store', // Prevent caching
-      });
+      const res = await fetch(url);
       
       if (res.ok) {
         const data = await res.json();
@@ -289,9 +310,83 @@ export function ProductReviews({
     }
   };
 
+  const handleVoteReview = async (reviewId: string, voteType: "helpful" | "notHelpful") => {
+    try {
+      const res = await fetch(`/api/reviews/${reviewId}/helpful`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ type: voteType }),
+      });
+
+      if (!res.ok) return;
+      const data = await res.json();
+
+      setReviews((prev) =>
+        prev.map((review) =>
+          review.id === reviewId
+            ? {
+                ...review,
+                helpfulCount: data.helpfulCount ?? review.helpfulCount,
+                notHelpfulCount: data.notHelpfulCount ?? review.notHelpfulCount,
+              }
+            : review
+        )
+      );
+    } catch (error) {
+      console.error("Falha ao registar voto da avaliação:", error);
+    }
+  };
+
+  const handleTranslateReview = async (review: Review) => {
+    // Toggle back to original if already translated.
+    if (translatedReviews[review.id]) {
+      setTranslatedReviews((prev) => {
+        const next = { ...prev };
+        delete next[review.id];
+        return next;
+      });
+      return;
+    }
+
+    try {
+      setTranslatingReviewId(review.id);
+
+      const res = await fetch("/api/translate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          texts: [review.title || "", review.content, review.companyResponse || ""],
+          target: "pt",
+        }),
+      });
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const translatedTexts: string[] = Array.isArray(data.translations) ? data.translations : [];
+
+      setTranslatedReviews((prev) => ({
+        ...prev,
+        [review.id]: {
+          title: translatedTexts[0] || review.title || undefined,
+          content: translatedTexts[1] || review.content,
+          companyResponse: translatedTexts[2] || review.companyResponse || undefined,
+        },
+      }));
+    } catch (error) {
+      console.error("Falha ao traduzir avaliação:", error);
+    } finally {
+      setTranslatingReviewId(null);
+    }
+  };
+
   // Always render the review section - show empty state if no reviews on category pages
   return (
-    <section className="relative w-full bg-white py-16">
+    <section ref={sectionRef} className="relative w-full bg-white py-16">
       <div className="container mx-auto px-4 max-w-7xl">
         {/* Centered Top Section - Show for both product and category pages */}
         <div className="flex flex-col items-center mb-8">
@@ -327,7 +422,7 @@ export function ProductReviews({
               </div>
               
               {breakdown.length > 0 && (
-                <div className="w-full min-w-[280px] max-w-md mx-auto md:mx-0">
+                <div className="mx-auto w-full max-w-md min-w-0 md:mx-0">
                   <RatingBreakdown 
                     totalReviews={totalReviews} 
                     breakdown={breakdown} 
@@ -346,28 +441,8 @@ export function ProductReviews({
           )}
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-8 border-b border-gray-200 mb-6">
-          <button
-            onClick={() => setActiveTab("site")}
-            className={`pb-4 px-2 font-medium ${
-              activeTab === "site"
-                ? "text-gray-900 border-b-2 border-gray-900"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Avaliações do Site
-          </button>
-          <button
-            onClick={() => setActiveTab("product")}
-            className={`pb-4 px-2 font-medium ${
-              activeTab === "product"
-                ? "text-gray-900 border-b-2 border-gray-900"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Avaliações de Produtos
-          </button>
+        <div className="border-b border-gray-200 mb-6 pb-4">
+          <h3 className="px-2 font-medium text-gray-900">Avaliações de Produtos</h3>
         </div>
 
         {/* Write a Review Section - Made More Prominent */}
@@ -376,8 +451,8 @@ export function ProductReviews({
             {!showReviewForm ? (
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">Share Your Experience</h3>
-                  <p className="text-sm text-gray-600">Help others by writing a review about this product</p>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">Partilhe a sua experiência</h3>
+                  <p className="text-sm text-gray-600">Ajude outras pessoas escrevendo uma avaliação sobre este produto</p>
                 </div>
                 <Button
                   onClick={() => {
@@ -389,16 +464,16 @@ export function ProductReviews({
                   }}
                   className="bg-brand-champagne hover:bg-brand-champagne/90 text-white px-6 py-2 text-base font-medium whitespace-nowrap"
                 >
-                  Write a Review
+                  Escrever avaliação
                 </Button>
               </div>
             ) : (
               <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
-                <h3 className="text-lg font-semibold mb-4">Write a Review</h3>
+                <h3 className="text-lg font-semibold mb-4">Escrever avaliação</h3>
                 
                 {submitSuccess && (
                   <div className="mb-4 p-3 bg-green-100 text-green-800 rounded text-sm">
-                    Review submitted successfully! It will be visible after admin approval.
+                    Avaliação enviada com sucesso! Ficará visível após aprovação do administrador.
                   </div>
                 )}
 
@@ -410,7 +485,7 @@ export function ProductReviews({
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">Rating *</label>
+                    <label className="block text-sm font-medium mb-2">Classificação *</label>
                     <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
@@ -433,26 +508,26 @@ export function ProductReviews({
 
                   <div>
                     <label htmlFor="review-title" className="block text-sm font-medium mb-2">
-                      Review Title (Optional)
+                      Título da avaliação (opcional)
                     </label>
                     <Input
                       id="review-title"
                       value={reviewTitle}
                       onChange={(e) => setReviewTitle(e.target.value)}
-                      placeholder="Give your review a title"
+                      placeholder="Dê um título à sua avaliação"
                       className="w-full"
                     />
                   </div>
 
                   <div>
                     <label htmlFor="review-content" className="block text-sm font-medium mb-2">
-                      Your Review *
+                      A sua avaliação *
                     </label>
                     <Textarea
                       id="review-content"
                       value={reviewContent}
                       onChange={(e) => setReviewContent(e.target.value)}
-                      placeholder="Share your experience with this product..."
+                      placeholder="Partilhe a sua experiência com este produto..."
                       rows={5}
                       className="w-full"
                     />
@@ -464,7 +539,7 @@ export function ProductReviews({
                       disabled={isSubmitting || reviewRating === 0 || !reviewContent.trim()}
                       className="bg-brand-champagne hover:bg-brand-champagne/90 text-white"
                     >
-                      {isSubmitting ? "Submitting..." : "Submit Review"}
+                      {isSubmitting ? "A enviar..." : "Enviar avaliação"}
                       {!isSubmitting && <Send className="ml-2 h-4 w-4" />}
                     </Button>
                     <Button
@@ -478,7 +553,7 @@ export function ProductReviews({
                       }}
                       disabled={isSubmitting}
                     >
-                      Cancel
+                      Cancelar
                     </Button>
                   </div>
                 </div>
@@ -498,11 +573,14 @@ export function ProductReviews({
               className="flex items-center gap-2"
             >
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
+              Atualizar
             </Button>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
+              onChange={(e) => {
+                setSortBy(e.target.value);
+                setCurrentPage(1);
+              }}
               className="px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
             >
               <option value="most-recent">Mais recentes</option>
@@ -548,8 +626,8 @@ export function ProductReviews({
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="font-semibold text-gray-900">{review.reviewerName}</span>
                           {review.status === "PENDING" && (
-                            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-medium">
-                              Pending Approval
+                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-medium">
+                              Pendente de aprovação
                             </span>
                           )}
                           {review.verifiedBuyer && (
@@ -566,14 +644,18 @@ export function ProductReviews({
                   </div>
 
                   {review.title && (
-                    <h4 className="text-lg font-medium text-gray-900 mb-2">{review.title}</h4>
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">
+                      {translatedReviews[review.id]?.title || review.title}
+                    </h4>
                   )}
 
-                  <div className="text-gray-700 mb-3 whitespace-pre-line">{review.content}</div>
+                  <div className="text-gray-700 mb-3 whitespace-pre-line">
+                    {translatedReviews[review.id]?.content || review.content}
+                  </div>
 
                   {review.status === "PENDING" && (
                     <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
-                      ⏳ Your review is pending approval and will be visible to others once approved by an admin.
+                      ⏳ A sua avaliação está pendente de aprovação e ficará visível para os outros utilizadores após aprovação do administrador.
                     </div>
                   )}
 
@@ -602,34 +684,62 @@ export function ProductReviews({
                     <div className="w-6 h-6 rounded-full bg-brand-champagne flex items-center justify-center">
                       <span className="text-white text-xs font-bold">M</span>
                     </div>
-                    <span className="font-semibold text-gray-900">La teaM</span>
+                    <span className="font-semibold text-gray-900">A nossa equipa</span>
                   </div>
-                  <p className="text-gray-700">{review.companyResponse}</p>
-                  <button className="mt-2 flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900">
+                  <p className="text-gray-700">
+                    {translatedReviews[review.id]?.companyResponse || review.companyResponse}
+                  </p>
+                  <button
+                    onClick={() => handleTranslateReview(review)}
+                    disabled={translatingReviewId === review.id}
+                    className="mt-2 flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50"
+                  >
                     <Globe className="w-4 h-4" />
-                    <span>Traduzir para Inglês</span>
+                    <span>
+                      {translatingReviewId === review.id
+                        ? "A traduzir..."
+                        : translatedReviews[review.id]
+                          ? "Ver texto original"
+                          : "Traduzir para português"}
+                    </span>
                   </button>
                 </div>
               )}
 
               <div className="mt-4 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <span className="text-sm text-gray-600">Esta avaliação foi útil para você?</span>
+                  <span className="text-sm text-gray-600">Esta avaliação foi útil para si?</span>
                   <div className="flex items-center gap-3">
-                    <button className="flex items-center gap-1 text-gray-600 hover:text-gray-900">
+                    <button
+                      onClick={() => handleVoteReview(review.id, "helpful")}
+                      className="flex items-center gap-1 text-gray-600 hover:text-gray-900"
+                    >
                       <ThumbsUp className="w-4 h-4" />
                       <span className="text-sm">{review.helpfulCount}</span>
                     </button>
-                    <button className="flex items-center gap-1 text-gray-600 hover:text-gray-900">
+                    <button
+                      onClick={() => handleVoteReview(review.id, "notHelpful")}
+                      className="flex items-center gap-1 text-gray-600 hover:text-gray-900"
+                    >
                       <ThumbsDown className="w-4 h-4" />
                       <span className="text-sm">{review.notHelpfulCount}</span>
                     </button>
                   </div>
                 </div>
                 {!review.companyResponse && (
-                  <button className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900">
+                  <button
+                    onClick={() => handleTranslateReview(review)}
+                    disabled={translatingReviewId === review.id}
+                    className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50"
+                  >
                     <Globe className="w-4 h-4" />
-                    <span>Traduzir para Inglês</span>
+                    <span>
+                      {translatingReviewId === review.id
+                        ? "A traduzir..."
+                        : translatedReviews[review.id]
+                          ? "Ver texto original"
+                          : "Traduzir para português"}
+                    </span>
                   </button>
                 )}
               </div>

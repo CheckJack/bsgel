@@ -45,19 +45,19 @@ export function ReasonsToTrain() {
   ];
 
   return (
-    <section className="w-full mt-2 bg-gray-50 py-8 sm:py-12 md:py-16">
+    <section className="w-full mt-2 bg-gray-50 py-8 sm:py-10 md:py-12 lg:py-16">
       <div className="container mx-auto max-w-[1920px] px-4 sm:px-6">
         {/* Three Containers Side by Side - Horizontally Aligned */}
-        <div className="flex flex-col md:flex-row items-start gap-0 mb-8 md:mb-10 relative">
+        <div className="mb-8 relative grid grid-cols-1 gap-6 lg:mb-10 lg:grid-cols-[minmax(220px,0.9fr)_1fr_1fr] lg:items-start lg:gap-0">
           {/* Container 1: Title - Left Side - Matching Training Banner padding */}
-          <div className="flex-shrink-0 pr-4 sm:pr-8 md:pr-12 mb-6 md:mb-0">
+          <div className="pr-0 mb-2 lg:pr-12 lg:mb-0">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-light text-brand-black text-left tracking-tight">
               {t("home.reasonsToTrain")}
             </h2>
           </div>
 
           {/* Container 2: Left Column Items - Middle */}
-          <div className="flex-1 space-y-0 pr-4 sm:pr-8 md:pr-12 w-full md:w-auto">
+          <div className="w-full space-y-0 pr-0 lg:pr-12">
             {leftColumnItems.map((item, index) => (
               <div key={index}>
                 <div className="flex items-center py-3 sm:py-4 md:py-6">
@@ -81,11 +81,8 @@ export function ReasonsToTrain() {
             </div>
           </div>
 
-          {/* Vertical Divider */}
-          <div className="hidden md:block w-px bg-gray-300 self-stretch"></div>
-
           {/* Container 3: Right Column Items - Right Side */}
-          <div className="flex-1 space-y-0 pl-4 sm:pl-8 md:pl-12 w-full md:w-auto mt-6 md:mt-0">
+          <div className="w-full space-y-0 pl-0 mt-2 lg:pl-12 lg:mt-0 lg:border-l lg:border-gray-300">
             {rightColumnItems.map((item, index) => (
               <div key={index}>
                 <div className="flex items-center py-3 sm:py-4 md:py-6">

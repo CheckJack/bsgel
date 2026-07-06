@@ -7,13 +7,12 @@ export default function EthosNailDiagnosisPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to the main diagnosis page
-    router.push("/diagnosis");
+    router.push("/");
   }, [router]);
 
   return (
     <div className="w-full min-h-screen flex items-center justify-center">
-      <p className="text-gray-600">Redirecting to Nail Diagnosis...</p>
+      <p className="text-gray-600">Redirecting...</p>
     </div>
   );
 }

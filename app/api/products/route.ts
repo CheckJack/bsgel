@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { logAdminAction, extractRequestInfo } from "@/lib/admin-logger"
+import { PRODUCT_LIST_SELECT, attachReviewStats } from "@/lib/products/list-select"
+import { sanitizeProductList } from "@/lib/products/list-images"
 
 export async function GET(req: Request) {
   try {
@@ -11,6 +13,7 @@ export async function GET(req: Request) {
     const search = searchParams.get("search")
     const featured = searchParams.get("featured")
     const showcasingSection = searchParams.get("showcasingSection")
+    const showcasingSectionsParam = searchParams.get("showcasingSections")
     const minPrice = searchParams.get("minPrice")
     const maxPrice = searchParams.get("maxPrice")
     const sortBy = searchParams.get("sortBy") || "newest"
@@ -19,7 +22,7 @@ export async function GET(req: Request) {
     
     // Always use pagination with reasonable defaults to prevent loading all products
     const page = pageParam ? parseInt(pageParam) : 1
-    const limit = limitParam ? parseInt(limitParam) : (pageParam ? 12 : 100) // Default to 100 if no pagination params, but still limit
+    const limit = limitParam ? parseInt(limitParam) : 12
     const usePagination = true // Always use pagination for performance
 
     const where: any = {}
@@ -95,6 +98,14 @@ export async function GET(req: Request) {
       where.showcasingSections = {
         has: showcasingSection
       }
+    } else if (showcasingSectionsParam) {
+      const sections = showcasingSectionsParam
+        .split(",")
+        .map((section) => section.trim())
+        .filter(Boolean)
+      if (sections.length > 0) {
+        where.showcasingSections = { hasSome: sections }
+      }
     }
 
     // Price range filter
@@ -133,86 +144,34 @@ export async function GET(req: Request) {
         orderBy = { createdAt: "desc" }
     }
 
-    let products;
+    const skipReviews = searchParams.get("skipReviews") === "true"
+    const listQuery = {
+      where,
+      select: PRODUCT_LIST_SELECT,
+      orderBy,
+      skip: isSearchRequest ? 0 : (page - 1) * limit,
+      take: isSearchRequest ? 500 : limit,
+    }
+
+    let products: any[]
+    let total: number | undefined
+
     try {
-      // Optimized query: Only select needed fields, skip subcategories for list view
-      console.log("🔍 Fetching products from database with filters:", JSON.stringify(where));
-      products = await db.product.findMany({
-        where,
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          price: true,
-          salePrice: true,
-          image: true,
-          images: true,
-          featured: true,
-          outOfStock: true,
-          hemaFree: true,
-          categoryId: true,
-          attributes: true,
-          showcasingSections: true,
-          createdAt: true,
-          updatedAt: true,
-          category: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
-        },
-        orderBy,
-        skip: isSearchRequest ? 0 : (page - 1) * limit,
-        take: isSearchRequest ? 500 : limit,
-      });
-      console.log(`✅ Found ${products.length} products`);
+      const [fetchedProducts, fetchedTotal] = await Promise.all([
+        db.product.findMany(listQuery),
+        db.product.count({ where }),
+      ])
+      products = fetchedProducts
+      total = fetchedTotal
 
-      // Calculate review stats in a single optimized query (only if products exist)
-      // Use raw SQL for better performance with large datasets
-      if (products.length > 0) {
-        const productIds = products.map(p => p.id);
-        
-        try {
-          // Use raw SQL for better performance - much faster than groupBy
-          const reviewStats = await db.$queryRaw<Array<{ productId: string; reviewCount: bigint; avgRating: number }>>`
-            SELECT 
-              "productId",
-              COUNT(*)::int as "reviewCount",
-              COALESCE(AVG(rating)::float, 0) as "avgRating"
-            FROM "ProductReview"
-            WHERE "productId" = ANY(${productIds}::text[])
-              AND status = 'APPROVED'
-            GROUP BY "productId"
-          `;
-
-          // Create a map of productId -> stats
-          const statsMap = new Map(
-            reviewStats.map(stat => [
-              stat.productId,
-              {
-                reviewCount: Number(stat.reviewCount),
-                rating: Number(stat.avgRating),
-              }
-            ])
-          );
-
-          // Add review stats to each product
-          products = products.map(product => ({
-            ...product,
-            reviewCount: statsMap.get(product.id)?.reviewCount || 0,
-            rating: statsMap.get(product.id)?.rating || 0,
-          }));
-        } catch (reviewError) {
-          // If review stats fail, just set defaults - don't fail the whole request
-          console.warn("Failed to fetch review stats:", reviewError);
-          products = products.map(product => ({
-            ...product,
-            reviewCount: 0,
-            rating: 0,
-          }));
-        }
+      if (!skipReviews && products.length > 0) {
+        products = await attachReviewStats(db, products)
+      } else if (products.length > 0) {
+        products = products.map((product) => ({
+          ...product,
+          reviewCount: 0,
+          rating: 0,
+        }))
       }
     } catch (error: any) {
       // If schema hasn't been migrated yet, use simpler query without subcategory
@@ -230,6 +189,7 @@ export async function GET(req: Request) {
             images: true,
             featured: true,
             outOfStock: true,
+            stockQuantity: true,
             hemaFree: true,
             categoryId: true,
             showcasingSections: true,
@@ -434,6 +394,14 @@ export async function GET(req: Request) {
       }
     }
 
+    if (typeof total !== "number") {
+      try {
+        total = await db.product.count({ where })
+      } catch {
+        total = Array.isArray(products) ? products.length : 0
+      }
+    }
+
     if (isSearchRequest && Array.isArray(products)) {
       products = [...products]
         .sort((a: any, b: any) => {
@@ -447,73 +415,22 @@ export async function GET(req: Request) {
     }
 
     // Always return paginated response for consistency and performance
-    let total;
-    try {
-      total = await db.product.count({ where });
-    } catch (error: any) {
-      // If count fails, use raw SQL
-      let countQuery = `SELECT COUNT(*) as count FROM "Product" p WHERE 1=1`;
-      const countParams: any[] = [];
-      let paramIndex = 1;
+    const totalPages = Math.ceil((total ?? 0) / limit)
 
-      if (categoryId) {
-        countQuery += ` AND p."categoryId" = $${paramIndex}`;
-        countParams.push(categoryId);
-        paramIndex++;
-      }
-
-      if (searchTokens.length > 0) {
-        const tokenClauses: string[] = [];
-        for (const token of searchTokens) {
-          tokenClauses.push(`(
-            LOWER(p.name) LIKE $${paramIndex}
-            OR LOWER(COALESCE(p.description, '')) LIKE $${paramIndex}
-            OR LOWER(p.id) LIKE $${paramIndex}
-          )`);
-          countParams.push(`%${token.toLowerCase()}%`);
-          paramIndex++;
-        }
-        const joinOperator = searchTokens.length > 1 ? " AND " : " OR ";
-        countQuery += ` AND (${tokenClauses.join(joinOperator)})`;
-      }
-
-      if (featured === "true") {
-        countQuery += ` AND p.featured = true`;
-      }
-
-      if (showcasingSection) {
-        countQuery += ` AND $${paramIndex} = ANY(p."showcasingSections")`;
-        countParams.push(showcasingSection);
-        paramIndex++;
-      }
-
-      if (minPrice) {
-        countQuery += ` AND p.price >= $${paramIndex}`;
-        countParams.push(parseFloat(minPrice));
-        paramIndex++;
-      }
-
-      if (maxPrice) {
-        countQuery += ` AND p.price <= $${paramIndex}`;
-        countParams.push(parseFloat(maxPrice));
-        paramIndex++;
-      }
-
-      const countResult = await db.$queryRawUnsafe(countQuery, ...countParams) as any[];
-      total = countResult && countResult[0] ? parseInt(countResult[0].count?.toString() || "0") : 0;
-    }
-    const totalPages = Math.ceil(total / limit)
+    const listProducts = Array.isArray(products)
+      ? sanitizeProductList(products)
+      : products
 
     // Add caching headers for better performance (cache for 60 seconds)
     const headers = new Headers();
     headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
 
     return NextResponse.json({
-      products,
+      products: listProducts,
       pagination: {
         page,
         limit,
-        total,
+        total: total ?? 0,
         totalPages,
         hasNextPage: page < totalPages,
         hasPreviousPage: page > 1,
@@ -553,7 +470,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    const { id, name, description, price, salePrice, image, images, categoryId, subcategoryIds, featured, outOfStock, hemaFree, attributes, showcasingSections } = body
+    const { id, name, description, price, salePrice, image, images, categoryId, subcategoryIds, featured, outOfStock, hemaFree, attributes, showcasingSections, stockQuantity } = body
 
     // Validate required fields
     if (!name || typeof name !== "string" || name.trim().length === 0) {
@@ -600,7 +517,16 @@ export async function POST(req: Request) {
       images: Array.isArray(images) ? images : [],
       categoryId: categoryId || null,
       featured: featured === true,
-      outOfStock: outOfStock === true,
+      stockQuantity:
+        stockQuantity !== undefined && stockQuantity !== null
+          ? Math.max(0, parseInt(String(stockQuantity), 10) || 0)
+          : outOfStock === true
+            ? 0
+            : 999,
+      outOfStock:
+        stockQuantity !== undefined && stockQuantity !== null
+          ? Math.max(0, parseInt(String(stockQuantity), 10) || 0) <= 0
+          : outOfStock === true,
       hemaFree: hemaFree === true,
       attributes: attributes || null,
       showcasingSections: Array.isArray(showcasingSections) ? showcasingSections : [],
