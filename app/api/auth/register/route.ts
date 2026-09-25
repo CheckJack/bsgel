@@ -1,17 +1,29 @@
 import { NextResponse } from "next/server"
 import { hash } from "bcryptjs"
+import { getServerSession } from "next-auth"
 import { db } from "@/lib/db"
 import { z } from "zod"
+import { authOptions } from "@/lib/auth"
 import { createReferral, getOrCreateAffiliate } from "@/lib/affiliate"
 import { calculatePoints, awardPoints } from "@/lib/points"
 import { checkAndNotifyMilestones } from "@/lib/notifications/affiliate-milestones"
 import { autoPromoteAffiliate } from "@/lib/affiliate-tiers"
+import { createAndStoreVerificationCode } from "@/lib/email/verification"
+import { sendEmailVerificationCode } from "@/lib/email/auth-emails"
+import { withNotificationI18n } from "@/lib/notifications/i18n"
+import {
+  AUTH_RATE_LIMITS,
+  clientIpFromRequest,
+  rateLimit,
+  tooManyRequestsResponse,
+} from "@/lib/rate-limit"
 
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   name: z.string().min(1, "Name is required"),
-  phone: z.string().min(1, "Phone is required"),
+  // Required for customer/professional signup; optional when an admin creates a staff user
+  phone: z.string().optional().nullable(),
   marketingConsent: z.boolean().optional(),
   userType: z.enum(["customer", "professional"]).optional(),
   role: z.enum(["USER", "ADMIN"]).optional(),
@@ -26,7 +38,53 @@ const registerSchema = z.object({
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { email, password, name, phone, marketingConsent, userType, role, permissions, certificate, certificationId, referralCode } = registerSchema.parse(body)
+    const {
+      email,
+      password,
+      name,
+      phone,
+      marketingConsent,
+      userType,
+      role: requestedRole,
+      permissions,
+      certificate,
+      certificationId,
+      referralCode,
+    } = registerSchema.parse(body)
+
+    // Only an authenticated ADMIN may create ADMIN accounts.
+    // Public signup (customers / professionals) is always USER — never trust client role.
+    let effectiveRole: "USER" | "ADMIN" = "USER"
+    let effectivePermissions: Record<string, "allow" | "deny"> | null = null
+
+    if (requestedRole === "ADMIN") {
+      const session = await getServerSession(authOptions)
+      if (!session?.user?.id || session.user.role !== "ADMIN") {
+        return NextResponse.json(
+          { error: "Unauthorized — only admins can create admin accounts" },
+          { status: 403 }
+        )
+      }
+      effectiveRole = "ADMIN"
+      effectivePermissions = permissions || null
+    } else {
+      // Rate-limit public signups (admins creating staff accounts are exempt)
+      const ip = clientIpFromRequest(req)
+      const limited = rateLimit({
+        key: `auth:register:ip:${ip}`,
+        ...AUTH_RATE_LIMITS.registerIp,
+      })
+      if (!limited.ok) {
+        return tooManyRequestsResponse(limited)
+      }
+    }
+
+    if (effectiveRole === "USER" && !phone?.trim()) {
+      return NextResponse.json(
+        { error: "Phone is required" },
+        { status: 400 }
+      )
+    }
 
     // Normalize email for checking
     const normalizedEmail = email.trim().toLowerCase()
@@ -58,7 +116,7 @@ export async function POST(req: Request) {
     // Hash password
     const hashedPassword = await hash(password, 10)
 
-    // Validate certificationId if provided
+    // Validate certificationId if provided (professional signup — unchanged)
     let finalCertificationId: string | null = certificationId || null
     if (finalCertificationId) {
       const cert = await db.certification.findUnique({
@@ -76,6 +134,12 @@ export async function POST(req: Request) {
           { status: 400 }
         )
       }
+      if (cert.isSystem) {
+        return NextResponse.json(
+          { error: "Cannot assign a system certification to users" },
+          { status: 400 }
+        )
+      }
     }
 
     // Create user
@@ -83,10 +147,10 @@ export async function POST(req: Request) {
       email: normalizedEmail,
       password: hashedPassword,
       name: name.trim(),
-      phone: phone.trim(),
+      phone: phone?.trim() || null,
       marketingConsent: !!marketingConsent,
-      role: role || "USER", // Set role to ADMIN if provided, otherwise default to USER
-      permissions: permissions || null,
+      role: effectiveRole,
+      permissions: effectivePermissions,
       isActive: true,
       // If professional, set certificateUrl to the uploaded certificate or a placeholder
       // to indicate it's pending review. Only NULL means approved.
@@ -97,8 +161,6 @@ export async function POST(req: Request) {
     // The relation will be connected only when admin approves the certification
     if (finalCertificationId) {
       createData.certificationId = finalCertificationId
-      // Do NOT connect the certification relation - it will be connected on approval
-      // createData.certification = { connect: { id: finalCertificationId } }
     }
 
     const user = await db.user.create({
@@ -106,8 +168,7 @@ export async function POST(req: Request) {
     })
 
     // Create cart for user (only for non-admin users)
-    // Wrap in try-catch so cart creation failure doesn't break registration
-    if (role !== "ADMIN") {
+    if (effectiveRole !== "ADMIN") {
       try {
         await db.cart.create({
           data: {
@@ -115,16 +176,13 @@ export async function POST(req: Request) {
           },
         })
       } catch (cartError) {
-        // Log cart error but don't fail the registration (cart can be created later)
         console.error("Failed to create cart:", cartError)
       }
 
-      // Automatically create affiliate record for all customers
       try {
         await getOrCreateAffiliate(user.id, normalizedEmail)
         console.log(`✅ Affiliate record created for user: ${normalizedEmail}`)
       } catch (affiliateError) {
-        // Log but don't fail registration if affiliate creation fails
         console.error("Failed to create affiliate record:", affiliateError)
       }
     }
@@ -137,18 +195,15 @@ export async function POST(req: Request) {
         })
 
         if (referringAffiliate && referringAffiliate.isActive) {
-          // Prevent self-referral: check if the referral code belongs to the registering user
           if (referringAffiliate.userId === user.id) {
             console.warn(`⚠️ Self-referral attempt blocked for user ${user.email} with code ${referralCode}`)
-            // Skip referral creation - don't fail registration
           } else {
-            // Mark any recent clicks as converted
             await db.affiliateLinkClick.updateMany({
               where: {
                 affiliateId: referringAffiliate.id,
                 converted: false,
                 clickedAt: {
-                  gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
+                  gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
                 },
               },
               data: {
@@ -158,10 +213,8 @@ export async function POST(req: Request) {
               },
             })
 
-            // Create referral relationship
             const referral = await createReferral(referringAffiliate.id, user.id)
 
-            // Award points for referral signup
             const points = await calculatePoints("REFERRAL_SIGNUP")
             if (points > 0) {
               await awardPoints(
@@ -171,45 +224,44 @@ export async function POST(req: Request) {
                 referral.id,
                 `Referral signup: ${user.email}`
               )
-              
-              // Check for milestones
+
               await checkAndNotifyMilestones(referringAffiliate.userId, referringAffiliate.id)
-              
-              // Auto-promote tier if applicable
               await autoPromoteAffiliate(referringAffiliate.id)
             }
           }
         }
       }
     } catch (referralError) {
-      // Log but don't fail registration if referral handling fails
       console.error("Failed to process referral:", referralError)
     }
 
-    // Create notification for admin users when a new customer signs up
-    // Wrap in try-catch so notification failure doesn't break registration
-    // Skip notifications for admin users
+    // Notifications for new customers / professionals (not for staff admins)
     try {
-      if (role !== "ADMIN" && (userType === "customer" || !userType)) {
+      if (effectiveRole !== "ADMIN" && (userType === "customer" || !userType)) {
         const notification = await db.notification.create({
           data: {
             type: "NEW_CUSTOMER",
             title: "New Customer Signup",
             message: `${name.trim()} (${normalizedEmail}) has signed up as a new customer`,
             linkUrl: `/admin/customers?userId=${user.id}`,
-            metadata: {
-              userId: user.id,
-              email: normalizedEmail,
-              name: name.trim(),
-            },
+            metadata: withNotificationI18n(
+              {
+                userId: user.id,
+                email: normalizedEmail,
+                name: name.trim(),
+              },
+              {
+                titleKey: "inApp.newCustomerTitle",
+                messageKey: "inApp.newCustomerMessage",
+                params: { name: name.trim(), email: normalizedEmail },
+              }
+            ),
           },
         })
         console.log("✅ Notification created successfully:", notification.id)
       }
 
-      // Create notification for admin users when a professional customer signs up
-      if (role !== "ADMIN" && userType === "professional") {
-        // Fetch all admin users to send notifications to
+      if (effectiveRole !== "ADMIN" && userType === "professional") {
         const adminUsers = await db.user.findMany({
           where: { role: "ADMIN" },
           select: { id: true },
@@ -217,34 +269,41 @@ export async function POST(req: Request) {
 
         const notificationData = {
           type: "NEW_PROFESSIONAL_CERTIFICATION" as const,
-          title: certificate 
-            ? "New Professional Certification Upload" 
-            : "New Professional Signup",
+          title: "New Professional Certification Pending Review",
           message: certificate
             ? `${name.trim()} (${normalizedEmail}) has signed up as a professional and uploaded a certificate for review`
             : `${name.trim()} (${normalizedEmail}) has signed up as a professional (no certificate uploaded yet)`,
-          linkUrl: `/admin/customers?filter=pending&userId=${user.id}`,
-          metadata: {
-            userId: user.id,
-            email: normalizedEmail,
-            name: name.trim(),
-            hasCertificate: !!certificate,
-          },
+          linkUrl: `/admin/customers?userId=${user.id}`,
+          metadata: withNotificationI18n(
+            {
+              userId: user.id,
+              email: normalizedEmail,
+              name: name.trim(),
+              customerName: name.trim(),
+              hasCertificate: !!certificate,
+              certificationId: finalCertificationId,
+            },
+            {
+              titleKey: "inApp.newCertificationTitle",
+              messageKey: "inApp.newCertificationMessage",
+              params: { name: name.trim() },
+            }
+          ),
         }
 
-        // Create notification for each admin user
         if (adminUsers.length > 0) {
-          const notifications = adminUsers.map((admin) => ({
-            ...notificationData,
-            userId: admin.id,
-          }))
-
-          await db.notification.createMany({
-            data: notifications,
-          })
+          await Promise.all(
+            adminUsers.map((admin) =>
+              db.notification.create({
+                data: {
+                  ...notificationData,
+                  userId: admin.id,
+                },
+              })
+            )
+          )
           console.log(`✅ Professional certification notifications created for ${adminUsers.length} admin(s)`)
         } else {
-          // Fallback: create notification without userId if no admins exist (shouldn't happen)
           await db.notification.create({
             data: notificationData,
           })
@@ -252,7 +311,6 @@ export async function POST(req: Request) {
         }
       }
     } catch (notificationError) {
-      // Log notification error but don't fail the registration
       console.error("❌ Failed to create notification:", notificationError)
       if (notificationError instanceof Error) {
         console.error("Error message:", notificationError.message)
@@ -260,8 +318,47 @@ export async function POST(req: Request) {
       }
     }
 
+    // Email verification — admins created by an admin are auto-verified
+    if (effectiveRole === "ADMIN") {
+      await db.user.update({
+        where: { id: user.id },
+        data: { emailVerifiedAt: new Date() },
+      })
+    } else {
+      try {
+        const code = await createAndStoreVerificationCode(user.id)
+        let certificationName: string | null = null
+        const pendingCertification =
+          userType === "professional" && !!finalCertificationId
+
+        if (pendingCertification && finalCertificationId) {
+          const cert = await db.certification.findUnique({
+            where: { id: finalCertificationId },
+            select: { name: true },
+          })
+          certificationName = cert?.name || null
+        }
+
+        await sendEmailVerificationCode({
+          to: normalizedEmail,
+          name: name.trim(),
+          code,
+          pendingCertification,
+          certificationName,
+        })
+      } catch (emailError) {
+        console.error("Failed to send verification email:", emailError)
+      }
+    }
+
     return NextResponse.json(
-      { message: "User created successfully", userId: user.id },
+      {
+        success: true,
+        requiresEmailVerification: effectiveRole !== "ADMIN",
+        email: normalizedEmail,
+        message: "User created successfully",
+        userId: user.id,
+      },
       { status: 201 }
     )
   } catch (error) {
@@ -273,17 +370,9 @@ export async function POST(req: Request) {
     }
 
     console.error("Registration error:", error)
-    
-    // Provide more detailed error message for debugging
-    const errorMessage = error instanceof Error ? error.message : "Unknown error"
     return NextResponse.json(
-      { 
-        error: "Internal server error",
-        message: errorMessage,
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined
-      },
+      { error: "Internal server error" },
       { status: 500 }
     )
   }
 }
-

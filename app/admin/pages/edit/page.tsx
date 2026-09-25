@@ -12,11 +12,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { SitePageMediaItem } from "@/lib/seo/types";
+import { useLanguage } from "@/contexts/language-context";
 
 const TITLE_MAX = 65;
 const DESC_MAX = 160;
 
 function SeoEditForm() {
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const path = searchParams.get("path") || "";
@@ -46,11 +48,11 @@ function SeoEditForm() {
       setOgImage(data.ogImage || "");
       setMedia(data.media || []);
     } catch {
-      toast("Failed to load page SEO", "error");
+      toast(t("toasts.pageSeoLoadFailed"), "error");
     } finally {
       setLoading(false);
     }
-  }, [path]);
+  }, [path, t]);
 
   useEffect(() => {
     void load();
@@ -63,15 +65,15 @@ function SeoEditForm() {
 
   const handleSave = async () => {
     if (title.length > TITLE_MAX) {
-      toast(`Title must be ${TITLE_MAX} characters or fewer`, "error");
+      toast(t("toasts.titleMaxChars", { max: String(TITLE_MAX) }), "error");
       return;
     }
     if (description.length > DESC_MAX) {
-      toast(`Meta description must be ${DESC_MAX} characters or fewer`, "error");
+      toast(t("toasts.metaDescMaxChars", { max: String(DESC_MAX) }), "error");
       return;
     }
     if (permalink && !permalink.startsWith("/")) {
-      toast("Permalink must start with /", "error");
+      toast(t("toasts.permalinkMustStartSlash"), "error");
       return;
     }
 
@@ -86,10 +88,10 @@ function SeoEditForm() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Save failed");
       }
-      toast("SEO settings saved", "success");
+      toast(t("toasts.seoSaved"), "success");
       router.push("/admin/pages");
     } catch (e: unknown) {
-      toast(e instanceof Error ? e.message : "Save failed", "error");
+      toast(e instanceof Error ? e.message : t("toasts.saveFailedShort"), "error");
     } finally {
       setSaving(false);
     }
@@ -309,6 +311,7 @@ function SeoEditForm() {
 }
 
 export default function AdminSeoEditPage() {
+  const { t } = useLanguage();
   return (
     <Suspense fallback={<p className="p-8 text-gray-500">Loading…</p>}>
       <SeoEditForm />

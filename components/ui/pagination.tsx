@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useLanguage } from "@/contexts/language-context";
+import { scrollShopListingToTop } from "@/lib/mobile-scroll-root";
 
 interface PaginationProps {
   currentPage: number;
@@ -14,24 +15,32 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
   const { t } = useLanguage();
   if (totalPages <= 1) return null;
 
+  const changePage = (page: number) => {
+    if (page === currentPage || page < 1 || page > totalPages) return;
+    onPageChange(page);
+    // After React paints the new page content, jump to the products/top
+    requestAnimationFrame(() => {
+      scrollShopListingToTop();
+      // Second pass once loading finishes / layout settles
+      window.setTimeout(() => scrollShopListingToTop(), 50);
+    });
+  };
+
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
     const maxVisible = 5;
 
     if (totalPages <= maxVisible) {
-      // Show all pages if total pages is less than max visible
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
-      // Always show first page
       pages.push(1);
 
       if (currentPage > 3) {
         pages.push("...");
       }
 
-      // Show pages around current page
       const start = Math.max(2, currentPage - 1);
       const end = Math.min(totalPages - 1, currentPage + 1);
 
@@ -43,7 +52,6 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
         pages.push("...");
       }
 
-      // Always show last page
       pages.push(totalPages);
     }
 
@@ -57,7 +65,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
       <Button
         variant="outline"
         size="sm"
-        onClick={() => onPageChange(currentPage - 1)}
+        onClick={() => changePage(currentPage - 1)}
         disabled={currentPage === 1}
         className="flex items-center gap-1"
       >
@@ -81,7 +89,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
               key={pageNum}
               variant={currentPage === pageNum ? "default" : "outline"}
               size="sm"
-              onClick={() => onPageChange(pageNum)}
+              onClick={() => changePage(pageNum)}
               className="min-w-[40px]"
             >
               {pageNum}
@@ -93,7 +101,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
       <Button
         variant="outline"
         size="sm"
-        onClick={() => onPageChange(currentPage + 1)}
+        onClick={() => changePage(currentPage + 1)}
         disabled={currentPage === totalPages}
         className="flex items-center gap-1"
       >
@@ -103,4 +111,3 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
     </div>
   );
 }
-

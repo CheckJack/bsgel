@@ -92,6 +92,17 @@ export function allowsMarketing(): boolean {
   return readConsentFromDocument()?.marketing ?? false;
 }
 
+export function allowsAnalytics(): boolean {
+  return readConsentFromDocument()?.analytics ?? false;
+}
+
+export const OPEN_COOKIE_SETTINGS_EVENT = "openCookieSettings";
+
+export function openCookieSettings() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(OPEN_COOKIE_SETTINGS_EVENT));
+}
+
 export function clearMarketingCookies() {
   document.cookie = "referralCode=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
   try {

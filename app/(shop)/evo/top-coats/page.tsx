@@ -14,6 +14,7 @@ import { ShopEmptyProducts } from "@/components/shop/shop-empty-products";
 import { useShopFilters } from "@/hooks/use-shop-filters";
 interface Product {
   id: string;
+  slug?: string;
   name: string;
   description: string | null;
   price: string;
@@ -230,8 +231,10 @@ export default function EvoTopCoatsPage() {
                   <ProductCard
                     key={product.id}
                     id={product.id}
+                    slug={product.slug}
                     name={product.name}
                     price={product.price}
+                    salePrice={(product as any).salePrice}
                     image={product.image}
                     images={product.images}
                     featured={product.featured}

@@ -47,7 +47,7 @@ export default function ReferralsPage() {
 
   useEffect(() => {
     if (!featureSettings.affiliateEnabled && session) {
-      router.push("/dashboard");
+      router.push("/dashboard/orders");
       return;
     }
     

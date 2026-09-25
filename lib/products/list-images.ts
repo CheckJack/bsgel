@@ -9,7 +9,7 @@ export function productImageApiUrl(productId: string, index = 0): string {
   return `/api/products/${encodeURIComponent(productId)}/image?index=${index}`;
 }
 
-function toListImageUrl(
+function toPublicMediaUrl(
   productId: string,
   url: string | null | undefined,
   index: number
@@ -29,17 +29,31 @@ function combinedMedia(
   return [image, ...gallery.filter((item) => item !== image)];
 }
 
+/** Keep primary + hover image only — listing cards never need the full gallery. */
+export function trimProductListMedia<
+  T extends { image?: string | null; images?: string[] | null },
+>(product: T, maxMedia = 2): T {
+  const media = combinedMedia(product.image, product.images).slice(0, maxMedia);
+  return {
+    ...product,
+    image: media[0] ?? null,
+    images: media.slice(1),
+  };
+}
+
+/** Replace inline data/blob URLs with API URLs; leave file/http URLs as-is. */
 export function sanitizeProductListImages<
   T extends { id: string; image?: string | null; images?: string[] | null },
 >(product: T): T {
-  const media = combinedMedia(product.image, product.images);
-  const primary = toListImageUrl(product.id, media[0] ?? null, 0);
-  const secondary = media[1] ? toListImageUrl(product.id, media[1], 1) : null;
+  const media = combinedMedia(product.image, product.images).slice(0, 2);
+  const sanitizedMedia = media
+    .map((url, index) => toPublicMediaUrl(product.id, url, index))
+    .filter((url): url is string => !!url);
 
   return {
     ...product,
-    image: primary,
-    images: secondary ? [secondary] : [],
+    image: sanitizedMedia[0] ?? null,
+    images: sanitizedMedia.slice(1),
   };
 }
 
@@ -47,6 +61,20 @@ export function sanitizeProductList<
   T extends { id: string; image?: string | null; images?: string[] | null },
 >(products: T[]): T[] {
   return products.map(sanitizeProductListImages);
+}
+
+/**
+ * Sanitize a product detail payload: rewrite top-level inline image/images to API URLs.
+ * Attribute media is left unchanged here (migration converts those to file URLs).
+ */
+export function sanitizeProductDetail<
+  T extends {
+    id: string;
+    image?: string | null;
+    images?: string[] | null;
+  },
+>(product: T): T {
+  return sanitizeProductListImages(product);
 }
 
 export function getProductMediaAtIndex(

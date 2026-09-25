@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
+import { useLanguage } from "@/contexts/language-context";
 import {
   Search,
   Plus,
@@ -26,6 +27,7 @@ interface Certification {
   name: string;
   description: string | null;
   isActive: boolean;
+  isSystem?: boolean;
   categories: {
     id: string;
     name: string;
@@ -57,6 +59,7 @@ type SortDirection = "asc" | "desc";
 type StatusFilter = "all" | "active" | "inactive";
 
 export default function AdminCertificationsPage() {
+  const { t } = useLanguage();
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -125,12 +128,12 @@ export default function AdminCertificationsPage() {
         setPagination(data.pagination || pagination);
       } else {
         const errorData = await res.json();
-        toast(errorData.error || "Failed to fetch certifications", "error");
+        toast(errorData.error || t("admin.certifications.fetchFailed"), "error");
         setCertifications([]);
       }
     } catch (error) {
       console.error("Failed to fetch certifications:", error);
-      toast("Failed to fetch certifications. Please try again.", "error");
+      toast(t("common.errorOccurred"), "error");
       setCertifications([]);
     } finally {
       setIsLoading(false);
@@ -147,12 +150,12 @@ export default function AdminCertificationsPage() {
         setUsersPagination(data.pagination || usersPagination);
       } else {
         const errorData = await res.json();
-        toast(errorData.error || "Failed to fetch users", "error");
+        toast(errorData.error || t("admin.certifications.fetchUsersFailed"), "error");
         setUsers([]);
       }
     } catch (error) {
       console.error("Failed to fetch users:", error);
-      toast("Failed to fetch users. Please try again.", "error");
+      toast(t("common.errorOccurred"), "error");
       setUsers([]);
     } finally {
       setUsersLoading(false);
@@ -166,7 +169,11 @@ export default function AdminCertificationsPage() {
     await fetchUsers(certification.id, 1);
   };
 
-  const handleToggleStatus = async (id: string, currentStatus: boolean) => {
+  const handleToggleStatus = async (id: string, currentStatus: boolean, isSystem?: boolean) => {
+    if (isSystem) {
+      toast("System certifications cannot be deactivated", "warning");
+      return;
+    }
     setTogglingStatus(id);
     try {
       const res = await fetch(`/api/certifications/${id}`, {
@@ -180,23 +187,24 @@ export default function AdminCertificationsPage() {
         setCertifications((prev) =>
           prev.map((cert) => (cert.id === id ? updated : cert))
         );
-        toast(
-          `Certification ${!currentStatus ? "activated" : "deactivated"} successfully`,
-          "success"
-        );
+        toast(!currentStatus ? t("admin.certifications.activated") : t("admin.certifications.deactivated"), "success");
       } else {
         const data = await res.json();
-        toast(data.error || "Failed to update status", "error");
+        toast(data.error || t("admin.certifications.updateStatusFailed"), "error");
       }
     } catch (error) {
       console.error("Failed to toggle status:", error);
-      toast("Failed to update status. Please try again.", "error");
+      toast(t("common.errorOccurred"), "error");
     } finally {
       setTogglingStatus(null);
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
+  const handleDelete = async (id: string, name: string, isSystem?: boolean) => {
+    if (isSystem) {
+      toast("System certifications cannot be deleted", "warning");
+      return;
+    }
     if (
       !confirm(
         `Are you sure you want to delete the certification "${name}"? This action cannot be undone.`
@@ -212,15 +220,15 @@ export default function AdminCertificationsPage() {
       });
 
       if (res.ok) {
-        toast("Certification deleted successfully", "success");
+        toast(t("admin.certifications.deleteSuccess"), "success");
         fetchCertifications();
       } else {
         const data = await res.json();
-        toast(data.error || "Failed to delete certification", "error");
+        toast(data.error || t("admin.certifications.deleteFailed"), "error");
       }
     } catch (error) {
       console.error("Failed to delete certification:", error);
-      toast("Failed to delete certification. Please try again.", "error");
+      toast(t("admin.certifications.deleteFailed"), "error");
     } finally {
       setDeletingId(null);
     }
@@ -276,12 +284,10 @@ export default function AdminCertificationsPage() {
     <div>
       {/* Header with Title and Breadcrumb */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-          All Certifications
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("admin.certifications.title")}</h1>
         <div className="text-sm text-gray-600 dark:text-gray-400">
           Dashboard <span className="mx-2">&gt;</span> Certifications{" "}
-          <span className="mx-2">&gt;</span> All Certifications
+          <span className="mx-2">&gt;</span> {t("admin.certifications.title")}
         </div>
       </div>
 
@@ -335,7 +341,7 @@ export default function AdminCertificationsPage() {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <input
                     type="text"
-                    placeholder="Search certifications..."
+                    placeholder={t("admin.certifications.searchPlaceholder")}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-500 dark:placeholder:text-gray-400"
@@ -371,12 +377,12 @@ export default function AdminCertificationsPage() {
                   </div>
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  No certifications found
+                  {t("admin.certifications.noCertifications")}
                 </h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
                   {debouncedSearchQuery || statusFilter !== "all"
-                    ? "Try adjusting your search or filters"
-                    : "Get started by creating your first certification"}
+                    ? t("admin.certifications.adjustFilters")
+                    : t("admin.certifications.emptyHint")}
                 </p>
                 {!debouncedSearchQuery && statusFilter === "all" && (
                   <Link href="/admin/certifications/new">
@@ -442,9 +448,16 @@ export default function AdminCertificationsPage() {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">
-                                {certification.name}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">
+                                  {certification.name}
+                                </p>
+                                {certification.isSystem && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 flex-shrink-0">
+                                    Final clients
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -479,14 +492,20 @@ export default function AdminCertificationsPage() {
 
                         {/* Users Column */}
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            onClick={() => handleViewUsers(certification)}
-                            className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
-                            disabled={certification.userCount === 0}
-                          >
-                            <Users className="h-4 w-4" />
-                            {certification.userCount}
-                          </button>
+                          {certification.isSystem ? (
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              Auto (no cert)
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleViewUsers(certification)}
+                              className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+                              disabled={certification.userCount === 0}
+                            >
+                              <Users className="h-4 w-4" />
+                              {certification.userCount}
+                            </button>
+                          )}
                         </td>
 
                         {/* Status Column */}
@@ -494,18 +513,32 @@ export default function AdminCertificationsPage() {
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() =>
-                                handleToggleStatus(certification.id, certification.isActive)
+                                handleToggleStatus(
+                                  certification.id,
+                                  certification.isActive,
+                                  certification.isSystem
+                                )
                               }
-                              disabled={togglingStatus === certification.id}
+                              disabled={
+                                togglingStatus === certification.id ||
+                                !!certification.isSystem
+                              }
                               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                                 certification.isActive
                                   ? "bg-green-500"
                                   : "bg-gray-300 dark:bg-gray-600"
-                              } ${togglingStatus === certification.id ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                              } ${
+                                togglingStatus === certification.id ||
+                                certification.isSystem
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer"
+                              }`}
                               title={
-                                certification.isActive
-                                  ? "Click to deactivate"
-                                  : "Click to activate"
+                                certification.isSystem
+                                  ? "System certifications stay active"
+                                  : certification.isActive
+                                  ? t("admin.certifications.clickDeactivate")
+                                  : t("admin.certifications.clickActivate")
                               }
                             >
                               <span
@@ -521,7 +554,7 @@ export default function AdminCertificationsPage() {
                                   : "text-gray-600 dark:text-gray-400"
                               }`}
                             >
-                              {certification.isActive ? "Active" : "Inactive"}
+                              {certification.isActive ? t("admin.certifications.active") : t("admin.certifications.inactive")}
                             </span>
                           </div>
                         </td>
@@ -542,22 +575,28 @@ export default function AdminCertificationsPage() {
                                 Edit
                               </Button>
                             </Link>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                              onClick={() =>
-                                handleDelete(certification.id, certification.name)
-                              }
-                              disabled={deletingId === certification.id}
-                            >
-                              {deletingId === certification.id ? (
-                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-3 w-3 mr-1" />
-                              )}
-                              Delete
-                            </Button>
+                            {!certification.isSystem && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                onClick={() =>
+                                  handleDelete(
+                                    certification.id,
+                                    certification.name,
+                                    certification.isSystem
+                                  )
+                                }
+                                disabled={deletingId === certification.id}
+                              >
+                                {deletingId === certification.id ? (
+                                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-3 w-3 mr-1" />
+                                )}
+                                Delete
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>

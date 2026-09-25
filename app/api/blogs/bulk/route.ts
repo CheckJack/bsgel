@@ -2,12 +2,23 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { applyPublishState, isValidBlogStatus } from "@/lib/blog";
+
+async function requireAdmin() {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.id || session.user.role !== "ADMIN") {
+    return null;
+  }
+
+  return session;
+}
 
 export async function DELETE(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await requireAdmin();
 
-    if (!session?.user?.id || session.user.role !== "ADMIN") {
+    if (!session) {
       return NextResponse.json(
         { error: "Unauthorized - Admin access required" },
         { status: 401 }
@@ -24,7 +35,6 @@ export async function DELETE(req: Request) {
       );
     }
 
-    // Delete blogs
     const result = await db.blog.deleteMany({
       where: {
         id: { in: blogIds },
@@ -35,12 +45,13 @@ export async function DELETE(req: Request) {
       message: "Blogs deleted successfully",
       count: result.count,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Failed to bulk delete blogs:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
       {
         error: "Failed to delete blogs",
-        details: error?.message || "Unknown error",
+        details: message,
       },
       { status: 500 }
     );
@@ -49,9 +60,9 @@ export async function DELETE(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await requireAdmin();
 
-    if (!session?.user?.id || session.user.role !== "ADMIN") {
+    if (!session) {
       return NextResponse.json(
         { error: "Unauthorized - Admin access required" },
         { status: 401 }
@@ -68,41 +79,48 @@ export async function PATCH(req: Request) {
       );
     }
 
-    if (!status || !["DRAFT", "PUBLISHED"].includes(status)) {
+    if (!status || !isValidBlogStatus(status)) {
       return NextResponse.json(
         { error: "Valid status (DRAFT or PUBLISHED) is required" },
         { status: 400 }
       );
     }
 
-    const updateData: any = { status };
-
-    // Set publishedAt when status changes to PUBLISHED
-    if (status === "PUBLISHED") {
-      updateData.publishedAt = new Date();
-    }
-
-    // Update blogs
-    const result = await db.blog.updateMany({
-      where: {
-        id: { in: blogIds },
-      },
-      data: updateData,
+    const blogs = await db.blog.findMany({
+      where: { id: { in: blogIds } },
+      select: { id: true, publishedAt: true },
     });
+
+    let updatedCount = 0;
+
+    for (const blog of blogs) {
+      const publishState = applyPublishState(status, blog.publishedAt)
+
+      await db.blog.update({
+        where: { id: blog.id },
+        data: {
+          status: publishState.status,
+          publishedAt: publishState.publishedAt,
+          assignedReviewerId: null,
+        },
+      })
+
+      updatedCount += 1
+    }
 
     return NextResponse.json({
       message: "Blogs updated successfully",
-      count: result.count,
+      count: updatedCount,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Failed to bulk update blogs:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
       {
         error: "Failed to update blogs",
-        details: error?.message || "Unknown error",
+        details: message,
       },
       { status: 500 }
     );
   }
 }
-

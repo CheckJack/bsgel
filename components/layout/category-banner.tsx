@@ -21,7 +21,7 @@ const UNIMPLEMENTED_ROUTES = new Set(['/elim', '/tint', '/category5']);
 export function CategoryBanner({ categories }: CategoryBannerProps) {
   return (
     <section className="w-full mt-2">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
         {categories.map((category, index) => {
           const content = (
             <div className="relative w-full h-[250px] sm:h-[300px] md:h-[350px] lg:h-[400px] overflow-hidden group cursor-pointer">
@@ -100,7 +100,7 @@ export function CategoryBanner({ categories }: CategoryBannerProps) {
                   <div className="relative w-full h-full flex items-center justify-center">
                     <Image
                       src="/geminilogo.png"
-                      alt="Verniz Tradicional"
+                      alt="Verniz Clássico"
                       width={195}
                       height={195}
                       className="object-contain w-[60%] sm:w-[50%] md:w-[45%] lg:w-auto h-auto max-w-[195px]"

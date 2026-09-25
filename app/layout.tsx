@@ -43,13 +43,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className="ios-edge-to-edge">
+    <html lang="pt" suppressHydrationWarning className="ios-edge-to-edge">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
           href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap"
           rel="stylesheet"
+        />
+        <link
+          rel="preload"
+          href="/bio-sculpture-white-hires-loader.png"
+          as="image"
+          type="image/png"
         />
         <script
           dangerouslySetInnerHTML={{
@@ -86,13 +92,22 @@ export default function RootLayout({
 
                 if (window.location.pathname === '/') {
                   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-                  document.documentElement.style.backgroundColor = '#857D71';
-                  document.body.style.backgroundColor = '#857D71';
-                  document.documentElement.classList.add('home-entry-loader-scroll-lock');
-                  document.documentElement.classList.add('home-entry-loader-active');
+                  // Only touch documentElement here — body is often still null in <head>.
+                  // Touching body throws and skips the loader classes → white flash.
+                  var root = document.documentElement;
+                  root.style.backgroundColor = '#857D71';
+                  root.classList.add('home-entry-loader-scroll-lock', 'home-entry-loader-active');
+                  var themeMeta = document.querySelector('meta[name="theme-color"]');
+                  if (themeMeta) themeMeta.setAttribute('content', '#857D71');
                   window.scrollTo(0, 0);
-                  document.documentElement.scrollTop = 0;
-                  document.body.scrollTop = 0;
+                  root.scrollTop = 0;
+                  function paintBodyLoader() {
+                    if (!document.body) return;
+                    document.body.style.backgroundColor = '#857D71';
+                    document.body.scrollTop = 0;
+                  }
+                  if (document.body) paintBodyLoader();
+                  else document.addEventListener('DOMContentLoaded', paintBodyLoader, { once: true });
                 }
 
                 if (window.location.pathname === '/salons') {

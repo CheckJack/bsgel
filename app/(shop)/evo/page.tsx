@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import mobileEvoHero from "../../../egw98.png";
 import { GeminiHeroBadge } from "@/components/layout/category-hero-badge";
+import { DesktopHeroVideo } from "@/components/layout/desktop-hero-video";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import { ShopProductsHeader } from "@/components/shop/shop-products-header";
@@ -16,6 +17,7 @@ import { BRAND_LINE_SLUGS, findCategoryByBrandSlug } from "@/lib/brand-lines";
 
 interface Product {
   id: string;
+  slug?: string;
   name: string;
   description: string | null;
   price: string;
@@ -56,7 +58,10 @@ export default function EvoPage() {
         setCategoryId(evoCategory.id);
         params.set("categoryId", evoCategory.id);
       } else {
-        params.set("search", "evo");
+        // Never fall back to search=evo — it matches unrelated Portuguese text
+        // ("revolucionária", etc.) and pulls ~150 products with huge payloads.
+        // Prefer the showcasing section tag if the category rename isn't resolvable.
+        params.set("showcasingSection", "evo");
       }
 
       const res = await fetch(`/api/products?${params.toString()}`);
@@ -83,17 +88,11 @@ export default function EvoPage() {
       <section className="relative h-[36vh] w-full overflow-hidden md:h-[44vh]">
         <GeminiHeroBadge />
         <Image src={mobileEvoHero} alt={t("nav.shopMenu.evo")} fill className="object-cover md:hidden" priority unoptimized />
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          aria-label={t("nav.shopMenu.evo")}
-          className="absolute inset-0 hidden h-full w-full object-cover md:block"
-        >
-          <source src="/evo-hero.mp4" type="video/mp4" />
-        </video>
+        <DesktopHeroVideo
+          src="/evo-hero.mp4"
+          ariaLabel={t("nav.shopMenu.evo")}
+          className="hidden md:block"
+        />
       </section>
 
       {/* Evo Products Grid Section */}
@@ -123,8 +122,10 @@ export default function EvoPage() {
                 <ProductCard
                   key={product.id}
                   id={product.id}
+                    slug={product.slug}
                   name={product.name}
                   price={product.price}
+                  salePrice={(product as any).salePrice}
                   image={product.image}
                   images={product.images}
                   featured={product.featured}

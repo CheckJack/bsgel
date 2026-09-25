@@ -2,40 +2,90 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import {
+  applyPublishState,
+  isValidBlogStatus,
+  normalizeBlogStatus,
+  normalizeSlug,
+  PUBLIC_BLOG_LIST_SELECT,
+} from "@/lib/blog"
+import { normalizeBlogPostMedia } from "@/lib/blog-public"
+
+async function requireAdmin() {
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user || session.user.role !== "ADMIN") {
+    return null
+  }
+
+  return session
+}
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
     const status = searchParams.get("status")
     const search = searchParams.get("search")
-    const published = searchParams.get("published") // For public-facing blog
+    const published = searchParams.get("published")
 
-    const where: any = {}
+    const where: Record<string, unknown> = {}
+    const andFilters: Record<string, unknown>[] = []
 
-    // For public blog listing, only show published blogs
     if (published === "true") {
-      where.status = "PUBLISHED"
-      where.publishedAt = { not: null }
-    } else if (status) {
-      where.status = status
+      andFilters.push({ status: "PUBLISHED" })
+      andFilters.push({ publishedAt: { not: null } })
+    } else {
+      const session = await requireAdmin()
+      if (!session) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
+
+      if (status === "DRAFT") {
+        andFilters.push({
+          OR: [
+            { status: "DRAFT" },
+            { status: "PENDING_REVIEW" },
+            { status: "APPROVED" },
+            { status: "REJECTED" },
+          ],
+        })
+      } else if (status === "PUBLISHED") {
+        andFilters.push({ status: "PUBLISHED" })
+      } else if (status) {
+        andFilters.push({ status })
+      }
     }
 
     if (search) {
-      where.OR = [
-        { title: { contains: search, mode: "insensitive" } },
-        { excerpt: { contains: search, mode: "insensitive" } },
-        { content: { contains: search, mode: "insensitive" } },
-      ]
+      andFilters.push({
+        OR: [
+          { title: { contains: search, mode: "insensitive" } },
+          { excerpt: { contains: search, mode: "insensitive" } },
+          { content: { contains: search, mode: "insensitive" } },
+        ],
+      })
+    }
+
+    if (andFilters.length > 0) {
+      where.AND = andFilters
     }
 
     const blogs = await db.blog.findMany({
       where,
-      orderBy: {
-        publishedAt: "desc",
-      },
+      orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
+      select: published === "true" ? PUBLIC_BLOG_LIST_SELECT : undefined,
     })
 
-    return NextResponse.json(blogs)
+    const response = NextResponse.json(blogs.map((blog) => normalizeBlogPostMedia(blog)))
+
+    if (published === "true") {
+      response.headers.set(
+        "Cache-Control",
+        "public, s-maxage=300, stale-while-revalidate=600"
+      )
+    }
+
+    return response
   } catch (error) {
     console.error("Failed to fetch blogs:", error)
     return NextResponse.json(
@@ -47,25 +97,50 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await requireAdmin()
 
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const body = await req.json()
-    const { title, slug, excerpt, content, image, heroImage, author, status, publishedAt, assignedReviewerId, createdBy } = body
+    const {
+      title,
+      slug,
+      excerpt,
+      content,
+      image,
+      heroImage,
+      author,
+      status,
+    } = body
 
-    if (!title || !slug) {
+    if (!title?.trim() || !slug?.trim()) {
       return NextResponse.json(
         { error: "Title and slug are required" },
         { status: 400 }
       )
     }
 
-    // Check if slug already exists
+    const normalizedSlug = normalizeSlug(slug)
+
+    if (!normalizedSlug) {
+      return NextResponse.json(
+        { error: "Slug must contain letters or numbers" },
+        { status: 400 }
+      )
+    }
+
+    const requestedStatus = status || "DRAFT"
+    if (!isValidBlogStatus(requestedStatus)) {
+      return NextResponse.json(
+        { error: "Status must be DRAFT or PUBLISHED" },
+        { status: 400 }
+      )
+    }
+
     const existingBlog = await db.blog.findUnique({
-      where: { slug },
+      where: { slug: normalizedSlug },
     })
 
     if (existingBlog) {
@@ -75,29 +150,31 @@ export async function POST(req: Request) {
       )
     }
 
+    const publishState = applyPublishState(
+      normalizeBlogStatus(requestedStatus),
+      null
+    )
+
     const blog = await db.blog.create({
       data: {
-        title,
-        slug,
-        excerpt: excerpt || null,
+        title: title.trim(),
+        slug: normalizedSlug,
+        excerpt: excerpt?.trim() || null,
         content: content || "",
         image: image || null,
         heroImage: heroImage || null,
-        author: author || null,
-        status: status || "DRAFT",
-        publishedAt: status === "PUBLISHED" ? (publishedAt ? new Date(publishedAt) : new Date()) : null,
-        assignedReviewerId: status === "PENDING_REVIEW" && assignedReviewerId ? assignedReviewerId : null,
-        createdBy: createdBy || session.user.id,
-      } as any,
+        author: author?.trim() || null,
+        status: publishState.status,
+        publishedAt: publishState.publishedAt,
+        assignedReviewerId: null,
+        createdBy: session.user.id,
+      },
     })
 
     return NextResponse.json(blog, { status: 201 })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Failed to create blog:", error)
-    return NextResponse.json(
-      { error: error.message || "Failed to create blog" },
-      { status: 500 }
-    )
+    const message = error instanceof Error ? error.message : "Failed to create blog"
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
-

@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import { Camera, Save, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/language-context";
+import { parseStoredShippingAddress } from "@/lib/checkout/checkout-address";
 
 export default function SettingsPage() {
   const { data: session, status, update } = useSession();
@@ -62,34 +63,20 @@ export default function SettingsPage() {
           const res = await fetch("/api/users/profile");
           if (res.ok) {
             const data = await res.json();
-            if (data.user?.shippingAddress) {
-              try {
-                const parsed = JSON.parse(data.user.shippingAddress);
-                setShippingAddress({
-                  firstName: parsed.firstName || "",
-                  lastName: parsed.lastName || "",
-                  email: parsed.email || session?.user?.email || "",
-                  phone: parsed.phone || "",
-                  addressLine1: parsed.addressLine1 || "",
-                  addressLine2: parsed.addressLine2 || "",
-                  city: parsed.city || "",
-                  postalCode: parsed.postalCode || "",
-                  district: parsed.district || "",
-                  country: parsed.country || "Portugal",
-                });
-              } catch {
-                // If not JSON, just set email
-                setShippingAddress((prev) => ({
-                  ...prev,
-                  email: session?.user?.email || "",
-                }));
-              }
-            } else {
-              setShippingAddress((prev) => ({
-                ...prev,
-                email: session?.user?.email || "",
-              }));
-            }
+            const parsed = parseStoredShippingAddress(data.user?.shippingAddress);
+            const fromName = (data.user?.name || session?.user?.name || "").trim().split(/\s+/);
+            setShippingAddress({
+              firstName: parsed?.firstName || fromName[0] || "",
+              lastName: parsed?.lastName || fromName.slice(1).join(" ") || "",
+              email: parsed?.email || data.user?.email || session?.user?.email || "",
+              phone: parsed?.phone || data.user?.phone || "",
+              addressLine1: parsed?.addressLine1 || "",
+              addressLine2: parsed?.addressLine2 || "",
+              city: parsed?.city || "",
+              postalCode: parsed?.postalCode || "",
+              district: parsed?.district || "",
+              country: parsed?.country || "Portugal",
+            });
             if (data.user?.billingNif) {
               setBillingNif(String(data.user.billingNif));
             }
@@ -167,6 +154,7 @@ export default function SettingsPage() {
       updateData.shippingAddress = JSON.stringify(shippingAddress);
       updateData.billingNif = billingNif.trim();
       updateData.billingAddress = billingAddress.trim();
+      updateData.phone = shippingAddress.phone.trim();
 
       // Handle image upload if new image is selected
       if (imageFile) {

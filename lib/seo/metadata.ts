@@ -34,6 +34,32 @@ const getCachedPageSeo = unstable_cache(
 
 export async function getMetadataForPath(pathname: string): Promise<Metadata> {
   const normalized = pathname.split("?")[0] || "/";
+
+  // Private / transactional surfaces should not be indexed.
+  if (
+    normalized.startsWith("/admin") ||
+    normalized.startsWith("/dashboard") ||
+    normalized.startsWith("/cart") ||
+    normalized.startsWith("/checkout") ||
+    normalized.startsWith("/login") ||
+    normalized.startsWith("/register") ||
+    normalized.startsWith("/orders") ||
+    normalized.startsWith("/api")
+  ) {
+    return {
+      title: SITE_NAME,
+      robots: { index: false, follow: false },
+    };
+  }
+
+  // Per-product metadata is handled in app/(shop)/products/[id]/page.tsx
+  if (/^\/products\/[^/]+$/.test(normalized) && normalized !== "/products") {
+    return {
+      title: SITE_NAME,
+      description: "Produtos profissionais Bio Sculpture para unhas e formação.",
+    };
+  }
+
   const routeKey = matchDynamicPath(normalized);
 
   let record = routeKey ? await getCachedPageSeo(routeKey) : null;
@@ -51,7 +77,7 @@ export async function getMetadataForPath(pathname: string): Promise<Metadata> {
   if (!record) {
     return {
       title: SITE_NAME,
-      description: "Premium Bio Sculpture nail products and professional training.",
+      description: "Produtos profissionais Bio Sculpture para unhas e formação.",
     };
   }
 

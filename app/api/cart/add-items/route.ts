@@ -34,7 +34,12 @@ export async function POST(req: Request) {
       const accessCheck = await canUserPurchaseProduct(session.user.id, item.productId)
       if (!accessCheck.canPurchase) {
         return NextResponse.json(
-          { error: accessCheck.error || `You do not have permission to purchase product ${item.productId}` },
+          {
+            error: accessCheck.error || `You do not have permission to purchase product ${item.productId}`,
+            code: accessCheck.code || "CERTIFICATION_REQUIRED",
+            categoryName: accessCheck.categoryName,
+            certificationName: accessCheck.certificationName,
+          },
           { status: 403 }
         )
       }

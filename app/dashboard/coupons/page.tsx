@@ -70,7 +70,7 @@ export default function MyCouponsPage() {
     if (!featureSettings) return;
     
     if (!featureSettings.rewardsEnabled && session) {
-      router.push("/dashboard");
+      router.push("/dashboard/orders");
       return;
     }
     

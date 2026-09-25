@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { ensureUniqueProductSlug } from "@/lib/products/resolve";
 
 export async function POST(
   req: Request,
@@ -49,9 +50,11 @@ export async function POST(
     }
 
     // Create a duplicate with "Copy of" prefix
+    const copyName = `Copy of ${originalProduct.name}`;
     const duplicatedProduct = await db.product.create({
       data: {
-        name: `Copy of ${originalProduct.name}`,
+        name: copyName,
+        slug: await ensureUniqueProductSlug(copyName),
         description: originalProduct.description,
         price: originalProduct.price,
         // salePrice and discountPercentage don't exist in database

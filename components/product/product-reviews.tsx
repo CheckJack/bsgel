@@ -10,6 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useLanguage } from "@/contexts/language-context";
+import { productPath } from "@/lib/products/paths";
+import {
+  detectReviewLanguage,
+  oppositeLanguage,
+} from "@/lib/reviews/detect-language";
+import { toast } from "@/components/ui/toast";
 
 interface Review {
   id: string;
@@ -137,7 +143,7 @@ export function ProductReviews({
   >({});
   const { data: session } = useSession();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const reviewsPerPage = 5;
   const sectionRef = useRef<HTMLElement>(null);
   const [shouldLoad, setShouldLoad] = useState(Boolean(initialReviews));
@@ -350,6 +356,12 @@ export function ProductReviews({
       return;
     }
 
+    const sourceText = [review.title, review.content, review.companyResponse]
+      .filter(Boolean)
+      .join(" ");
+    const sourceLang = detectReviewLanguage(sourceText);
+    const target = oppositeLanguage(sourceLang);
+
     try {
       setTranslatingReviewId(review.id);
 
@@ -360,51 +372,89 @@ export function ProductReviews({
         },
         body: JSON.stringify({
           texts: [review.title || "", review.content, review.companyResponse || ""],
-          target: "pt",
+          target,
         }),
       });
 
-      if (!res.ok) return;
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => null);
+        throw new Error(errBody?.error || "Translation failed");
+      }
 
       const data = await res.json();
-      const translatedTexts: string[] = Array.isArray(data.translations) ? data.translations : [];
+      const translatedTexts: string[] = Array.isArray(data.translations)
+        ? data.translations
+        : [];
+
+      const nextTitle = translatedTexts[0] || review.title || undefined;
+      const nextContent = translatedTexts[1] || review.content;
+      const nextCompany =
+        translatedTexts[2] || review.companyResponse || undefined;
+
+      // Avoid storing a "translation" that didn't change anything meaningful
+      const changed =
+        (nextTitle && nextTitle !== (review.title || "")) ||
+        nextContent !== review.content ||
+        (nextCompany && nextCompany !== (review.companyResponse || ""));
+
+      if (!changed) {
+        toast(
+          language === "pt"
+            ? "Não foi possível traduzir esta avaliação."
+            : "Could not translate this review.",
+          "error"
+        );
+        return;
+      }
 
       setTranslatedReviews((prev) => ({
         ...prev,
         [review.id]: {
-          title: translatedTexts[0] || review.title || undefined,
-          content: translatedTexts[1] || review.content,
-          companyResponse: translatedTexts[2] || review.companyResponse || undefined,
+          title: nextTitle,
+          content: nextContent,
+          companyResponse: nextCompany,
         },
       }));
     } catch (error) {
       console.error("Falha ao traduzir avaliação:", error);
+      toast(
+        language === "pt"
+          ? "Falha ao traduzir a avaliação. Tente novamente."
+          : "Failed to translate the review. Please try again.",
+        "error"
+      );
     } finally {
       setTranslatingReviewId(null);
     }
   };
 
+  const translateButtonLabel = (review: Review) => {
+    if (translatingReviewId === review.id) {
+      return language === "pt" ? "A traduzir..." : "Translating...";
+    }
+    if (translatedReviews[review.id]) {
+      return language === "pt" ? "Ver texto original" : "Show original";
+    }
+    const sourceLang = detectReviewLanguage(
+      [review.title, review.content, review.companyResponse].filter(Boolean).join(" ")
+    );
+    const target = oppositeLanguage(sourceLang);
+    return target === "pt"
+      ? language === "pt"
+        ? "Traduzir para português"
+        : "Translate to Portuguese"
+      : language === "pt"
+        ? "Traduzir para inglês"
+        : "Translate to English";
+  };
+
   // Always render the review section - show empty state if no reviews on category pages
   return (
-    <section ref={sectionRef} className="relative w-full bg-white py-16">
-      <div className="container mx-auto px-4 max-w-7xl">
+    <section ref={sectionRef} className="relative w-full bg-white py-10 md:py-14 lg:py-16">
+      <div className="container mx-auto max-w-7xl px-4 md:px-6">
         {/* Centered Top Section - Show for both product and category pages */}
-        <div className="flex flex-col items-center mb-8">
-          {/* Trustpilot Banner */}
-          {overallRating > 0 && (
-            <div className="flex items-center gap-2 mb-8">
-              <span className="text-xl font-semibold text-gray-800">Excelente</span>
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star key={star} className="w-5 h-5 fill-pink-500 text-pink-500" />
-                ))}
-              </div>
-              <span className="text-sm text-gray-600">Trustpilot</span>
-            </div>
-          )}
-
-          {/* Overall Rating Section */}
-          {totalReviews > 0 ? (
+        {totalReviews > 0 ? (
+          <div className="flex flex-col items-center mb-8">
             <div className="flex flex-col md:flex-row gap-8 items-center justify-center w-full">
               <div className="flex flex-col gap-2 items-center">
                 <div className="flex items-center gap-4">
@@ -430,29 +480,32 @@ export function ProductReviews({
                 </div>
               )}
             </div>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-gray-600">
-                {productId 
-                  ? t("products.noReviewsYetProduct")
-                  : t("products.noReviewsYet")}
-              </p>
-            </div>
-          )}
-        </div>
+          </div>
+        ) : null}
 
         <div className="border-b border-gray-200 mb-6 pb-4">
           <h3 className="px-2 font-medium text-gray-900">Avaliações de Produtos</h3>
         </div>
 
-        {/* Write a Review Section - Made More Prominent */}
+        {/* Write a Review Section */}
         {productId && (
-          <div className="mb-8">
+          <div className="mb-10">
             {!showReviewForm ? (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">Partilhe a sua experiência</h3>
-                  <p className="text-sm text-gray-600">Ajude outras pessoas escrevendo uma avaliação sobre este produto</p>
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+                <div className="min-w-0">
+                  <p className="mb-2 font-header text-[10px] font-semibold uppercase tracking-[0.16em] text-pink-900">
+                    {language === "pt" ? "Avaliações" : "Reviews"}
+                  </p>
+                  <h3 className="font-display text-2xl font-normal leading-tight tracking-tight text-brand-black sm:text-[1.65rem]">
+                    {language === "pt"
+                      ? "Partilhe a sua experiência"
+                      : "Share your experience"}
+                  </h3>
+                  <p className="mt-2 max-w-xl font-header text-sm leading-relaxed text-brand-black/60">
+                    {language === "pt"
+                      ? "Ajude outras pessoas escrevendo uma avaliação sobre este produto."
+                      : "Help others by writing a review about this product."}
+                  </p>
                 </div>
                 <Button
                   onClick={() => {
@@ -462,14 +515,16 @@ export function ProductReviews({
                     }
                     setShowReviewForm(true);
                   }}
-                  className="bg-brand-champagne hover:bg-brand-champagne/90 text-white px-6 py-2 text-base font-medium whitespace-nowrap"
+                  className="h-11 shrink-0 bg-pink-900 px-7 text-sm font-medium tracking-wide text-white hover:bg-pink-950 sm:self-center"
                 >
-                  Escrever avaliação
+                  {language === "pt" ? "Escrever avaliação" : "Write a review"}
                 </Button>
               </div>
             ) : (
-              <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
-                <h3 className="text-lg font-semibold mb-4">Escrever avaliação</h3>
+              <div>
+                <h3 className="mb-5 font-display text-2xl font-normal tracking-tight text-brand-black">
+                  {language === "pt" ? "Escrever avaliação" : "Write a review"}
+                </h3>
                 
                 {submitSuccess && (
                   <div className="mb-4 p-3 bg-green-100 text-green-800 rounded text-sm">
@@ -497,8 +552,8 @@ export function ProductReviews({
                           <Star
                             className={`h-8 w-8 ${
                               star <= reviewRating
-                                ? "fill-yellow-400 text-yellow-400"
-                                : "text-gray-300"
+                                ? "fill-pink-500 text-pink-500"
+                                : "fill-gray-200 text-gray-200"
                             }`}
                           />
                         </button>
@@ -507,27 +562,33 @@ export function ProductReviews({
                   </div>
 
                   <div>
-                    <label htmlFor="review-title" className="block text-sm font-medium mb-2">
-                      Título da avaliação (opcional)
+                    <label className="block text-sm font-medium mb-2">
+                      {language === "pt" ? "Título da avaliação (opcional)" : "Review title (optional)"}
                     </label>
                     <Input
-                      id="review-title"
                       value={reviewTitle}
                       onChange={(e) => setReviewTitle(e.target.value)}
-                      placeholder="Dê um título à sua avaliação"
+                      placeholder={
+                        language === "pt"
+                          ? "Dê um título à sua avaliação"
+                          : "Give your review a title"
+                      }
                       className="w-full"
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="review-content" className="block text-sm font-medium mb-2">
-                      A sua avaliação *
+                    <label className="block text-sm font-medium mb-2">
+                      {language === "pt" ? "A sua avaliação *" : "Your review *"}
                     </label>
                     <Textarea
-                      id="review-content"
                       value={reviewContent}
                       onChange={(e) => setReviewContent(e.target.value)}
-                      placeholder="Partilhe a sua experiência com este produto..."
+                      placeholder={
+                        language === "pt"
+                          ? "Partilhe a sua experiência com este produto..."
+                          : "Share your experience with this product..."
+                      }
                       rows={5}
                       className="w-full"
                     />
@@ -537,7 +598,7 @@ export function ProductReviews({
                     <Button
                       onClick={handleSubmitReview}
                       disabled={isSubmitting || reviewRating === 0 || !reviewContent.trim()}
-                      className="bg-brand-champagne hover:bg-brand-champagne/90 text-white"
+                      className="bg-pink-900 text-white hover:bg-pink-950"
                     >
                       {isSubmitting ? "A enviar..." : "Enviar avaliação"}
                       {!isSubmitting && <Send className="ml-2 h-4 w-4" />}
@@ -592,7 +653,7 @@ export function ProductReviews({
 
         {/* Reviews List */}
         {isLoading ? (
-          <div className="text-center py-8 text-gray-500">Carregando avaliações...</div>
+          <div className="text-center py-8 text-gray-500">{t("products.loadingReviews")}</div>
         ) : paginatedReviews.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             {productId ? "Nenhuma avaliação ainda. Seja o primeiro a avaliar!" : "Nenhuma avaliação disponível."}
@@ -605,7 +666,7 @@ export function ProductReviews({
                 {/* Product Thumbnail */}
                 {review.productImage && (
                   <Link 
-                    href={review.productId ? `/products/${review.productId}` : '#'}
+                    href={review.productId ? productPath(review.productId) : "#"}
                     className="flex-shrink-0"
                   >
                     <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 hover:border-gray-300 transition-colors">
@@ -663,7 +724,7 @@ export function ProductReviews({
                     <div className="text-sm text-gray-600 mb-3">
                       Produto Avaliado:{" "}
                       <Link 
-                        href={`/products/${review.productId}`}
+                        href={productPath(review.productId)}
                         className="font-medium text-brand-champagne hover:underline"
                       >
                         {review.productName}
@@ -696,11 +757,7 @@ export function ProductReviews({
                   >
                     <Globe className="w-4 h-4" />
                     <span>
-                      {translatingReviewId === review.id
-                        ? "A traduzir..."
-                        : translatedReviews[review.id]
-                          ? "Ver texto original"
-                          : "Traduzir para português"}
+                      {translateButtonLabel(review)}
                     </span>
                   </button>
                 </div>
@@ -734,11 +791,7 @@ export function ProductReviews({
                   >
                     <Globe className="w-4 h-4" />
                     <span>
-                      {translatingReviewId === review.id
-                        ? "A traduzir..."
-                        : translatedReviews[review.id]
-                          ? "Ver texto original"
-                          : "Traduzir para português"}
+                      {translateButtonLabel(review)}
                     </span>
                   </button>
                 )}

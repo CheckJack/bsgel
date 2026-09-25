@@ -100,7 +100,7 @@ async function notifyAdminsLowStock(productId: string, productName: string, stoc
           message,
           userId: admin.id,
           linkUrl: `/admin/stock?urgent=true`,
-          metadata: { productId, stockQuantity },
+          metadata: { productId, productName, stockQuantity: String(stockQuantity) },
         },
       });
       await sendAdminLowStockEmail({
@@ -139,7 +139,7 @@ async function notifyCustomersBackInStock(productId: string, productName: string
           message: `${productName} is available again.`,
           userId: alert.userId,
           linkUrl: `/products/${productId}`,
-          metadata: { productId },
+          metadata: { productId, productName },
         },
       });
       await sendCustomerBackInStockEmail({
@@ -248,6 +248,101 @@ export async function decrementStockForOrder(
       }
     }
   });
+}
+
+/** Return previously reserved/committed units to inventory. */
+export async function restoreStockForOrder(
+  items: { productId: string; quantity: number }[]
+) {
+  await db.$transaction(async (tx) => {
+    for (const item of items) {
+      if (!item.quantity || item.quantity <= 0) continue;
+      const product = await tx.product.findUnique({
+        where: { id: item.productId },
+        select: { stockQuantity: true, name: true },
+      });
+      if (!product) continue;
+
+      const oldQty = product.stockQuantity;
+      const newQty = oldQty + item.quantity;
+      const outOfStock = syncOutOfStock(newQty);
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { stockQuantity: newQty, outOfStock },
+      });
+
+      await processStockSideEffects(item.productId, product.name, oldQty, newQty);
+    }
+  });
+}
+
+/**
+ * Decrement stock for an order and mark it reserved (idempotent).
+ * Used for Stripe (paid) and offline MB Way/bank (hold until confirm/cancel).
+ */
+export async function reserveOrderStock(
+  orderId: string,
+  items: { productId: string; quantity: number }[]
+) {
+  if (items.length === 0) return;
+
+  const order = await db.order.findUnique({
+    where: { id: orderId },
+    select: { stockReservedAt: true, stockRestoredAt: true },
+  });
+  if (!order || order.stockReservedAt) return;
+
+  await decrementStockForOrder(items);
+  await db.order.update({
+    where: { id: orderId },
+    data: { stockReservedAt: new Date() },
+  });
+}
+
+/**
+ * Restore stock for a cancelled/expired order if it was reserved and not yet restored.
+ * Skips when previous status was SHIPPED/DELIVERED (caller should pass prior status).
+ */
+export async function restoreOrderStockIfNeeded(
+  orderId: string,
+  options?: { previousStatus?: string }
+) {
+  const previous = options?.previousStatus;
+  if (previous === "SHIPPED" || previous === "DELIVERED") {
+    return false;
+  }
+
+  const order = await db.order.findUnique({
+    where: { id: orderId },
+    select: {
+      stockReservedAt: true,
+      stockRestoredAt: true,
+      items: { select: { productId: true, quantity: true } },
+    },
+  });
+
+  if (!order?.stockReservedAt || order.stockRestoredAt) return false;
+  if (order.items.length === 0) {
+    await db.order.update({
+      where: { id: orderId },
+      data: { stockRestoredAt: new Date() },
+    });
+    return true;
+  }
+
+  await restoreStockForOrder(
+    order.items.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+    }))
+  );
+
+  await db.order.update({
+    where: { id: orderId },
+    data: { stockRestoredAt: new Date() },
+  });
+
+  return true;
 }
 
 export async function clampCartItemsToStock(userId: string) {

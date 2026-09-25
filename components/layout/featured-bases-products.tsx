@@ -1,41 +1,13 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { useLanguage } from "@/contexts/language-context";
-import {
-  HomeProductsCarousel,
-  type CarouselProduct,
-} from "@/components/layout/home-products-carousel";
-
-function formatProducts(items: (CarouselProduct & { price?: unknown; salePrice?: unknown })[]) {
-  return items.map((product) => ({
-    ...product,
-    price: product.price?.toString() || "0",
-    salePrice: product.salePrice?.toString() ?? null,
-  }));
-}
-
-async function fetchBasesProducts(): Promise<CarouselProduct[]> {
-  const TARGET_COUNT = 12;
-  const FETCH_LIMIT = 48;
-
-  const res = await fetch(
-    `/api/products?showcasingSection=bases&sortBy=newest&limit=${FETCH_LIMIT}`
-  );
-  if (!res.ok) return [];
-
-  const data = await res.json();
-  const items = (data.products || []) as (CarouselProduct & {
-    price?: unknown;
-    salePrice?: unknown;
-  })[];
-
-  return formatProducts(items.slice(0, TARGET_COUNT));
-}
+import { useHomepageProducts } from "@/contexts/homepage-products-context";
+import { HomeProductsCarousel } from "@/components/layout/home-products-carousel";
 
 export function FeaturedBasesProducts() {
   const { t } = useLanguage();
-  const loadProducts = useCallback(() => fetchBasesProducts(), []);
+  const { products, isLoading } = useHomepageProducts("bases");
 
   const labels = useMemo(
     () => ({
@@ -54,6 +26,11 @@ export function FeaturedBasesProducts() {
   );
 
   return (
-    <HomeProductsCarousel labels={labels} loadProducts={loadProducts} viewportFit />
+    <HomeProductsCarousel
+      labels={labels}
+      products={products}
+      isLoading={isLoading}
+      viewportFit
+    />
   );
 }

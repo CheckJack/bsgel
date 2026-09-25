@@ -2,7 +2,9 @@ import { db } from "@/lib/db";
 import { SITE_ROUTE_DEFINITIONS } from "@/lib/seo/site-routes";
 import type { SitePageMediaItem } from "@/lib/seo/types";
 
-export async function syncSitePageSeoRoutes() {
+export async function syncSitePageSeoRoutes(opts?: { overwriteCopy?: boolean }) {
+  const overwriteCopy = opts?.overwriteCopy === true;
+
   for (const route of SITE_ROUTE_DEFINITIONS) {
     await db.sitePageSeo.upsert({
       where: { path: route.path },
@@ -18,6 +20,12 @@ export async function syncSitePageSeoRoutes() {
       update: {
         name: route.name,
         isDynamic: route.isDynamic ?? false,
+        ...(overwriteCopy
+          ? {
+              title: route.defaultTitle,
+              description: route.defaultDescription,
+            }
+          : {}),
       },
     });
   }

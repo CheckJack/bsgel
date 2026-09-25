@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Search, Lightbulb, ChevronLeft, ChevronRight, Bell, Trash2, Edit, ExternalLink } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
+import { resolveNotificationCopy } from "@/lib/notifications/i18n";
 
 interface Notification {
   id: string;
@@ -25,6 +27,7 @@ interface Notification {
 }
 
 export default function AdminNotificationsPage() {
+  const { t } = useLanguage();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -166,9 +169,7 @@ export default function AdminNotificationsPage() {
     <div className="p-6 min-h-screen">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-          Notifications
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("admin.notifications.title")}</h1>
         <div className="text-sm text-gray-600 dark:text-gray-400">
           Dashboard <span className="mx-2">&gt;</span> Notifications
         </div>
@@ -234,7 +235,7 @@ export default function AdminNotificationsPage() {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <input
                     type="text"
-                    placeholder="Search here..."
+                    placeholder={t("admin.notifications.searchPlaceholder")}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-500 dark:placeholder:text-gray-400"
@@ -319,7 +320,17 @@ export default function AdminNotificationsPage() {
                     </td>
                   </tr>
                 ) : (
-                  paginatedNotifications.map((notification) => (
+                  paginatedNotifications.map((notification) => {
+                    const copy = resolveNotificationCopy(
+                      {
+                        type: notification.type,
+                        title: notification.title,
+                        message: notification.message,
+                        metadata: null,
+                      },
+                      t
+                    );
+                    return (
                     <tr
                       key={notification.id}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -329,7 +340,7 @@ export default function AdminNotificationsPage() {
                         <div className="flex items-center gap-2">
                           <Bell className="h-4 w-4 text-blue-500" />
                           <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {notification.title}
+                            {copy.title}
                           </span>
                         </div>
                       </td>
@@ -337,7 +348,7 @@ export default function AdminNotificationsPage() {
                       {/* Message */}
                       <td className="px-6 py-4">
                         <span className="text-sm text-gray-900 dark:text-gray-100 line-clamp-2">
-                          {notification.message}
+                          {copy.message}
                         </span>
                       </td>
 
@@ -435,7 +446,8 @@ export default function AdminNotificationsPage() {
                         </div>
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>

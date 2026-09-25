@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
+import { productPath } from "@/lib/products/paths";
 import { useCart } from "@/contexts/cart-context";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -13,6 +14,7 @@ import { createPortal } from "react-dom";
 import { useLanguage } from "@/contexts/language-context";
 import { setAppScrollLocked, syncIosViewportHeight } from "@/lib/mobile-scroll-root";
 import { toast } from "@/components/ui/toast";
+import { resolveEffectiveUnitPrice } from "@/lib/pricing/effective-price";
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -23,6 +25,7 @@ interface Product {
   id: string;
   name: string;
   price: string;
+  salePrice?: string | null;
   image: string | null;
   featured?: boolean;
 }
@@ -32,7 +35,7 @@ const RECOMMENDATION_COUNT = 6;
 export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
-  const { items, trainingItems, isLoading, updateQuantity, removeItem, removeTrainingItem, itemCount, addItem } = useCart();
+  const { items, trainingItems, isLoading, updateQuantity, removeItem, removeTrainingItem, itemCount, addItemDetailed } = useCart();
   const { t, language } = useLanguage();
   const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
@@ -165,42 +168,31 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     } else {
       setAppScrollLocked(false);
       document.body.style.overflow = "";
-      document.documentElement.style.removeProperty("--cart-drawer-height");
     }
 
     return () => {
       setAppScrollLocked(false);
       document.body.style.overflow = "";
-      document.documentElement.style.removeProperty("--cart-drawer-height");
     };
   }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
 
-    const syncCartDrawerHeight = () => {
+    const syncMobileCartViewport = () => {
       if (!window.matchMedia("(max-width: 1023px)").matches) return;
-
       syncIosViewportHeight();
-      const vv = window.visualViewport;
-      const visibleHeight = vv
-        ? Math.round(vv.height + vv.offsetTop)
-        : Math.min(window.innerHeight, document.documentElement.clientHeight);
-      document.documentElement.style.setProperty(
-        "--cart-drawer-height",
-        `calc(${visibleHeight}px - var(--site-header-height, 113px))`
-      );
     };
 
-    syncCartDrawerHeight();
-    window.addEventListener("resize", syncCartDrawerHeight, { passive: true });
-    window.visualViewport?.addEventListener("resize", syncCartDrawerHeight, { passive: true });
-    window.visualViewport?.addEventListener("scroll", syncCartDrawerHeight, { passive: true });
+    syncMobileCartViewport();
+    window.addEventListener("resize", syncMobileCartViewport, { passive: true });
+    window.visualViewport?.addEventListener("resize", syncMobileCartViewport, { passive: true });
+    window.visualViewport?.addEventListener("scroll", syncMobileCartViewport, { passive: true });
 
     return () => {
-      window.removeEventListener("resize", syncCartDrawerHeight);
-      window.visualViewport?.removeEventListener("resize", syncCartDrawerHeight);
-      window.visualViewport?.removeEventListener("scroll", syncCartDrawerHeight);
+      window.removeEventListener("resize", syncMobileCartViewport);
+      window.visualViewport?.removeEventListener("resize", syncMobileCartViewport);
+      window.visualViewport?.removeEventListener("scroll", syncMobileCartViewport);
     };
   }, [isOpen]);
 
@@ -216,7 +208,12 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   if (!shouldRender || !mounted) return null;
 
   const subtotal =
-    items.reduce((sum, item) => sum + parseFloat(item.product.price) * item.quantity, 0) +
+    items.reduce(
+      (sum, item) =>
+        sum +
+        resolveEffectiveUnitPrice(item.product.price, item.product.salePrice) * item.quantity,
+      0
+    ) +
     trainingItems.reduce((sum, item) => sum + parseFloat(item.program.price), 0);
 
   const formatTrainingSessionDate = (value: string) =>
@@ -228,11 +225,11 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
   return createPortal(
     <div
-      className={`pointer-events-none fixed inset-0 z-[1500] max-lg:z-[1300]`}
+      className="pointer-events-none fixed inset-0 z-[1500] max-lg:ios-overlay-bleed"
       aria-hidden={!isVisible}
     >
       <div
-        className={`pointer-events-none absolute inset-x-0 bottom-0 top-[var(--site-header-height,113px)] bg-black/40 transition-opacity duration-300 ${
+        className={`pointer-events-none absolute inset-0 bg-black/40 transition-opacity duration-300 ${
           isVisible ? "pointer-events-auto opacity-100" : "opacity-0"
         }`}
         onClick={onClose}
@@ -240,7 +237,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       />
 
       <div
-        className={`pointer-events-none absolute inset-y-0 right-0 flex h-dvh max-w-full transform transition-transform duration-300 ease-out max-lg:inset-x-0 max-lg:top-[var(--site-header-height,113px)] max-lg:h-[var(--cart-drawer-height,calc(100svh-var(--site-header-height,113px)))] max-lg:w-full ${
+        className={`pointer-events-none absolute inset-y-0 right-0 flex h-dvh max-w-full transform transition-transform duration-300 ease-out max-lg:inset-0 max-lg:h-full max-lg:min-h-[var(--ios-viewport-height,100lvh)] max-lg:w-full ${
           isOpen && isVisible ? "pointer-events-auto translate-x-0" : "translate-x-full"
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -267,7 +264,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                       {recommendedProducts.map((product) => (
                         <div key={product.id} className="flex gap-3 border-b border-gray-100 pb-4 last:border-0">
                           <Link
-                            href={`/products/${product.id}`}
+                            href={productPath(product)}
                             onClick={onClose}
                             className="group flex min-w-0 flex-1 gap-3"
                           >
@@ -294,15 +291,17 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                                 {product.name}
                               </h4>
                               <p className="mt-1 text-sm font-semibold text-brand-black">
-                                {formatPrice(product.price)}
+                                {formatPrice(
+                                  resolveEffectiveUnitPrice(product.price, product.salePrice)
+                                )}
                               </p>
                               <button
                                 type="button"
                                 onClick={async (e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  const ok = await addItem(product.id, 1);
-                                  if (!ok) toast(t("cart.addFailed"), "error");
+                                  const result = await addItemDetailed(product.id, 1);
+                                  if (result === "blocked") toast(t("cart.addFailedRetry"), "error");
                                 }}
                                 className="mt-1 text-xs text-gray-600 underline hover:text-brand-black"
                               >
@@ -414,7 +413,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                     <div key={item.id} className="flex gap-3 py-4 first:pt-0">
                       {item.product.image ? (
                         <Link
-                          href={`/products/${item.product.id}`}
+                          href={productPath(item.product)}
                           onClick={onClose}
                           className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-gray-100"
                         >
@@ -438,13 +437,17 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
                       <div className="min-w-0 flex-1">
                         <Link
-                          href={`/products/${item.product.id}`}
+                          href={productPath(item.product)}
                           onClick={onClose}
                           className="line-clamp-2 text-sm font-medium text-brand-black hover:underline"
                         >
                           {item.product.name}
                         </Link>
-                        <p className="mt-1 text-sm text-gray-500">{formatPrice(item.product.price)}</p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {formatPrice(
+                            resolveEffectiveUnitPrice(item.product.price, item.product.salePrice)
+                          )}
+                        </p>
                         <div className="mt-2 flex items-center gap-2">
                           <Button
                             variant="outline"
@@ -468,7 +471,12 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
                       <div className="flex shrink-0 flex-col items-end justify-between">
                         <p className="text-sm font-semibold text-brand-black">
-                          {formatPrice(parseFloat(item.product.price) * item.quantity)}
+                          {formatPrice(
+                            resolveEffectiveUnitPrice(
+                              item.product.price,
+                              item.product.salePrice
+                            ) * item.quantity
+                          )}
                         </p>
                         <button
                           type="button"

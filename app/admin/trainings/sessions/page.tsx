@@ -17,6 +17,7 @@ import {
   Clock,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/contexts/language-context";
 
 interface TrainingSession {
   id: string;
@@ -41,6 +42,7 @@ interface TrainingProgram {
 }
 
 export default function AdminSessionsPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const [sessions, setSessions] = useState<TrainingSession[]>([]);
   const [programs, setPrograms] = useState<TrainingProgram[]>([]);
@@ -87,12 +89,12 @@ export default function AdminSessionsPage() {
         setSessions(data);
       } else {
         const errorData = await res.json();
-        toast(errorData.error || "Failed to fetch sessions", "error");
+        toast(errorData.error || t("admin.trainings.fetchSessionsFailed"), "error");
         setSessions([]);
       }
     } catch (error) {
       console.error("Failed to fetch sessions:", error);
-      toast("Failed to fetch sessions. Please try again.", "error");
+      toast(t("common.errorOccurred"), "error");
       setSessions([]);
     } finally {
       setIsLoading(false);
@@ -113,17 +115,14 @@ export default function AdminSessionsPage() {
         setSessions((prev) =>
           prev.map((s) => (s.id === id ? { ...s, isActive: updated.isActive } : s))
         );
-        toast(
-          `Session ${!currentStatus ? "activated" : "deactivated"} successfully`,
-          "success"
-        );
+        toast(!currentStatus ? t("admin.trainings.sessionActivated") : t("admin.trainings.sessionDeactivated"), "success");
       } else {
         const data = await res.json();
-        toast(data.error || "Failed to update status", "error");
+        toast(data.error || t("admin.trainings.updateStatusFailed"), "error");
       }
     } catch (error) {
       console.error("Failed to toggle status:", error);
-      toast("Failed to update status. Please try again.", "error");
+      toast(t("common.errorOccurred"), "error");
     } finally {
       setTogglingStatus(null);
     }
@@ -141,15 +140,15 @@ export default function AdminSessionsPage() {
       });
 
       if (res.ok) {
-        toast("Session deleted successfully", "success");
+        toast(t("admin.trainings.deleteSessionSuccess"), "success");
         fetchSessions(selectedProgramId || undefined);
       } else {
         const data = await res.json();
-        toast(data.error || "Failed to delete session", "error");
+        toast(data.error || t("admin.trainings.deleteSessionFailed"), "error");
       }
     } catch (error) {
       console.error("Failed to delete session:", error);
-      toast("Failed to delete session. Please try again.", "error");
+      toast(t("admin.trainings.deleteSessionFailed"), "error");
     } finally {
       setDeletingId(null);
     }
@@ -176,9 +175,7 @@ export default function AdminSessionsPage() {
     <div>
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-          Training Sessions
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("admin.trainings.sessionsTitle")}</h1>
         <div className="text-sm text-gray-600 dark:text-gray-400">
           Dashboard <span className="mx-2">&gt;</span> Trainings{" "}
           <span className="mx-2">&gt;</span> Sessions
@@ -321,7 +318,7 @@ export default function AdminSessionsPage() {
                                 : "text-gray-600 dark:text-gray-400"
                             }`}
                           >
-                            {session.isActive ? "Active" : "Inactive"}
+                            {session.isActive ? t("admin.trainings.active") : t("admin.trainings.inactive")}
                           </span>
                         </div>
                       </td>

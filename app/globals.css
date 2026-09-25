@@ -293,6 +293,14 @@ html.home-entry-loader-active body {
   background-color: #857d71;
 }
 
+/* Keep the white shell from flashing under the taupe entry loader */
+html.home-entry-loader-active main,
+html.home-entry-loader-active .ios-edge-bleed,
+html.home-entry-loader-scroll-lock main,
+html.home-entry-loader-scroll-lock .ios-edge-bleed {
+  background-color: #857d71 !important;
+}
+
 /* Full-viewport homepage entry loader (iOS Safari / dynamic toolbars) */
 .home-entry-loader-screen {
   position: fixed;
@@ -397,13 +405,13 @@ html.home-entry-loader-active body {
   }
 }
 
-@media (min-width: 641px) and (max-width: 1024px) {
+@media (min-width: 641px) and (max-width: 1023px) {
   html {
     font-size: 15px;
   }
 }
 
-@media (min-width: 1025px) {
+@media (min-width: 1024px) {
   html {
     font-size: 16px;
   }
@@ -625,6 +633,88 @@ header[data-product-header] {
   }
 }
 
+/*
+ * Tablet-only homepage hero (iPad portrait / landscape under desktop nav).
+ * Scoped to 768–1023px so phone (<768) and desktop (≥1024) stay unchanged.
+ */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .home-main-hero {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .home-main-hero__body {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: none !important;
+    min-height: 0 !important;
+    grid-template-columns: none !important;
+  }
+
+  .home-main-hero__media {
+    order: 1 !important;
+    width: 100% !important;
+    height: min(52vh, 520px) !important;
+    min-height: 380px !important;
+    max-height: none !important;
+    flex: 0 0 auto !important;
+  }
+
+  .home-main-hero__badge {
+    top: 1.25rem !important;
+    right: 1.25rem !important;
+  }
+
+  .home-main-hero__badge img {
+    width: 6.75rem !important;
+    height: auto !important;
+  }
+
+  .home-main-hero__copy {
+    order: 2 !important;
+    flex: 0 0 auto !important;
+    padding: 2.75rem 2.5rem 3rem !important;
+  }
+
+  .home-main-hero__copy-inner {
+    max-width: 34rem !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    text-align: center !important;
+    transform: none !important;
+  }
+
+  .home-main-hero__title {
+    font-size: clamp(2.75rem, 5.5vw, 3.35rem) !important;
+    text-align: center !important;
+  }
+
+  .home-main-hero__press {
+    width: 100%;
+    max-width: 100vw;
+    overflow: hidden;
+  }
+
+  .home-main-hero__press > div {
+    overflow: hidden;
+    max-width: 100%;
+  }
+
+  /* Don't leave tablet copy stuck invisible if entrance animation doesn't fire */
+  .home-main-hero__copy,
+  .home-main-hero__copy-inner,
+  .home-main-hero__copy-inner * {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .home-main-hero__badge {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 /* Hide scrollbar but allow scrolling */
 .scrollbar-hide {
   -ms-overflow-style: none;
@@ -635,8 +725,8 @@ header[data-product-header] {
   display: none;
 }
 
-/* Responsive tables */
-@media (max-width: 768px) {
+/* Responsive tables — include tablet widths */
+@media (max-width: 1023px) {
   table {
     display: block;
     overflow-x: auto;
@@ -827,11 +917,10 @@ header[data-product-header] {
   margin-top: 0.25em;
 }
 
-/* Remove margin from empty paragraphs that are adjacent to lists */
-.ProseMirror p:empty + ul,
-.ProseMirror p:empty + ol,
+/* Collapse empty paragraphs only — never the lists that follow them */
 .ProseMirror ul + p:empty,
-.ProseMirror ol + p:empty {
+.ProseMirror ol + p:empty,
+.ProseMirror p:empty {
   margin-top: 0;
   margin-bottom: 0;
   height: 0;
@@ -887,6 +976,26 @@ header[data-product-header] {
   align-items: flex-start;
 }
 
+.ProseMirror img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1rem 0;
+  border-radius: 0.5rem;
+}
+
+.stripe-card-field .StripeElement,
+.stripe-card-field .StripeElement--empty,
+.stripe-card-field .StripeElement--focus {
+  display: block;
+  width: 100%;
+  min-height: 24px;
+}
+
+.stripe-card-field iframe {
+  min-height: 24px !important;
+}
+
 /* Product Description Styles (for prose context) - Match .ProseMirror exactly */
 .prose ul,
 .prose ol {
@@ -907,11 +1016,10 @@ header[data-product-header] {
   margin-top: 0.25em;
 }
 
-/* Remove margin from empty paragraphs that are adjacent to lists */
-.prose p:empty + ul,
-.prose p:empty + ol,
+/* Collapse empty paragraphs only — never the lists that follow them */
 .prose ul + p:empty,
-.prose ol + p:empty {
+.prose ol + p:empty,
+.prose p:empty {
   margin-top: 0;
   margin-bottom: 0;
   height: 0;
@@ -968,9 +1076,7 @@ header[data-product-header] {
   margin-top: 0.25em;
 }
 
-/* Remove margin from empty paragraphs adjacent to lists */
-.prose p:empty + ul,
-.prose p:empty + ol,
+/* Empty paragraphs next to lists: collapse the paragraph only */
 .prose ul + p:empty,
 .prose ol + p:empty {
   margin-top: 0;
@@ -1016,6 +1122,19 @@ header[data-product-header] {
 .prose ul > li,
 .prose ol > li {
   display: list-item;
+}
+
+/* Product details: lists must keep their height even after empty TipTap <p> tags */
+.product-details-prose ul,
+.product-details-prose ol {
+  height: auto !important;
+  min-height: 0;
+  overflow: visible;
+}
+
+.product-details-prose li {
+  display: list-item;
+  height: auto;
 }
 
 /* Blog Content Styles */
@@ -1307,6 +1426,62 @@ header[data-product-header] {
   background-color: #1f2937;
 }
 
+.blog-content .blog-product-grid-embed {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.blog-content .blog-product-grid-embed img {
+  margin-top: 0;
+  margin-bottom: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.blog-content .blog-product-grid-card a.blog-product-grid-cta,
+.blog-content .blog-product-grid-card a.blog-product-grid-cta:hover,
+.blog-content .blog-product-grid-card a.blog-product-grid-image-link,
+.blog-content .blog-product-grid-card a.blog-product-grid-image-link:hover {
+  color: inherit;
+  text-decoration: none;
+  font-weight: inherit;
+}
+
+.blog-content .blog-product-grid-card a.blog-product-grid-cta,
+.blog-content .blog-product-grid-card a.blog-product-grid-cta:hover {
+  color: #fff;
+}
+
+.dark .blog-content .blog-product-grid-card a.blog-product-grid-cta,
+.dark .blog-content .blog-product-grid-card a.blog-product-grid-cta:hover {
+  color: #fff;
+}
+
+.blog-product-grid-node {
+  clear: both;
+}
+
+.blog-product-grid-cards {
+  width: 100%;
+}
+
+.blog-product-grid-card {
+  min-width: 0;
+}
+
+.blog-content .blog-product-grid-card .blog-product-grid-name {
+  margin-top: 0;
+  margin-bottom: 0;
+  font-size: 0.875rem;
+  line-height: 1.375;
+  font-weight: 600;
+  color: inherit;
+}
+
+.blog-product-grid-card img {
+  object-fit: contain;
+}
+
 /* Cart Drawer Animations */
 @keyframes fadeInSlideFromRight {
   from {
@@ -1387,10 +1562,11 @@ img, video {
   }
 }
 
-/* Fix for Next.js Image component containers */
-.relative img {
-  object-fit: inherit;
-}
+/*
+ * Do NOT set object-fit on .relative img.
+ * Next/Image fill + Tailwind object-cover/object-contain must win.
+ * `object-fit: inherit` resolved to `fill` and stretched hero/media images.
+ */
 
 /* Slider Image Fixes */
 section img,

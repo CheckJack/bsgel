@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { logAdminAction, extractRequestInfo, createChangeDetails } from "@/lib/admin-logger"
+import { sendCertificationApprovedEmail } from "@/lib/email/certification-alerts"
 import { hash } from "bcryptjs"
 import { z } from "zod"
 
@@ -189,9 +190,16 @@ export async function PATCH(
     if (updateData.isActive !== undefined) {
       dataToUpdate.isActive = updateData.isActive
     }
+    let approvedCertification: { id: string; name: string } | null = null
+    const wasPending =
+      !!existingUser.certificateUrl ||
+      (!!existingUser.certificationId && !existingUser.certification)
+
     if (updateData.certificationId !== undefined) {
       if (updateData.certificationId === null || updateData.certificationId === "") {
         dataToUpdate.certification = { disconnect: true }
+        // Clear upload so disconnect does not leave the user stuck pending
+        dataToUpdate.certificateUrl = null
       } else {
         // Validate certification exists and is active
         const cert = await db.certification.findUnique({
@@ -209,13 +217,26 @@ export async function PATCH(
             { status: 400 }
           )
         }
+        if (cert.isSystem) {
+          return NextResponse.json(
+            { error: "Cannot assign a system certification to users" },
+            { status: 400 }
+          )
+        }
         dataToUpdate.certification = { connect: { id: updateData.certificationId } }
+        // Match dedicated approval route: clear upload URL when assigning/approving
+        dataToUpdate.certificateUrl = null
+        approvedCertification = { id: cert.id, name: cert.name }
       }
     }
     if (updateData.password !== undefined) {
       // Hash the new password
       dataToUpdate.password = await hash(updateData.password, 10)
     }
+
+    const shouldNotifyApproval =
+      !!approvedCertification &&
+      (wasPending || !existingUser.certification)
 
     // Update user
     const user = await db.user.update({
@@ -235,6 +256,38 @@ export async function PATCH(
       },
       data: dataToUpdate,
     })
+
+    if (shouldNotifyApproval && approvedCertification) {
+      const certName = approvedCertification.name
+      try {
+        await db.notification.create({
+          data: {
+            userId: id,
+            type: "CERTIFICATION_APPROVED",
+            title: "Certification Approved",
+            message: `Your certification "${certName}" has been approved. You now have full access to professional features and products.`,
+            linkUrl: "/dashboard",
+            read: false,
+            metadata: {
+              certificationId: approvedCertification.id,
+              certificationName: certName,
+            },
+          },
+        })
+      } catch (notificationError) {
+        console.error("Failed to create certification approval notification:", notificationError)
+      }
+
+      try {
+        await sendCertificationApprovedEmail({
+          to: user.email,
+          customerName: user.name,
+          certificationName: certName,
+        })
+      } catch (emailError) {
+        console.error("Failed to send certification approval email:", emailError)
+      }
+    }
 
     // Calculate total spent and order count
     const totalSpent = user.orders.reduce(

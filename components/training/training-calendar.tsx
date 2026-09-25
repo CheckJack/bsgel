@@ -26,6 +26,10 @@ interface TrainingSession {
 interface TrainingCalendarProps {
   sessions: TrainingSession[];
   onDateClick: (session: TrainingSession) => void;
+  /** When true, any future date is selectable (online open booking). */
+  openBooking?: boolean;
+  /** Called when a future empty date is clicked in openBooking mode (YYYY-MM-DD). */
+  onOpenDateClick?: (dateKey: string) => void;
   selectedDate: string | null;
 }
 
@@ -37,7 +41,13 @@ const getLocalDateKey = (value: string | Date) => {
   return `${year}-${month}-${day}`;
 };
 
-export function TrainingCalendar({ sessions, onDateClick, selectedDate }: TrainingCalendarProps) {
+export function TrainingCalendar({
+  sessions,
+  onDateClick,
+  openBooking = false,
+  onOpenDateClick,
+  selectedDate,
+}: TrainingCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   // Get first day of month and number of days
@@ -135,42 +145,46 @@ export function TrainingCalendar({ sessions, onDateClick, selectedDate }: Traini
       const past = isPastDate(date);
       const today = isToday(date);
       const selected = isSelected(date);
+      const canSelectOpen = openBooking && !past;
+      const isSelectable = !past && (hasSessions || canSelectOpen);
 
       calendarDays.push(
         <button
           key={day}
           onClick={() => {
-            if (hasSessions && !past) {
-              // Click the first available session
+            if (past) return;
+            if (openBooking && onOpenDateClick) {
+              onOpenDateClick(getLocalDateKey(date));
+              return;
+            }
+            if (hasSessions) {
               const availableSession = dateSessions.find((s) => s.availableSpots > 0);
               if (availableSession) {
                 onDateClick(availableSession);
               } else if (dateSessions.length > 0) {
-                // If no available spots, still show the first session
                 onDateClick(dateSessions[0]);
               }
             }
           }}
-          disabled={!hasSessions || past}
+          disabled={!isSelectable}
           className={`
             aspect-square rounded-lg border-2 transition-all relative group
             ${past ? "opacity-40 cursor-not-allowed" : ""}
-            ${today && !hasSessions ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : ""}
-            ${today && hasSessions && !selected ? "border-green-500 dark:border-green-500" : ""}
-            ${selected && hasSessions ? "bg-green-500 dark:bg-green-600 border-green-600 dark:border-green-700" : ""}
-            ${hasSessions && !past && !selected ? "hover:bg-green-500 dark:hover:bg-green-600 cursor-pointer border-green-300 dark:border-green-700" : ""}
-            ${hasSessions && !past && selected ? "bg-green-500 dark:bg-green-600 border-green-600 dark:border-green-700" : ""}
-            ${!hasSessions && !past ? "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700" : ""}
+            ${today && !hasSessions && !canSelectOpen ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : ""}
+            ${today && (hasSessions || canSelectOpen) && !selected ? "border-green-500 dark:border-green-500" : ""}
+            ${selected && isSelectable ? "bg-green-500 dark:bg-green-600 border-green-600 dark:border-green-700" : ""}
+            ${isSelectable && !selected ? "hover:bg-green-500 dark:hover:bg-green-600 cursor-pointer border-green-300 dark:border-green-700" : ""}
+            ${!isSelectable && !past ? "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700" : ""}
           `}
         >
           <div className="flex flex-col items-center justify-center h-full p-1">
             <span
               className={`
                 text-sm font-medium transition-colors
-                ${selected && hasSessions ? "text-white" : ""}
-                ${hasSessions && !past && !selected ? "text-gray-900 dark:text-gray-100 group-hover:text-white" : ""}
-                ${today && !hasSessions ? "text-blue-600 dark:text-blue-400" : ""}
-                ${!hasSessions && !past ? "text-gray-900 dark:text-gray-100" : ""}
+                ${selected && isSelectable ? "text-white" : ""}
+                ${isSelectable && !selected ? "text-gray-900 dark:text-gray-100 group-hover:text-white" : ""}
+                ${today && !isSelectable ? "text-blue-600 dark:text-blue-400" : ""}
+                ${!isSelectable && !past ? "text-gray-900 dark:text-gray-100" : ""}
                 ${past ? "text-gray-400 dark:text-gray-600" : ""}
               `}
             >
@@ -194,6 +208,13 @@ export function TrainingCalendar({ sessions, onDateClick, selectedDate }: Traini
                   </span>
                 )}
               </div>
+            )}
+            {canSelectOpen && !hasSessions && (
+              <div
+                className={`mt-0.5 h-1 w-1 rounded-full transition-colors ${
+                  selected ? "bg-white" : "bg-brand-champagne group-hover:bg-white"
+                }`}
+              />
             )}
           </div>
         </button>
@@ -261,16 +282,18 @@ export function TrainingCalendar({ sessions, onDateClick, selectedDate }: Traini
           <div className="flex flex-wrap items-center gap-4 text-xs text-gray-600 dark:text-gray-400">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded border-2 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20" />
-              <span>Sessões disponíveis</span>
+              <span>{openBooking ? "Datas disponíveis" : "Sessões disponíveis"}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20" />
               <span>Hoje</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded border-2 border-gray-200 dark:border-gray-700" />
-              <span>Sem sessões</span>
-            </div>
+            {!openBooking && (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded border-2 border-gray-200 dark:border-gray-700" />
+                <span>Sem sessões</span>
+              </div>
+            )}
           </div>
         </div>
       </CardContent>

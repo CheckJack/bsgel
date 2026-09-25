@@ -31,7 +31,8 @@ import {
   ClipboardList,
   Star,
   Calendar,
-  Receipt
+  Receipt,
+  Landmark
 } from "lucide-react";
 import { signOutToLogin } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
@@ -80,7 +81,7 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
       title: t("sidebar.allPages"),
       items: [
         {
-          title: "Activity Logs",
+          title: t("sidebar.activityLogs"),
           href: "/admin/logs",
           icon: ClipboardList,
           badge: null,
@@ -121,15 +122,21 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
               badge: null,
             },
             {
-              title: "Product Reviews",
+              title: t("sidebar.productReviews"),
               href: "/admin/reviews",
               icon: Star,
               badge: null,
             },
             {
-              title: "Shipping Configuration",
+              title: t("sidebar.shippingConfiguration"),
               href: "/admin/shipping",
               icon: Receipt,
+              badge: null,
+            },
+            {
+              title: t("sidebar.paymentInstructions"),
+              href: "/admin/payment-instructions",
+              icon: Landmark,
               badge: null,
             },
           ],
@@ -172,42 +179,42 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
           ],
         },
         {
-          title: "Affiliates & Rewards",
+          title: t("sidebar.affiliatesRewards"),
           icon: Gift,
           badge: null,
           children: [
             {
-              title: "Feature Settings",
+              title: t("sidebar.featureSettings"),
               href: "/admin/feature-settings",
               icon: SettingsIcon,
               badge: null,
             },
             {
-              title: "Affiliates",
+              title: t("sidebar.affiliates"),
               href: "/admin/affiliates",
               icon: Users,
               badge: null,
             },
             {
-              title: "Points Configuration",
+              title: t("sidebar.pointsConfiguration"),
               href: "/admin/points-config",
               icon: SettingsIcon,
               badge: null,
             },
             {
-              title: "Rewards Catalog",
+              title: t("sidebar.rewardsCatalog"),
               href: "/admin/rewards",
               icon: Gift,
               badge: null,
             },
             {
-              title: "Points Transactions",
+              title: t("sidebar.pointsTransactions"),
               href: "/admin/points-transactions",
               icon: Coins,
               badge: null,
             },
             {
-              title: "Affiliate Tiers",
+              title: t("sidebar.affiliateTiers"),
               href: "/admin/affiliate-tiers",
               icon: Award,
               badge: null,
@@ -264,24 +271,24 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
           ],
         },
         {
-          title: "Training",
+          title: t("sidebar.training"),
           icon: BookOpen,
           badge: null,
           children: [
             {
-              title: "Training Programs",
+              title: t("sidebar.trainingPrograms"),
               href: "/admin/trainings",
               icon: BookOpen,
               badge: null,
             },
             {
-              title: "Sessions",
+              title: t("sidebar.trainingSessions"),
               href: "/admin/trainings/sessions",
               icon: Calendar,
               badge: null,
             },
             {
-              title: "Bookings",
+              title: t("sidebar.trainingBookings"),
               href: "/admin/trainings/bookings",
               icon: ClipboardList,
               badge: null,
@@ -422,7 +429,7 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
               </div>
               <div>
                 <div className="text-sm font-bold text-gray-900 dark:text-gray-100">Bio Sculpture</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Admin Panel</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">{t("sidebar.adminPanel")}</div>
               </div>
             </div>
             <button
@@ -440,7 +447,7 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
               </div>
               <div className={cn(collapsed && "md:hidden")}>
                 <div className="text-sm font-bold text-gray-900 dark:text-gray-100">Bio Sculpture</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Admin Panel</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">{t("sidebar.adminPanel")}</div>
               </div>
             </div>
           </>
@@ -582,7 +589,7 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed = false, o
       <div className={cn("border-t border-gray-200 dark:border-gray-700 p-4", collapsed && "md:hidden")}>
         <button
           onClick={() => {
-            if (window.confirm("Are you sure you want to sign out?")) {
+            if (window.confirm(t("sidebar.signOutConfirm"))) {
               void signOutToLogin();
             }
           }}

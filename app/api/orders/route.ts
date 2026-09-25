@@ -7,8 +7,8 @@ import { formatPrice } from "@/lib/utils"
 import { getReferralByUserId, activateReferral } from "@/lib/affiliate"
 import { calculatePoints, awardPoints } from "@/lib/points"
 import { calculateShipping } from "@/lib/shipping"
-import { ManualPaymentReviewStatus, ShopPaymentMethod } from "@prisma/client"
-import { clampCartItemsToStock, decrementStockForOrder, validateCartStock } from "@/lib/stock"
+import { ManualPaymentReviewStatus, Prisma, ShopPaymentMethod } from "@prisma/client"
+import { clampCartItemsToStock, reserveOrderStock, validateCartStock } from "@/lib/stock"
 import {
   cartWithTrainingInclude,
   clearUserCart,
@@ -16,6 +16,9 @@ import {
   getCartSubtotal,
   isCartEmpty,
 } from "@/lib/cart-training"
+import { maybeSendOrderConfirmation, maybeSendAwaitingPaymentEmail } from "@/lib/email/order-confirmation"
+import { saveCheckoutDetailsToUser } from "@/lib/checkout/save-checkout-profile"
+import { resolveEffectiveUnitPrice } from "@/lib/pricing/effective-price"
 
 export async function GET(req: Request) {
   try {
@@ -82,8 +85,13 @@ export async function GET(req: Request) {
           userId: true,
           status: true,
           total: true,
+          shippingAmount: true,
+          taxAmount: true,
           createdAt: true,
           updatedAt: true,
+          shopPaymentMethod: true,
+          manualPaymentStatus: true,
+          paymentIntentId: true,
           items: {
             select: {
               id: true,
@@ -148,6 +156,7 @@ export async function POST(req: Request) {
       billingNif,
       billingAddress,
       shopPaymentMethod: shopPaymentMethodRaw,
+      shippingStructured,
     } = body
 
     const offlineMethod =
@@ -157,6 +166,19 @@ export async function POST(req: Request) {
         { error: "Invalid payment combination for offline method" },
         { status: 400 }
       )
+    }
+
+    if (typeof paymentIntentId === "string" && paymentIntentId.trim()) {
+      const existing = await db.order.findFirst({
+        where: { paymentIntentId: paymentIntentId.trim(), userId: session.user.id },
+        include: {
+          items: { include: { product: true } },
+          trainingItems: { include: { program: true, session: true } },
+        },
+      })
+      if (existing) {
+        return NextResponse.json(existing)
+      }
     }
 
     // Get user info to check if email is banned
@@ -189,6 +211,18 @@ export async function POST(req: Request) {
     })
 
     if (!cart || isCartEmpty(cart)) {
+      if (typeof paymentIntentId === "string" && paymentIntentId.trim()) {
+        const existing = await db.order.findFirst({
+          where: { paymentIntentId: paymentIntentId.trim(), userId: session.user.id },
+          include: {
+            items: { include: { product: true } },
+            trainingItems: { include: { program: true, session: true } },
+          },
+        })
+        if (existing) {
+          return NextResponse.json(existing)
+        }
+      }
       return NextResponse.json(
         { error: "Cart is empty" },
         { status: 400 }
@@ -362,10 +396,15 @@ export async function POST(req: Request) {
     }
 
     // Create order
-    const order = await db.order.create({
+    const orderStatus = offlineMethod ? "PENDING" : paymentIntentId ? "PROCESSING" : "PENDING"
+
+    let order
+    try {
+      order = await db.order.create({
       data: {
         userId: session.user.id,
         total,
+        status: orderStatus,
         shippingAddress: shippingAddress || null,
         billingNif: billingNifNorm,
         billingAddress: billingAddressNorm,
@@ -382,7 +421,7 @@ export async function POST(req: Request) {
           create: cartAfterClamp.items.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
-            price: item.product.price,
+            price: resolveEffectiveUnitPrice(item.product.price, item.product.salePrice),
           })),
         },
         trainingItems: {
@@ -409,9 +448,42 @@ export async function POST(req: Request) {
         },
       },
     })
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002" &&
+        typeof paymentIntentId === "string" &&
+        paymentIntentId.trim()
+      ) {
+        const existing = await db.order.findFirst({
+          where: { paymentIntentId: paymentIntentId.trim(), userId: session.user.id },
+          include: {
+            items: { include: { product: true } },
+            trainingItems: { include: { program: true, session: true } },
+          },
+        })
+        if (existing) {
+          return NextResponse.json(existing)
+        }
+      }
+      throw error
+    }
 
+    await saveCheckoutDetailsToUser(session.user.id, {
+      structured:
+        shippingStructured && typeof shippingStructured === "object"
+          ? shippingStructured
+          : null,
+      shippingAddressRaw: typeof shippingAddress === "string" ? shippingAddress : null,
+      billingNif: billingNifNorm,
+      billingAddress: billingAddressNorm,
+    })
+
+    // Stock: reserve for all paid/offline orders (restore on cancel/expiry for unpaid).
+    // Trainings: confirm only when payment is immediate (Stripe). Offline stays PENDING until admin confirms.
     if (cartAfterClamp.items.length > 0) {
-      await decrementStockForOrder(
+      await reserveOrderStock(
+        order.id,
         cartAfterClamp.items.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -419,7 +491,9 @@ export async function POST(req: Request) {
       )
     }
 
-    await confirmTrainingBookings(cartAfterClamp.trainingItems)
+    if (!offlineMethod) {
+      await confirmTrainingBookings(cartAfterClamp.trainingItems)
+    }
 
     // Handle affiliate referral points (if not using webhook)
     // Note: This is a fallback - webhook handles Stripe orders, but this ensures it works for non-Stripe orders
@@ -512,14 +586,28 @@ export async function POST(req: Request) {
             orderId: order.id,
             userId: session.user.id,
             total: total.toString(),
+            totalFormatted: formatPrice(total),
             customerName: user?.name || null,
             customerEmail: user?.email || null,
+            paymentMode: offlineMethod ? "manual" : "online",
           },
         },
       })
     } catch (notificationError) {
       // Log notification error but don't fail the order creation
       console.error("Failed to create order notification:", notificationError)
+    }
+
+    // Immediate payment (card/Klarna via paymentIntent) — send confirmation invoice PDF
+    // Offline (MB Way / bank) — send awaiting-payment email (+ proforma PDF)
+    try {
+      if (!offlineMethod && paymentIntentId) {
+        await maybeSendOrderConfirmation(order.id)
+      } else if (offlineMethod) {
+        await maybeSendAwaitingPaymentEmail(order.id)
+      }
+    } catch (emailError) {
+      console.error("Failed to send order email:", emailError)
     }
 
     return NextResponse.json(order, { status: 201 })

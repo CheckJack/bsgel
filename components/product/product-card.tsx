@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Loader2, Star } from "lucide-react";
@@ -9,9 +10,12 @@ import { formatPrice } from "@/lib/utils";
 import { useLanguage } from "@/contexts/language-context";
 import { useCart } from "@/contexts/cart-context";
 import { toast } from "@/components/ui/toast";
+import { dispatchStockToast } from "@/lib/stock-client";
+import { productPath } from "@/lib/products/paths";
 
 interface ProductCardProps {
   id: string;
+  slug?: string | null;
   name: string;
   price: string;
   salePrice?: string | null;
@@ -23,6 +27,8 @@ interface ProductCardProps {
   description?: string | null;
   rating?: number;
   reviewCount?: number;
+  /** Only set for above-the-fold cards (LCP). Default: lazy load. */
+  priority?: boolean;
 }
 
 const isVideo = (url: string) => {
@@ -57,7 +63,8 @@ function StarRating({ rating = 0 }: { rating?: number }) {
 }
 
 export function ProductCard({ 
-  id, 
+  id,
+  slug,
   name, 
   price, 
   salePrice,
@@ -68,14 +75,16 @@ export function ProductCard({
   hemaFree,
   description: _description,
   rating: _rating,
-  reviewCount: _reviewCount
+  reviewCount: _reviewCount,
+  priority = false,
 }: ProductCardProps) {
   const { t, language } = useLanguage();
   const router = useRouter();
   const { data: session } = useSession();
-  const { addItem } = useCart();
+  const { addItemDetailed } = useCart();
   const [isAdding, setIsAdding] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [hoverMediaReady, setHoverMediaReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const resolvedRating = typeof _rating === "number" ? _rating : 0;
   const resolvedReviewCount = typeof _reviewCount === "number" ? _reviewCount : 0;
@@ -99,29 +108,26 @@ export function ProductCard({
     }
   }, [isHovered, secondMedia]);
 
+  const href = productPath({ id, slug });
+
   return (
     <div 
       className="flex h-full w-full flex-col"
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => {
+        setIsHovered(true);
+        if (hasSecondMedia) setHoverMediaReady(true);
+      }}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div
-        role="link"
-        tabIndex={0}
+      <Link
+        href={href}
         aria-label={name}
         className="relative mb-3 block aspect-square w-full cursor-pointer overflow-hidden bg-[#F5F3F0] md:mb-4"
-        onClick={() => router.push(`/products/${id}`)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            router.push(`/products/${id}`);
-          }
-        }}
       >
         {firstMedia ? (
           <>
             {/* First media (always visible) */}
-            <div className={`absolute inset-0 transition-opacity duration-500 ${isHovered && hasSecondMedia ? 'opacity-0' : 'opacity-100'}`}>
+            <div className={`absolute inset-0 transition-opacity duration-500 ${isHovered && hoverMediaReady ? 'opacity-0' : 'opacity-100'}`}>
               {isVideo(firstMedia) ? (
                 <video
                   src={firstMedia}
@@ -137,16 +143,22 @@ export function ProductCard({
                   src={firstMedia}
                   alt={name}
                   fill
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
+                  sizes="(max-width: 640px) 50vw, (max-width: 1023px) 50vw, 33vw"
                   className="object-cover"
-                  priority
-                  unoptimized={firstMedia?.startsWith('data:') || firstMedia?.startsWith('blob:') || !firstMedia?.startsWith('http')}
+                  priority={priority}
+                  loading={priority ? "eager" : "lazy"}
+                  unoptimized={
+                    firstMedia?.startsWith("data:") ||
+                    firstMedia?.startsWith("blob:") ||
+                    firstMedia?.startsWith("/api/") ||
+                    (!firstMedia?.startsWith("http") && !firstMedia?.startsWith("/uploads/"))
+                  }
                 />
               )}
             </div>
             
             {/* Second media (fades in on hover) */}
-            {hasSecondMedia && (
+            {hasSecondMedia && hoverMediaReady && (
               <div className={`absolute inset-0 transition-opacity duration-500 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
                 {isVideo(secondMedia) ? (
                   <video
@@ -163,10 +175,15 @@ export function ProductCard({
                     src={secondMedia}
                     alt={name}
                     fill
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
+                    sizes="(max-width: 640px) 50vw, (max-width: 1023px) 50vw, 33vw"
                     className="object-cover"
                     loading="lazy"
-                    unoptimized={secondMedia?.startsWith('data:') || secondMedia?.startsWith('blob:') || !secondMedia?.startsWith('http')}
+                    unoptimized={
+                      secondMedia?.startsWith("data:") ||
+                      secondMedia?.startsWith("blob:") ||
+                      secondMedia?.startsWith("/api/") ||
+                      (!secondMedia?.startsWith("http") && !secondMedia?.startsWith("/uploads/"))
+                    }
                   />
                 )}
               </div>
@@ -191,23 +208,30 @@ export function ProductCard({
             )}
           </div>
         )}
-      </div>
+      </Link>
 
       <div className="flex justify-between md:text-md">
         <div className="mr-4">
-          <button
-            type="button"
-            className="text-left"
-            onClick={() => router.push(`/products/${id}`)}
-          >
-            <h3 className="font-semibold hover:text-brand-champagne">{name}</h3>
-          </button>
+          <Link href={href} className="text-left">
+            <h3 className="text-balance font-semibold hover:text-brand-champagne">{name}</h3>
+          </Link>
           <div className="text-sm text-brand-black/70">{variantLabel}</div>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <div className="text-md font-semibold md:text-lg">
-            {salePrice ? formatPrice(salePrice) : price ? formatPrice(price) : t("products.priceOnRequest")}
-          </div>
+          {salePrice && price ? (
+            <div className="flex flex-col items-end leading-tight">
+              <span className="text-xs text-brand-black/50 line-through md:text-sm">
+                {formatPrice(price)}
+              </span>
+              <span className="text-md font-semibold text-brand-black md:text-lg">
+                {formatPrice(salePrice)}
+              </span>
+            </div>
+          ) : (
+            <div className="text-md font-semibold md:text-lg">
+              {price ? formatPrice(price) : t("products.priceOnRequest")}
+            </div>
+          )}
           <div className="flex items-center gap-1 text-xs text-brand-black/70">
             <StarRating rating={resolvedRating} />
             <span>
@@ -220,33 +244,31 @@ export function ProductCard({
       <div className="mt-3 w-full md:mt-4">
         <button
           type="button"
-          disabled={outOfStock || isAdding}
+          disabled={isAdding}
           className="inline-flex min-h-[42px] w-full items-center justify-center gap-2 border border-brand-black bg-brand-black px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-black/90 disabled:cursor-not-allowed disabled:opacity-50"
           onClick={async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (outOfStock) return;
+            if (outOfStock) {
+              dispatchStockToast({
+                error: "OUT_OF_STOCK",
+                productId: id,
+                available: 0,
+              });
+              return;
+            }
             if (!session) {
-              router.push(`/login?callbackUrl=${encodeURIComponent(`/products/${id}`)}`);
+              router.push(`/login?callbackUrl=${encodeURIComponent(href)}`);
               return;
             }
             setIsAdding(true);
             try {
-              const ok = await addItem(id, 1);
-              if (ok) {
+              const result = await addItemDetailed(id, 1);
+              if (result === "ok" || result === "partial") {
                 window.dispatchEvent(new CustomEvent("openCartDrawer"));
-                toast(
-                  language === "pt" ? "Adicionado ao carrinho" : "Added to cart",
-                  "success",
-                  2500
-                );
-              } else {
-                toast(
-                  language === "pt"
-                    ? "Não foi possível adicionar. Verifique permissões ou tente de novo."
-                    : "Could not add to cart. Check permissions or try again.",
-                  "error"
-                );
+                toast(t("cart.addedToCart"), "success", 2500);
+              } else if (result === "blocked") {
+                toast(t("cart.addFailedRetry"), "error");
               }
             } finally {
               setIsAdding(false);

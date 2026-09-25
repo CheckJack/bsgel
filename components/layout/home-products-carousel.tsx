@@ -12,9 +12,12 @@ import { useCart } from "@/contexts/cart-context";
 import { formatPrice, cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
+import { dispatchStockToast } from "@/lib/stock-client";
+import { productPath } from "@/lib/products/paths";
 
 export interface CarouselProduct {
   id: string;
+  slug?: string;
   name: string;
   price: string;
   salePrice?: string | null;
@@ -39,7 +42,11 @@ export interface HomeProductsCarouselLabels {
 
 interface HomeProductsCarouselProps {
   labels: HomeProductsCarouselLabels;
-  loadProducts: () => Promise<CarouselProduct[]>;
+  /** Preloaded products from the homepage batch endpoint. */
+  products?: CarouselProduct[];
+  isLoading?: boolean;
+  /** Legacy per-carousel fetch — prefer `products` from HomepageProductsProvider. */
+  loadProducts?: () => Promise<CarouselProduct[]>;
   /** Fit header, carousel, and controls in one viewport below the site header (lg+). */
   viewportFit?: boolean;
 }
@@ -59,10 +66,10 @@ function CarouselProductCard({
   const { t, language } = useLanguage();
   const router = useRouter();
   const { data: session } = useSession();
-  const { addItem } = useCart();
+  const { addItemDetailed } = useCart();
   const [isAdding, setIsAdding] = useState(false);
 
-  const productUrl = `/products/${product.id}`;
+  const productUrl = productPath(product);
   const imageSrc = product.image || product.images?.[0];
   const displayPrice =
     product.salePrice != null && product.salePrice !== ""
@@ -72,28 +79,26 @@ function CarouselProductCard({
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (product.outOfStock) return;
+    if (product.outOfStock) {
+      dispatchStockToast({
+        error: "OUT_OF_STOCK",
+        productId: product.id,
+        available: 0,
+      });
+      return;
+    }
     if (!session) {
       router.push(`/login?callbackUrl=${encodeURIComponent(productUrl)}`);
       return;
     }
     setIsAdding(true);
     try {
-      const ok = await addItem(product.id, 1);
-      if (ok) {
+      const result = await addItemDetailed(product.id, 1);
+      if (result === "ok" || result === "partial") {
         window.dispatchEvent(new CustomEvent("openCartDrawer"));
-        toast(
-          language === "pt" ? "Adicionado ao carrinho" : "Added to cart",
-          "success",
-          2500
-        );
-      } else {
-        toast(
-          language === "pt"
-            ? "Não foi possível adicionar. Tente novamente."
-            : "Could not add to cart. Please try again.",
-          "error"
-        );
+        toast(t("cart.addedToCart"), "success", 2500);
+      } else if (result === "blocked") {
+        toast(t("cart.addFailedRetry"), "error");
       }
     } finally {
       setIsAdding(false);
@@ -152,7 +157,7 @@ function CarouselProductCard({
 
       <button
         type="button"
-        disabled={product.outOfStock || isAdding}
+        disabled={isAdding}
         onClick={handleAddToCart}
         className={cn(
           buttonVariants({ variant: "outline" }),
@@ -164,7 +169,7 @@ function CarouselProductCard({
         {isAdding ? (
           <Loader2 className="mr-2 inline size-4 animate-spin" aria-hidden />
         ) : null}
-        {product.outOfStock ? t("products.outOfStock") : t("products.addToCart")}
+        {t("products.addToCart")}
       </button>
     </div>
   );
@@ -172,11 +177,16 @@ function CarouselProductCard({
 
 export function HomeProductsCarousel({
   labels,
+  products: productsProp,
+  isLoading: isLoadingProp,
   loadProducts,
   viewportFit = false,
 }: HomeProductsCarouselProps) {
-  const [products, setProducts] = useState<CarouselProduct[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const usesExternalProducts = productsProp !== undefined;
+  const [products, setProducts] = useState<CarouselProduct[]>(productsProp ?? []);
+  const [isLoading, setIsLoading] = useState(
+    usesExternalProducts ? (isLoadingProp ?? true) : true
+  );
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const [emblaRef, emblaApi] = useEmblaCarousel({
@@ -203,6 +213,18 @@ export function HomeProductsCarousel({
   }, [emblaApi]);
 
   useEffect(() => {
+    if (usesExternalProducts) {
+      setProducts(productsProp ?? []);
+      setIsLoading(isLoadingProp ?? false);
+      return;
+    }
+
+    if (!loadProducts) {
+      setProducts([]);
+      setIsLoading(false);
+      return;
+    }
+
     let cancelled = false;
 
     const run = async () => {
@@ -222,7 +244,7 @@ export function HomeProductsCarousel({
     return () => {
       cancelled = true;
     };
-  }, [loadProducts]);
+  }, [usesExternalProducts, productsProp, isLoadingProp, loadProducts]);
 
   useEffect(() => {
     emblaApi?.reInit({ loop: false, align: "start" });
@@ -247,13 +269,13 @@ export function HomeProductsCarousel({
             viewportFit && "lg:mb-0 lg:gap-5"
           )}
         >
-          <div className="max-w-lg">
+          <div>
             <p className="mb-1 text-xs font-semibold text-brand-black sm:mb-1.5 sm:text-sm">
               {labels.tagline}
             </p>
             <h2
               className={cn(
-                "font-display mb-2 text-4xl font-normal tracking-tight text-brand-black md:mb-3 md:text-5xl lg:text-5xl",
+                "font-display mb-2 text-4xl font-normal tracking-tight text-brand-black md:mb-3 md:whitespace-nowrap md:text-5xl lg:text-5xl",
                 viewportFit && "lg:mb-1.5 lg:text-4xl xl:text-5xl 2xl:text-6xl"
               )}
             >
@@ -261,7 +283,7 @@ export function HomeProductsCarousel({
             </h2>
             <p
               className={cn(
-                "text-sm text-gray-600 md:text-base",
+                "max-w-lg text-sm text-gray-600 md:text-base",
                 viewportFit && "lg:text-sm lg:leading-snug"
               )}
             >
@@ -299,7 +321,7 @@ export function HomeProductsCarousel({
       {!isLoading && products.length > 0 && (
         <div
           className={cn(
-            "relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2",
+            "relative w-full max-w-full overflow-x-clip",
             viewportFit && "lg:shrink-0"
           )}
           role="region"

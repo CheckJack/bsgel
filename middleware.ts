@@ -27,7 +27,8 @@ export default withAuth(
     const pathname = req.nextUrl.pathname
     const isAdminRoute = pathname.startsWith("/admin")
 
-    if (!token && isProtectedRoute(pathname)) {
+    // token may be {} after ban/deactivate wipe — require a real user id
+    if ((!token || !token.id) && isProtectedRoute(pathname)) {
       const loginUrl = new URL("/login", req.url)
       loginUrl.searchParams.set("callbackUrl", pathname)
       return NextResponse.redirect(loginUrl)
@@ -50,9 +51,9 @@ export default withAuth(
           return true
         }
         if (pathname.startsWith("/admin")) {
-          return token?.role === "ADMIN"
+          return !!token?.id && token?.role === "ADMIN"
         }
-        return !!token
+        return !!token?.id
       },
     },
   }

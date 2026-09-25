@@ -8,12 +8,15 @@ import { ProductReviews } from "@/components/product/product-reviews";
 import { ShopProductsHeader } from "@/components/shop/shop-products-header";
 import { ShopProductsTitle } from "@/components/shop/shop-products-title";
 import { ShopEmptyProducts } from "@/components/shop/shop-empty-products";
+import { Pagination } from "@/components/ui/pagination";
 import { useLanguage } from "@/contexts/language-context";
 import { useShopFilters } from "@/hooks/use-shop-filters";
 import { fetchShopCategories } from "@/lib/shop-categories";
+import { DesktopHeroVideo } from "@/components/layout/desktop-hero-video";
 
 interface Product {
   id: string;
+  slug?: string;
   name: string;
   description: string | null;
   price: string;
@@ -32,18 +35,24 @@ export default function SpaPage() {
   const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [categoryId, setCategoryId] = useState<string | undefined>();
   const filters = useShopFilters();
 
   useEffect(() => {
-    fetchSpaProducts();
+    setCurrentPage(1);
   }, [filters.sortBy, filters.minPrice, filters.maxPrice, filters.showFeatured]);
+
+  useEffect(() => {
+    fetchSpaProducts();
+  }, [currentPage, filters.sortBy, filters.minPrice, filters.maxPrice, filters.showFeatured]);
 
   const fetchSpaProducts = async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams({
-        page: "1",
+        page: currentPage.toString(),
         limit: "12",
       });
       filters.appendToSearchParams(params);
@@ -64,8 +73,10 @@ export default function SpaPage() {
         const data = await res.json();
         if (data.pagination) {
           setProducts(data.products || []);
+          setTotalPages(data.pagination.totalPages || 1);
         } else {
           setProducts(Array.isArray(data) ? data : data.products || []);
+          setTotalPages(1);
         }
       }
     } catch (error) {
@@ -90,17 +101,7 @@ export default function SpaPage() {
           />
         </div>
         <Image src={mobileSpaHero} alt="SPA" fill className="object-cover md:hidden" priority unoptimized />
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          aria-label="SPA"
-          className="absolute inset-0 hidden h-full w-full object-cover md:block"
-        >
-          <source src="/spa-hero.mp4" type="video/mp4" />
-        </video>
+        <DesktopHeroVideo src="/spa-hero.mp4" ariaLabel="SPA" className="hidden md:block" />
       </section>
 
       <section id="products" className="relative w-full min-h-screen bg-brand-white py-16">
@@ -113,7 +114,7 @@ export default function SpaPage() {
               </>
             }
           />
-          
+
           {isLoading ? (
             <div className="text-center py-12">
               <p className="text-gray-600">{t("productPages.loadingProducts")}</p>
@@ -124,30 +125,41 @@ export default function SpaPage() {
               onClearFilters={() => filters.clearFilters()}
             />
           ) : (
-            <div className="grid grid-cols-1 justify-items-start gap-x-5 gap-y-12 md:grid-cols-2 md:gap-x-8 md:gap-y-16 lg:grid-cols-3 lg:gap-x-12">
-              {products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  id={product.id}
-                  name={product.name}
-                  price={product.price}
-                  image={product.image}
-                  images={product.images}
-                  featured={product.featured}
-                  outOfStock={(product as any).outOfStock}
-                  hemaFree={(product as any).hemaFree}
-                  rating={product.rating}
-                  reviewCount={product.reviewCount}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 justify-items-start gap-x-5 gap-y-12 md:grid-cols-2 md:gap-x-8 md:gap-y-16 lg:grid-cols-3 lg:gap-x-12">
+                {products.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    id={product.id}
+                    slug={product.slug}
+                    name={product.name}
+                    price={product.price}
+                    salePrice={(product as any).salePrice}
+                    image={product.image}
+                    images={product.images}
+                    featured={product.featured}
+                    outOfStock={(product as any).outOfStock}
+                    hemaFree={(product as any).hemaFree}
+                    rating={product.rating}
+                    reviewCount={product.reviewCount}
+                  />
+                ))}
+              </div>
+              {totalPages > 1 && (
+                <div className="mt-12">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>
 
-      {/* Product Reviews Section */}
       <ProductReviews categoryId={categoryId} />
     </>
   );
 }
-

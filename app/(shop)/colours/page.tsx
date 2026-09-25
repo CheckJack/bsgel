@@ -19,9 +19,11 @@ import {
   getColourToneById,
 } from "@/lib/colour-tones";
 import { fetchShopCategories, type ShopCategory } from "@/lib/shop-categories";
+import { DesktopHeroVideo } from "@/components/layout/desktop-hero-video";
 
 interface Product {
   id: string;
+  slug?: string;
   name: string;
   description: string | null;
   price: string;
@@ -46,8 +48,10 @@ function ProductGrid({ products }: { products: Product[] }) {
         <ProductCard
           key={product.id}
           id={product.id}
+                    slug={product.slug}
           name={product.name}
           price={product.price}
+          salePrice={(product as any).salePrice}
           image={product.image}
           images={product.images}
           featured={product.featured}
@@ -223,17 +227,11 @@ export default function ColoursPage() {
             priority
             unoptimized
           />
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            aria-label={t("productPages.colours.heroDescription")}
-            className="hidden h-full w-full object-cover object-center md:block"
-          >
-            <source src="/colours-hero.mp4" type="video/mp4" />
-          </video>
+          <DesktopHeroVideo
+            src="/colours-hero.mp4"
+            ariaLabel={t("productPages.colours.heroDescription")}
+            className="hidden object-cover object-center md:block"
+          />
         </div>
       </section>
 
@@ -281,7 +279,6 @@ export default function ColoursPage() {
                   setCurrentPage(1);
                 }}
               />
-              <p className="text-xs font-light text-brand-black/55">{selectedToneLabel}</p>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-brand-black">{t("shop.brand")}</label>

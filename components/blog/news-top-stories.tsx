@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { BlogNewsImage } from "@/components/blog/blog-news-image";
 import { useLanguage } from "@/contexts/language-context";
 import { formatNewsDate, type NewsPost } from "@/components/blog/news-utils";
 
@@ -30,14 +30,13 @@ export function NewsTopStories({ posts }: NewsTopStoriesProps) {
             >
               {post.image && (
                 <div className="relative aspect-[16/10] overflow-hidden bg-brand-sweet-bianca">
-                  <Image
+                  <BlogNewsImage
                     src={post.image}
                     alt={post.title}
                     fill
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                     sizes="(max-width: 640px) 50vw, 25vw"
                     loading="lazy"
-                    unoptimized
                   />
                 </div>
               )}

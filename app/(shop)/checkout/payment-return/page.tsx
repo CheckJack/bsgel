@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useLanguage } from "@/contexts/language-context";
+import { LocalizedLoading } from "@/components/ui/localized-loading";
 
 function PaymentReturnInner() {
   const router = useRouter();
@@ -64,7 +65,7 @@ export default function CheckoutPaymentReturnPage() {
   return (
     <Suspense
       fallback={
-        <div className="container mx-auto px-4 py-16 text-center text-gray-600">Loading…</div>
+        <LocalizedLoading className="container mx-auto px-4 py-16 text-center text-gray-600" />
       }
     >
       <PaymentReturnInner />

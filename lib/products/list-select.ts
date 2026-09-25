@@ -1,6 +1,7 @@
 export const PRODUCT_LIST_SELECT = {
   id: true,
   name: true,
+  slug: true,
   price: true,
   salePrice: true,
   image: true,
@@ -22,6 +23,7 @@ export const PRODUCT_LIST_SELECT = {
 export type ProductListRow = {
   id: string;
   name: string;
+  slug: string;
   price: unknown;
   salePrice: unknown;
   image: string | null;

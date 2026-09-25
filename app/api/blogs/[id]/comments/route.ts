@@ -6,13 +6,13 @@ import { db } from "@/lib/db"
 // GET comments for a blog post (only approved)
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ blogId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { blogId } = await params
+    const { id } = await params
     const comments = await db.comment.findMany({
       where: {
-        blogId,
+        blogId: id,
         status: "APPROVED", // Only show approved comments
       },
       include: {
@@ -43,10 +43,10 @@ export async function GET(
 // POST a new comment (requires authentication)
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ blogId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { blogId } = await params
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
@@ -68,7 +68,7 @@ export async function POST(
 
     // Verify blog exists
     const blog = await db.blog.findUnique({
-      where: { id: blogId },
+      where: { id },
     })
 
     if (!blog) {
@@ -78,10 +78,17 @@ export async function POST(
       )
     }
 
+    if (blog.status !== "PUBLISHED" || !blog.publishedAt) {
+      return NextResponse.json(
+        { error: "Comments are not available for this post" },
+        { status: 403 }
+      )
+    }
+
     // Create the comment (status defaults to PENDING)
     const comment = await db.comment.create({
       data: {
-        blogId,
+        blogId: id,
         userId: session.user.id,
         content: content.trim(),
         status: "PENDING", // Requires admin approval

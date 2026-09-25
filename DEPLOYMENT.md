@@ -100,6 +100,18 @@ npm run build
 # You should see: "✓ Compiled successfully"
 ```
 
+### ⚠️ Preserve uploads
+
+**Never delete `public/uploads` during deploy.** Product images, blog media, and gallery files live there (~hundreds of MB). Prefer:
+
+```bash
+npm run deploy
+```
+
+which builds, migrates, restarts PM2, and aborts if uploads were wiped.
+
+See [OPS.md](./OPS.md) for backups, migrations, Sentry, and env file conventions (`.env` / `.env.local`).
+
 ---
 
 ## 🚀 Step 4: Start the Production Server

@@ -1,38 +1,41 @@
-import { NextResponse } from "next/server"
-import { db } from "@/lib/db"
+import { NextResponse } from "next/server";
+import { resolveOfflinePaymentCopy } from "@/lib/checkout/resolve-offline-payment-copy";
 
-const MBWAY_KEY = "checkout_mbway_instructions"
-const BANK_KEY = "checkout_bank_transfer_instructions"
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 /**
- * Public copy for MBWay / bank transfer instructions (trusted HTML or plain text from DB or env).
+ * Public copy for MB Way / bank transfer instructions.
  */
 export async function GET() {
   try {
-    const [mbRow, bankRow] = await Promise.all([
-      db.systemSettings.findUnique({ where: { key: MBWAY_KEY } }),
-      db.systemSettings.findUnique({ where: { key: BANK_KEY } }),
-    ])
-
-    const mbway =
-      mbRow?.value?.trim() ||
-      process.env.CHECKOUT_MBWAY_INSTRUCTIONS?.trim() ||
-      "<p>Configure payment instructions in Admin → System settings (keys <code>checkout_mbway_instructions</code>) or set <code>CHECKOUT_MBWAY_INSTRUCTIONS</code> in the server environment.</p>"
-
-    const bankTransfer =
-      bankRow?.value?.trim() ||
-      process.env.CHECKOUT_BANK_TRANSFER_INSTRUCTIONS?.trim() ||
-      "<p>Configure payment instructions in Admin → System settings (keys <code>checkout_bank_transfer_instructions</code>) or set <code>CHECKOUT_BANK_TRANSFER_INSTRUCTIONS</code> in the server environment.</p>"
-
-    return NextResponse.json({ mbway, bankTransfer })
+    const { mbway, bankTransfer, details, expiryDays } = await resolveOfflinePaymentCopy();
+    return NextResponse.json(
+      { mbway, bankTransfer, details, expiryDays },
+      {
+        headers: {
+          "Cache-Control": "private, no-store",
+        },
+      }
+    );
   } catch (e) {
-    console.error("offline-payment-copy:", e)
+    console.error("offline-payment-copy:", e);
     return NextResponse.json(
       {
-        mbway: "<p>Payment instructions are temporarily unavailable.</p>",
-        bankTransfer: "<p>Payment instructions are temporarily unavailable.</p>",
+        mbway:
+          "<p>As instruções de pagamento estão temporariamente indisponíveis. Contacte <a href=\"mailto:info@biosculpture.pt\">info@biosculpture.pt</a>.</p>",
+        bankTransfer:
+          "<p>As instruções de pagamento estão temporariamente indisponíveis. Contacte <a href=\"mailto:info@biosculpture.pt\">info@biosculpture.pt</a>.</p>",
+        details: {
+          mbwayPhone: "",
+          bankAccountName: "",
+          bankName: "",
+          bankIban: "",
+          bankBic: "",
+        },
+        expiryDays: 5,
       },
       { status: 200 }
-    )
+    );
   }
 }

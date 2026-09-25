@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { CategoryHeroBadge } from "@/components/layout/category-hero-badge";
+import { DesktopHeroVideo } from "@/components/layout/desktop-hero-video";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import { ShopProductsHeader } from "@/components/shop/shop-products-header";
@@ -15,6 +16,7 @@ import { fetchShopCategories } from "@/lib/shop-categories";
 
 interface Product {
   id: string;
+  slug?: string;
   name: string;
   description: string | null;
   price: string;
@@ -102,18 +104,8 @@ export default function BioGelPage() {
     <>
       <section className="relative h-[36vh] w-full overflow-hidden md:h-[44vh]">
         <CategoryHeroBadge />
-        <Image src="/j7j57qehr.png" alt="BIO Gel" fill className="object-cover lg:hidden" priority unoptimized />
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          aria-label="BIO Gel"
-          className="absolute inset-0 hidden h-full w-full object-cover lg:block"
-        >
-          <source src="/bio-gel-hero.mp4" type="video/mp4" />
-        </video>
+        <Image src="/j7j57qehr.png" alt="BIO Gel" fill className="object-cover md:hidden" priority unoptimized />
+        <DesktopHeroVideo src="/bio-gel-hero.mp4" ariaLabel="BIO Gel" className="hidden md:block" />
       </section>
 
       <section id="products" className="relative w-full min-h-screen bg-brand-white py-12 sm:py-16">
@@ -143,8 +135,10 @@ export default function BioGelPage() {
                   <ProductCard
                     key={product.id}
                     id={product.id}
+                    slug={product.slug}
                     name={product.name}
                     price={product.price}
+                    salePrice={(product as any).salePrice}
                     image={product.image}
                     images={product.images}
                     featured={product.featured}

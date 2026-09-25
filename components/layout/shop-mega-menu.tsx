@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useLanguage } from "@/contexts/language-context";
 import { formatPrice } from "@/lib/utils";
 import { isColourBuilderGelProduct } from "@/lib/colour-builder-hero";
+import { productPath } from "@/lib/products/paths";
 
 interface ShopMegaMenuProps {
   isOpen: boolean;
@@ -199,22 +200,23 @@ export function ShopMegaMenu({ isOpen, onClose, onMouseEnter }: ShopMegaMenuProp
       }}
     >
       <div className="absolute inset-x-0 -top-3 h-3" aria-hidden />
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-12 gap-8">
+      <div className="mx-auto w-full max-w-[1600px] px-6 py-8 sm:px-8 lg:px-12 xl:px-16">
+        <div className="grid grid-cols-12 gap-6 xl:gap-10">
           {/* Left Section - Brand Pages */}
-          <div className="col-span-6">
+          <div className="col-span-6 min-w-0">
             {brandRows.map((row, rowIndex) => (
               <div
                 key={`row-${rowIndex}`}
-                className={`grid grid-cols-3 gap-1 ${rowIndex < brandRows.length - 1 ? "mb-3" : ""}`}
+                className={`grid grid-cols-3 gap-x-3 gap-y-1 ${rowIndex < brandRows.length - 1 ? "mb-3" : ""}`}
               >
                 {row.map((brand) => (
-                  <div key={brand.href} className="space-y-0">
+                  <div key={brand.href} className="min-w-0 space-y-0">
                     <Link
                       href={brand.href}
                       data-mega-menu-link
                       onClick={handleLinkClick}
-                      className="block font-header text-[13px] text-brand-black mb-1 uppercase tracking-[0.14em] hover:text-brand-champagne transition-colors cursor-pointer"
+                      title={brand.name}
+                      className="block truncate whitespace-nowrap font-header text-[13px] text-brand-black mb-1 uppercase tracking-[0.1em] hover:text-brand-champagne transition-colors cursor-pointer"
                     >
                       {brand.name}
                     </Link>
@@ -226,7 +228,8 @@ export function ShopMegaMenu({ isOpen, onClose, onMouseEnter }: ShopMegaMenuProp
                             href={child.href}
                             data-mega-menu-link
                             onClick={handleLinkClick}
-                            className="block text-sm font-normal text-brand-black/70 hover:text-brand-champagne transition-colors cursor-pointer"
+                            title={child.name}
+                            className="block truncate whitespace-nowrap text-sm font-normal text-brand-black/70 hover:text-brand-champagne transition-colors cursor-pointer"
                           >
                             {child.name}
                           </Link>
@@ -243,20 +246,20 @@ export function ShopMegaMenu({ isOpen, onClose, onMouseEnter }: ShopMegaMenuProp
           </div>
 
           {/* Right Section - Featured Products */}
-          <div className="col-span-6 grid grid-cols-4 gap-2">
+          <div className="col-span-6 grid min-w-0 grid-cols-4 gap-3 xl:gap-4">
             {menuProducts.map((product) => {
               const previewImage = product.image || product.images?.[0] || null;
               const showNewBadge = isColourBuilderGelProduct(product.name);
               return (
                 <Link
                   key={product.id}
-                  href={`/products/${product.id}`}
+                  href={productPath(product)}
                   data-mega-menu-link
                   onClick={handleLinkClick}
-                  className="group block"
+                  className="group block min-w-0"
                 >
                   <div className="h-full">
-                    <div className="relative w-full aspect-square overflow-hidden mb-2 bg-transparent">
+                    <div className="relative mb-2 aspect-square w-full overflow-hidden bg-transparent">
                       {showNewBadge && (
                         <span className="absolute left-1 top-1 z-10 rounded bg-pink-900 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.12em] text-white">
                           {t("products.newBadge")}
@@ -272,15 +275,18 @@ export function ShopMegaMenu({ isOpen, onClose, onMouseEnter }: ShopMegaMenuProp
                           unoptimized
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400">
+                        <div className="flex h-full w-full items-center justify-center text-[10px] text-gray-400">
                           {t("products.noImage")}
                         </div>
                       )}
                     </div>
-                    <p className="text-[11px] font-normal tracking-wide text-brand-black/70 uppercase line-clamp-2 min-h-[2rem] group-hover:text-brand-black transition-colors">
+                    <p
+                      className="truncate whitespace-nowrap text-[11px] font-normal tracking-wide text-brand-black/70 uppercase group-hover:text-brand-black transition-colors"
+                      title={product.name}
+                    >
                       {product.name}
                     </p>
-                    <p className="text-[11px] font-medium text-brand-champagne mt-1">
+                    <p className="mt-1 text-[11px] font-medium text-brand-champagne">
                       {product.salePrice ? formatPrice(product.salePrice) : formatPrice(product.price)}
                     </p>
                   </div>

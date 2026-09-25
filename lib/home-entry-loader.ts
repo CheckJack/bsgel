@@ -22,17 +22,24 @@ export function setHomeLoaderChromeActive(active: boolean) {
   if (typeof document === "undefined") return;
 
   const loaderChromeColor = HOME_ENTRY_LOADER_COLOR;
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
 
   document.documentElement.classList.toggle(HOME_ENTRY_LOADER_ACTIVE_CLASS, active);
   if (active) {
     syncAppViewportHeight();
     document.documentElement.style.backgroundColor = loaderChromeColor;
-    document.body.style.backgroundColor = loaderChromeColor;
+    if (document.body) {
+      document.body.style.backgroundColor = loaderChromeColor;
+    }
+    if (themeMeta) themeMeta.setAttribute("content", loaderChromeColor);
     return;
   }
 
   document.documentElement.style.backgroundColor = "";
-  document.body.style.backgroundColor = "";
+  if (document.body) {
+    document.body.style.backgroundColor = "";
+  }
+  if (themeMeta) themeMeta.setAttribute("content", "#ffffff");
 }
 
 export function releaseHomeScrollLock() {

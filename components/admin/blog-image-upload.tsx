@@ -3,11 +3,9 @@
 import Image from "next/image";
 import { Upload, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import type { ImagePreview } from "@/lib/blog-images";
 
-export interface ImagePreview {
-  url: string;
-  file?: File;
-}
+export type { ImagePreview };
 
 interface BlogImageUploadProps {
   title: string;
@@ -17,28 +15,7 @@ interface BlogImageUploadProps {
   inputId: string;
 }
 
-export async function imagePreviewToDataUrl(
-  image: ImagePreview | null
-): Promise<string | null> {
-  if (!image) {
-    return null;
-  }
-
-  if (image.file) {
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        resolve(reader.result as string);
-      };
-      reader.onerror = () => {
-        reject(new Error("Failed to read image file"));
-      };
-      reader.readAsDataURL(image.file!);
-    });
-  }
-
-  return image.url;
-}
+const MAX_FILE_BYTES = 8 * 1024 * 1024;
 
 export function BlogImageUpload({
   title,
@@ -49,13 +26,22 @@ export function BlogImageUpload({
 }: BlogImageUploadProps) {
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type.startsWith("image/")) {
-      onImageChange({ url: URL.createObjectURL(file), file });
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      return;
     }
+
+    if (file.size > MAX_FILE_BYTES) {
+      alert("Image is too large. Maximum size is 8 MB.");
+      return;
+    }
+
+    onImageChange({ url: URL.createObjectURL(file), file });
   };
 
   const handleImageRemove = () => {
-    if (image?.file) {
+    if (image?.url.startsWith("blob:")) {
       URL.revokeObjectURL(image.url);
     }
     onImageChange(null);
@@ -64,9 +50,14 @@ export function BlogImageUpload({
   const handleDrop = (event: React.DragEvent) => {
     event.preventDefault();
     const file = event.dataTransfer.files[0];
-    if (file && file.type.startsWith("image/")) {
-      onImageChange({ url: URL.createObjectURL(file), file });
+    if (!file || !file.type.startsWith("image/")) return;
+
+    if (file.size > MAX_FILE_BYTES) {
+      alert("Image is too large. Maximum size is 8 MB.");
+      return;
     }
+
+    onImageChange({ url: URL.createObjectURL(file), file });
   };
 
   return (
@@ -99,7 +90,7 @@ export function BlogImageUpload({
             />
             <Upload className="mb-2 h-8 w-8 text-gray-400 dark:text-gray-500" />
             <p className="px-2 text-center text-xs text-gray-500 dark:text-gray-400">
-              Drop your image here or click to browse
+              Drop your image here or click to browse (max 8 MB)
             </p>
           </div>
         )}

@@ -5,13 +5,17 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { logAdminAction, extractRequestInfo, createChangeDetails } from "@/lib/admin-logger"
 import { updateProductStock } from "@/lib/stock"
+import { sanitizeProductDetail } from "@/lib/products/list-images"
+import { persistProductMediaFields } from "@/lib/products/persist-media"
+import { findProductIdByParam } from "@/lib/products/resolve"
 
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
+    const { id: rawParam } = await params
+    const id = (await findProductIdByParam(rawParam)) || rawParam
     let product;
     try {
       // Use select to only get fields that exist in the database
@@ -20,6 +24,7 @@ export async function GET(
         select: {
           id: true,
           name: true,
+          slug: true,
           description: true,
           price: true,
           salePrice: true,
@@ -53,7 +58,7 @@ export async function GET(
         console.log("Schema mismatch detected, using raw SQL query");
         const result = await db.$queryRaw`
           SELECT 
-            p.id, p.name, p.description, p.price, p."salePrice", p.image, p.images, p.featured, p."outOfStock", p."hemaFree", p."categoryId", p.attributes,
+            p.id, p.name, p.slug, p.description, p.price, p."salePrice", p.image, p.images, p.featured, p."outOfStock", p."hemaFree", p."categoryId", p.attributes,
             p."showcasingSections", p."createdAt", p."updatedAt",
             c.id as "category_id", c.name as "category_name", c.slug as "category_slug"
           FROM "Product" p
@@ -67,6 +72,7 @@ export async function GET(
           product = {
             id: row.id,
             name: row.name,
+            slug: row.slug,
             description: row.description,
             price: row.price,
             salePrice: row.salePrice || null,
@@ -209,14 +215,14 @@ export async function GET(
       }
     }
     
-    const serializedProduct = {
+    const serializedProduct = sanitizeProductDetail({
       ...product,
       price: priceString,
       salePrice: salePriceString,
       discountPercentage: null, // Field doesn't exist in database
       rating: rating,
       reviewCount: reviewCount,
-    }
+    })
 
     // Add caching headers for better performance (cache for 5 minutes)
     const headers = new Headers();
@@ -320,8 +326,26 @@ export async function PATCH(
     if (description !== undefined) updateData.description = description
     if (price !== undefined) updateData.price = price
     if (salePrice !== undefined) updateData.salePrice = salePrice === null ? null : (typeof salePrice === "string" ? parseFloat(salePrice) : salePrice)
-    if (image !== undefined) updateData.image = image
-    if (images !== undefined) updateData.images = images
+
+    // Persist inline media to disk before saving URLs (does not change other product fields)
+    if (image !== undefined || images !== undefined || attributes !== undefined) {
+      try {
+        const persisted = await persistProductMediaFields({
+          productId: id,
+          image,
+          images,
+          attributes,
+        })
+        if (image !== undefined) updateData.image = persisted.image ?? null
+        if (images !== undefined) updateData.images = persisted.images ?? []
+        if (attributes !== undefined) updateData.attributes = persisted.attributes ?? null
+      } catch (mediaErr) {
+        console.error("Failed to persist product media on update:", mediaErr)
+        if (image !== undefined) updateData.image = image
+        if (images !== undefined) updateData.images = images
+        if (attributes !== undefined) updateData.attributes = attributes
+      }
+    }
     if (featured !== undefined) updateData.featured = featured
     // Product tags are mutually exclusive - only one can be set at a time
     // Only add these fields if columns exist in database (will be removed if they don't exist)
@@ -395,6 +419,7 @@ export async function PATCH(
               where: { id },
               select: {
                 name: true,
+                slug: true,
                 description: true,
                 price: true,
                 salePrice: true,
@@ -420,6 +445,7 @@ export async function PATCH(
             const newProductData: any = {
               id: trimmedNewId,
               name: updateDataScalars.name ?? currentProduct.name,
+              slug: currentProduct.slug,
               description: updateDataScalars.description ?? currentProduct.description,
               price: updateDataScalars.price ?? currentProduct.price,
               salePrice: updateDataScalars.salePrice !== undefined ? updateDataScalars.salePrice : currentProduct.salePrice,

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { formatPrice, handleApiError, showLoadingToast } from "@/lib/utils";
 import { toast } from "@/components/ui/toast";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Coupon {
   id: string;
@@ -62,6 +63,7 @@ interface Analytics {
 }
 
 export default function AdminCouponsPage() {
+  const { t } = useLanguage();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -247,7 +249,7 @@ export default function AdminCouponsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this coupon?")) {
+    if (!confirm(t("admin.coupons.deleteConfirm"))) {
       return;
     }
 
@@ -257,7 +259,7 @@ export default function AdminCouponsPage() {
       });
 
       if (res.ok) {
-        toast("Coupon deleted successfully", "success");
+        toast(t("admin.coupons.deleteSuccess"), "success");
         fetchCoupons();
         fetchAnalytics();
       } else {
@@ -279,7 +281,7 @@ export default function AdminCouponsPage() {
       });
 
       if (res.ok) {
-        toast("Coupon duplicated successfully", "success");
+        toast(t("admin.coupons.duplicateSuccess"), "success");
         fetchCoupons();
         fetchAnalytics();
       } else {
@@ -301,10 +303,7 @@ export default function AdminCouponsPage() {
       });
 
       if (res.ok) {
-        toast(
-          `Coupon ${coupon.isActive ? "deactivated" : "activated"} successfully`,
-          "success"
-        );
+        toast(t("admin.coupons.toggled", { state: coupon.isActive ? t("admin.coupons.deactivated") : t("admin.coupons.activated") }), "success");
         fetchCoupons();
         fetchAnalytics();
       } else {
@@ -319,7 +318,7 @@ export default function AdminCouponsPage() {
 
   const handleBulkAction = async (action: string) => {
     if (selectedCoupons.size === 0) {
-      toast("Please select at least one coupon", "warning");
+      toast(t("admin.coupons.selectAtLeastOne"), "warning");
       return;
     }
 
@@ -352,7 +351,7 @@ export default function AdminCouponsPage() {
 
       if (res.ok) {
         const data = await res.json();
-        toast(data.message || `Successfully ${actionText}d coupons`, "success");
+        toast(data.message || t("admin.coupons.bulkSuccess", { action: actionText }), "success");
         setSelectedCoupons(new Set());
         fetchCoupons();
         fetchAnalytics();
@@ -466,9 +465,7 @@ export default function AdminCouponsPage() {
     <div className="p-6 min-h-screen">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-          Coupon List
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("admin.coupons.title")}</h1>
         <div className="text-sm text-gray-600 dark:text-gray-400">
           Dashboard <span className="mx-2">&gt;</span> Sales{" "}
           <span className="mx-2">&gt;</span> Coupons
@@ -602,7 +599,7 @@ export default function AdminCouponsPage() {
                   className="flex items-center gap-2"
                 >
                   <BarChart3 className="h-4 w-4" />
-                  {showAnalytics ? "Hide" : "Show"} Analytics
+                  {showAnalytics ? t("admin.coupons.hide") : t("admin.coupons.show")} Analytics
                 </Button>
                 <div className="flex items-center gap-2">
                   <label className="text-sm text-gray-600 dark:text-gray-400">
@@ -631,7 +628,7 @@ export default function AdminCouponsPage() {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                     <input
                       type="text"
-                      placeholder="Search here..."
+                      placeholder={t("admin.coupons.searchPlaceholder")}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-500 dark:placeholder:text-gray-400"
@@ -670,9 +667,9 @@ export default function AdminCouponsPage() {
                     <option value="all">All Status</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
-                    <option value="expired">Expired</option>
-                    <option value="scheduled">Scheduled</option>
-                    <option value="limitReached">Limit Reached</option>
+                    <option value="expired">{t("admin.coupons.expired")}</option>
+                    <option value="scheduled">{t("admin.coupons.scheduled")}</option>
+                    <option value="limitReached">{t("admin.coupons.limitReached")}</option>
                   </select>
                 </div>
                 <div>
@@ -941,7 +938,7 @@ export default function AdminCouponsPage() {
                               size="sm"
                               className="text-xs"
                               onClick={() => handleDuplicate(coupon.id)}
-                              title="Duplicate coupon"
+                              title={t("admin.coupons.duplicate")}
                             >
                               <Copy className="h-3 w-3" />
                             </Button>

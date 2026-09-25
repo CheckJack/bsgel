@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { resolveEffectiveUnitPrice } from "@/lib/pricing/effective-price";
 
 export const cartWithTrainingInclude = {
   items: {
@@ -54,7 +55,10 @@ export function serializeTrainingCartItem(
 
 export function getProductSubtotal(cart: CartWithTraining) {
   return cart.items.reduce((sum, item) => {
-    return sum + Number(item.product.price) * item.quantity;
+    return (
+      sum +
+      resolveEffectiveUnitPrice(item.product.price, item.product.salePrice) * item.quantity
+    );
   }, 0);
 }
 
@@ -102,6 +106,25 @@ export async function cancelPendingBooking(bookingId: string | null | undefined)
 
   await db.trainingBooking.updateMany({
     where: { id: bookingId, status: "PENDING" },
+    data: { status: "CANCELLED" },
+  });
+}
+
+/** Cancel training seats held for an order (pending or confirmed). */
+export async function cancelOrderTrainingBookings(
+  trainingItems: Array<{ bookingId: string | null | undefined }>
+) {
+  const bookingIds = trainingItems
+    .map((item) => item.bookingId)
+    .filter((id): id is string => Boolean(id));
+
+  if (bookingIds.length === 0) return;
+
+  await db.trainingBooking.updateMany({
+    where: {
+      id: { in: bookingIds },
+      status: { in: ["PENDING", "CONFIRMED"] },
+    },
     data: { status: "CANCELLED" },
   });
 }

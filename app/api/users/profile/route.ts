@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { hash, compare } from "bcryptjs";
 import { z } from "zod";
+import { parseStoredShippingAddress, stringifyCheckoutShipping } from "@/lib/checkout/checkout-address";
 
 export async function GET(req: Request) {
   try {
@@ -19,6 +20,7 @@ export async function GET(req: Request) {
         id: true,
         email: true,
         name: true,
+        phone: true,
         image: true,
         shippingAddress: true,
         billingNif: true,
@@ -30,7 +32,55 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ user });
+    let shippingAddress = user.shippingAddress;
+    let billingNif = user.billingNif;
+    let billingAddress = user.billingAddress;
+    const parsedSaved = parseStoredShippingAddress(shippingAddress);
+
+    if (!parsedSaved) {
+      const lastOrder = await db.order.findFirst({
+        where: { userId: session.user.id, shippingAddress: { not: null } },
+        orderBy: { createdAt: "desc" },
+        select: {
+          shippingAddress: true,
+          billingNif: true,
+          billingAddress: true,
+        },
+      });
+      const fromOrder = parseStoredShippingAddress(lastOrder?.shippingAddress);
+      if (fromOrder) {
+        if (!fromOrder.email) fromOrder.email = user.email || "";
+        if (!fromOrder.phone && user.phone) fromOrder.phone = user.phone;
+        if (!fromOrder.firstName && !fromOrder.lastName && user.name) {
+          const parts = user.name.trim().split(/\s+/);
+          fromOrder.firstName = parts[0] || "";
+          fromOrder.lastName = parts.slice(1).join(" ");
+        }
+        shippingAddress = stringifyCheckoutShipping(fromOrder);
+      }
+      if (!billingNif && lastOrder?.billingNif) billingNif = lastOrder.billingNif;
+      if (!billingAddress && lastOrder?.billingAddress) {
+        billingAddress = lastOrder.billingAddress;
+      }
+    } else {
+      if (!parsedSaved.email) parsedSaved.email = user.email || "";
+      if (!parsedSaved.phone && user.phone) parsedSaved.phone = user.phone;
+      if (!parsedSaved.firstName && !parsedSaved.lastName && user.name) {
+        const parts = user.name.trim().split(/\s+/).filter(Boolean);
+        parsedSaved.firstName = parts[0] || "";
+        parsedSaved.lastName = parts.slice(1).join(" ");
+      }
+      shippingAddress = stringifyCheckoutShipping(parsedSaved);
+    }
+
+    return NextResponse.json({
+      user: {
+        ...user,
+        shippingAddress,
+        billingNif,
+        billingAddress,
+      },
+    });
   } catch (error) {
     console.error("Failed to fetch profile:", error);
     return NextResponse.json(
@@ -58,6 +108,7 @@ const updateProfileSchema = z.object({
   shippingAddress: z.string().nullable().optional(),
   billingNif: z.string().max(32).nullable().optional(),
   billingAddress: z.string().max(8000).nullable().optional(),
+  phone: z.string().max(40).nullable().optional(),
 }).refine(
   (data) => {
     // If newPassword is provided and not empty, currentPassword must also be provided
@@ -107,6 +158,7 @@ export async function PATCH(req: Request) {
       shippingAddress?: string | null;
       billingNif?: string | null;
       billingAddress?: string | null;
+      phone?: string | null;
     } = {};
 
     // Update name if provided
@@ -179,6 +231,11 @@ export async function PATCH(req: Request) {
       updateData.billingAddress = v === "" ? null : validatedData.billingAddress;
     }
 
+    if (validatedData.phone !== undefined) {
+      const v = validatedData.phone?.trim() ?? "";
+      updateData.phone = v === "" ? null : v;
+    }
+
     // Update user
     try {
       const updatedUser = await db.user.update({
@@ -193,6 +250,7 @@ export async function PATCH(req: Request) {
           shippingAddress: true,
           billingNif: true,
           billingAddress: true,
+          phone: true,
         },
       });
 

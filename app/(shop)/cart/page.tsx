@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/contexts/cart-context";
 import { useLanguage } from "@/contexts/language-context";
+import { resolveEffectiveUnitPrice } from "@/lib/pricing/effective-price";
+import { productPath } from "@/lib/products/paths";
 
 export default function CartPage() {
   const { t, language } = useLanguage();
@@ -44,7 +46,12 @@ export default function CartPage() {
   }
 
   const subtotal =
-    items.reduce((sum, item) => sum + parseFloat(item.product.price) * item.quantity, 0) +
+    items.reduce(
+      (sum, item) =>
+        sum +
+        resolveEffectiveUnitPrice(item.product.price, item.product.salePrice) * item.quantity,
+      0
+    ) +
     trainingItems.reduce((sum, item) => sum + parseFloat(item.program.price), 0);
   const total = subtotal;
 
@@ -118,7 +125,7 @@ export default function CartPage() {
               <CardContent className="p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row gap-4">
                   {item.product.image ? (
-                    <Link href={`/products/${item.product.id}`} className="relative w-full sm:w-24 h-48 sm:h-24 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
+                    <Link href={productPath(item.product)} className="relative w-full sm:w-24 h-48 sm:h-24 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
                       <Image
                         src={item.product.image}
                         alt={item.product.name}
@@ -137,12 +144,19 @@ export default function CartPage() {
                   )}
 
                   <div className="flex-1 min-w-0">
-                    <Link href={`/products/${item.product.id}`}>
+                    <Link href={productPath(item.product)}>
                       <h3 className="font-semibold text-base sm:text-lg hover:underline break-words">
                         {item.product.name}
                       </h3>
                     </Link>
-                    <p className="text-gray-600 mb-2 text-sm sm:text-base">{formatPrice(item.product.price)}</p>
+                    <p className="text-gray-600 mb-2 text-sm sm:text-base">
+                      {formatPrice(
+                        resolveEffectiveUnitPrice(
+                          item.product.price,
+                          item.product.salePrice
+                        )
+                      )}
+                    </p>
 
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
                       <div className="flex items-center gap-2">
@@ -176,7 +190,12 @@ export default function CartPage() {
 
                   <div className="text-left sm:text-right mt-2 sm:mt-0">
                     <p className="font-bold text-base sm:text-lg">
-                      {formatPrice(parseFloat(item.product.price) * item.quantity)}
+                      {formatPrice(
+                        resolveEffectiveUnitPrice(
+                          item.product.price,
+                          item.product.salePrice
+                        ) * item.quantity
+                      )}
                     </p>
                   </div>
                 </div>
@@ -185,7 +204,7 @@ export default function CartPage() {
           ))}
         </div>
 
-        <div className="lg:sticky lg:top-24 lg:self-start">
+        <div className="lg:sticky lg:top-[calc(var(--site-header-height,113px)+1.5rem)] lg:self-start">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg sm:text-xl">{t("cart.orderSummary")}</CardTitle>

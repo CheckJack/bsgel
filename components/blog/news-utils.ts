@@ -74,3 +74,11 @@ export function getNewsExcerpt(
   const trimmed = plain.slice(0, maxLength).replace(/\s+\S*$/, "");
   return `${trimmed}…`;
 }
+
+export function isBlogDataUrl(src: string | null | undefined): boolean {
+  return !!src?.startsWith("data:");
+}
+
+export function shouldUseUnoptimizedBlogImage(src: string | null | undefined): boolean {
+  return isBlogDataUrl(src) || !!src?.startsWith("/api/blogs/media/");
+}

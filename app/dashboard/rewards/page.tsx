@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
+import { useLanguage } from "@/contexts/language-context";
 import { Award, Coins, Loader2, History, Gift, Tag } from "lucide-react";
 import Link from "next/link";
 
@@ -29,6 +30,7 @@ interface PointsBalance {
 export default function RewardsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { t } = useLanguage();
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [pointsBalance, setPointsBalance] = useState<PointsBalance | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,7 +53,7 @@ export default function RewardsPage() {
     if (!featureSettings) return;
     
     if (!featureSettings.rewardsEnabled && session) {
-      router.push("/dashboard");
+      router.push("/dashboard/orders");
       return;
     }
     
@@ -126,7 +128,7 @@ export default function RewardsPage() {
     if (!reward) return;
 
     if (pointsBalance.pointsBalance < reward.pointsCost) {
-      toast("Insufficient points", "error");
+      toast(t("clientPanel.rewards.insufficientPoints"), "error");
       return;
     }
 
@@ -147,7 +149,7 @@ export default function RewardsPage() {
         // Show success toast immediately
         const couponCode = data.couponCode || "N/A";
         console.log("Showing toast with coupon code:", couponCode);
-        toast(`Reward redeemed! Coupon code: ${couponCode}`, "success", 5000);
+        toast(t("clientPanel.rewards.redeemSuccess", { code: couponCode }), "success", 5000);
         
         // Update points balance immediately (optimistic update)
         if (pointsBalance) {
@@ -181,7 +183,7 @@ export default function RewardsPage() {
       }
     } catch (error) {
       console.error("Failed to redeem reward:", error);
-      toast("Failed to redeem reward. Please try again.", "error", 5000);
+      toast(t("clientPanel.rewards.redeemFailed"), "error", 5000);
       setRedeeming(null);
     }
   };

@@ -269,7 +269,7 @@ export function Navbar({ revealOnHover = false }: NavbarProps) {
       data-site-header
       className={cn(
         "fixed inset-x-0 top-0 transition-transform duration-300 ease-out will-change-transform",
-        headerElevated ? (mobileMenuOpen || cartDrawerOpen ? "z-[1400]" : "z-[1200]") : "z-[100]",
+        headerElevated ? (mobileMenuOpen ? "z-[1400]" : "z-[1200]") : "z-[100]",
         revealOnHover && !headerElevated && "z-[1000]",
         revealOnHover && !isHeaderVisible && "-translate-y-full pointer-events-none"
       )}
@@ -289,7 +289,7 @@ export function Navbar({ revealOnHover = false }: NavbarProps) {
       >
       <div className="font-header w-full relative overflow-visible">
         {/* Main navigation row */}
-        <div className="relative px-4 sm:px-6 md:px-12 lg:px-16 py-3 md:py-4">
+        <div className="relative px-4 sm:px-6 md:px-6 lg:px-12 xl:px-16 py-3 md:py-4">
           <div className="flex items-center justify-between">
             <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
               <HeaderNavIconButton
@@ -315,9 +315,10 @@ export function Navbar({ revealOnHover = false }: NavbarProps) {
                 </HeaderNavIconButton>
               </div>
 
+              {/* Desktop only — on tablet this crowded the centered logo with the hamburger */}
               <Link
                 href="/colours#products"
-                className="hidden sm:inline-flex items-center rounded-full border border-brand-black px-4 py-1.5 text-[11px] uppercase tracking-[0.14em] text-brand-black transition-colors hover:bg-brand-black hover:text-brand-white"
+                className="hidden lg:inline-flex items-center rounded-full border border-brand-black px-4 py-1.5 text-[11px] uppercase tracking-[0.14em] text-brand-black transition-colors hover:bg-brand-black hover:text-brand-white"
               >
                 {t("header.buildersCta")}
               </Link>
@@ -332,16 +333,16 @@ export function Navbar({ revealOnHover = false }: NavbarProps) {
                 alt="Bio Sculpture"
                 width={7442}
                 height={756}
-                sizes="(max-width: 640px) 145px, (max-width: 1024px) 165px, 190px"
-                className="h-auto w-[145px] object-contain sm:w-[165px] lg:w-[190px]"
+                sizes="(max-width: 640px) 145px, (max-width: 1023px) 150px, 190px"
+                className="h-auto w-[145px] object-contain sm:w-[150px] lg:w-[190px]"
                 priority
               />
             </Link>
 
-            <div className="flex flex-1 items-center justify-end gap-2 overflow-visible sm:gap-3">
+            <div className="flex flex-1 items-center justify-end gap-1.5 overflow-visible sm:gap-2 lg:gap-3">
               <HeaderLearnMenu className="hidden lg:flex" onOpenChange={setLearnMenuOpen} />
 
-            {/* Search — desktop only (mobile is next to menu) */}
+            {/* Search — tablet/desktop (phone keeps search next to hamburger) */}
             <HeaderNavIconButton
               className="hidden md:flex"
               onClick={openSearchDrawer}
@@ -412,7 +413,7 @@ export function Navbar({ revealOnHover = false }: NavbarProps) {
             )}
 
             <HeaderLanguageToggle
-              className="hidden md:flex"
+              className="hidden lg:flex"
               language={language}
               onToggle={() => setLanguage(language === "en" ? "pt" : "en")}
               ariaLabel={language === "en" ? t("header.switchToPortuguese") : t("header.switchToEnglish")}
@@ -582,7 +583,7 @@ export function Navbar({ revealOnHover = false }: NavbarProps) {
               <div className="flex items-center gap-2">
                 {session ? (
                   <Link
-                    href={session.user.role === "ADMIN" ? "/admin" : "/dashboard"}
+                    href={session.user.role === "ADMIN" ? "/admin" : "/dashboard/orders"}
                     onClick={closeMobileMenu}
                     className="font-header inline-flex min-h-10 items-center gap-2 rounded-full border border-black/10 px-3 text-sm text-brand-black transition-colors hover:border-brand-champagne/45 hover:text-brand-champagne-dark"
                   >

@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { AlertTriangle, ChevronLeft, ChevronRight, Package, Search, X } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Package, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -56,9 +55,6 @@ function StockManagementContent() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkQty, setBulkQty] = useState("");
   const [showBulk, setShowBulk] = useState(false);
-  const [detailId, setDetailId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<(StockProduct & { description?: string | null }) | null>(null);
-  const [detailStock, setDetailStock] = useState("");
   const [editingStock, setEditingStock] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -155,18 +151,6 @@ function StockManagementContent() {
             : p
         )
       );
-      if (detailId === productId) {
-        setDetail((prev) =>
-          prev
-            ? {
-                ...prev,
-                stockQuantity: data.stockQuantity,
-                outOfStock: data.outOfStock ?? data.stockQuantity <= 0,
-              }
-            : prev
-        );
-        setDetailStock(String(data.stockQuantity));
-      }
       toast(t("admin.stock.updateSuccess"), "success");
       void fetchProducts(true);
       return true;
@@ -189,23 +173,6 @@ function StockManagementContent() {
       delete next[product.id];
       return next;
     });
-  };
-
-  const openDetail = (product: StockProduct) => {
-    setDetailId(product.id);
-    setDetail({ ...product, description: null });
-    setDetailStock(String(product.stockQuantity));
-    void (async () => {
-      try {
-        const res = await fetch(`/api/admin/stock/${product.id}`);
-        if (!res.ok) throw new Error();
-        const p = await res.json();
-        setDetail(p);
-        setDetailStock(String(p.stockQuantity));
-      } catch {
-        toast(t("admin.stock.loadError"), "error");
-      }
-    })();
   };
 
   const handleBulkSave = async () => {
@@ -381,10 +348,9 @@ function StockManagementContent() {
                     return (
                       <tr
                         key={product.id}
-                        className="cursor-pointer border-b hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                        onClick={() => openDetail(product)}
+                        className="border-b hover:bg-gray-50 dark:hover:bg-gray-800/50"
                       >
-                        <td className="p-2" onClick={(e) => e.stopPropagation()}>
+                        <td className="p-2">
                           <input
                             type="checkbox"
                             checked={selected.has(product.id)}
@@ -405,7 +371,7 @@ function StockManagementContent() {
                         </td>
                         <td className="p-2 text-gray-600 dark:text-gray-400">{product.category?.name ?? "—"}</td>
                         <td className="p-2">{formatPrice(product.salePrice || product.price)}</td>
-                        <td className="p-2" onClick={(e) => e.stopPropagation()}>
+                        <td className="p-2">
                           <Input
                             type="number"
                             min={0}
@@ -485,51 +451,6 @@ function StockManagementContent() {
           )}
         </CardContent>
       </Card>
-
-      {detailId && detail && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={() => setDetailId(null)}>
-          <div
-            className="h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-xl dark:bg-gray-900"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-start justify-between">
-              <h2 className="text-lg font-semibold">{detail.name}</h2>
-              <button type="button" onClick={() => setDetailId(null)} aria-label="Close">
-                <X className="size-5" />
-              </button>
-            </div>
-            {detail.image && (
-              <div className="relative mb-4 aspect-square w-full overflow-hidden rounded-lg bg-gray-100">
-                <Image src={detail.image} alt={detail.name} fill className="object-contain" unoptimized={detail.image.startsWith("data:")} />
-              </div>
-            )}
-            <dl className="space-y-2 text-sm">
-              <div><dt className="text-gray-500">{t("admin.stock.colCategory")}</dt><dd>{detail.category?.name ?? "—"}</dd></div>
-              <div><dt className="text-gray-500">{t("admin.stock.colPrice")}</dt><dd>{formatPrice(detail.salePrice || detail.price)}</dd></div>
-              {detail.description && (
-                <div><dt className="text-gray-500">{t("admin.stock.description")}</dt><dd className="line-clamp-4">{detail.description}</dd></div>
-              )}
-            </dl>
-            <div className="mt-6 space-y-2">
-              <label className="text-sm font-medium">{t("admin.stock.colStock")}</label>
-              <div className="flex gap-2">
-                <Input type="number" min={0} value={detailStock} onChange={(e) => setDetailStock(e.target.value)} />
-                <Button
-                  onClick={async () => {
-                    const val = parseInt(detailStock, 10);
-                    if (!Number.isNaN(val) && val >= 0) await saveStock(detail.id, val);
-                  }}
-                >
-                  {t("admin.stock.apply")}
-                </Button>
-              </div>
-            </div>
-            <Link href={`/admin/products/${detail.id}`} className="mt-4 inline-block text-sm text-blue-600 hover:underline">
-              {t("admin.stock.editProduct")}
-            </Link>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

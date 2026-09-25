@@ -44,7 +44,7 @@ export default function PointsHistoryPage() {
     if (!featureSettings) return;
     
     if (!featureSettings.rewardsEnabled && session) {
-      router.push("/dashboard");
+      router.push("/dashboard/orders");
       return;
     }
     

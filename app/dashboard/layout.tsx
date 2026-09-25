@@ -30,7 +30,7 @@ export default function DashboardLayout({
       const isProfessional = !!certification;
 
       if (pathname?.startsWith("/dashboard/salon") && !isProfessional) {
-        router.push("/dashboard");
+        router.push("/dashboard/orders");
         return;
       }
 
@@ -38,15 +38,15 @@ export default function DashboardLayout({
       const isRestrictedRoute = restrictedRoutes.some((route) => pathname?.startsWith(route));
 
       if (isPendingCertification && isRestrictedRoute) {
-        router.push("/dashboard");
+        router.push("/dashboard/orders");
       }
     }
   }, [session, status, router, pathname]);
 
   if (status === "loading") {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-black dark:border-white" />
+      <div className="flex min-h-[calc(100dvh-var(--site-header-height,113px))] items-center justify-center bg-brand-white">
+        <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-brand-champagne" />
       </div>
     );
   }
@@ -56,9 +56,11 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
-      <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
-        <div className="p-4 sm:p-6 md:p-8">{children}</div>
+    <div className="flex min-h-[calc(100dvh-var(--site-header-height,113px))] flex-col bg-brand-white">
+      <main className="flex flex-1 flex-col bg-brand-white">
+        <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-6 font-header sm:px-6 sm:py-8 md:px-8">
+          {children}
+        </div>
       </main>
     </div>
   );

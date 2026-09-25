@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight, Star } from "lucide-react";
@@ -8,13 +8,15 @@ import useEmblaCarousel from "embla-carousel-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { cn, formatPrice } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import DOMPurify from "isomorphic-dompurify";
+import { getAppScrollIntersectionRoot } from "@/lib/mobile-scroll-root";
 
 export interface ProductHeaderLayoutProps {
   productName: string;
   descriptionHtml: string | null;
   priceLabel: string;
+  originalPriceLabel?: string | null;
   rating: number;
   reviewCount: number;
   images: string[];
@@ -31,6 +33,7 @@ export interface ProductHeaderLayoutProps {
   isAdding: boolean;
   freeShippingNote: string;
   detailsTabHtml: string | null;
+  catalogueTabContent?: ReactNode;
   shippingTabText: string;
   returnsTabText: string;
   labels: {
@@ -41,6 +44,7 @@ export interface ProductHeaderLayoutProps {
     details: string;
     shipping: string;
     returns: string;
+    catalogue?: string;
     reviews: string;
     review: string;
     stars: string;
@@ -107,7 +111,7 @@ function GalleryMedia({
       alt={alt}
       fill
       className="!object-contain"
-      sizes="(max-width: 1024px) 100vw, 50vw"
+      sizes="(max-width: 767px) 100vw, (max-width: 1023px) 50vw, 50vw"
       priority={priority}
       unoptimized={src.startsWith("data:") || src.startsWith("blob:") || !src.startsWith("http")}
     />
@@ -189,14 +193,21 @@ function ProductMobileGalleryCarousel({
   );
 }
 
+function getStickTop() {
+  const headerVar = getComputedStyle(document.documentElement).getPropertyValue(
+    "--site-header-height"
+  );
+  return (parseFloat(headerVar) || 113) + 24;
+}
+
 export function ProductHeaderLayout({
   productName,
   descriptionHtml: _descriptionHtml,
   priceLabel,
+  originalPriceLabel,
   rating,
   reviewCount,
   images,
-  categoryName,
   breadcrumbs,
   attributes,
   selectedAttributes,
@@ -208,100 +219,130 @@ export function ProductHeaderLayout({
   isAdding,
   freeShippingNote,
   detailsTabHtml,
+  catalogueTabContent,
   shippingTabText,
   returnsTabText,
   labels,
 }: ProductHeaderLayoutProps) {
-  const [activeTab, setActiveTab] = useState<"details" | "shipping" | "returns">("details");
+  const [activeTab, setActiveTab] = useState<
+    "details" | "shipping" | "returns" | "catalogue"
+  >("details");
   const attributeEntries = Object.entries(attributes).filter(([, values]) => values.length > 0);
-
   const ratingDisplay = rating > 0 ? rating.toFixed(1) : null;
 
   const galleryRef = useRef<HTMLDivElement>(null);
   const purchaseColRef = useRef<HTMLDivElement>(null);
-  const stickyContentRef = useRef<HTMLDivElement>(null);
-  const [galleryHeight, setGalleryHeight] = useState(0);
-  const [panelHeight, setPanelHeight] = useState(0);
+  const panelRef = useRef<HTMLDivElement>(null);
+
   const [pinMode, setPinMode] = useState<"static" | "fixed" | "absolute">("static");
   const [fixedPin, setFixedPin] = useState<{ top: number; left: number; width: number } | null>(
     null
   );
   const [absoluteTop, setAbsoluteTop] = useState(0);
+  const [columnHeight, setColumnHeight] = useState(0);
+  const [panelHeight, setPanelHeight] = useState(0);
 
   const updateScrollPin = useCallback(() => {
-    const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+    // Two-column + lock from tablet (md) up; phone stays single-column carousel.
+    const isTabletUp = window.matchMedia("(min-width: 768px)").matches;
     const gallery = galleryRef.current;
     const column = purchaseColRef.current;
-    const panel = stickyContentRef.current;
+    const panel = panelRef.current;
 
-    if (!isDesktop || !gallery || !column || !panel) {
+    if (!isTabletUp || !gallery || !column || !panel) {
       setPinMode("static");
       setFixedPin(null);
-      setGalleryHeight(0);
+      setColumnHeight(0);
       setPanelHeight(0);
       return;
     }
 
-    const galleryH = gallery.offsetHeight;
-    setGalleryHeight(galleryH);
+    const stickTop = getStickTop();
+    const viewH = Math.max(0, window.innerHeight - stickTop);
+    const galH = gallery.offsetHeight;
+    const panH = panel.offsetHeight;
+    // Column must cover the image stack and the full info panel so that after
+    // the last image, main-page scroll can walk through long product copy.
+    const colH = Math.max(galH, panH);
+    const visiblePanelH = Math.min(panH, viewH);
 
-    const headerVar = getComputedStyle(document.documentElement).getPropertyValue(
-      "--site-header-height"
-    );
-    const stickTop = (parseFloat(headerVar) || 113) + 48;
-    const pHeight = panel.offsetHeight;
-    setPanelHeight(pHeight);
+    setColumnHeight(colH);
+    setPanelHeight(panH);
 
+    // Use viewport rects — works for both window scroll (desktop) and
+    // `.app-scroll-root` scroll (tablet ≤1023px). window.scrollY alone is wrong
+    // on tablet and left the buy box fixed over reviews.
     const galleryRect = gallery.getBoundingClientRect();
     const columnRect = column.getBoundingClientRect();
-    const scrollY = window.scrollY;
+    const releaseLine = stickTop + visiblePanelH;
+    const canPin = galleryRect.height > visiblePanelH;
 
-    const galleryTopPage = scrollY + galleryRect.top;
-    const galleryBottomPage = scrollY + galleryRect.bottom;
-    const pinStart = galleryTopPage - stickTop;
-    const pinEnd = galleryBottomPage - stickTop - pHeight;
-
-    if (scrollY < pinStart) {
+    if (galleryRect.top > stickTop) {
       setPinMode("static");
       setFixedPin(null);
-    } else if (scrollY < pinEnd) {
-      setPinMode("fixed");
-      setFixedPin({ top: stickTop, left: columnRect.left, width: columnRect.width });
-    } else {
-      setPinMode("absolute");
-      setFixedPin(null);
-      setAbsoluteTop(Math.max(0, galleryH - pHeight));
+      return;
     }
+
+    if (canPin && galleryRect.bottom > releaseLine) {
+      setPinMode("fixed");
+      setFixedPin({
+        top: stickTop,
+        left: columnRect.left,
+        width: columnRect.width,
+      });
+      return;
+    }
+
+    // Past the last image (or gallery too short to pin): park at column bottom
+    // so reviews scroll clear of the purchase panel.
+    setPinMode("absolute");
+    setFixedPin(null);
+    setAbsoluteTop(Math.max(0, colH - panH));
   }, []);
 
   useEffect(() => {
     let raf = 0;
-
     const schedule = () => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(updateScrollPin);
     };
 
+    let scrollTarget: HTMLElement | Window | null = null;
+
+    const bindScroll = () => {
+      if (scrollTarget) {
+        scrollTarget.removeEventListener("scroll", schedule);
+      }
+      scrollTarget = (getAppScrollIntersectionRoot() as HTMLElement | null) ?? window;
+      scrollTarget.addEventListener("scroll", schedule, { passive: true });
+    };
+
+    const onResize = () => {
+      bindScroll();
+      schedule();
+    };
+
+    bindScroll();
     schedule();
+    window.addEventListener("resize", onResize);
 
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
-
-    const mq = window.matchMedia("(min-width: 1024px)");
-    mq.addEventListener("change", schedule);
+    const mq = window.matchMedia("(min-width: 768px)");
+    mq.addEventListener("change", onResize);
 
     const ro = new ResizeObserver(schedule);
     if (galleryRef.current) ro.observe(galleryRef.current);
-    if (stickyContentRef.current) ro.observe(stickyContentRef.current);
+    if (panelRef.current) ro.observe(panelRef.current);
 
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
-      mq.removeEventListener("change", schedule);
+      if (scrollTarget) {
+        scrollTarget.removeEventListener("scroll", schedule);
+      }
+      window.removeEventListener("resize", onResize);
+      mq.removeEventListener("change", onResize);
       ro.disconnect();
     };
-  }, [updateScrollPin, images, activeTab]);
+  }, [updateScrollPin, images, activeTab, detailsTabHtml]);
 
   const detailTabs = (
     <div>
@@ -314,6 +355,14 @@ export function ProductHeaderLayout({
             { id: "details" as const, label: labels.details },
             { id: "shipping" as const, label: labels.shipping },
             { id: "returns" as const, label: labels.returns },
+            ...(catalogueTabContent
+              ? [
+                  {
+                    id: "catalogue" as const,
+                    label: labels.catalogue ?? "Catalogue",
+                  },
+                ]
+              : []),
           ] as const
         ).map((tab) => (
           <button
@@ -336,7 +385,7 @@ export function ProductHeaderLayout({
 
       {activeTab === "details" && detailsTabHtml && (
         <div
-          className="prose prose-sm max-w-none text-gray-700"
+          className="product-details-prose prose prose-sm max-w-none text-gray-700"
           dangerouslySetInnerHTML={{
             __html: DOMPurify.sanitize(detailsTabHtml, {
               ALLOWED_TAGS: [
@@ -361,6 +410,7 @@ export function ProductHeaderLayout({
           }}
         />
       )}
+      {activeTab === "catalogue" && catalogueTabContent}
       {activeTab === "shipping" && (
         <p className="text-gray-700 leading-relaxed">{shippingTabText}</p>
       )}
@@ -393,12 +443,19 @@ export function ProductHeaderLayout({
         </ol>
       </nav>
 
-      <h1 className="mb-5 text-2xl font-bold leading-snug text-brand-black md:mb-6 md:text-3xl lg:text-4xl">
+      <h1 className="mb-5 text-balance text-2xl font-bold leading-snug text-brand-black md:mb-6 md:text-3xl lg:text-4xl">
         {productName}
       </h1>
 
       <div className="mb-5 flex flex-col flex-wrap sm:flex-row sm:items-center md:mb-6">
-        <p className="text-xl font-bold text-brand-black md:text-2xl">{priceLabel}</p>
+        <div className="flex flex-col">
+          {originalPriceLabel ? (
+            <p className="text-sm text-brand-black/50 line-through md:text-base">
+              {originalPriceLabel}
+            </p>
+          ) : null}
+          <p className="text-xl font-bold text-brand-black md:text-2xl">{priceLabel}</p>
+        </div>
         {(ratingDisplay || reviewCount > 0) && (
           <>
             <div className="mx-4 hidden w-px self-stretch bg-gray-200 sm:block" />
@@ -416,7 +473,6 @@ export function ProductHeaderLayout({
       </div>
 
       <form
-        className="mb-0 lg:mb-0"
         onSubmit={(e) => {
           e.preventDefault();
           onAddToCart();
@@ -512,12 +568,17 @@ export function ProductHeaderLayout({
 
   return (
     <header className="w-full bg-white" data-product-header>
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:items-start lg:gap-12">
-        {/* Gallery — mobile carousel; desktop stacked scroll */}
-        <div className="lg:hidden">
+      {/*
+        Phone (< md): carousel + stacked purchase.
+        Tablet+ (md): two columns with image stack + locked purchase panel.
+        Desktop (lg+): same layout with wider gaps / padding.
+      */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:items-start md:gap-8 lg:gap-12">
+        <div className="md:hidden">
           <ProductMobileGalleryCarousel images={images} productName={productName} />
         </div>
-        <div ref={galleryRef} className="hidden space-y-4 sm:space-y-6 lg:block">
+
+        <div ref={galleryRef} className="hidden space-y-4 md:block md:space-y-5 lg:space-y-6">
           {images.length > 0 ? (
             images.map((src, index) => (
               <div
@@ -536,27 +597,39 @@ export function ProductHeaderLayout({
           )}
         </div>
 
-        {/* Purchase column: one pinned block while gallery scrolls, then normal page scroll */}
+        {/*
+          Single page scrollbar only. Right panel locks (fixed) while the image
+          stack scrolls, then parks at the column bottom (absolute) so further
+          main-page scroll walks through long product info — never an inner
+          overflow scrollbar, never covering reviews.
+        */}
         <div
           ref={purchaseColRef}
-          className="relative px-[5%] pb-20 pt-8 md:pt-12 lg:min-h-0 lg:self-start lg:px-0 lg:pb-20 lg:pt-20 lg:pl-12 xl:pl-20 lg:pr-[5vw]"
+          className={cn(
+            "relative px-[5%] pb-16 pt-6",
+            "md:px-0 md:pb-16 md:pt-10 md:pl-6 md:pr-[4%]",
+            "lg:pb-20 lg:pt-20 lg:pl-12 lg:pr-[5vw] xl:pl-20"
+          )}
           style={
-            galleryHeight > 0 ? ({ minHeight: galleryHeight } as React.CSSProperties) : undefined
+            columnHeight > 0
+              ? ({ minHeight: columnHeight } as React.CSSProperties)
+              : undefined
           }
         >
           {pinMode === "fixed" && panelHeight > 0 ? (
             <div
-              className="pointer-events-none hidden lg:block"
+              className="pointer-events-none hidden md:block"
               style={{ height: panelHeight }}
               aria-hidden
             />
           ) : null}
+
           <div
-            ref={stickyContentRef}
+            ref={panelRef}
             className={cn(
-              "max-w-md lg:bg-white",
-              pinMode === "fixed" && "lg:fixed lg:z-20",
-              pinMode === "absolute" && "lg:absolute lg:inset-x-0 lg:z-10"
+              "w-full max-w-md bg-white md:max-w-none lg:max-w-md",
+              pinMode === "fixed" && "md:fixed md:z-20",
+              pinMode === "absolute" && "md:absolute md:left-0 md:right-0 md:z-10"
             )}
             style={
               pinMode === "fixed" && fixedPin
@@ -571,7 +644,7 @@ export function ProductHeaderLayout({
             }
           >
             {purchasePanel}
-            <div className="mt-8 md:mt-10">{detailTabs}</div>
+            <div className="mt-8 md:mt-9 lg:mt-10">{detailTabs}</div>
           </div>
         </div>
       </div>

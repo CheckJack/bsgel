@@ -5,12 +5,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { XCircle } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
 
 interface RejectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (reason: string) => void;
+  onConfirm: (reason: string) => void | Promise<void>;
   postCaption?: string;
+  title?: string;
+  reasonLabel?: string;
+  placeholder?: string;
+  confirmLabel?: string;
+  confirmingLabel?: string;
+  helpText?: string;
+  emptyError?: string;
 }
 
 export function RejectionModal({
@@ -18,18 +26,29 @@ export function RejectionModal({
   onClose,
   onConfirm,
   postCaption,
+  title,
+  reasonLabel,
+  placeholder,
+  confirmLabel,
+  confirmingLabel,
+  helpText,
+  emptyError,
 }: RejectionModalProps) {
+  const { t } = useLanguage();
   const [rejectionReason, setRejectionReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showEmptyError, setShowEmptyError] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSubmit = async () => {
     if (!rejectionReason.trim()) {
+      setShowEmptyError(true);
       return;
     }
 
     setIsSubmitting(true);
+    setShowEmptyError(false);
     try {
       await onConfirm(rejectionReason.trim());
       setRejectionReason("");
@@ -40,6 +59,7 @@ export function RejectionModal({
 
   const handleCancel = () => {
     setRejectionReason("");
+    setShowEmptyError(false);
     onClose();
   };
 
@@ -62,13 +82,13 @@ export function RejectionModal({
               className="text-lg flex items-center gap-2 text-red-600 dark:text-red-400"
             >
               <XCircle className="h-5 w-5" aria-hidden="true" />
-              Reject Post
+              {title || t("admin.rejectionModal.title")}
             </CardTitle>
             <Button
               variant="ghost"
               size="icon"
               onClick={handleCancel}
-              aria-label="Close rejection modal"
+              aria-label={t("admin.rejectionModal.close")}
             >
               <XCircle className="h-4 w-4" />
             </Button>
@@ -90,13 +110,23 @@ export function RejectionModal({
               htmlFor="rejection-reason"
               className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300"
             >
-              What is incorrect? <span className="text-red-500" aria-label="required">*</span>
+              {reasonLabel || t("admin.rejectionModal.reasonLabel")}{" "}
+              <span className="text-red-500" aria-label="required">
+                *
+              </span>
             </label>
             <Textarea
               id="rejection-reason"
               value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="Please describe what is incorrect with this post..."
+              onChange={(e) => {
+                setRejectionReason(e.target.value);
+                if (showEmptyError && e.target.value.trim()) {
+                  setShowEmptyError(false);
+                }
+              }}
+              placeholder={
+                placeholder || t("admin.rejectionModal.reasonPlaceholder")
+              }
               rows={5}
               className="w-full"
               autoFocus
@@ -107,8 +137,14 @@ export function RejectionModal({
               id="rejection-reason-help"
               className="text-xs text-gray-500 dark:text-gray-400 mt-1"
             >
-              This feedback will be saved as review comments.
+              {helpText ||
+                "This feedback will be saved as review comments."}
             </p>
+            {showEmptyError && emptyError && (
+              <p className="text-xs text-red-600 dark:text-red-400 mt-1" role="alert">
+                {emptyError}
+              </p>
+            )}
           </div>
           <div className="flex gap-2 justify-end">
             <Button
@@ -116,7 +152,7 @@ export function RejectionModal({
               onClick={handleCancel}
               disabled={isSubmitting}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={handleSubmit}
@@ -124,7 +160,9 @@ export function RejectionModal({
               disabled={!rejectionReason.trim() || isSubmitting}
             >
               <XCircle className="h-4 w-4 mr-2" aria-hidden="true" />
-              {isSubmitting ? "Rejecting..." : "Confirm Rejection"}
+              {isSubmitting
+                ? confirmingLabel || t("admin.rejectionModal.rejecting")
+                : confirmLabel || t("admin.rejectionModal.confirm")}
             </Button>
           </div>
         </CardContent>
@@ -132,4 +170,3 @@ export function RejectionModal({
     </div>
   );
 }
-

@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, CheckCircle2, AlertCircle, Info, AlertTriangle } from "lucide-react";
+import { X, CheckCircle2, AlertCircle, Info, ShieldAlert, Ban } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
 
-export type ToastType = "success" | "error" | "info" | "warning";
+export type ToastType = "success" | "error" | "info" | "warning" | "notice";
 
 export interface Toast {
   id: string;
   message: string;
+  title?: string;
   type: ToastType;
   duration?: number;
 }
@@ -18,46 +20,104 @@ interface ToastProps {
 }
 
 function ToastComponent({ toast, onClose }: ToastProps) {
-  useEffect(() => {
-    if (toast.duration !== 0) {
-      const timer = setTimeout(() => {
-        onClose(toast.id);
-      }, toast.duration || 5000);
+  const { t } = useLanguage();
 
-      return () => clearTimeout(timer);
-    }
-  }, [toast.id, toast.duration, onClose]);
+  const isNotice = toast.type === "notice";
+  const isAssertive = toast.type === "error" || isNotice;
+  const role = isAssertive ? "alert" : "status";
+  const ariaLive = isAssertive ? "assertive" : "polite";
+
+  if (isNotice) {
+    return (
+      <div
+        role={role}
+        aria-live={ariaLive}
+        aria-atomic="true"
+        className="relative flex min-w-[300px] max-w-[420px] items-start gap-3.5 rounded-none border border-brand-black/10 bg-brand-white p-4 shadow-[0_12px_40px_rgba(0,0,0,0.12)]"
+      >
+        <div
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center bg-pink-900/[0.08]"
+          aria-hidden="true"
+        >
+          <Ban className="h-[18px] w-[18px] text-pink-900" strokeWidth={1.75} />
+        </div>
+        <div className="min-w-0 flex-1 pt-0.5">
+          {toast.title ? (
+            <>
+              <p className="font-header text-[11px] font-semibold uppercase tracking-[0.14em] text-pink-900">
+                {toast.title}
+              </p>
+              <p className="mt-2 font-header text-sm font-normal leading-relaxed text-brand-black/70">
+                {toast.message}
+              </p>
+            </>
+          ) : (
+            <p className="font-header text-sm font-medium leading-relaxed text-brand-black/85">
+              {toast.message}
+            </p>
+          )}
+        </div>
+        <button
+          onClick={() => onClose(toast.id)}
+          className="-mr-0.5 -mt-0.5 flex-shrink-0 p-0.5 text-brand-black/35 transition-colors hover:text-brand-black"
+          aria-label={t("toasts.closeNotification")}
+          type="button"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+    );
+  }
+
+  const type = toast.type as Exclude<ToastType, "notice">;
 
   const icons = {
-    success: <CheckCircle2 className="h-5 w-5" />,
-    error: <AlertCircle className="h-5 w-5" />,
-    warning: <AlertTriangle className="h-5 w-5" />,
-    info: <Info className="h-5 w-5" />,
+    success: <CheckCircle2 className="h-5 w-5 text-brand-champagne" strokeWidth={1.75} />,
+    error: <AlertCircle className="h-5 w-5 text-brand-champagne-dark" strokeWidth={1.75} />,
+    warning: <ShieldAlert className="h-5 w-5 text-brand-champagne" strokeWidth={1.75} />,
+    info: <Info className="h-5 w-5 text-brand-champagne" strokeWidth={1.75} />,
   };
 
   const styles = {
-    success: "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200",
-    error: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200",
-    warning: "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-200",
-    info: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200",
+    success:
+      "border-brand-champagne/25 bg-brand-white text-brand-black shadow-[0_12px_40px_rgba(0,0,0,0.12)]",
+    error:
+      "border-brand-champagne/30 bg-brand-white text-brand-black shadow-[0_12px_40px_rgba(0,0,0,0.12)]",
+    warning:
+      "border-brand-champagne/30 bg-brand-white text-brand-black shadow-[0_12px_40px_rgba(0,0,0,0.12)]",
+    info: "border-brand-champagne/25 bg-brand-white text-brand-black shadow-[0_12px_40px_rgba(0,0,0,0.12)]",
   };
-
-  const role = toast.type === "error" ? "alert" : "status";
-  const ariaLive = toast.type === "error" ? "assertive" : "polite";
 
   return (
     <div
       role={role}
       aria-live={ariaLive}
       aria-atomic="true"
-      className={`flex items-start gap-3 p-4 rounded-lg border shadow-lg min-w-[300px] max-w-[500px] ${styles[toast.type]}`}
+      className={`relative flex min-w-[300px] max-w-[420px] items-start gap-3 overflow-hidden rounded-none border p-4 ${styles[type]}`}
     >
-      <div className="flex-shrink-0 mt-0.5" aria-hidden="true">{icons[toast.type]}</div>
-      <div className="flex-1 text-sm font-medium">{toast.message}</div>
+      <div className="mt-0.5 flex-shrink-0" aria-hidden="true">
+        {icons[type]}
+      </div>
+      <div className="min-w-0 flex-1">
+        {toast.title ? (
+          <>
+            <p className="font-header text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-champagne-dark">
+              {toast.title}
+            </p>
+            <p className="mt-1.5 font-header text-sm font-normal leading-relaxed text-brand-black/75">
+              {toast.message}
+            </p>
+          </>
+        ) : (
+          <p className="font-header text-sm font-medium leading-relaxed text-brand-black/85">
+            {toast.message}
+          </p>
+        )}
+      </div>
       <button
         onClick={() => onClose(toast.id)}
-        className="flex-shrink-0 text-current opacity-70 hover:opacity-100 transition-opacity"
-        aria-label="Close notification"
+        className="flex-shrink-0 text-brand-black/40 transition-colors hover:text-brand-black"
+        aria-label={t("toasts.closeNotification")}
         type="button"
       >
         <X className="h-4 w-4" aria-hidden="true" />
@@ -92,7 +152,7 @@ export function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-20 right-4 z-[9999] flex flex-col gap-2">
+    <div className="fixed bottom-6 right-4 z-[9999] flex flex-col-reverse gap-2 max-sm:bottom-4 max-sm:left-4 max-sm:right-4">
       {toasts.map((toast) => (
         <ToastComponent key={toast.id} toast={toast} onClose={handleClose} />
       ))}
@@ -100,15 +160,20 @@ export function ToastContainer() {
   );
 }
 
-export function toast(message: string, type: ToastType = "info", duration?: number) {
+export function toast(
+  message: string,
+  type: ToastType = "info",
+  _duration?: number,
+  title?: string
+) {
   const event = new CustomEvent<Toast>("toast", {
     detail: {
       id: Math.random().toString(36).substring(7),
       message,
+      title,
       type,
-      duration,
+      duration: 0,
     },
   });
   window.dispatchEvent(event);
 }
-

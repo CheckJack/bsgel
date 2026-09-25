@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useLanguage } from "@/contexts/language-context";
 
 export default function AboutPage() {
-  const { t } = useLanguage();
+  const { t, tArray } = useLanguage();
 
   const slides = [
     {
@@ -34,7 +34,7 @@ export default function AboutPage() {
             <div className="relative overflow-hidden rounded-lg bg-gray-100">
               <Image
                 src="/elmien-about.jpg"
-                alt="Bio Sculpture specialist"
+                alt={t("about.specialistAlt")}
                 width={740}
                 height={1024}
                 className="h-full w-full object-cover"
@@ -45,44 +45,33 @@ export default function AboutPage() {
 
             <div>
               <h2 className="text-3xl sm:text-4xl font-light tracking-tight text-brand-black">
-                About Us
+                {t("about.title")}
               </h2>
               <p className="mt-4 text-base sm:text-lg font-light leading-relaxed text-brand-black whitespace-pre-line">
-                {`Desde a infancia, Elmien era fascinada por unhas bonitas. Esse fascinio tornou-se a sua paixao. Depois de concluir os seus estudos na CIDESCO Beauty Academy, Elmien abriu o seu primeiro salao. Sem conseguir encontrar produtos de cuidados de unhas premium que correspondessem aos seus padroes, continuou a sua formacao nos EUA, frequentando cursos em sistemas de unhas artificiais. Elmien concluiu que, se queria um produto de referencia que cumprisse todos os requisitos, teria de o desenvolver de raiz.
-
-O seu objetivo nao era apenas criar unhas bonitas, mas tambem promover a saude da unha natural. Ao consultar os melhores cientistas nas respetivas areas e ao aplicar as tecnologias mais avancadas disponiveis, nasceu o Bio Sculpture Gel. De um inicio humilde, com paixao, trabalho arduo e a fe de uma verdadeira pioneira, tornou-se hoje uma das principais solucoes de cuidados de unhas.`}
+                {t("about.elmienStory")}
               </p>
 
               <div className="mt-6 space-y-3">
                 <details className="group rounded-md border border-gray-200 bg-white p-4">
                   <summary className="cursor-pointer list-none text-sm sm:text-base font-medium text-brand-black">
-                    Ambito
+                    {t("about.scopeTitle")}
                   </summary>
                   <p className="mt-3 text-sm sm:text-base font-light leading-relaxed text-gray-700">
-                    A Bio Sculpture SA (Pty) Ltd concebe, desenvolve, fabrica e comercializa produtos de cuidado de unhas e beleza.
-                    Esforcamo-nos por manter um Sistema de Gestao da Qualidade alinhado com as normas ISO 9001:2015 e ISO 22716
-                    em todos os aspetos e fases das nossas operacoes. A Bio Sculpture assegura que os produtos, cosmeticos e equipa
-                    cumprem a ISO 9001:2015 e tambem as Boas Praticas de Fabrico (GMP) ISO 22716.
+                    {t("about.scopeBody")}
                   </p>
                 </details>
 
                 <details className="group rounded-md border border-gray-200 bg-white p-4">
                   <summary className="cursor-pointer list-none text-sm sm:text-base font-medium text-brand-black">
-                    Declaracao da Politica de Qualidade
+                    {t("about.qualityPolicyTitle")}
                   </summary>
                   <p className="mt-3 text-sm sm:text-base font-light leading-relaxed text-gray-700">
-                    PARA AUMENTAR A SATISFACAO DO CLIENTE, IREMOS:
+                    {t("about.qualityPolicyIntro")}
                   </p>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-sm sm:text-base font-light leading-relaxed text-gray-700">
-                    <li>Reforcar a especializacao da nossa equipa atraves de formacao periodica.</li>
-                    <li>Rever e melhorar continuamente os sistemas.</li>
-                    <li>Adotar principios de Gestao da Qualidade Total e melhorar processos, produtos e servicos.</li>
-                    <li>Fornecer produtos e servicos que cumpram ou superem os requisitos de qualidade dos clientes.</li>
-                    <li>Rever e atualizar os objetivos e os resultados alcancados.</li>
-                    <li>Comunicar a politica do Sistema de Gestao da Qualidade a todos os colaboradores e partes interessadas.</li>
-                    <li>Entregar produtos na quantidade certa e no prazo, sempre.</li>
-                    <li>Promover um ambiente seguro e saudavel.</li>
-                    <li>Comprometer-nos com o cumprimento de todos os regulamentos aplicaveis.</li>
+                    {tArray("about.qualityPolicyItems").map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
                   </ul>
                 </details>
               </div>
@@ -92,7 +81,7 @@ O seu objetivo nao era apenas criar unhas bonitas, mas tambem promover a saude d
           <div className="mt-10 flex justify-center">
             <Image
               src="/elmien-signature.webp"
-              alt="Assinatura Elmien"
+              alt={t("about.elmienSignatureAlt")}
               width={360}
               height={120}
               className="h-auto w-[320px] sm:w-[420px] md:w-[520px]"

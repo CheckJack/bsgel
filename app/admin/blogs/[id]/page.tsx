@@ -8,7 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Card, CardContent } from "@/components/ui/card";
-import { BlogImageUpload, imagePreviewToDataUrl, type ImagePreview } from "@/components/admin/blog-image-upload";
+import { BlogImageUpload } from "@/components/admin/blog-image-upload";
+import { useLanguage } from "@/contexts/language-context";
+import {
+  resolveBlogImageForSave,
+  type ImagePreview,
+} from "@/lib/blog-images";
+
+type BlogStatus = "DRAFT" | "PUBLISHED";
 
 interface Blog {
   id: string;
@@ -19,15 +26,12 @@ interface Blog {
   image: string | null;
   heroImage: string | null;
   author: string | null;
-  status: string;
+  status: BlogStatus;
   publishedAt: string | null;
-  assignedReviewerId?: string | null;
-  reviewedBy?: string | null;
-  reviewedAt?: string | null;
-  reviewComments?: string | null;
 }
 
 export default function EditBlogPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const params = useParams();
   const { data: session } = useSession();
@@ -40,52 +44,19 @@ export default function EditBlogPage() {
     excerpt: "",
     content: "",
     author: "",
-    status: "DRAFT" as "DRAFT" | "PUBLISHED" | "PENDING_REVIEW" | "APPROVED" | "REJECTED",
+    status: "DRAFT" as BlogStatus,
   });
   const [image, setImage] = useState<ImagePreview | null>(null);
   const [heroImage, setHeroImage] = useState<ImagePreview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
-  const [adminUsers, setAdminUsers] = useState<Array<{ id: string; name: string | null; email: string }>>([]);
-  const [isLoadingAdmins, setIsLoadingAdmins] = useState(false);
-  const [assignedReviewerId, setAssignedReviewerId] = useState<string>("");
-  const [reviewers, setReviewers] = useState<Record<string, { name: string | null; email: string }>>({});
 
   useEffect(() => {
     if (blogId) {
       fetchBlog();
     }
-    fetchAdminUsers();
   }, [blogId]);
-
-  // Fetch admin users for reviewer selection
-  const fetchAdminUsers = async () => {
-    try {
-      setIsLoadingAdmins(true);
-      const res = await fetch("/api/users?role=ADMIN");
-      if (res.ok) {
-        const users = await res.json();
-        const usersMap = users.map((user: { id: string; name: string | null; email: string }) => ({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        }));
-        setAdminUsers(usersMap);
-        
-        // Create a map for quick reviewer lookup
-        const reviewerMap: Record<string, { name: string | null; email: string }> = {};
-        usersMap.forEach((user: { id: string; name: string | null; email: string }) => {
-          reviewerMap[user.id] = { name: user.name, email: user.email };
-        });
-        setReviewers(reviewerMap);
-      }
-    } catch (error) {
-      console.error("Failed to fetch admin users:", error);
-    } finally {
-      setIsLoadingAdmins(false);
-    }
-  };
 
   const fetchBlog = async () => {
     try {
@@ -99,7 +70,7 @@ export default function EditBlogPage() {
           excerpt: data.excerpt || "",
           content: data.content || "",
           author: data.author || "",
-          status: data.status || "DRAFT",
+          status: data.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT",
         });
         if (data.image) {
           setImage({ url: data.image });
@@ -107,15 +78,12 @@ export default function EditBlogPage() {
         if (data.heroImage) {
           setHeroImage({ url: data.heroImage });
         }
-        if (data.assignedReviewerId) {
-          setAssignedReviewerId(data.assignedReviewerId);
-        }
       } else {
-        setError("Blog post not found");
+        setError(t("admin.blogs.notFound"));
       }
-    } catch (error) {
-      console.error("Failed to fetch blog:", error);
-      setError("Failed to load blog post");
+    } catch (fetchError) {
+      console.error("Failed to fetch blog:", fetchError);
+      setError(t("admin.blogs.loadFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -125,8 +93,8 @@ export default function EditBlogPage() {
     e.preventDefault();
     setError("");
 
-    if (!formData.title || !formData.slug) {
-      setError("Title and slug are required");
+    if (!formData.title.trim() || !formData.slug.trim()) {
+      setError(t("admin.blogs.titleSlugRequired"));
       return;
     }
 
@@ -134,25 +102,26 @@ export default function EditBlogPage() {
 
     try {
       const [imageUrl, heroImageUrl] = await Promise.all([
-        imagePreviewToDataUrl(image),
-        imagePreviewToDataUrl(heroImage),
+        resolveBlogImageForSave(image, blog?.image),
+        resolveBlogImageForSave(heroImage, blog?.heroImage),
       ]);
 
-      const blogData = {
-        title: formData.title,
-        slug: formData.slug,
+      const blogData: Record<string, unknown> = {
+        title: formData.title.trim(),
+        slug: formData.slug.trim(),
         excerpt: formData.excerpt || null,
         content: formData.content || "",
-        image: imageUrl,
-        heroImage: heroImageUrl,
         author: formData.author || null,
         status: formData.status,
-        publishedAt:
-          formData.status === "PUBLISHED" && !blog?.publishedAt
-            ? new Date().toISOString()
-            : blog?.publishedAt || null,
-        assignedReviewerId: formData.status === "PENDING_REVIEW" && assignedReviewerId ? assignedReviewerId : (formData.status !== "PENDING_REVIEW" ? null : blog?.assignedReviewerId || null),
       };
+
+      if (imageUrl !== undefined) {
+        blogData.image = imageUrl;
+      }
+
+      if (heroImageUrl !== undefined) {
+        blogData.heroImage = heroImageUrl;
+      }
 
       const res = await fetch(`/api/blogs/${blogId}`, {
         method: "PATCH",
@@ -160,15 +129,20 @@ export default function EditBlogPage() {
         body: JSON.stringify(blogData),
       });
 
+      const data = await res.json().catch(() => ({}));
+
       if (res.ok) {
         router.push("/admin/blogs");
       } else {
-        const data = await res.json();
-        setError(data.error || "Failed to update blog post");
+        setError(data.error || t("admin.blogs.updateFailed"));
       }
-    } catch (error) {
-      console.error("Failed to update blog:", error);
-      setError("An error occurred while updating the blog post. Please try again.");
+    } catch (saveError) {
+      console.error("Failed to update blog:", saveError);
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "An error occurred while updating the blog post. Please try again."
+      );
     } finally {
       setIsSaving(false);
     }
@@ -190,7 +164,7 @@ export default function EditBlogPage() {
     return (
       <div className="p-6">
         <div className="text-center py-12">
-          <p className="text-gray-600 dark:text-gray-400 mb-4">{error || "Blog post not found"}</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error || t("admin.blogs.notFound")}</p>
           <Button onClick={() => router.push("/admin/blogs")}>
             Back to Blogs
           </Button>
@@ -201,9 +175,8 @@ export default function EditBlogPage() {
 
   return (
     <div className="p-6 min-h-screen">
-      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Edit Blog Post</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("admin.blogs.editTitle")}</h1>
         <div className="text-sm text-gray-600 dark:text-gray-400">
           Dashboard <span className="mx-2">&gt;</span> Pages{" "}
           <span className="mx-2">&gt;</span> Blog Posts <span className="mx-2">&gt;</span> Edit
@@ -217,36 +190,25 @@ export default function EditBlogPage() {
       )}
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Main Content */}
         <div className="lg:col-span-2 space-y-6">
           <Card className="bg-white dark:bg-gray-800">
             <CardContent className="p-6 space-y-6">
-              {/* Title */}
               <div>
-                <label
-                  htmlFor="title"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
+                <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Title <span className="text-red-500">*</span>
                 </label>
                 <Input
                   id="title"
-                  placeholder="Enter blog post title"
+                  placeholder={t("admin.blogs.titlePlaceholder")}
                   value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   required
                   className="w-full"
                 />
               </div>
 
-              {/* Slug */}
               <div>
-                <label
-                  htmlFor="slug"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
+                <label htmlFor="slug" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Slug <span className="text-red-500">*</span>
                 </label>
                 <Input
@@ -254,31 +216,26 @@ export default function EditBlogPage() {
                   placeholder="blog-post-slug"
                   value={formData.slug}
                   onChange={(e) =>
-                    setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })
+                    setFormData({
+                      ...formData,
+                      slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""),
+                    })
                   }
                   required
                   className="w-full"
                 />
-                <p className="mt-1 text-xs text-gray-500">
-                  URL-friendly version of the title
-                </p>
+                <p className="mt-1 text-xs text-gray-500">URL-friendly version of the title</p>
               </div>
 
-              {/* Excerpt */}
               <div>
-                <label
-                  htmlFor="excerpt"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
+                <label htmlFor="excerpt" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Excerpt
                 </label>
                 <Textarea
                   id="excerpt"
-                  placeholder="Short description of the blog post"
+                  placeholder={t("admin.blogs.excerptPlaceholder")}
                   value={formData.excerpt}
-                  onChange={(e) =>
-                    setFormData({ ...formData, excerpt: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
                   rows={3}
                   className="w-full"
                 />
@@ -287,43 +244,30 @@ export default function EditBlogPage() {
                 </p>
               </div>
 
-              {/* Content */}
               <div>
-                <label
-                  htmlFor="content"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
+                <label htmlFor="content" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Content <span className="text-red-500">*</span>
                 </label>
                 <RichTextEditor
                   content={formData.content}
                   onChange={(html) => setFormData({ ...formData, content: html })}
                   placeholder="Write your blog post content here... Use the toolbar to format your text."
-                  imageUploadHint="Recommended size: 1200 × 675 px (16:9) for inline images in the post body."
+                  imageUploadHint="Recommended size: 1200 × 675 px (16:9). Images are uploaded to the server (max 8 MB)."
                 />
-                <p className="mt-2 text-xs text-gray-500">
-                  Use the toolbar above to format your content with headings, lists, links, images, and more.
-                </p>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Right Column - Metadata */}
         <div className="space-y-6">
-          {/* Publish Settings */}
           <Card className="bg-white dark:bg-gray-800">
             <CardContent className="p-6 space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
                 Publish Settings
               </h3>
 
-              {/* Status */}
               <div>
-                <label
-                  htmlFor="status"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
+                <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Status
                 </label>
                 <select
@@ -331,89 +275,32 @@ export default function EditBlogPage() {
                   className="flex h-10 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={formData.status}
                   onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value as "DRAFT" | "PUBLISHED" | "PENDING_REVIEW" | "APPROVED" | "REJECTED" })
+                    setFormData({ ...formData, status: e.target.value as BlogStatus })
                   }
                 >
                   <option value="DRAFT">Draft</option>
-                  <option value="PENDING_REVIEW">Send to Review</option>
-                  <option value="APPROVED">Approved</option>
-                  <option value="REJECTED">Rejected</option>
                   <option value="PUBLISHED">Published</option>
                 </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Only published posts appear on the BioNews page.
+                </p>
               </div>
 
-              {/* Reviewer Selection - Only show when status is PENDING_REVIEW */}
-              {formData.status === "PENDING_REVIEW" && (
-                <div>
-                  <label
-                    htmlFor="reviewer"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                  >
-                    Assign Reviewer <span className="text-red-500">*</span>
-                  </label>
-                  {isLoadingAdmins ? (
-                    <div className="text-sm text-gray-500 dark:text-gray-400">Loading admins...</div>
-                  ) : (
-                    <select
-                      id="reviewer"
-                      className="flex h-10 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={assignedReviewerId}
-                      onChange={(e) => setAssignedReviewerId(e.target.value)}
-                      required={formData.status === "PENDING_REVIEW"}
-                    >
-                      <option value="">Select an admin reviewer</option>
-                      {adminUsers.map((admin) => (
-                        <option key={admin.id} value={admin.id}>
-                          {admin.name || admin.email}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                  <p className="mt-1 text-xs text-gray-500">
-                    Select an admin user to review this blog post
-                  </p>
-                </div>
+              {blog.publishedAt && (
+                <p className="text-xs text-gray-500">
+                  First published: {new Date(blog.publishedAt).toLocaleString()}
+                </p>
               )}
 
-              {/* Review Information - Show if blog has been reviewed */}
-              {blog && (blog.reviewedBy || blog.reviewComments) && (
-                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg space-y-2">
-                  <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Review Information</h4>
-                  {blog.reviewedBy && reviewers[blog.reviewedBy] && (
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      Reviewed by: {reviewers[blog.reviewedBy].name || reviewers[blog.reviewedBy].email}
-                      {blog.reviewedAt && ` on ${new Date(blog.reviewedAt).toLocaleDateString()}`}
-                    </p>
-                  )}
-                  {blog.reviewComments && (
-                    <div>
-                      <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Review Comments:</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{blog.reviewComments}</p>
-                    </div>
-                  )}
-                  {blog.assignedReviewerId && reviewers[blog.assignedReviewerId] && (
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      Assigned to: {reviewers[blog.assignedReviewerId].name || reviewers[blog.assignedReviewerId].email}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Author */}
               <div>
-                <label
-                  htmlFor="author"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
+                <label htmlFor="author" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Author
                 </label>
                 <Input
                   id="author"
-                  placeholder="Author name"
+                  placeholder={t("admin.blogs.authorPlaceholder")}
                   value={formData.author}
-                  onChange={(e) =>
-                    setFormData({ ...formData, author: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, author: e.target.value })}
                   className="w-full"
                 />
               </div>
@@ -421,34 +308,31 @@ export default function EditBlogPage() {
           </Card>
 
           <BlogImageUpload
-            title="Thumbnail / Featured Image"
-            description="Displayed in blog listings, related posts, and admin previews."
+            title={t("admin.blogs.thumbnail")}
+            description={t("admin.blogs.thumbnailHint")}
             image={image}
             onImageChange={setImage}
             inputId="blog-thumbnail-image-edit"
           />
 
           <BlogImageUpload
-            title="Hero Photo"
-            description="Displayed as the full-width banner at the top of the blog post."
+            title={t("admin.blogs.heroPhoto")}
+            description="Shown as the full-width banner at the top of the article page only."
             image={heroImage}
             onImageChange={setHeroImage}
             inputId="blog-hero-image-edit"
           />
 
-          {/* Action Buttons */}
           <div className="flex flex-col gap-3">
             <Button
               type="submit"
-              disabled={isSaving || (formData.status === "PENDING_REVIEW" && !assignedReviewerId)}
+              disabled={isSaving}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium"
             >
               {isSaving
                 ? "Saving..."
                 : formData.status === "PUBLISHED"
                 ? "Update & Publish"
-                : formData.status === "PENDING_REVIEW"
-                ? "Send to Review"
                 : "Save Changes"}
             </Button>
             <Button
@@ -466,4 +350,3 @@ export default function EditBlogPage() {
     </div>
   );
 }
-

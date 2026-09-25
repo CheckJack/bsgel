@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 import { MessageCircle, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/language-context";
 
 interface ChatMessage {
@@ -164,16 +163,16 @@ export default function CustomerMessagesPage() {
   const unreadResponses = messagesArray.filter((m) => m.adminResponse).length;
 
   return (
-    <div className="space-y-6">
+    <div className="flex min-h-0 flex-1 flex-col gap-5">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex shrink-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+          <h1 className="text-3xl font-semibold tracking-tight text-brand-black">
             {t("clientPanel.messages.title")}
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p className="mt-1 text-sm text-brand-black/50">
             {unreadResponses > 0 && (
-              <span className="text-blue-600 dark:text-blue-400 font-medium">
+              <span className="font-medium text-brand-champagne">
                 {t("clientPanel.messages.newResponses", { count: String(unreadResponses), plural: unreadResponses !== 1 ? "s" : "" })}
               </span>
             )}
@@ -187,30 +186,30 @@ export default function CustomerMessagesPage() {
             setSelectedMessage(null);
             setReplyText("");
           }}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="rounded-none bg-brand-black text-brand-white hover:bg-brand-black/90"
         >
-          <Send className="h-4 w-4 mr-2" />
+          <Send className="mr-2 h-4 w-4" />
           {t("clientPanel.messages.newMessage")}
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-5 lg:grid-cols-3 lg:h-[calc(100dvh-var(--site-header-height,113px)-11.5rem)] lg:max-h-[calc(100dvh-var(--site-header-height,113px)-11.5rem)] lg:overflow-hidden">
         {/* Messages List */}
-        <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-            <h2 className="font-semibold text-gray-900 dark:text-gray-100">
+        <div className="flex min-h-0 flex-col overflow-hidden border border-[#e8e4de] bg-white lg:col-span-1">
+          <div className="shrink-0 border-b border-[#e8e4de] bg-[#faf9f7] px-4 py-3">
+            <h2 className="text-[11px] font-medium uppercase tracking-[0.16em] text-brand-champagne">
               {t("clientPanel.messages.yourMessages", { count: String(messagesArray.length) })}
             </h2>
           </div>
-          <div className="overflow-y-auto max-h-[600px]">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             {messagesArray.length === 0 ? (
-              <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <div className="p-8 text-center text-brand-black/45">
+                <MessageCircle className="mx-auto mb-4 h-10 w-10 opacity-40" />
                 <p>{t("clientPanel.messages.noMessagesYet")}</p>
-                <p className="text-sm mt-2">{t("clientPanel.messages.startConversation")}</p>
+                <p className="mt-2 text-sm">{t("clientPanel.messages.startConversation")}</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              <div className="divide-y divide-[#eee8e0]">
                 {messagesArray.map((message) => (
                   <button
                     key={message.id}
@@ -219,33 +218,33 @@ export default function CustomerMessagesPage() {
                       setShowNewMessageForm(false);
                       setReplyText("");
                     }}
-                    className={`w-full text-left p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors min-h-[100px] flex flex-col ${
+                    className={`flex min-h-[100px] w-full flex-col p-4 text-left transition-colors hover:bg-[#faf9f7] ${
                       selectedMessage?.id === message.id
-                        ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-600"
+                        ? "border-l-2 border-brand-champagne bg-[#faf9f7]"
                         : ""
-                    } ${message.adminResponse && !message.readByAdmin ? "bg-yellow-50 dark:bg-yellow-900/10" : ""}`}
+                    } ${message.adminResponse && !message.readByAdmin ? "bg-[#faf9f7]" : ""}`}
                   >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                    <div className="mb-2 flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-brand-black">
                           {formatTime(message.createdAt)}
                         </p>
                       </div>
                       {message.adminResponse ? (
-                        <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded flex-shrink-0">
+                        <span className="flex-shrink-0 border border-brand-champagne/30 bg-white px-2 py-0.5 text-[10px] uppercase tracking-wider text-brand-champagne">
                           {t("clientPanel.messages.replied")}
                         </span>
                       ) : (
-                        <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-1 rounded flex-shrink-0">
+                        <span className="flex-shrink-0 border border-[#e8e4de] bg-white px-2 py-0.5 text-[10px] uppercase tracking-wider text-brand-black/45">
                           {t("clientPanel.messages.pending")}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2 mb-2 flex-1">
+                    <p className="mb-2 line-clamp-2 flex-1 text-sm text-brand-black/70">
                       {message.message}
                     </p>
                     {message.adminResponse && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 italic line-clamp-1">
+                      <p className="line-clamp-1 text-xs italic text-brand-black/40">
                         {t("clientPanel.messages.adminResponse")}: {message.adminResponse}
                       </p>
                     )}
@@ -257,7 +256,7 @@ export default function CustomerMessagesPage() {
         </div>
 
         {/* Message Detail & Response */}
-        <div className="lg:col-span-2 flex h-[min(600px,calc(100dvh-12rem))] min-h-[320px] flex-col overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+        <div className="flex min-h-[280px] flex-col overflow-hidden border border-[#e8e4de] bg-white lg:col-span-2 lg:min-h-0">
           {showNewMessageForm ? (
             <div className="flex flex-col h-full min-h-0">
               <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
@@ -291,7 +290,7 @@ export default function CustomerMessagesPage() {
                     <Button
                       type="submit"
                       disabled={!newMessageText.trim() || isSending}
-                      className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                      className="bg-brand-black text-brand-white hover:bg-brand-black/90 flex items-center gap-2"
                     >
                       {isSending ? (
                         <>
@@ -425,7 +424,7 @@ export default function CustomerMessagesPage() {
                     <Button
                       type="submit"
                       disabled={!replyText.trim() || isSending}
-                      className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                      className="bg-brand-black text-brand-white hover:bg-brand-black/90 flex items-center gap-2"
                     >
                       {isSending ? (
                         <>
@@ -450,11 +449,11 @@ export default function CustomerMessagesPage() {
               </div>
             </div>
           ) : (
-            <div className="flex h-[min(600px,calc(100dvh-12rem))] min-h-[320px] items-center justify-center text-gray-500 dark:text-gray-400">
+            <div className="flex min-h-0 flex-1 items-center justify-center text-brand-black/45">
               <div className="text-center">
-                <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                <MessageCircle className="mx-auto mb-4 h-12 w-12 opacity-40" />
                 <p>{t("clientPanel.messages.selectMessage")}</p>
-                <p className="text-sm mt-2">{t("clientPanel.messages.orCreateNew")}</p>
+                <p className="mt-2 text-sm">{t("clientPanel.messages.orCreateNew")}</p>
               </div>
             </div>
           )}

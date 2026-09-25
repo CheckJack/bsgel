@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
+import { useLanguage } from "@/contexts/language-context";
 import { FileDown, FileText, Image as ImageIcon, Video, File, Loader2 } from "lucide-react";
 
 interface Resource {
@@ -21,6 +22,7 @@ interface Resource {
 export default function ResourcesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { t } = useLanguage();
   const [resources, setResources] = useState<Resource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pdf" | "image" | "video" | "document">("all");
@@ -34,7 +36,7 @@ export default function ResourcesPage() {
       const isPendingCertification = certification === "PROFESSIONAL_NON_CERTIFIED";
       
       if (isPendingCertification) {
-        router.push("/dashboard");
+        router.push("/dashboard/orders");
         return;
       }
       
@@ -72,12 +74,12 @@ export default function ResourcesPage() {
       } else {
         const error = await res.json();
         console.error("Failed to fetch resources:", error);
-        toast(error.error || "Failed to load resources", "error");
+        toast(error.error || t("clientPanel.resources.loadFailed"), "error");
         setResources([]);
       }
     } catch (error) {
       console.error("Failed to fetch resources:", error);
-      toast("Failed to load resources. Please try again.", "error");
+      toast(t("clientPanel.resources.loadFailedRetry"), "error");
       setResources([]);
     } finally {
       setIsLoading(false);

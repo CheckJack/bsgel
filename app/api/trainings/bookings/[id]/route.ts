@@ -123,6 +123,9 @@ export async function PATCH(
         )
       }
       updateData.status = status
+      if (status === "COMPLETED" && !existing.completedAt) {
+        updateData.completedAt = new Date()
+      }
     }
 
     if (notes !== undefined) {

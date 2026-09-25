@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { normalizeOptionalHttpUrl } from "@/lib/salon-social-url";
+import { persistSalonMediaFields } from "@/lib/salons/persist-media";
 
 export async function GET(request: Request) {
   try {
@@ -293,9 +294,35 @@ export async function POST(req: Request) {
       userId: typeof salonData.userId,
     });
 
-    const salon = await db.salon.create({
+    let salon = await db.salon.create({
       data: salonData,
     });
+
+    // Move any inline base64 media to disk (keeps salon row; only URL fields change)
+    try {
+      const persisted = await persistSalonMediaFields({
+        salonId: salon.id,
+        image: salon.image,
+        logo: salon.logo,
+        images: salon.images,
+      });
+      const needsUpdate =
+        persisted.image !== salon.image ||
+        persisted.logo !== salon.logo ||
+        JSON.stringify(persisted.images) !== JSON.stringify(salon.images);
+      if (needsUpdate) {
+        salon = await db.salon.update({
+          where: { id: salon.id },
+          data: {
+            image: persisted.image ?? null,
+            logo: persisted.logo ?? null,
+            images: persisted.images ?? [],
+          },
+        });
+      }
+    } catch (mediaErr) {
+      console.error("Failed to persist salon media to disk:", mediaErr);
+    }
 
     return NextResponse.json(salon, { status: 201 });
   } catch (error: any) {

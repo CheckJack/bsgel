@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { GeminiHeroBadge } from "@/components/layout/category-hero-badge";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
@@ -14,6 +13,7 @@ import { Pagination } from "@/components/ui/pagination";
 
 interface Product {
   id: string;
+  slug?: string;
   name: string;
   description: string | null;
   price: string;
@@ -80,7 +80,6 @@ export default function GeminiPage() {
     <>
       <section className="relative h-[36vh] w-full overflow-hidden md:h-[44vh]">
         <GeminiHeroBadge />
-        <Image src="/gemini-hero.svg" alt={t("nav.shopMenu.gemini")} fill className="object-cover md:hidden" priority unoptimized />
         <video
           autoPlay
           loop
@@ -88,7 +87,7 @@ export default function GeminiPage() {
           playsInline
           preload="auto"
           aria-label={t("nav.shopMenu.gemini")}
-          className="absolute inset-0 hidden h-full w-full object-cover md:block"
+          className="absolute inset-0 h-full w-full object-cover"
         >
           <source src="/gemini-hero.mp4" type="video/mp4" />
         </video>
@@ -121,8 +120,10 @@ export default function GeminiPage() {
                   <ProductCard
                     key={product.id}
                     id={product.id}
+                    slug={product.slug}
                     name={product.name}
                     price={product.price}
+                    salePrice={(product as any).salePrice}
                     image={product.image}
                     images={product.images}
                     featured={product.featured}

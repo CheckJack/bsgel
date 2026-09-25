@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
+import { useLanguage } from "@/contexts/language-context";
 import {
   Search,
   Plus,
@@ -26,6 +27,7 @@ interface TrainingProgram {
   image: string | null;
   displayOrder: number;
   isActive: boolean;
+  openBooking?: boolean;
   upcomingSessions: number;
   totalBookings: number;
   includedProducts?: Array<{
@@ -40,6 +42,7 @@ interface TrainingProgram {
 }
 
 export default function AdminTrainingsPage() {
+  const { t } = useLanguage();
   const [programs, setPrograms] = useState<TrainingProgram[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -80,12 +83,12 @@ export default function AdminTrainingsPage() {
         setPrograms(filtered);
       } else {
         const errorData = await res.json();
-        toast(errorData.error || "Failed to fetch training programs", "error");
+        toast(errorData.error || t("admin.trainings.fetchProgramsFailed"), "error");
         setPrograms([]);
       }
     } catch (error) {
       console.error("Failed to fetch training programs:", error);
-      toast("Failed to fetch training programs. Please try again.", "error");
+      toast(t("admin.trainings.fetchProgramsFailedRetry"), "error");
       setPrograms([]);
     } finally {
       setIsLoading(false);
@@ -106,17 +109,14 @@ export default function AdminTrainingsPage() {
         setPrograms((prev) =>
           prev.map((p) => (p.id === id ? { ...p, isActive: updated.isActive } : p))
         );
-        toast(
-          `Training program ${!currentStatus ? "activated" : "deactivated"} successfully`,
-          "success"
-        );
+        toast(!currentStatus ? t("admin.trainings.programActivated") : t("admin.trainings.programDeactivated"), "success");
       } else {
         const data = await res.json();
-        toast(data.error || "Failed to update status", "error");
+        toast(data.error || t("admin.trainings.updateStatusFailed"), "error");
       }
     } catch (error) {
       console.error("Failed to toggle status:", error);
-      toast("Failed to update status. Please try again.", "error");
+      toast(t("common.errorOccurred"), "error");
     } finally {
       setTogglingStatus(null);
     }
@@ -138,15 +138,15 @@ export default function AdminTrainingsPage() {
       });
 
       if (res.ok) {
-        toast("Training program deleted successfully", "success");
+        toast(t("admin.trainings.deleteProgramSuccess"), "success");
         fetchPrograms();
       } else {
         const data = await res.json();
-        toast(data.error || "Failed to delete training program", "error");
+        toast(data.error || t("admin.trainings.deleteProgramFailed"), "error");
       }
     } catch (error) {
       console.error("Failed to delete training program:", error);
-      toast("Failed to delete training program. Please try again.", "error");
+      toast(t("admin.trainings.programDeleteFailedRetry"), "error");
     } finally {
       setDeletingId(null);
     }
@@ -173,14 +173,14 @@ export default function AdminTrainingsPage() {
         body: JSON.stringify({ orderedIds }),
       });
       if (!res.ok) {
-        toast("Failed to update order", "error");
+        toast(t("admin.trainings.orderFailed"), "error");
         fetchPrograms();
         return;
       }
-      toast("Program order updated", "success");
+      toast(t("admin.trainings.orderUpdated"), "success");
     } catch (error) {
       console.error("Failed to reorder programs:", error);
-      toast("Failed to update order", "error");
+      toast(t("admin.trainings.orderFailed"), "error");
       fetchPrograms();
     }
   };
@@ -198,9 +198,7 @@ export default function AdminTrainingsPage() {
     <div>
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-          Training Programs
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("admin.trainings.title")}</h1>
         <div className="text-sm text-gray-600 dark:text-gray-400">
           Dashboard <span className="mx-2">&gt;</span> Trainings{" "}
           <span className="mx-2">&gt;</span> Programs
@@ -217,7 +215,7 @@ export default function AdminTrainingsPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <input
                   type="text"
-                  placeholder="Search training programs..."
+                  placeholder={t("admin.trainings.searchPrograms")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-500 dark:placeholder:text-gray-400"
@@ -270,8 +268,8 @@ export default function AdminTrainingsPage() {
                 </h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
                   {debouncedSearchQuery
-                    ? "Try adjusting your search"
-                    : "Get started by creating your first training program"}
+                    ? t("admin.trainings.adjustSearch")
+                    : t("admin.trainings.emptyPrograms")}
                 </p>
                 {!debouncedSearchQuery && (
                   <Link href="/admin/trainings/new">
@@ -357,6 +355,11 @@ export default function AdminTrainingsPage() {
                             <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">
                               {program.title}
                             </p>
+                            {program.openBooking && (
+                              <span className="mt-1 inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
+                                {t("admin.trainings.openBookingBadge")}
+                              </span>
+                            )}
                             {program.description && (
                               <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs mt-1">
                                 {program.description}
@@ -409,8 +412,8 @@ export default function AdminTrainingsPage() {
                             } ${togglingStatus === program.id ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                             title={
                               program.isActive
-                                ? "Click to deactivate"
-                                : "Click to activate"
+                                ? t("admin.trainings.clickDeactivate")
+                                : t("admin.trainings.clickActivate")
                             }
                           >
                             <span
@@ -426,7 +429,7 @@ export default function AdminTrainingsPage() {
                                 : "text-gray-600 dark:text-gray-400"
                             }`}
                           >
-                            {program.isActive ? "Active" : "Inactive"}
+                            {program.isActive ? t("admin.trainings.active") : t("admin.trainings.inactive")}
                           </span>
                         </div>
                       </td>

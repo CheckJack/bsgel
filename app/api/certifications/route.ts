@@ -48,6 +48,11 @@ export async function GET(req: Request) {
       where.isActive = isActive === "true"
     }
 
+    // Public/registration lists never expose system certifications (Final Client)
+    if (isPublicActiveRequest || searchParams.get("assignable") === "true") {
+      where.isSystem = false
+    }
+
     // Build orderBy clause
     const orderBy: any = {}
     if (sortField === "name") {
@@ -159,6 +164,7 @@ export async function GET(req: Request) {
       name: cert.name,
       description: cert.description,
       isActive: cert.isActive,
+      isSystem: cert.isSystem,
       categories: cert.certificationCategories.map((cc) => ({
         id: cc.category.id,
         name: cc.category.name,
@@ -339,6 +345,7 @@ export async function POST(req: Request) {
       name: certification.name,
       description: certification.description,
       isActive: certification.isActive,
+      isSystem: certification.isSystem,
       categories: certification.certificationCategories.map((cc) => ({
         id: cc.category.id,
         name: cc.category.name,

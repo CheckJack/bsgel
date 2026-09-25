@@ -11,6 +11,7 @@ import {
   getCartSubtotal,
   isCartEmpty,
 } from "@/lib/cart-training"
+import { saveCheckoutDetailsToUser } from "@/lib/checkout/save-checkout-profile"
 
 export async function POST(req: Request) {
   try {
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    const { shippingAddress, postalCode, couponCode, paymentMode, shippingStructured } = body
+    const { shippingAddress, postalCode, couponCode, paymentMode, shippingStructured, billingNif, billingAddress } = body
     const useKlarna = paymentMode === "klarna"
 
     // Validate input
@@ -222,6 +223,16 @@ export async function POST(req: Request) {
 
     const shopPaymentMethodMeta = useKlarna ? "STRIPE_KLARNA" : "STRIPE_CARD"
 
+    await saveCheckoutDetailsToUser(session.user.id, {
+      structured:
+        shippingStructured && typeof shippingStructured === "object"
+          ? shippingStructured
+          : null,
+      shippingAddressRaw: typeof shippingAddress === "string" ? shippingAddress : null,
+      billingNif: typeof billingNif === "string" ? billingNif : undefined,
+      billingAddress: typeof billingAddress === "string" ? billingAddress : undefined,
+    })
+
     const intentCreateParams: Parameters<typeof stripe.paymentIntents.create>[0] = {
       amount: Math.round(total * 100),
       currency: "eur",
@@ -269,8 +280,20 @@ export async function POST(req: Request) {
     })
   } catch (error) {
     console.error("Failed to create payment intent:", error)
+    const stripeMessage =
+      error && typeof error === "object" && "message" in error
+        ? String((error as { message?: string }).message || "")
+        : ""
+    const isAuthError =
+      stripeMessage.toLowerCase().includes("invalid api key") ||
+      (error && typeof error === "object" && "type" in error && (error as { type?: string }).type === "StripeAuthenticationError")
+
     return NextResponse.json(
-      { error: "Failed to create payment intent" },
+      {
+        error: isAuthError
+          ? "Stripe is not configured. Check STRIPE_SECRET_KEY."
+          : stripeMessage || "Failed to create payment intent",
+      },
       { status: 500 }
     )
   }

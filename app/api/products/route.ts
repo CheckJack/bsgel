@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
+import { Prisma } from "@prisma/client"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { logAdminAction, extractRequestInfo } from "@/lib/admin-logger"
-import { PRODUCT_LIST_SELECT, attachReviewStats } from "@/lib/products/list-select"
-import { sanitizeProductList } from "@/lib/products/list-images"
+import { persistProductMediaFields } from "@/lib/products/persist-media"
+import { getProductList } from "@/lib/products/get-product-list"
+import { ensureUniqueProductSlug } from "@/lib/products/resolve"
 
 export async function GET(req: Request) {
   try {
@@ -19,428 +21,38 @@ export async function GET(req: Request) {
     const sortBy = searchParams.get("sortBy") || "newest"
     const pageParam = searchParams.get("page")
     const limitParam = searchParams.get("limit")
-    
-    // Always use pagination with reasonable defaults to prevent loading all products
-    const page = pageParam ? parseInt(pageParam) : 1
-    const limit = limitParam ? parseInt(limitParam) : 12
-    const usePagination = true // Always use pagination for performance
-
-    const where: any = {}
-    const normalizedSearch = search?.trim() || ""
-    const normalizedSearchLower = normalizedSearch.toLowerCase()
-    const compactSearch = normalizedSearchLower.replace(/\s+/g, "")
-    const searchTerms = normalizedSearch
-      .split(/\s+/)
-      .map((term) => term.trim())
-      .filter((term) => term.length >= 2)
-    const searchTokens = Array.from(new Set(searchTerms))
-    const isSearchRequest = searchTokens.length > 0
-
-    const getRelevanceScore = (product: any) => {
-      if (!isSearchRequest) return 0
-
-      const name = (product?.name || "").toLowerCase()
-      const description = (product?.description || "").toLowerCase()
-      const productId = (product?.id || "").toLowerCase()
-      const categoryName = (product?.category?.name || "").toLowerCase()
-      const categorySlug = (product?.category?.slug || "").toLowerCase()
-      const compactName = name.replace(/\s+/g, "")
-
-      let score = 0
-
-      if (name === normalizedSearchLower) score += 1000
-      if (name.startsWith(normalizedSearchLower)) score += 700
-      if (name.includes(normalizedSearchLower)) score += 500
-      if (compactSearch && compactName.includes(compactSearch)) score += 350
-
-      for (const token of searchTokens) {
-        if (name.startsWith(token)) score += 140
-        if (name.includes(token)) score += 100
-        if (description.includes(token)) score += 50
-        if (productId.includes(token)) score += 35
-        if (categoryName.includes(token) || categorySlug.includes(token)) score += 25
-      }
-
-      return score
-    }
-
-    if (categoryId) {
-      where.categoryId = categoryId
-    }
-
-    if (searchTokens.length > 0) {
-      // Better search intent:
-      // - single-term query => broad OR matching
-      // - multi-term query => each term must match somewhere (AND of OR groups)
-      const tokenClauses = searchTokens.map((token) => ({
-        OR: [
-          { name: { contains: token, mode: "insensitive" } },
-          { description: { contains: token, mode: "insensitive" } },
-          { id: { contains: token, mode: "insensitive" } },
-          { category: { name: { contains: token, mode: "insensitive" } } },
-          { category: { slug: { contains: token, mode: "insensitive" } } },
-        ],
-      }));
-
-      if (searchTokens.length === 1) {
-        where.OR = tokenClauses[0].OR;
-      } else {
-        where.AND = [...(where.AND || []), ...tokenClauses];
-      }
-    }
-
-    if (featured === "true") {
-      where.featured = true
-    }
-
-    // Filter by showcasing section
-    if (showcasingSection) {
-      where.showcasingSections = {
-        has: showcasingSection
-      }
-    } else if (showcasingSectionsParam) {
-      const sections = showcasingSectionsParam
-        .split(",")
-        .map((section) => section.trim())
-        .filter(Boolean)
-      if (sections.length > 0) {
-        where.showcasingSections = { hasSome: sections }
-      }
-    }
-
-    // Price range filter
-    if (minPrice || maxPrice) {
-      where.price = {}
-      if (minPrice) {
-        where.price.gte = parseFloat(minPrice)
-      }
-      if (maxPrice) {
-        where.price.lte = parseFloat(maxPrice)
-      }
-    }
-
-    // Sort options
-    let orderBy: any = { createdAt: "desc" } // default
-    switch (sortBy) {
-      case "price-asc":
-        orderBy = { price: "asc" }
-        break
-      case "price-desc":
-        orderBy = { price: "desc" }
-        break
-      case "name-asc":
-        orderBy = { name: "asc" }
-        break
-      case "name-desc":
-        orderBy = { name: "desc" }
-        break
-      case "newest":
-        orderBy = { createdAt: "desc" }
-        break
-      case "oldest":
-        orderBy = { createdAt: "asc" }
-        break
-      default:
-        orderBy = { createdAt: "desc" }
-    }
-
     const skipReviews = searchParams.get("skipReviews") === "true"
-    const listQuery = {
-      where,
-      select: PRODUCT_LIST_SELECT,
-      orderBy,
-      skip: isSearchRequest ? 0 : (page - 1) * limit,
-      take: isSearchRequest ? 500 : limit,
-    }
+    const requestedLimit = limitParam ? parseInt(limitParam, 10) : 12
+    // Admin product manager asks for up to 1000; shop grids stay small.
+    const maxLimit = requestedLimit > 48 ? 1000 : 48
 
-    let products: any[]
-    let total: number | undefined
+    const showcasingSections = showcasingSectionsParam
+      ? showcasingSectionsParam.split(",").map((section) => section.trim()).filter(Boolean)
+      : []
 
-    try {
-      const [fetchedProducts, fetchedTotal] = await Promise.all([
-        db.product.findMany(listQuery),
-        db.product.count({ where }),
-      ])
-      products = fetchedProducts
-      total = fetchedTotal
+    const result = await getProductList({
+      categoryId,
+      search,
+      featured: featured === "true",
+      showcasingSection,
+      showcasingSections,
+      minPrice: minPrice ? parseFloat(minPrice) : null,
+      maxPrice: maxPrice ? parseFloat(maxPrice) : null,
+      sortBy,
+      page: pageParam ? parseInt(pageParam, 10) : 1,
+      limit: requestedLimit || 12,
+      skipReviews,
+      maxLimit,
+    })
 
-      if (!skipReviews && products.length > 0) {
-        products = await attachReviewStats(db, products)
-      } else if (products.length > 0) {
-        products = products.map((product) => ({
-          ...product,
-          reviewCount: 0,
-          rating: 0,
-        }))
-      }
-    } catch (error: any) {
-      // If schema hasn't been migrated yet, use simpler query without subcategory
-      try {
-        console.log("Subcategory relation not available, using fallback query");
-        products = await db.product.findMany({
-          where,
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            price: true,
-            salePrice: true,
-            image: true,
-            images: true,
-            featured: true,
-            outOfStock: true,
-            stockQuantity: true,
-            hemaFree: true,
-            categoryId: true,
-            showcasingSections: true,
-            createdAt: true,
-            updatedAt: true,
-            category: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-              },
-            },
-          },
-          orderBy,
-          skip: isSearchRequest ? 0 : (page - 1) * limit,
-          take: isSearchRequest ? 500 : limit,
-        });
-        
-        // Add review stats for fallback query too
-        if (products.length > 0) {
-          const productIds = products.map((p: any) => p.id);
-          try {
-            const reviewStats = await db.$queryRaw<Array<{ productId: string; reviewCount: bigint; avgRating: number }>>`
-              SELECT 
-                "productId",
-                COUNT(*)::int as "reviewCount",
-                COALESCE(AVG(rating)::float, 0) as "avgRating"
-              FROM "ProductReview"
-              WHERE "productId" = ANY(${productIds}::text[])
-                AND status = 'APPROVED'
-              GROUP BY "productId"
-            `;
+    const headers = new Headers()
+    headers.set("Cache-Control", "public, max-age=30, s-maxage=60, stale-while-revalidate=120")
 
-            const statsMap = new Map(
-              reviewStats.map(stat => [
-                stat.productId,
-                {
-                  reviewCount: Number(stat.reviewCount),
-                  rating: Number(stat.avgRating),
-                }
-              ])
-            );
-
-            products = products.map((product: any) => ({
-              ...product,
-              reviewCount: statsMap.get(product.id)?.reviewCount || 0,
-              rating: statsMap.get(product.id)?.rating || 0,
-            }));
-          } catch (reviewError) {
-            // If review stats fail, just set defaults
-            products = products.map((product: any) => ({
-              ...product,
-              reviewCount: 0,
-              rating: 0,
-            }));
-          }
-        }
-      } catch (fallbackError: any) {
-        // If Prisma still fails (e.g., missing columns), use raw SQL
-        console.log("Prisma query failed, using raw SQL fallback");
-        // Use raw SQL but only select columns that definitely exist
-        // Don't select outOfStock, hemaFree, or showcasingSections if they might not exist
-        // We'll set them to defaults in the mapping
-        let sqlQuery = `
-          SELECT 
-              p.id, p.name, p.description, p.price, p."salePrice", p.image, p.images, p.featured, p."categoryId",
-            p."createdAt", p."updatedAt",
-            c.id as category_id, c.name as category_name
-          FROM "Product" p
-          LEFT JOIN "Category" c ON p."categoryId" = c.id
-          WHERE 1=1
-        `;
-        const params: any[] = [];
-        let paramIndex = 1;
-
-        if (categoryId) {
-          sqlQuery += ` AND p."categoryId" = $${paramIndex}`;
-          params.push(categoryId);
-          paramIndex++;
-        }
-
-        if (searchTokens.length > 0) {
-          const tokenClauses: string[] = [];
-          for (const token of searchTokens) {
-            tokenClauses.push(`(
-              LOWER(p.name) LIKE $${paramIndex}
-              OR LOWER(COALESCE(p.description, '')) LIKE $${paramIndex}
-              OR LOWER(COALESCE(c.name, '')) LIKE $${paramIndex}
-              OR LOWER(COALESCE(c.slug, '')) LIKE $${paramIndex}
-              OR LOWER(p.id) LIKE $${paramIndex}
-            )`);
-            params.push(`%${token.toLowerCase()}%`);
-            paramIndex++;
-          }
-          const joinOperator = searchTokens.length > 1 ? " AND " : " OR ";
-          sqlQuery += ` AND (${tokenClauses.join(joinOperator)})`;
-        }
-
-        if (featured === "true") {
-          sqlQuery += ` AND p.featured = true`;
-        }
-
-        // Filter by showcasing section (only if column exists - skip if it doesn't)
-        // Note: This filter will be skipped if showcasingSections column doesn't exist
-        // The query will still work but won't filter by showcasing section
-        // if (showcasingSection) {
-        //   sqlQuery += ` AND $${paramIndex} = ANY(p."showcasingSections")`;
-        //   params.push(showcasingSection);
-        //   paramIndex++;
-        // }
-
-        if (minPrice) {
-          sqlQuery += ` AND p.price >= $${paramIndex}`;
-          params.push(parseFloat(minPrice));
-          paramIndex++;
-        }
-
-        if (maxPrice) {
-          sqlQuery += ` AND p.price <= $${paramIndex}`;
-          params.push(parseFloat(maxPrice));
-          paramIndex++;
-        }
-
-        // Add sorting
-        const sortField = sortBy === "price-asc" || sortBy === "price-desc" ? "p.price" :
-                         sortBy === "name-asc" || sortBy === "name-desc" ? "p.name" :
-                         "p.\"createdAt\"";
-        const sortOrder = sortBy === "price-asc" || sortBy === "name-asc" || sortBy === "oldest" ? "ASC" : "DESC";
-        sqlQuery += ` ORDER BY ${sortField} ${sortOrder}`;
-
-        // Always add pagination for performance
-        sqlQuery += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-        params.push(limit, (page - 1) * limit);
-
-        const rawProducts = await db.$queryRawUnsafe(sqlQuery, ...params) as any[];
-        
-        // Transform raw SQL results to match expected format
-        // Set defaults for columns that might not exist in database
-        products = rawProducts.map((row: any) => ({
-          id: row.id,
-          name: row.name,
-          description: row.description,
-          price: row.price,
-          salePrice: row.salePrice || null,
-          image: row.image,
-          images: Array.isArray(row.images) ? row.images : (row.images ? [row.images] : []),
-          featured: row.featured,
-          outOfStock: false, // Default since column might not exist
-          hemaFree: false, // Default since column might not exist
-          categoryId: row.categoryId,
-          showcasingSections: [], // Default since column might not exist
-          createdAt: row.createdAt,
-          updatedAt: row.updatedAt,
-          category: row.category_id ? {
-            id: row.category_id,
-            name: row.category_name,
-          } : null,
-        }));
-
-        // Calculate review stats for raw SQL products using optimized query
-        if (products.length > 0) {
-          const productIds = products.map((p: any) => p.id);
-          try {
-            const reviewStats = await db.productReview.groupBy({
-              by: ['productId'],
-              where: {
-                productId: { in: productIds },
-                status: 'APPROVED',
-              },
-              _count: {
-                id: true,
-              },
-              _avg: {
-                rating: true,
-              },
-            });
-
-            const statsMap = new Map(
-              reviewStats.map(stat => [
-                stat.productId,
-                {
-                  reviewCount: stat._count.id,
-                  rating: stat._avg.rating || 0,
-                }
-              ])
-            );
-
-            products = products.map((product: any) => ({
-              ...product,
-              reviewCount: statsMap.get(product.id)?.reviewCount || 0,
-              rating: statsMap.get(product.id)?.rating || 0,
-            }));
-          } catch (error) {
-            // If review stats fail, just set defaults
-            products = products.map((product: any) => ({
-              ...product,
-              reviewCount: 0,
-              rating: 0,
-            }));
-          }
-        }
-      }
-    }
-
-    if (typeof total !== "number") {
-      try {
-        total = await db.product.count({ where })
-      } catch {
-        total = Array.isArray(products) ? products.length : 0
-      }
-    }
-
-    if (isSearchRequest && Array.isArray(products)) {
-      products = [...products]
-        .sort((a: any, b: any) => {
-          const scoreDiff = getRelevanceScore(b) - getRelevanceScore(a)
-          if (scoreDiff !== 0) return scoreDiff
-          const aCreated = new Date(a?.createdAt || 0).getTime()
-          const bCreated = new Date(b?.createdAt || 0).getTime()
-          return bCreated - aCreated
-        })
-        .slice((page - 1) * limit, page * limit)
-    }
-
-    // Always return paginated response for consistency and performance
-    const totalPages = Math.ceil((total ?? 0) / limit)
-
-    const listProducts = Array.isArray(products)
-      ? sanitizeProductList(products)
-      : products
-
-    // Add caching headers for better performance (cache for 60 seconds)
-    const headers = new Headers();
-    headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
-
-    return NextResponse.json({
-      products: listProducts,
-      pagination: {
-        page,
-        limit,
-        total: total ?? 0,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1,
-      },
-    }, { headers })
+    return NextResponse.json(result, { headers })
   } catch (error: any) {
     console.error("Failed to fetch products:", error)
-    // Return a more helpful error response
     return NextResponse.json(
-      { 
+      {
         error: "Failed to fetch products",
         message: error?.message || "Unknown error",
         products: [],
@@ -451,7 +63,7 @@ export async function GET(req: Request) {
           totalPages: 0,
           hasNextPage: false,
           hasPreviousPage: false,
-        }
+        },
       },
       { status: 500 }
     )
@@ -550,6 +162,10 @@ export async function POST(req: Request) {
       
       productData.id = trimmedId;
     }
+
+    productData.slug = await ensureUniqueProductSlug(productData.name, {
+      idHint: productData.id,
+    });
     
     // Handle multiple subcategories
     if (subcategoryIds && Array.isArray(subcategoryIds) && subcategoryIds.length > 0) {
@@ -594,6 +210,41 @@ export async function POST(req: Request) {
         // Re-throw to be caught by outer catch block which will return detailed error
         throw error;
       }
+    }
+
+    // Move any inline base64 media to disk (keeps product row; only URL fields change)
+    try {
+      const persisted = await persistProductMediaFields({
+        productId: product.id,
+        image: product.image,
+        images: product.images,
+        attributes: product.attributes,
+      });
+      const needsUpdate =
+        persisted.image !== product.image ||
+        JSON.stringify(persisted.images) !== JSON.stringify(product.images) ||
+        JSON.stringify(persisted.attributes) !== JSON.stringify(product.attributes);
+      if (needsUpdate) {
+        product = await db.product.update({
+          where: { id: product.id },
+          data: {
+            image: persisted.image ?? null,
+            images: persisted.images ?? [],
+            attributes:
+              persisted.attributes === null || persisted.attributes === undefined
+                ? Prisma.JsonNull
+                : (persisted.attributes as Prisma.InputJsonValue),
+          },
+          include: {
+            category: true,
+            subcategories: {
+              include: { category: true },
+            },
+          },
+        });
+      }
+    } catch (mediaErr) {
+      console.error("Failed to persist product media to disk:", mediaErr);
     }
 
     // Log admin action - ALWAYS log for admin users

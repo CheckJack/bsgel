@@ -141,7 +141,7 @@ async function getOrCreateCategory(prisma, categorySlug) {
     'bio-gel': { name: 'BIO Gel', slug: 'bio-gel' },
     'ethos': { name: 'Cuidados das Unhas', slug: 'ethos' },
     'evo': { name: 'Verniz Gel', slug: 'evo' },
-    'gemini': { name: 'Verniz Tradicional', slug: 'gemini' },
+    'gemini': { name: 'Verniz Clássico', slug: 'gemini' },
     'spa': { name: 'Spa', slug: 'spa' },
   };
   

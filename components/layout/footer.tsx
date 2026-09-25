@@ -43,7 +43,7 @@ export function Footer() {
   return (
     <footer className="mt-auto border-t border-black/10 bg-brand-white text-brand-black">
       <div className="w-full px-4 py-8 sm:px-6 sm:py-12 md:px-12 lg:px-16 lg:py-16">
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 md:grid-cols-3 lg:grid-cols-6 lg:gap-12">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-6 lg:gap-12">
           <div className="sm:col-span-2 lg:col-span-2">
             <Link href="/" className="mb-4 inline-block">
               <Image
@@ -127,7 +127,7 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/evo" className={linkClass}>
-                  Evo
+                  {t("nav.shopMenu.evo")}
                 </Link>
               </li>
               <li>
@@ -137,7 +137,7 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/gemini" className={linkClass}>
-                  Verniz Clássico
+                  {t("nav.shopMenu.gemini")}
                 </Link>
               </li>
               <li>
@@ -193,7 +193,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard" className={linkClass}>
+                <Link href="/dashboard/orders" className={linkClass}>
                   {t("footer.myAccount")}
                 </Link>
               </li>
@@ -240,19 +240,30 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <button
+                  type="button"
+                  className={linkClass}
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent("openCookieSettings"));
+                  }}
+                >
+                  {t("footer.cookieSettings")}
+                </button>
+              </li>
+              <li>
                 <Link href="/terms-and-returns" className={linkClass}>
                   {t("footer.termsAndReturns")}
                 </Link>
               </li>
               <li>
-                <Link href="/consumer-dispute-resolution" className={linkClass}>
-                  {t("footer.consumerDisputeResolution")}
-                </Link>
-              </li>
-              <li>
-                <Link href="/complaints-book" className={linkClass}>
+                <a
+                  href="https://www.livroreclamacoes.pt/Inicio/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={linkClass}
+                >
                   {t("footer.complaintsBook")}
-                </Link>
+                </a>
               </li>
             </ul>
           </div>

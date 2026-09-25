@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { ArrowUpRight } from "lucide-react";
+import { BlogNewsImage } from "@/components/blog/blog-news-image";
 import { useLanguage } from "@/contexts/language-context";
-import { formatNewsDate, type NewsPost } from "@/components/blog/news-utils";
-import { cn } from "@/lib/utils";
+import {
+  formatNewsDate,
+  getNewsExcerpt,
+  getReadingTimeMinutes,
+  type NewsPost,
+} from "@/components/blog/news-utils";
 
 type NewsFeedListProps = {
   posts: NewsPost[];
@@ -16,8 +19,6 @@ export function NewsFeedList({ posts, title }: NewsFeedListProps) {
   const { t, language } = useLanguage();
 
   if (posts.length === 0) return null;
-
-  const [leadPost, ...restPosts] = posts;
 
   return (
     <section>
@@ -33,113 +34,72 @@ export function NewsFeedList({ posts, title }: NewsFeedListProps) {
         </span>
       </div>
 
-      {/* Lead item in feed — wide horizontal card */}
-      {leadPost && (
-        <article className="mb-6">
-          <Link
-            href={`/blog/${leadPost.slug}`}
-            className="group grid overflow-hidden border border-black/10 bg-brand-white transition-all hover:border-pink-900/25 hover:shadow-md sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]"
-          >
-            {leadPost.image && (
-              <div className="relative aspect-[16/10] overflow-hidden bg-brand-sweet-bianca sm:aspect-auto sm:min-h-[220px]">
-                <Image
-                  src={leadPost.image}
-                  alt={leadPost.title}
-                  fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                  sizes="(max-width: 640px) 100vw, 420px"
-                  loading="lazy"
-                  unoptimized
-                />
-              </div>
-            )}
-            <div className="flex flex-col justify-center p-5 sm:p-6">
-              {leadPost.publishedAt && (
-                <time
-                  dateTime={leadPost.publishedAt}
-                  className="font-header text-xs text-brand-champagne-dark"
-                >
-                  {formatNewsDate(leadPost.publishedAt, language, "short")}
-                </time>
-              )}
-              <h3 className="mt-2 font-display text-2xl font-normal leading-snug tracking-tight text-brand-black transition-colors group-hover:text-pink-900">
-                {leadPost.title}
-              </h3>
-              {leadPost.excerpt && (
-                <p className="mt-3 line-clamp-3 font-header text-sm leading-relaxed text-brand-black/65 sm:text-[15px]">
-                  {leadPost.excerpt}
-                </p>
-              )}
-              <div className="mt-4 flex items-center justify-between gap-3">
-                {leadPost.author ? (
-                  <span className="font-header text-xs text-brand-black/45">
-                    {t("bioNews.by")} {leadPost.author}
-                  </span>
-                ) : (
-                  <span aria-hidden />
-                )}
-                <span className="inline-flex items-center gap-1 font-header text-[11px] uppercase tracking-[0.12em] text-brand-black/55 transition-colors group-hover:text-pink-900">
-                  {t("bioNews.readMore")}
-                  <ArrowUpRight className="size-3.5" aria-hidden />
-                </span>
-              </div>
-            </div>
-          </Link>
-        </article>
-      )}
+      <div className="divide-y divide-black/10">
+        {posts.map((post) => {
+          const excerpt = getNewsExcerpt(post);
+          const reading = post.content ? getReadingTimeMinutes(post.content) : 0;
 
-      {/* Remaining articles — two-column card grid */}
-      {restPosts.length > 0 && (
-        <div className="grid gap-5 sm:grid-cols-2">
-          {restPosts.map((post, index) => (
-            <article
-              key={post.id}
-              className={cn(index === restPosts.length - 1 && restPosts.length % 2 === 1 && "sm:col-span-2 sm:max-w-md")}
-            >
+          return (
+            <article key={post.id} className="py-6 first:pt-0">
               <Link
                 href={`/blog/${post.slug}`}
-                className="group flex h-full flex-col overflow-hidden border border-black/10 bg-brand-white transition-all hover:border-pink-900/25 hover:shadow-md"
+                className="group grid gap-5 sm:grid-cols-[minmax(0,1fr)_160px] sm:items-start md:grid-cols-[minmax(0,1fr)_200px]"
               >
+                <div className="min-w-0">
+                  <span className="inline-block bg-pink-900/90 px-1.5 py-0.5 font-header text-[9px] uppercase tracking-[0.14em] text-white">
+                    {t("bioNews.newsCategory")}
+                  </span>
+
+                  <h3 className="mt-2 font-display text-xl font-normal leading-snug tracking-tight text-brand-black transition-colors group-hover:text-pink-900 sm:text-2xl">
+                    {post.title}
+                  </h3>
+
+                  {excerpt && (
+                    <p className="mt-2 line-clamp-2 font-header text-sm leading-relaxed text-brand-black/65 sm:text-[15px]">
+                      {excerpt}
+                    </p>
+                  )}
+
+                  <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 font-header text-xs text-brand-black/50">
+                    {post.author && (
+                      <span className="font-semibold text-brand-black/70">
+                        {t("bioNews.by")} {post.author}
+                      </span>
+                    )}
+                    {post.publishedAt && (
+                      <>
+                        {post.author && <span aria-hidden>·</span>}
+                        <time dateTime={post.publishedAt}>
+                          {formatNewsDate(post.publishedAt, language, "short")}
+                        </time>
+                      </>
+                    )}
+                    {reading > 0 && (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span>{t("bioNews.minRead", { n: String(reading) })}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
                 {post.image && (
-                  <div className="relative aspect-[16/10] overflow-hidden bg-brand-sweet-bianca">
-                    <Image
+                  <div className="relative aspect-[16/10] overflow-hidden bg-brand-sweet-bianca sm:aspect-[4/3]">
+                    <BlogNewsImage
                       src={post.image}
                       alt={post.title}
                       fill
                       className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                      sizes="(max-width: 640px) 100vw, 320px"
+                      sizes="(max-width: 640px) 100vw, 200px"
                       loading="lazy"
-                      unoptimized
                     />
                   </div>
                 )}
-                <div className="flex flex-1 flex-col p-4 sm:p-5">
-                  {post.publishedAt && (
-                    <time
-                      dateTime={post.publishedAt}
-                      className="font-header text-[10px] uppercase tracking-[0.1em] text-brand-black/45"
-                    >
-                      {formatNewsDate(post.publishedAt, language, "short")}
-                    </time>
-                  )}
-                  <h3 className="mt-2 line-clamp-3 font-header text-[15px] font-semibold leading-snug text-brand-black transition-colors group-hover:text-pink-900 sm:text-base">
-                    {post.title}
-                  </h3>
-                  {post.excerpt && (
-                    <p className="mt-2 line-clamp-2 flex-1 font-header text-sm leading-relaxed text-brand-black/60">
-                      {post.excerpt}
-                    </p>
-                  )}
-                  <span className="mt-4 inline-flex items-center gap-1 font-header text-[10px] uppercase tracking-[0.12em] text-brand-black/45 transition-colors group-hover:text-pink-900">
-                    {t("bioNews.readMore")}
-                    <ArrowUpRight className="size-3" aria-hidden />
-                  </span>
-                </div>
               </Link>
             </article>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
     </section>
   );
 }

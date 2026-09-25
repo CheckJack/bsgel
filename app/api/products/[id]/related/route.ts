@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { sanitizeProductList } from "@/lib/products/list-images"
+import { findProductIdByParam } from "@/lib/products/resolve"
 
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
+    const { id: rawParam } = await params
+    const id = (await findProductIdByParam(rawParam)) || rawParam
     const product = await db.product.findUnique({
       where: { id },
       include: {

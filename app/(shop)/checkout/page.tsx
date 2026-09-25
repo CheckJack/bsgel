@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { Elements, CardElement, CardNumberElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,8 +12,18 @@ import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/contexts/cart-context";
 import { useLanguage } from "@/contexts/language-context";
 import Image from "next/image";
+import { getStripe } from "@/lib/stripe-browser";
+import type { Stripe, StripeElements } from "@stripe/stripe-js";
+import type { CheckoutPaymentChoice } from "@/components/checkout/payment-method-brands";
+import type { OfflinePaymentDetails } from "@/lib/checkout/offline-payment-instructions";
+import {
+  parseStoredShippingAddress,
+  splitFullName,
+  type CheckoutShippingFields,
+} from "@/lib/checkout/checkout-address";
+import { resolveEffectiveUnitPrice } from "@/lib/pricing/effective-price";
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+import { PaymentMethodModal } from "@/components/checkout/payment-method-modal";
 
 interface ShippingAddress {
   firstName: string;
@@ -36,9 +45,10 @@ function CheckoutForm() {
   const { data: session } = useSession();
   const { items, trainingItems, isLoading, clearCart } = useCart();
   const { t, language } = useLanguage();
+  const initialName = splitFullName(session?.user?.name || "");
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
-    firstName: "",
-    lastName: "",
+    firstName: initialName.firstName,
+    lastName: initialName.lastName,
     email: session?.user?.email || "",
     phone: "",
     addressLine1: "",
@@ -66,80 +76,100 @@ function CheckoutForm() {
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
   const [billingNif, setBillingNif] = useState("");
   const [billingAddress, setBillingAddress] = useState("");
-  type PaymentChoice = "CARD" | "KLARNA" | "MBWAY" | "BANK";
+  type PaymentChoice = CheckoutPaymentChoice;
   const [paymentChoice, setPaymentChoice] = useState<PaymentChoice>("CARD");
-  const [offlineCopy, setOfflineCopy] = useState<{ mbway: string; bankTransfer: string }>({
-    mbway: "",
-    bankTransfer: "",
-  });
+  const [offlineDetails, setOfflineDetails] = useState<OfflinePaymentDetails | null>(null);
+  const [offlineExpiryDays, setOfflineExpiryDays] = useState(5);
+  const [showAllOrderItems, setShowAllOrderItems] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   useEffect(() => {
     fetch("/api/checkout/offline-payment-copy")
       .then((r) => r.json())
-      .then((d) => setOfflineCopy({ mbway: d.mbway || "", bankTransfer: d.bankTransfer || "" }))
+      .then((d) => {
+        if (d?.details) {
+          setOfflineDetails({
+            mbwayPhone: d.details.mbwayPhone || "",
+            bankAccountName: d.details.bankAccountName || "",
+            bankName: d.details.bankName || "",
+            bankIban: d.details.bankIban || "",
+            bankBic: d.details.bankBic || "",
+          });
+        }
+        if (typeof d?.expiryDays === "number") {
+          setOfflineExpiryDays(d.expiryDays);
+        }
+      })
       .catch(() => {});
   }, []);
 
-  // Load saved shipping address and update email when session loads
+  // Load saved shipping address and prefill contact fields from the logged-in profile
   useEffect(() => {
     const loadSavedAddress = async () => {
-      if (session?.user?.id) {
-        try {
-          const res = await fetch("/api/users/profile");
-          if (res.ok) {
-            const data = await res.json();
-            if (data.user?.shippingAddress) {
-              try {
-                // Try to parse as JSON first (new format)
-                const parsed = JSON.parse(data.user.shippingAddress);
-                setShippingAddress({
-                  firstName: parsed.firstName || "",
-                  lastName: parsed.lastName || "",
-                  email: parsed.email || session?.user?.email || "",
-                  phone: parsed.phone || "",
-                  addressLine1: parsed.addressLine1 || "",
-                  addressLine2: parsed.addressLine2 || "",
-                  city: parsed.city || "",
-                  postalCode: parsed.postalCode || "",
-                  district: parsed.district || "",
-                  country: parsed.country || "Portugal",
-                });
-              } catch {
-                // If not JSON, it's the old string format - just use email from session
-                setShippingAddress((prev) => ({
-                  ...prev,
-                  email: session?.user?.email || "",
-                }));
-              }
-            } else {
-              // No saved address, just set email
-              setShippingAddress((prev) => ({
-                ...prev,
-                email: session?.user?.email || "",
-              }));
-            }
-            if (data.user?.billingNif) {
-              setBillingNif(String(data.user.billingNif));
-            }
-            if (data.user?.billingAddress) {
-              setBillingAddress(String(data.user.billingAddress));
-            }
-          }
-        } catch (error) {
-          console.error("Failed to load saved address:", error);
-          // Just set email if loading fails
+      if (!session?.user?.id) return;
+
+      try {
+        const res = await fetch("/api/users/profile");
+        if (!res.ok) {
+          const fromSession = splitFullName(session?.user?.name || "");
           setShippingAddress((prev) => ({
             ...prev,
-            email: session?.user?.email || "",
+            firstName: prev.firstName || fromSession.firstName,
+            lastName: prev.lastName || fromSession.lastName,
+            email: prev.email || session?.user?.email || "",
           }));
+          return;
         }
+
+        const data = await res.json();
+        const user = data.user;
+        const fromName = splitFullName(user?.name || session?.user?.name || "");
+        const profilePhone = typeof user?.phone === "string" ? user.phone : "";
+        const profileEmail = user?.email || session?.user?.email || "";
+
+        const saved: Partial<CheckoutShippingFields> =
+          parseStoredShippingAddress(user?.shippingAddress) || {};
+
+        setShippingAddress((prev) => ({
+          firstName: prev.firstName || saved.firstName || fromName.firstName || "",
+          lastName: prev.lastName || saved.lastName || fromName.lastName || "",
+          email: prev.email || saved.email || profileEmail || "",
+          phone: prev.phone || saved.phone || profilePhone || "",
+          addressLine1: prev.addressLine1 || saved.addressLine1 || "",
+          addressLine2: prev.addressLine2 || saved.addressLine2 || "",
+          city: prev.city || saved.city || "",
+          postalCode: prev.postalCode || saved.postalCode || "",
+          district: prev.district || saved.district || "",
+          country: saved.country || prev.country || "Portugal",
+        }));
+
+        if (user?.billingNif) {
+          setBillingNif((prev) => prev || String(user.billingNif));
+        }
+        if (user?.billingAddress) {
+          setBillingAddress((prev) => prev || String(user.billingAddress));
+        }
+      } catch (error) {
+        console.error("Failed to load saved address:", error);
+        const fromSession = splitFullName(session?.user?.name || "");
+        setShippingAddress((prev) => ({
+          ...prev,
+          firstName: prev.firstName || fromSession.firstName,
+          lastName: prev.lastName || fromSession.lastName,
+          email: prev.email || session?.user?.email || "",
+        }));
       }
     };
     loadSavedAddress();
   }, [session]);
 
   const getSubtotal = () =>
-    items.reduce((sum, item) => sum + parseFloat(item.product.price) * item.quantity, 0) +
+    items.reduce(
+      (sum, item) =>
+        sum +
+        resolveEffectiveUnitPrice(item.product.price, item.product.salePrice) * item.quantity,
+      0
+    ) +
     trainingItems.reduce((sum, item) => sum + parseFloat(item.program.price), 0);
 
   const formatTrainingSessionDate = (value: string) =>
@@ -217,13 +247,32 @@ function CheckoutForm() {
   const subtotalAfterDiscount = Math.max(0, subtotal - discount);
   const shipping = shippingInfo?.shippingAmount || 0;
   const total = subtotalAfterDiscount + shipping;
+  const orderLines = [
+    ...trainingItems.map((item) => ({ kind: "training" as const, item })),
+    ...items.map((item) => ({ kind: "product" as const, item })),
+  ];
+  const visibleOrderLines =
+    orderLines.length > 2 && !showAllOrderItems ? orderLines.slice(0, 2) : orderLines;
+  const hiddenOrderCount = Math.max(0, orderLines.length - 2);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleContinue = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isProcessing) return;
+    setError("");
+    setShowPaymentModal(true);
+  };
+
+  const handlePlaceOrder = async (
+    stripeClient?: Stripe | null,
+    elementsClient?: StripeElements | null
+  ) => {
     setError("");
 
+    const stripeSdk = stripeClient ?? stripe;
+    const elementsSdk = elementsClient ?? elements;
+
     const needsStripe = paymentChoice === "CARD" || paymentChoice === "KLARNA";
-    if (needsStripe && !stripe) {
+    if (needsStripe && !stripeSdk) {
       return;
     }
 
@@ -235,11 +284,14 @@ function CheckoutForm() {
       const addressJson = JSON.stringify(shippingAddress);
       const nifTrim = billingNif.trim();
       const billingTrim = billingAddress.trim();
+      const fullName = `${shippingAddress.firstName} ${shippingAddress.lastName}`.trim();
       try {
         await fetch("/api/users/profile", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            name: fullName || undefined,
+            phone: shippingAddress.phone,
             shippingAddress: addressJson,
             billingNif: nifTrim,
             billingAddress: billingTrim,
@@ -255,6 +307,7 @@ function CheckoutForm() {
         couponCode: appliedCoupon?.code || null,
         billingNif: nifTrim,
         billingAddress: billingTrim,
+        shippingStructured: shippingAddress,
       };
 
       if (paymentChoice === "MBWAY" || paymentChoice === "BANK") {
@@ -285,9 +338,13 @@ function CheckoutForm() {
             postalCode: shippingAddress.postalCode,
             couponCode: appliedCoupon?.code || null,
             paymentMode: "klarna",
+            billingNif: nifTrim,
+            billingAddress: billingTrim,
             shippingStructured: {
               firstName: shippingAddress.firstName,
               lastName: shippingAddress.lastName,
+              email: shippingAddress.email,
+              phone: shippingAddress.phone,
               addressLine1: shippingAddress.addressLine1,
               addressLine2: shippingAddress.addressLine2 || "",
               city: shippingAddress.city,
@@ -301,7 +358,7 @@ function CheckoutForm() {
         if (!res.ok || !data.clientSecret) {
           throw new Error(data.error || "Failed to create payment intent");
         }
-        const { error: kErr } = await stripe!.confirmKlarnaPayment(data.clientSecret, {
+        const { error: kErr } = await stripeSdk!.confirmKlarnaPayment(data.clientSecret, {
           return_url: `${window.location.origin}/checkout/payment-return`,
         });
         if (kErr) {
@@ -320,21 +377,26 @@ function CheckoutForm() {
           postalCode: shippingAddress.postalCode,
           couponCode: appliedCoupon?.code || null,
           paymentMode: "card",
+          billingNif: nifTrim,
+          billingAddress: billingTrim,
+          shippingStructured: shippingAddress,
         }),
       });
 
-      const { clientSecret } = await res.json();
+      const data = await res.json().catch(() => ({} as { clientSecret?: string; error?: string }));
+      const clientSecret = data.clientSecret;
 
-      if (!clientSecret) {
-        throw new Error("Failed to create payment intent");
+      if (!res.ok || !clientSecret) {
+        throw new Error(data.error || "Failed to create payment intent");
       }
 
-      const cardElement = elements?.getElement(CardElement);
+      const cardElement =
+        elementsSdk?.getElement(CardNumberElement) || elementsSdk?.getElement(CardElement);
       if (!cardElement) {
         throw new Error("Card element not found");
       }
 
-      const { error: paymentError, paymentIntent } = await stripe!.confirmCardPayment(clientSecret, {
+      const { error: paymentError, paymentIntent } = await stripeSdk!.confirmCardPayment(clientSecret, {
         payment_method: {
           card: cardElement,
         },
@@ -362,6 +424,15 @@ function CheckoutForm() {
           await clearCart();
           router.push(`/orders/${order.id}`);
         } else {
+          const lookup = await fetch(
+            `/api/orders/lookup-by-payment-intent?payment_intent=${encodeURIComponent(paymentIntent.id)}`
+          );
+          const existing = lookup.ok ? await lookup.json() : null;
+          if (existing?.id) {
+            await clearCart();
+            router.push(`/orders/${existing.id}`);
+            return;
+          }
           const ed = await orderRes.json().catch(() => ({} as { error?: string }));
           throw new Error(ed.error || "Failed to create order");
         }
@@ -431,7 +502,11 @@ function CheckoutForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+    <form
+      onSubmit={handleContinue}
+      className="flex flex-col gap-4 sm:gap-6 md:gap-8 lg:flex-row lg:items-start"
+    >
+      <div className="order-2 flex-1 space-y-4 sm:space-y-6 lg:order-1">
       <Card>
         <CardHeader>
           <CardTitle className="text-lg sm:text-xl">{t("checkout.shippingInformation")}</CardTitle>
@@ -603,79 +678,117 @@ function CheckoutForm() {
           </div>
         </CardContent>
       </Card>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">{t("checkout.paymentInformation")}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="text-sm font-medium">{t("checkout.paymentMethod")}</div>
-          <div className="grid gap-2">
-            {(
-              [
-                ["CARD", t("checkout.payCard")],
-                ["KLARNA", t("checkout.payKlarna")],
-                ["MBWAY", t("checkout.payMbway")],
-                ["BANK", t("checkout.payBank")],
-              ] as const
-            ).map(([value, label]) => (
-              <label
-                key={value}
-                className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 ${
-                  paymentChoice === value ? "border-black bg-gray-50" : "border-gray-200"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="paymentChoice"
-                  className="mt-1"
-                  checked={paymentChoice === value}
-                  onChange={() => setPaymentChoice(value)}
-                />
-                <span>{label}</span>
-              </label>
-            ))}
-          </div>
-
-          {paymentChoice === "CARD" && (
-            <div className="border rounded-md p-3 sm:p-4">
-              <CardElement
-                options={{
-                  style: {
-                    base: {
-                      fontSize: "16px",
-                      color: "#424770",
-                      "::placeholder": {
-                        color: "#aab7c4",
-                      },
-                    },
-                    invalid: {
-                      color: "#9e2146",
-                    },
-                  },
-                }}
-              />
-            </div>
-          )}
-
-          {paymentChoice === "KLARNA" && (
-            <p className="text-sm text-muted-foreground">{t("checkout.klarnaHint")}</p>
-          )}
-
-          {(paymentChoice === "MBWAY" || paymentChoice === "BANK") && (
-            <div className="space-y-3 rounded-md border border-amber-200 bg-amber-50/80 p-3 sm:p-4 text-sm text-gray-800">
-              <p className="font-medium">{t("checkout.offlineInstructionsTitle")}</p>
-              <div
-                className="prose prose-sm max-w-none [&_a]:break-all"
-                dangerouslySetInnerHTML={{
-                  __html: paymentChoice === "MBWAY" ? offlineCopy.mbway : offlineCopy.bankTransfer,
-                }}
-              />
-              <p className="text-muted-foreground">{t("checkout.manualOrderPending")}</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="order-1 w-full space-y-4 sm:space-y-6 lg:order-2 lg:w-[min(100%,36rem)] lg:shrink-0">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg sm:text-xl">{t("checkout.orderItems")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 sm:space-y-6">
+                {items.length === 0 && trainingItems.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-gray-500 sm:text-base">{t("checkout.cartEmpty")}</p>
+                ) : (
+                  <>
+                    {visibleOrderLines.map((line) =>
+                      line.kind === "training" ? (
+                      <div key={line.item.id} className="flex gap-3 border-b pb-4 last:border-b-0 last:pb-0 sm:gap-4 sm:pb-6">
+                        <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-brand-champagne/15 sm:h-24 sm:w-24">
+                          {line.item.program.image ? (
+                            <Image
+                              src={line.item.program.image}
+                              alt={line.item.program.title}
+                              fill
+                              sizes="(max-width: 640px) 80px, 96px"
+                              className="object-cover"
+                              unoptimized={
+                                line.item.program.image.startsWith("data:") ||
+                                line.item.program.image.startsWith("blob:")
+                              }
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-xs font-medium text-brand-champagne">
+                              {t("cart.trainingBadge")}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="mb-1 break-words text-base font-semibold sm:text-lg">
+                            {line.item.program.title}
+                          </h3>
+                          <p className="mb-1 text-xs text-gray-500 sm:text-sm">{t("cart.trainingProgram")}</p>
+                          <p className="mb-1 text-xs text-gray-500 sm:text-sm">
+                            {formatTrainingSessionDate(line.item.session.startDate)}
+                            {line.item.session.location ? ` · ${line.item.session.location}` : ""}
+                          </p>
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
+                            <span className="text-xs text-gray-500 sm:text-sm">{t("checkout.quantity")} 1</span>
+                            <span className="text-sm font-semibold sm:text-base">
+                              {formatPrice(line.item.program.price)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      ) : (
+                      <div key={line.item.id} className="flex gap-3 border-b pb-4 last:border-b-0 last:pb-0 sm:gap-4 sm:pb-6">
+                        <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100 sm:h-24 sm:w-24">
+                          {line.item.product.image ? (
+                            <Image
+                              src={line.item.product.image}
+                              alt={line.item.product.name}
+                              fill
+                              sizes="(max-width: 640px) 80px, 96px"
+                              className="object-contain"
+                              priority
+                              loading="eager"
+                              unoptimized={
+                                line.item.product.image?.startsWith("data:") ||
+                                line.item.product.image?.startsWith("blob:")
+                              }
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
+                              {t("cart.noImage")}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="mb-1 break-words text-base font-semibold sm:text-lg">{line.item.product.name}</h3>
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
+                            <span className="text-xs text-gray-500 sm:text-sm">
+                              {t("checkout.quantity")} {line.item.quantity}
+                            </span>
+                            <span className="text-sm font-semibold sm:text-base">
+                              {formatPrice(
+                                resolveEffectiveUnitPrice(
+                                  line.item.product.price,
+                                  line.item.product.salePrice
+                                ) * line.item.quantity
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      )
+                    )}
+                    {orderLines.length > 2 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setShowAllOrderItems((open) => !open)}
+                      >
+                        {showAllOrderItems
+                          ? t("checkout.seeFewerItems")
+                          : t("checkout.seeMoreItems", { count: String(hiddenOrderCount) })}
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
       <Card>
         <CardHeader>
@@ -684,8 +797,8 @@ function CheckoutForm() {
         <CardContent className="space-y-3">
           {appliedCoupon ? (
             <div className="space-y-2">
-              <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-md">
-                <div>
+              <div className="flex items-center justify-between gap-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                <div className="min-w-0">
                   <p className="font-medium text-green-800">
                     {t("checkout.couponApplied")}: {appliedCoupon.code}
                   </p>
@@ -701,7 +814,7 @@ function CheckoutForm() {
                   variant="outline"
                   size="sm"
                   onClick={handleRemoveCoupon}
-                  className="text-red-600 hover:text-red-700"
+                  className="shrink-0 text-red-600 hover:text-red-700"
                 >
                   {t("checkout.removeCoupon")}
                 </Button>
@@ -723,12 +836,13 @@ function CheckoutForm() {
                       handleApplyCoupon();
                     }
                   }}
-                  className="flex-1"
+                  className="flex-1 min-w-0"
                 />
                 <Button
                   type="button"
                   onClick={handleApplyCoupon}
                   disabled={isApplyingCoupon || !couponCode.trim()}
+                  className="shrink-0"
                 >
                   {isApplyingCoupon ? t("checkout.processing") : t("checkout.applyCoupon")}
                 </Button>
@@ -784,7 +898,7 @@ function CheckoutForm() {
         </CardContent>
       </Card>
 
-      {error && (
+      {error && !showPaymentModal && (
         <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
           {error}
         </div>
@@ -794,13 +908,26 @@ function CheckoutForm() {
         type="submit"
         className="w-full"
         size="lg"
-        disabled={
-          isProcessing ||
-          ((paymentChoice === "CARD" || paymentChoice === "KLARNA") && !stripe)
-        }
+        disabled={isProcessing}
       >
-        {isProcessing ? t("checkout.processing") : `${t("checkout.placeOrder")} ${formatPrice(total)}`}
+        {t("checkout.continueToPayment")}
       </Button>
+      </div>
+
+      <PaymentMethodModal
+        open={showPaymentModal}
+        onClose={() => {
+          if (!isProcessing) setShowPaymentModal(false);
+        }}
+        paymentChoice={paymentChoice}
+        onPaymentChoiceChange={setPaymentChoice}
+        offlineDetails={offlineDetails}
+        expiryDays={offlineExpiryDays}
+        total={total}
+        error={error}
+        isProcessing={isProcessing}
+        onConfirm={handlePlaceOrder}
+      />
     </form>
   );
 }
@@ -808,7 +935,7 @@ function CheckoutForm() {
 export default function CheckoutPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { items, trainingItems, isLoading } = useCart();
+  const { isLoading } = useCart();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -816,14 +943,7 @@ export default function CheckoutPage() {
     }
   }, [status, router]);
 
-  const { t, language } = useLanguage();
-
-  const formatTrainingSessionDate = (value: string) =>
-    new Date(value).toLocaleDateString(language === "pt" ? "pt-PT" : "en-GB", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
+  const { t } = useLanguage();
 
   if (status === "loading" || isLoading) {
     return <div className="container mx-auto px-4 py-8 text-center">{t("checkout.loading")}</div>;
@@ -834,109 +954,13 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6 md:py-8">
-      <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6 md:mb-8">{t("checkout.title")}</h1>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
-        {/* Left Container - Checkout Information */}
-        <div className="lg:pr-8 order-2 lg:order-1">
-          <Elements stripe={stripePromise}>
-            <CheckoutForm />
-          </Elements>
-        </div>
-
-        {/* Right Container - Product Photos and Info */}
-        <div className="lg:pl-8 order-1 lg:order-2">
-          <Card className="lg:sticky lg:top-20 lg:top-24">
-            <CardHeader>
-              <CardTitle className="text-lg sm:text-xl">{t("checkout.orderItems")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4 sm:space-y-6">
-                {items.length === 0 && trainingItems.length === 0 ? (
-                  <p className="text-center text-gray-500 py-4 text-sm sm:text-base">{t("checkout.cartEmpty")}</p>
-                ) : (
-                  <>
-                    {trainingItems.map((item) => (
-                      <div key={item.id} className="flex gap-3 sm:gap-4 pb-4 sm:pb-6 border-b last:border-b-0 last:pb-0">
-                        <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 bg-brand-champagne/15 rounded-lg overflow-hidden">
-                          {item.program.image ? (
-                            <Image
-                              src={item.program.image}
-                              alt={item.program.title}
-                              fill
-                              sizes="(max-width: 640px) 80px, 96px"
-                              className="object-cover"
-                              unoptimized={
-                                item.program.image.startsWith("data:") ||
-                                item.program.image.startsWith("blob:")
-                              }
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-brand-champagne text-xs font-medium">
-                              {t("cart.trainingBadge")}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-base sm:text-lg mb-1 break-words">
-                            {item.program.title}
-                          </h3>
-                          <p className="text-xs sm:text-sm text-gray-500 mb-1">{t("cart.trainingProgram")}</p>
-                          <p className="text-xs sm:text-sm text-gray-500 mb-1">
-                            {formatTrainingSessionDate(item.session.startDate)}
-                            {item.session.location ? ` · ${item.session.location}` : ""}
-                          </p>
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0">
-                            <span className="text-xs sm:text-sm text-gray-500">{t("checkout.quantity")} 1</span>
-                            <span className="font-semibold text-sm sm:text-base">
-                              {formatPrice(item.program.price)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {items.map((item) => (
-                  <div key={item.id} className="flex gap-3 sm:gap-4 pb-4 sm:pb-6 border-b last:border-b-0 last:pb-0">
-                    {/* Product Image */}
-                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
-                      {item.product.image ? (
-                        <Image
-                          src={item.product.image}
-                          alt={item.product.name}
-                          fill
-                          sizes="(max-width: 640px) 80px, 96px"
-                          className="object-contain"
-                          priority
-                          loading="eager"
-                          unoptimized={item.product.image?.startsWith('data:') || item.product.image?.startsWith('blob:')}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                          {t("cart.noImage")}
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Product Info */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-base sm:text-lg mb-1 break-words">{item.product.name}</h3>
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0">
-                        <span className="text-xs sm:text-sm text-gray-500">{t("checkout.quantity")} {item.quantity}</span>
-                        <span className="font-semibold text-sm sm:text-base">
-                          {formatPrice(parseFloat(item.product.price) * item.quantity)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+    <div className="container mx-auto px-4 py-4 sm:px-6 sm:py-6 md:py-8">
+      <h1 className="mb-4 text-xl font-bold sm:mb-6 sm:text-2xl md:mb-8 md:text-3xl lg:text-4xl">
+        {t("checkout.title")}
+      </h1>
+      <Elements stripe={getStripe()} options={{ locale: "pt" }}>
+        <CheckoutForm />
+      </Elements>
     </div>
   );
 }
-

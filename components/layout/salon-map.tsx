@@ -476,7 +476,7 @@ export function SalonMap({
           !fillContainer && "min-h-[500px] rounded-lg"
         )}
       >
-        <p className="text-gray-500">Loading map...</p>
+        <p className="text-gray-500">{t("findSalon.loadingMap")}</p>
       </div>
     );
   }

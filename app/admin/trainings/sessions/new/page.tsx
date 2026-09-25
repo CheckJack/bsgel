@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useLanguage } from "@/contexts/language-context";
 
 interface TrainingProgram {
   id: string;
@@ -32,6 +33,7 @@ const localDateTimeInputToIso = (value: string) => {
 };
 
 export default function NewSessionPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [programs, setPrograms] = useState<TrainingProgram[]>([]);
@@ -132,15 +134,15 @@ export default function NewSessionPage() {
       });
 
       if (res.ok) {
-        toast("Training session created successfully", "success");
+        toast(t("admin.trainings.sessionCreated"), "success");
         router.push("/admin/trainings/sessions");
       } else {
         const data = await res.json();
-        toast(data.error || "Failed to create training session", "error");
+        toast(data.error || t("admin.trainings.sessionCreateFailed"), "error");
       }
     } catch (error) {
       console.error("Failed to create training session:", error);
-      toast("Failed to create training session. Please try again.", "error");
+      toast(t("admin.trainings.sessionCreateFailedRetry"), "error");
     } finally {
       setIsSubmitting(false);
     }

@@ -7,6 +7,7 @@ import { Search, Bell, MessageCircle, Maximize2, Minimize2, Settings, Moon, Sun,
 import { useState, useEffect, useRef } from "react";
 import { AccountSettingsMenu } from "./account-settings-menu";
 import { useLanguage } from "@/contexts/language-context";
+import { resolveNotificationCopy } from "@/lib/notifications/i18n";
 
 interface AdminHeaderProps {
   onMenuClick?: () => void;
@@ -100,11 +101,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
             message: notif.message,
             image: notif.image,
             time: new Date(notif.time).toLocaleString(),
-            type: notif.type === "new_customer" || notif.type === "new_professional_certification" 
-              ? "system" 
-              : notif.type === "order" 
-              ? "order" 
-              : "system",
+            type: notif.type,
             read: notif.read,
             linkUrl: notif.linkUrl,
             metadata: notif.metadata,
@@ -172,7 +169,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
   }, []);
 
   const deleteAllNotifications = async () => {
-    if (!confirm("Are you sure you want to delete all notifications? This action cannot be undone.")) {
+    if (!confirm(t("header.deleteAllNotificationsConfirm"))) {
       return;
     }
 
@@ -268,7 +265,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
         <button
           onClick={onSidebarToggle}
           className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors hidden md:block mr-2"
-          aria-label="Toggle sidebar"
+          aria-label={t("header.toggleSidebar")}
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -304,7 +301,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           className="w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          aria-label="Toggle theme"
+          aria-label={t("header.toggleTheme")}
         >
           {mounted && theme === "dark" ? (
             <Sun className="h-5 w-5 text-gray-600 dark:text-gray-300" />
@@ -318,7 +315,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
           <button
             onClick={() => setShowNotifications(!showNotifications)}
             className="relative w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            aria-label="Notifications"
+            aria-label={t("header.notificationsAria")}
           >
             <Bell className="h-5 w-5 text-gray-600 dark:text-gray-300" />
             {unreadCount > 0 && (
@@ -339,7 +336,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
                 <button
                   onClick={() => setShowNotifications(false)}
                   className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
-                  aria-label="Close notifications"
+                  aria-label={t("header.closeNotifications")}
                 >
                   <X className="h-4 w-4 text-gray-600 dark:text-gray-300" />
                 </button>
@@ -354,7 +351,9 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {notifications.map((notification) => (
+                    {notifications.map((notification) => {
+                      const copy = resolveNotificationCopy(notification, t);
+                      return (
                       <div
                         key={notification.id}
                         className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer ${
@@ -401,7 +400,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
                             <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200 dark:border-gray-700">
                               <img
                                 src={notification.image}
-                                alt={notification.title}
+                                alt={copy.title}
                                 className="w-full h-full object-cover"
                               />
                             </div>
@@ -417,7 +416,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
                               <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                {notification.title}
+                                {copy.title}
                               </p>
                               {!notification.image && (
                                 <div
@@ -430,7 +429,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
                               )}
                             </div>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                              {notification.message}
+                              {copy.message}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
                               {notification.time}
@@ -438,7 +437,8 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
                           </div>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -475,7 +475,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
                       className="flex-1 text-sm text-center text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium py-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       <Trash2 className="h-3 w-3" />
-                      {deletingAll ? "Deleting..." : "Delete all"}
+                      {deletingAll ? t("header.deleting") : t("header.deleteAll")}
                     </button>
                   </div>
                 </div>
@@ -489,7 +489,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
           <button
             onClick={() => setShowMessages(!showMessages)}
             className="relative w-10 h-10 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            aria-label="Messages"
+            aria-label={t("header.messagesAria")}
           >
             <MessageCircle className="h-5 w-5 text-gray-600 dark:text-gray-300" />
             {unreadMessagesCount > 0 && (
@@ -522,7 +522,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
                   <button
                     onClick={() => setShowMessages(false)}
                     className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
-                    aria-label="Close messages"
+                    aria-label={t("header.closeMessages")}
                   >
                     <X className="h-4 w-4 text-gray-600 dark:text-gray-300" />
                   </button>
@@ -662,7 +662,7 @@ export function AdminHeader({ onMenuClick, onSidebarToggle, isSidebarCollapsed }
             <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
               {session?.user?.name || session?.user?.email?.split("@")[0] || "User"}
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Admin</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">{t("common.admin")}</div>
           </div>
         </button>
 

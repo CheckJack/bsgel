@@ -93,33 +93,25 @@ export async function PATCH(req: Request) {
 
     const body = await req.json()
     const { notificationId, read, markAllAsRead } = body
+    const isAdmin = session.user.role === "ADMIN"
 
-    // Build where clause based on user role
-    const where: any = {}
-    if (session.user.role === "ADMIN") {
-      // Admins can mark all notifications as read
-      if (markAllAsRead) {
-        where.read = false
-      }
-    } else {
-      // Clients can only mark their own notifications
-      where.userId = session.user.id
-      if (markAllAsRead) {
-        where.read = false
-      }
-    }
+    // Inbox scope: own notifications; admins also see system-wide (userId null).
+    // Never touch other users' notifications.
+    const inboxScope = isAdmin
+      ? { OR: [{ userId: session.user.id }, { userId: null }] }
+      : { userId: session.user.id }
 
     if (markAllAsRead) {
-      // Mark all notifications as read (filtered by user role)
       await db.notification.updateMany({
-        where,
+        where: {
+          AND: [inboxScope, { read: false }],
+        },
         data: { read: true },
       })
       return NextResponse.json({ message: "All notifications marked as read" })
     }
 
     if (notificationId && read !== undefined) {
-      // First check if user owns this notification
       const notification = await db.notification.findUnique({
         where: { id: notificationId },
       })
@@ -131,15 +123,14 @@ export async function PATCH(req: Request) {
         )
       }
 
-      // Clients can only update their own notifications
-      if (session.user.role !== "ADMIN" && notification.userId !== session.user.id) {
-        return NextResponse.json(
-          { error: "Forbidden" },
-          { status: 403 }
-        )
+      const inInbox =
+        notification.userId === session.user.id ||
+        (isAdmin && notification.userId === null)
+
+      if (!inInbox) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
       }
 
-      // Mark specific notification as read/unread
       await db.notification.update({
         where: { id: notificationId },
         data: { read },
@@ -168,27 +159,18 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Build where clause matching the GET endpoint logic
-    // Admins can delete all notifications they see (all notifications)
-    // Regular users can only delete their own notifications
-    const whereConditions: any[] = []
-    
-    if (session.user.role !== "ADMIN") {
-      // Regular users can only delete their own notifications
-      whereConditions.push({ userId: session.user.id })
-    }
-    // Admins can delete all notifications (no userId filter)
+    // Match GET inbox scope: own notifications only.
+    // Admins also clear system-wide alerts (userId null) — never other users' inboxes.
+    const where =
+      session.user.role === "ADMIN"
+        ? { OR: [{ userId: session.user.id }, { userId: null }] }
+        : { userId: session.user.id }
 
-    const where = whereConditions.length > 0 
-      ? { AND: whereConditions }
-      : {}
+    const result = await db.notification.deleteMany({ where })
 
-    // Delete all matching notifications
-    const result = await db.notification.deleteMany({
-      where,
-    })
-
-    console.log(`🗑️ Deleted ${result.count} notification(s) for ${session.user.role}`)
+    console.log(
+      `🗑️ Deleted ${result.count} notification(s) for ${session.user.role} (${session.user.id})`
+    )
 
     return NextResponse.json({ 
       message: "All notifications deleted successfully",

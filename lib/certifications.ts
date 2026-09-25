@@ -1,17 +1,93 @@
 import { db } from "./db"
+import { BRAND_LINE_CATEGORY_SLUGS } from "./brand-lines"
+
+/**
+ * Fallback retail category slugs used only if the Final Client system
+ * certification is missing. Prefer DB-configured categories via
+ * Certification.isSystem = true.
+ */
+export const RETAIL_CATEGORY_SLUGS = new Set<string>([
+  "spa",
+  ...BRAND_LINE_CATEGORY_SLUGS.ethos,
+  ...BRAND_LINE_CATEGORY_SLUGS.gemini,
+])
+
+export const FINAL_CLIENT_CERTIFICATION_NAME = "Final Client"
+
+export type PurchaseAccessCode =
+  | "CERTIFICATION_REQUIRED"
+  | "CERTIFICATION_INSUFFICIENT"
+  | "USER_NOT_FOUND"
+  | "PRODUCT_NOT_FOUND"
+  | "ACCESS_CHECK_FAILED"
+
+export type PurchaseAccessResult = {
+  canPurchase: boolean
+  error?: string
+  code?: PurchaseAccessCode
+  categoryName?: string
+  certificationName?: string
+}
+
+export function isRetailCategorySlug(slug: string | null | undefined): boolean {
+  if (!slug) return false
+  return RETAIL_CATEGORY_SLUGS.has(slug.toLowerCase().trim())
+}
+
+/**
+ * Category IDs allowed for non-professional (final) clients.
+ * Sourced from the Final Client system certification; falls back to hardcoded
+ * retail slugs if that record is missing.
+ */
+export async function getFinalClientCategoryIds(): Promise<Set<string>> {
+  const finalClient = await db.certification.findFirst({
+    where: { isSystem: true, isActive: true },
+    select: {
+      certificationCategories: {
+        select: { categoryId: true },
+      },
+    },
+  })
+
+  if (finalClient) {
+    return new Set(
+      finalClient.certificationCategories.map((cc) => cc.categoryId)
+    )
+  }
+
+  const retailCategories = await db.category.findMany({
+    where: {
+      slug: {
+        in: Array.from(RETAIL_CATEGORY_SLUGS),
+        mode: "insensitive",
+      },
+    },
+    select: { id: true },
+  })
+
+  return new Set(retailCategories.map((c) => c.id))
+}
+
+async function isFinalClientAllowedCategory(
+  categoryId: string,
+  categorySlug?: string | null
+): Promise<boolean> {
+  const allowedIds = await getFinalClientCategoryIds()
+  if (allowedIds.has(categoryId)) {
+    return true
+  }
+  // Legacy fallback by slug when system cert has no matching row yet
+  return isRetailCategorySlug(categorySlug)
+}
 
 /**
  * Check if a user can purchase products from a specific category based on their certification
- * @param userId - The user's ID
- * @param categoryId - The category ID to check access for
- * @returns Object with canPurchase boolean and optional error message
  */
 export async function canUserPurchaseFromCategory(
   userId: string,
   categoryId: string
-): Promise<{ canPurchase: boolean; error?: string }> {
+): Promise<PurchaseAccessResult> {
   try {
-    // Get user with their certification
     const user = await db.user.findUnique({
       where: { id: userId },
       include: {
@@ -30,38 +106,55 @@ export async function canUserPurchaseFromCategory(
     if (!user) {
       return {
         canPurchase: false,
+        code: "USER_NOT_FOUND",
         error: "User not found",
       }
     }
 
-    // Admin users can purchase any product regardless of certification
     if (user.role === "ADMIN") {
       return { canPurchase: true }
     }
 
-    // If user has no certification, they can only purchase from categories without restrictions
-    // Check if any certification restricts this category
+    // System certifications are never assigned; treat as no certification
+    if (user.certification?.isSystem) {
+      return {
+        canPurchase: false,
+        code: "ACCESS_CHECK_FAILED",
+        error: "Invalid certification assignment",
+      }
+    }
+
+    const category = await db.category.findUnique({
+      where: { id: categoryId },
+      select: { id: true, slug: true, name: true },
+    })
+
+    // Retail / Final Client categories are available to everyone
+    if (await isFinalClientAllowedCategory(categoryId, category?.slug)) {
+      return { canPurchase: true }
+    }
+
     if (!user.certification) {
-      // Check if this category requires a certification
       const categoryWithRestrictions = await db.certificationCategory.findFirst({
         where: {
           categoryId,
+          certification: { isSystem: false },
         },
       })
 
       if (categoryWithRestrictions) {
-        // Category requires certification but user has none
         return {
           canPurchase: false,
-          error: "This product category requires a certification. Please contact support to get certified.",
+          code: "CERTIFICATION_REQUIRED",
+          categoryName: category?.name,
+          error:
+            "This product category requires a certification. Please contact support to get certified.",
         }
       }
 
-      // Category doesn't require certification, user can purchase
       return { canPurchase: true }
     }
 
-    // User has certification - check if it allows this category
     const canPurchase = user.certification.certificationCategories.some(
       (cc) => cc.categoryId === categoryId
     )
@@ -69,6 +162,9 @@ export async function canUserPurchaseFromCategory(
     if (!canPurchase) {
       return {
         canPurchase: false,
+        code: "CERTIFICATION_INSUFFICIENT",
+        categoryName: category?.name,
+        certificationName: user.certification.name,
         error: `Your ${user.certification.name} certification does not allow purchasing from this category. Please contact support if you need access.`,
       }
     }
@@ -78,6 +174,7 @@ export async function canUserPurchaseFromCategory(
     console.error("Error checking certification access:", error)
     return {
       canPurchase: false,
+      code: "ACCESS_CHECK_FAILED",
       error: "An error occurred while checking certification access",
     }
   }
@@ -85,16 +182,12 @@ export async function canUserPurchaseFromCategory(
 
 /**
  * Check if a user can purchase a specific product based on their certification
- * @param userId - The user's ID
- * @param productId - The product ID to check access for
- * @returns Object with canPurchase boolean and optional error message
  */
 export async function canUserPurchaseProduct(
   userId: string,
   productId: string
-): Promise<{ canPurchase: boolean; error?: string }> {
+): Promise<PurchaseAccessResult> {
   try {
-    // First check if user is admin - admins can purchase any product
     const user = await db.user.findUnique({
       where: { id: userId },
       select: { role: true },
@@ -104,7 +197,6 @@ export async function canUserPurchaseProduct(
       return { canPurchase: true }
     }
 
-    // Get product with its category
     const product = await db.product.findUnique({
       where: { id: productId },
       include: {
@@ -115,23 +207,31 @@ export async function canUserPurchaseProduct(
     if (!product) {
       return {
         canPurchase: false,
+        code: "PRODUCT_NOT_FOUND",
         error: "Product not found",
       }
     }
 
-    // If product has no category, allow purchase (no restrictions)
     if (!product.category) {
       return { canPurchase: true }
     }
 
-    // Check category access
+    if (
+      await isFinalClientAllowedCategory(
+        product.category.id,
+        product.category.slug
+      )
+    ) {
+      return { canPurchase: true }
+    }
+
     return canUserPurchaseFromCategory(userId, product.category.id)
   } catch (error) {
     console.error("Error checking product certification access:", error)
     return {
       canPurchase: false,
+      code: "ACCESS_CHECK_FAILED",
       error: "An error occurred while checking certification access",
     }
   }
 }
-

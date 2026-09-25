@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 const RENAMES = [
   { slug: "evo", name: "Verniz Gel" },
   { slug: "ethos", name: "Cuidados das Unhas" },
-  { slug: "gemini", name: "Verniz Tradicional" },
+  { slug: "gemini", name: "Verniz Clássico" },
 ];
 
 async function main() {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { COLOUR_TONES } from "@/lib/colour-tones";
 import { useLanguage } from "@/contexts/language-context";
 import { cn } from "@/lib/utils";
@@ -7,6 +8,8 @@ import { cn } from "@/lib/utils";
 type ColourToneSwatchesProps = {
   selectedTone: string;
   onToneChange: (toneId: string) => void;
+  /** When false, omit the name label under the swatches (default true). */
+  showPreviewLabel?: boolean;
 };
 
 function SparkleIcon({ className }: { className?: string }) {
@@ -29,47 +32,94 @@ function SwatchSparkles() {
   );
 }
 
-export function ColourToneSwatches({ selectedTone, onToneChange }: ColourToneSwatchesProps) {
+function toneLabel(
+  toneId: string,
+  t: (key: string) => string
+): string {
+  if (toneId === "all") return t("productPages.colours.allTones");
+  const tone = COLOUR_TONES.find((item) => item.id === toneId);
+  return tone ? t(tone.labelKey) : t("productPages.colours.allTones");
+}
+
+export function ColourToneSwatches({
+  selectedTone,
+  onToneChange,
+  showPreviewLabel = true,
+}: ColourToneSwatchesProps) {
   const { t } = useLanguage();
+  const [previewTone, setPreviewTone] = useState<string | null>(null);
+
+  const activePreview = previewTone ?? selectedTone;
+  const previewLabel = toneLabel(activePreview, t);
+
+  const clearPreview = () => setPreviewTone(null);
 
   return (
-    <div role="radiogroup" aria-label={t("shop.colourTone")} className="flex flex-wrap gap-2 pt-1">
-      <button
-        type="button"
-        role="radio"
-        aria-checked={selectedTone === "all"}
-        aria-label={t("productPages.colours.allTones")}
-        title={t("productPages.colours.allTones")}
-        onClick={() => onToneChange("all")}
-        className={cn(
-          "h-9 w-9 shrink-0 rounded-md border border-brand-champagne/25 shadow-sm transition-shadow",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-champagne focus-visible:ring-offset-2",
-          selectedTone === "all" && "ring-2 ring-brand-black ring-offset-2"
-        )}
-        style={{
-          background:
-            "conic-gradient(from 0deg, #8B1E1E, #E87A2E, #FF3CAC, #CCFF00, #2E6B8A, #D4568A, #E8D5C4, #8B1E1E)",
-        }}
-      />
-      {COLOUR_TONES.map((tone) => (
+    <div className="space-y-2">
+      <div
+        role="radiogroup"
+        aria-label={t("shop.colourTone")}
+        className="flex flex-wrap gap-2 pt-1"
+        onMouseLeave={clearPreview}
+      >
         <button
-          key={tone.id}
           type="button"
           role="radio"
-          aria-checked={selectedTone === tone.id}
-          aria-label={t(tone.labelKey)}
-          title={t(tone.labelKey)}
-          onClick={() => onToneChange(tone.id)}
+          aria-checked={selectedTone === "all"}
+          aria-label={t("productPages.colours.allTones")}
+          title={t("productPages.colours.allTones")}
+          onClick={() => onToneChange("all")}
+          onMouseEnter={() => setPreviewTone("all")}
+          onFocus={() => setPreviewTone("all")}
+          onBlur={clearPreview}
           className={cn(
-            "relative h-9 w-9 shrink-0 overflow-hidden rounded-md border border-black/10 shadow-sm transition-shadow",
+            "h-9 w-9 shrink-0 rounded-md border border-brand-champagne/25 shadow-sm transition-shadow",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-champagne focus-visible:ring-offset-2",
-            selectedTone === tone.id && "ring-2 ring-brand-black ring-offset-2"
+            selectedTone === "all" && "ring-2 ring-brand-black ring-offset-2"
           )}
-          style={{ backgroundColor: tone.swatch }}
+          style={{
+            background:
+              "conic-gradient(from 0deg, #8B1E1E, #E87A2E, #FF3CAC, #CCFF00, #2E6B8A, #D4568A, #E8D5C4, #8B1E1E)",
+          }}
+        />
+        {COLOUR_TONES.map((tone) => {
+          const label = t(tone.labelKey);
+          return (
+            <button
+              key={tone.id}
+              type="button"
+              role="radio"
+              aria-checked={selectedTone === tone.id}
+              aria-label={label}
+              title={label}
+              onClick={() => onToneChange(tone.id)}
+              onMouseEnter={() => setPreviewTone(tone.id)}
+              onFocus={() => setPreviewTone(tone.id)}
+              onBlur={clearPreview}
+              className={cn(
+                "relative h-9 w-9 shrink-0 overflow-hidden rounded-md border border-black/10 shadow-sm transition-shadow",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-champagne focus-visible:ring-offset-2",
+                selectedTone === tone.id && "ring-2 ring-brand-black ring-offset-2"
+              )}
+              style={{ backgroundColor: tone.swatch }}
+            >
+              {tone.sparkle && <SwatchSparkles />}
+            </button>
+          );
+        })}
+      </div>
+
+      {showPreviewLabel && (
+        <p
+          className={cn(
+            "min-h-[1rem] text-xs font-light text-brand-black/55 transition-opacity",
+            previewTone && previewTone !== selectedTone && "text-brand-black/80"
+          )}
+          aria-live="polite"
         >
-          {tone.sparkle && <SwatchSparkles />}
-        </button>
-      ))}
+          {previewLabel}
+        </p>
+      )}
     </div>
   );
 }

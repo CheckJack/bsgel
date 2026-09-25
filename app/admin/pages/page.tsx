@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/language-context";
 
 type SeoPageRow = {
   id: string;
@@ -21,6 +22,7 @@ type SeoPageRow = {
 };
 
 export default function AdminSeoPagesList() {
+  const { t } = useLanguage();
   const [pages, setPages] = useState<SeoPageRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -47,7 +49,7 @@ export default function AdminSeoPagesList() {
       const data = await res.json();
       setPages(data.pages ?? []);
     } catch {
-      toast("Failed to load pages", "error");
+      toast(t("toasts.pagesLoadFailed"), "error");
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
@@ -48,11 +48,17 @@ function AdminProductsPageContent() {
   const [products, setProducts] = useState<Product[]>([]);
   const [totalProducts, setTotalProducts] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
+  const fetchAbortRef = useRef<AbortController | null>(null);
+  // Local input value (updates instantly). Debounced query drives fetch + URL.
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [isRestoringState, setIsRestoringState] = useState(true);
+  const updatingUrlFromSearchRef = useRef(false);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [showBulkEditModal, setShowBulkEditModal] = useState(false);
@@ -102,7 +108,10 @@ function AdminProductsPageContent() {
     const urlPage = searchParams.get("page");
     const urlEntries = searchParams.get("entries");
     
-    if (urlSearch) setSearchQuery(urlSearch);
+    if (urlSearch) {
+      setSearchInput(urlSearch);
+      setSearchQuery(urlSearch);
+    }
     if (urlCategory) setCategoryFilter(urlCategory);
     if (urlPage) {
       const pageNum = parseInt(urlPage, 10);
@@ -116,6 +125,17 @@ function AdminProductsPageContent() {
     setIsRestoringState(false);
     fetchCategories();
   }, []); // Only run on mount
+
+  // Debounce search: wait until typing pauses before filtering
+  useEffect(() => {
+    if (isRestoringState) return;
+    const timer = window.setTimeout(() => {
+      if (searchInput === searchQuery) return;
+      setCurrentPage(1);
+      setSearchQuery(searchInput);
+    }, 550);
+    return () => window.clearTimeout(timer);
+  }, [searchInput, isRestoringState, searchQuery]);
 
   // Fetch products when filters or pagination change
   useEffect(() => {
@@ -135,6 +155,7 @@ function AdminProductsPageContent() {
     
     // Only replace if URL actually changed to avoid unnecessary re-renders
     if (window.location.search !== `?${queryString}` && (window.location.search !== "" || queryString !== "")) {
+      updatingUrlFromSearchRef.current = true;
       router.replace(newUrl, { scroll: false });
     }
   }, [currentPage, entriesPerPage, searchQuery, categoryFilter, isRestoringState]);
@@ -145,11 +166,16 @@ function AdminProductsPageContent() {
     setSubcategories(subs);
   }, [categories]);
 
-  // Sync search query with URL params (e.g. from header search)
+  // Sync from URL only for external navigation (e.g. header search / back button)
   useEffect(() => {
     if (isRestoringState) return;
+    if (updatingUrlFromSearchRef.current) {
+      updatingUrlFromSearchRef.current = false;
+      return;
+    }
     const urlSearchQuery = searchParams.get("search") || "";
-    if (urlSearchQuery !== searchQuery) {
+    if (urlSearchQuery !== searchInput) {
+      setSearchInput(urlSearchQuery);
       setSearchQuery(urlSearchQuery);
     }
   }, [searchParams]);
@@ -172,8 +198,17 @@ function AdminProductsPageContent() {
   };
 
   const fetchProducts = async () => {
+    fetchAbortRef.current?.abort();
+    const controller = new AbortController();
+    fetchAbortRef.current = controller;
+
+    const showFullPageLoader = !hasLoadedOnceRef.current;
     try {
-      setIsLoading(true);
+      if (showFullPageLoader) {
+        setIsLoading(true);
+      } else {
+        setIsRefreshing(true);
+      }
       
       const params = new URLSearchParams();
       params.append("page", currentPage.toString());
@@ -187,13 +222,14 @@ function AdminProductsPageContent() {
         params.append("categoryId", categoryFilter);
       }
 
-      // Request products with pagination and filters
-      const res = await fetch(`/api/products?${params.toString()}`);
+      const res = await fetch(`/api/products?${params.toString()}`, {
+        signal: controller.signal,
+      });
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
         console.error("❌ Failed to fetch products:", res.status, res.statusText, errorData);
-        toast(`Failed to fetch products: ${errorData.error || res.statusText} (${res.status})`, "error");
+        toast(t("products.fetchFailedDetail", { detail: `${errorData.error || res.statusText} (${res.status})` }), "error");
         setProducts([]);
         setFilteredProducts([]);
         setTotalProducts(0);
@@ -204,18 +240,22 @@ function AdminProductsPageContent() {
       const productsArray = data.products || [];
       const total = data.pagination?.total || productsArray.length;
 
-      console.log("✅ Products fetched successfully:", productsArray.length, "of", total);
       setProducts(productsArray);
       setFilteredProducts(productsArray);
       setTotalProducts(total);
+      hasLoadedOnceRef.current = true;
     } catch (error: any) {
+      if (error?.name === "AbortError") return;
       console.error("❌ Error fetching products:", error);
-      toast(`Failed to fetch products: ${error?.message || "Network error"}`, "error");
+      toast(t("products.fetchFailedDetail", { detail: error?.message || t("toasts.networkError") }), "error");
       setProducts([]);
       setFilteredProducts([]);
       setTotalProducts(0);
     } finally {
-      setIsLoading(false);
+      if (!controller.signal.aborted) {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
     }
   };
 
@@ -303,7 +343,7 @@ function AdminProductsPageContent() {
 
   const handleBulkEdit = async () => {
     if (selectedProducts.size === 0) {
-      toast("Please select at least one product", "warning");
+      toast(t("products.selectAtLeastOne"), "warning");
       return;
     }
 
@@ -465,7 +505,7 @@ function AdminProductsPageContent() {
       toast(t("products.exportSuccessWithCount", { count: filteredProducts.length.toString() }), "success");
     } catch (error) {
       console.error("Failed to export products:", error);
-      toast("Failed to export products", "error");
+      toast(t("products.exportError"), "error");
     } finally {
       setIsExporting(false);
     }
@@ -621,12 +661,8 @@ function AdminProductsPageContent() {
                   <input
                     type="text"
                     placeholder={t("common.search")}
-                    value={searchQuery}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setSearchQuery(value);
-                      setCurrentPage(1); // Reset to first page when search changes
-                    }}
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-500 dark:placeholder:text-gray-400"
                   />
                 </div>
@@ -656,8 +692,13 @@ function AdminProductsPageContent() {
 
       {/* Product Table */}
       <Card className="bg-white dark:bg-gray-800 overflow-hidden">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto -mx-4 sm:mx-0">
+        <CardContent className="p-0 relative">
+          {isRefreshing && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-start justify-center bg-white/50 pt-16 dark:bg-gray-900/40">
+              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-black dark:border-white" />
+            </div>
+          )}
+          <div className={`overflow-x-auto -mx-4 sm:mx-0 ${isRefreshing ? "opacity-60" : ""}`}>
             <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">

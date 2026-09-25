@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useLanguage } from "@/contexts/language-context";
 
 const toLocalDateTimeInput = (value: string | Date) => {
   const date = new Date(value);
@@ -25,6 +26,7 @@ const localDateTimeInputToIso = (value: string) => {
 };
 
 export default function EditSessionPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
@@ -76,12 +78,12 @@ export default function EditSessionPage() {
         }
       } else {
         const errorData = await res.json();
-        toast(errorData.error || "Failed to load session", "error");
+        toast(errorData.error || t("admin.trainings.sessionLoadFailed"), "error");
         router.push("/admin/trainings/sessions");
       }
     } catch (error) {
       console.error("Failed to fetch session:", error);
-      toast("Failed to load session. Please try again.", "error");
+      toast(t("admin.trainings.sessionLoadFailedRetry"), "error");
       router.push("/admin/trainings/sessions");
     } finally {
       setIsLoading(false);
@@ -142,15 +144,15 @@ export default function EditSessionPage() {
       });
 
       if (res.ok) {
-        toast("Training session updated successfully", "success");
+        toast(t("admin.trainings.sessionUpdated"), "success");
         router.push("/admin/trainings/sessions");
       } else {
         const data = await res.json();
-        toast(data.error || "Failed to update session", "error");
+        toast(data.error || t("admin.trainings.sessionUpdateFailed"), "error");
       }
     } catch (error) {
       console.error("Failed to update session:", error);
-      toast("Failed to update session. Please try again.", "error");
+      toast(t("admin.trainings.sessionUpdateFailedRetry"), "error");
     } finally {
       setIsSubmitting(false);
     }

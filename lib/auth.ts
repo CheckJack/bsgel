@@ -2,6 +2,11 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { compare } from 'bcryptjs'
 import { db } from './db'
+import { withNotificationI18n } from './notifications/i18n'
+import {
+  AUTH_RATE_LIMITS,
+  rateLimit,
+} from './rate-limit'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -22,6 +27,16 @@ export const authOptions: NextAuthOptions = {
           const normalizedEmail = credentials.email.trim().toLowerCase()
           console.log("🔐 Auth: Attempting login for:", normalizedEmail)
 
+          // Per-email limit (IP limited in /api/auth/[...nextauth])
+          const emailLimit = rateLimit({
+            key: `auth:login:email:${normalizedEmail}`,
+            ...AUTH_RATE_LIMITS.loginEmail,
+          })
+          if (!emailLimit.ok) {
+            console.error("❌ Auth: Rate limited for email:", normalizedEmail)
+            throw new Error("RATE_LIMITED")
+          }
+
           // Use raw query to avoid schema mismatch issues with missing columns
           const users = await db.$queryRaw<Array<{
             id: string
@@ -29,8 +44,10 @@ export const authOptions: NextAuthOptions = {
             password: string
             role: string
             name: string | null
+            emailVerifiedAt: Date | null
+            isActive: boolean
           }>>`
-            SELECT id, email, password, role, name
+            SELECT id, email, password, role, name, "emailVerifiedAt", "isActive"
             FROM "User"
             WHERE LOWER(email) = ${normalizedEmail}
             LIMIT 1
@@ -58,6 +75,28 @@ export const authOptions: NextAuthOptions = {
           }
 
           console.log("✅ Auth: Password valid for:", normalizedEmail)
+
+          // Block banned emails (even if the User row still exists)
+          const banned = await db.bannedEmail.findUnique({
+            where: { email: normalizedEmail },
+            select: { id: true },
+          })
+          if (banned) {
+            console.error("❌ Auth: Banned email attempted login:", normalizedEmail)
+            throw new Error("ACCOUNT_BANNED")
+          }
+
+          // Block deactivated accounts
+          if (user.isActive === false) {
+            console.error("❌ Auth: Inactive account attempted login:", normalizedEmail)
+            throw new Error("ACCOUNT_INACTIVE")
+          }
+
+          // Require email verification for non-admin users (existing users were grandfathered)
+          if (userRole !== "ADMIN" && !user.emailVerifiedAt) {
+            console.error("❌ Auth: Email not verified for:", normalizedEmail)
+            throw new Error("EMAIL_NOT_VERIFIED")
+          }
 
           // Get user details including lastLoginAt, certificationId, and certificateUrl
           let certificationName = null
@@ -104,11 +143,17 @@ export const authOptions: NextAuthOptions = {
                       title: "Certification Pending Review",
                       message: "Your certification has been uploaded and is pending review. We'll notify you once it's been reviewed.",
                       userId: userId,
-                      metadata: {
-                        certificationId: userCertificationId,
-                        isFirstLogin: true,
-                        timestamp: new Date().toISOString(),
-                      },
+                      metadata: withNotificationI18n(
+                        {
+                          certificationId: userCertificationId,
+                          isFirstLogin: true,
+                          timestamp: new Date().toISOString(),
+                        },
+                        {
+                          titleKey: "inApp.certificationPendingTitle",
+                          messageKey: "inApp.certificationPendingMessage",
+                        }
+                      ),
                     },
                   })
                   console.log("✅ Auth: Created pending review notification for first-time professional login:", normalizedEmail)
@@ -151,6 +196,14 @@ export const authOptions: NextAuthOptions = {
           console.log("✅ Auth: Returning user object for:", normalizedEmail)
           return authUser
         } catch (error: any) {
+          if (
+            error?.message === "EMAIL_NOT_VERIFIED" ||
+            error?.message === "ACCOUNT_BANNED" ||
+            error?.message === "ACCOUNT_INACTIVE" ||
+            error?.message === "RATE_LIMITED"
+          ) {
+            throw error
+          }
           console.error("❌ Auth: Error during authorization:", error?.message || error)
           return null
         }
@@ -167,9 +220,41 @@ export const authOptions: NextAuthOptions = {
         // Don't store image in token - it's too large and causes cookie size issues
         // We'll fetch it from database in session callback instead
       }
+
+      // Keep sessions honest: ban/deactivate should end access without waiting for re-login
+      if (token.id) {
+        try {
+          const rows = await db.$queryRaw<
+            Array<{ isActive: boolean; isBanned: boolean }>
+          >`
+            SELECT
+              u."isActive" AS "isActive",
+              EXISTS (
+                SELECT 1
+                FROM "BannedEmail" b
+                WHERE b.email = LOWER(TRIM(u.email))
+              ) AS "isBanned"
+            FROM "User" u
+            WHERE u.id = ${token.id as string}
+            LIMIT 1
+          `
+          const row = rows?.[0]
+          if (!row || row.isActive === false || row.isBanned) {
+            console.warn("❌ Auth JWT: blocked user — clearing session", token.id)
+            // Wipe identity so middleware/session treat the user as signed out
+            delete (token as { id?: string }).id
+            delete (token as { role?: string }).role
+            delete (token as { certification?: string }).certification
+            token.error = "ACCOUNT_DISABLED"
+            return token
+          }
+        } catch (checkError) {
+          console.error("❌ Auth JWT: ban/active check failed:", checkError)
+        }
+      }
       
       // When session is updated (e.g., via update() call), just mark that we need to refresh
-      // Don't store image in token - fetch it in session callback instead
+      // Don't store image in token - fetch it from database in session callback instead
       if (trigger === "update" && token.id) {
         // Just update basic fields that are small enough for token
         if (session?.name !== undefined) token.name = session.name
@@ -181,10 +266,16 @@ export const authOptions: NextAuthOptions = {
       return token
     },
     async session({ session, token }) {
-      if (session.user && token.id) {
-        session.user.id = token.id as string
-        session.user.role = token.role as string
-        session.user.certification = token.certification as string
+      // Banned/inactive JWT wipe leaves no id — treat as signed out
+      if (!token?.id || token.error === "ACCOUNT_DISABLED") {
+        // Empty expires forces clients to treat session as absent
+        return { ...session, user: { ...session.user, id: "", role: "" }, expires: new Date(0).toISOString() }
+      }
+
+      if (session.user) {
+        (session.user as { id: string }).id = token.id as string
+        ;(session.user as { role: string }).role = (token.role as string) || ""
+        ;(session.user as { certification?: string }).certification = token.certification as string
         session.user.name = (token.name as string) || session.user.name
         session.user.email = (token.email as string) || session.user.email
         

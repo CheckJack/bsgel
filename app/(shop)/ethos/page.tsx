@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import mobileEthosHero from "../../../egw657.png";
 import { GeminiHeroBadge } from "@/components/layout/category-hero-badge";
+import { DesktopHeroVideo } from "@/components/layout/desktop-hero-video";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import { ShopProductsHeader } from "@/components/shop/shop-products-header";
@@ -17,6 +18,7 @@ import { BRAND_LINE_SLUGS, findCategoryByBrandSlug } from "@/lib/brand-lines";
 
 interface Product {
   id: string;
+  slug?: string;
   name: string;
   description: string | null;
   price: string;
@@ -90,17 +92,11 @@ export default function EthosPage() {
       <section className="relative h-[36vh] w-full overflow-hidden md:h-[44vh]">
         <GeminiHeroBadge />
         <Image src={mobileEthosHero} alt={t("nav.shopMenu.ethos")} fill className="object-cover md:hidden" priority unoptimized />
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          aria-label={t("nav.shopMenu.ethos")}
-          className="absolute inset-0 hidden h-full w-full object-cover md:block"
-        >
-          <source src="/ethos-hero.mp4" type="video/mp4" />
-        </video>
+        <DesktopHeroVideo
+          src="/natural-nail-treatments/hero-background.mp4"
+          ariaLabel={t("nav.shopMenu.ethos")}
+          className="hidden md:block"
+        />
       </section>
 
       <section id="products" className="relative w-full min-h-screen bg-brand-white py-16">
@@ -130,8 +126,10 @@ export default function EthosPage() {
                   <ProductCard
                     key={product.id}
                     id={product.id}
+                    slug={product.slug}
                     name={product.name}
                     price={product.price}
+                    salePrice={(product as any).salePrice}
                     image={product.image}
                     images={product.images}
                     featured={product.featured}

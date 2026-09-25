@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
 import { Search, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Attribute {
   id: string;
@@ -28,6 +29,7 @@ type SortField = "category" | "valueCount" | "usageCount" | "createdAt";
 type SortDirection = "asc" | "desc";
 
 export default function AdminAttributesPage() {
+  const { t } = useLanguage();
   const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -75,7 +77,7 @@ export default function AdminAttributesPage() {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
         console.error("❌ Failed to fetch attributes:", res.status, res.statusText, errorData);
-        toast(`Failed to fetch attributes: ${errorData.error || res.statusText} (${res.status})`, "error");
+        toast(t("admin.attributes.fetchFailedDetail", { detail: `${errorData.error || res.statusText} (${res.status})` }), "error");
         setAttributes([]);
         return;
       }
@@ -92,7 +94,7 @@ export default function AdminAttributesPage() {
       setPagination(data.pagination || pagination);
     } catch (error: any) {
       console.error("❌ Error fetching attributes:", error);
-      toast(`Failed to fetch attributes: ${error?.message || "Network error"}`, "error");
+      toast(t("admin.attributes.fetchFailedDetail", { detail: error?.message || t("toasts.networkError") }), "error");
       setAttributes([]);
     } finally {
       setIsLoading(false);
@@ -110,15 +112,15 @@ export default function AdminAttributesPage() {
       });
 
       if (res.ok) {
-        toast(`Attribute "${category}" deleted successfully`, "success");
+        toast(t("admin.attributes.deleteSuccessNamed", { name: category }), "success");
         fetchAttributes();
       } else {
         const data = await res.json();
-        toast(data.error || "Failed to delete attribute", "error");
+        toast(data.error || t("admin.attributes.deleteFailed"), "error");
       }
     } catch (error) {
       console.error("Failed to delete attribute:", error);
-      toast("Failed to delete attribute. Please try again.", "error");
+      toast(t("admin.attributes.deleteFailedRetry"), "error");
     }
   };
 

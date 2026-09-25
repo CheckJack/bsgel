@@ -8,9 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Card, CardContent } from "@/components/ui/card";
-import { BlogImageUpload, imagePreviewToDataUrl, type ImagePreview } from "@/components/admin/blog-image-upload";
+import { BlogImageUpload } from "@/components/admin/blog-image-upload";
+import { useLanguage } from "@/contexts/language-context";
+import {
+  resolveBlogImageForSave,
+  type ImagePreview,
+} from "@/lib/blog-images";
+
+type BlogStatus = "DRAFT" | "PUBLISHED";
 
 export default function NewBlogPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { data: session } = useSession();
   const [formData, setFormData] = useState({
@@ -19,56 +27,30 @@ export default function NewBlogPage() {
     excerpt: "",
     content: "",
     author: "",
-    status: "DRAFT" as "DRAFT" | "PUBLISHED" | "PENDING_REVIEW",
+    status: "DRAFT" as BlogStatus,
   });
   const [image, setImage] = useState<ImagePreview | null>(null);
   const [heroImage, setHeroImage] = useState<ImagePreview | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [adminUsers, setAdminUsers] = useState<Array<{ id: string; name: string | null; email: string }>>([]);
-  const [isLoadingAdmins, setIsLoadingAdmins] = useState(false);
-  const [assignedReviewerId, setAssignedReviewerId] = useState<string>("");
+  const [slugTouched, setSlugTouched] = useState(false);
 
-  // Auto-generate slug from title
   useEffect(() => {
-    if (formData.title && !formData.slug) {
+    if (formData.title && !slugTouched) {
       const generatedSlug = formData.title
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "");
       setFormData((prev) => ({ ...prev, slug: generatedSlug }));
     }
-  }, [formData.title]);
-
-  // Fetch admin users for reviewer selection
-  useEffect(() => {
-    const fetchAdminUsers = async () => {
-      try {
-        setIsLoadingAdmins(true);
-        const res = await fetch("/api/users?role=ADMIN");
-        if (res.ok) {
-          const users = await res.json();
-          setAdminUsers(users.map((user: { id: string; name: string | null; email: string }) => ({
-            id: user.id,
-            name: user.name,
-            email: user.email,
-          })));
-        }
-      } catch (error) {
-        console.error("Failed to fetch admin users:", error);
-      } finally {
-        setIsLoadingAdmins(false);
-      }
-    };
-    fetchAdminUsers();
-  }, []);
+  }, [formData.title, slugTouched]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (!formData.title || !formData.slug) {
-      setError("Title and slug are required");
+    if (!formData.title.trim() || !formData.slug.trim()) {
+      setError(t("admin.blogs.titleSlugRequired"));
       return;
     }
 
@@ -76,22 +58,19 @@ export default function NewBlogPage() {
 
     try {
       const [imageUrl, heroImageUrl] = await Promise.all([
-        imagePreviewToDataUrl(image),
-        imagePreviewToDataUrl(heroImage),
+        resolveBlogImageForSave(image, null),
+        resolveBlogImageForSave(heroImage, null),
       ]);
 
       const blogData = {
-        title: formData.title,
-        slug: formData.slug,
+        title: formData.title.trim(),
+        slug: formData.slug.trim(),
         excerpt: formData.excerpt || null,
         content: formData.content || "",
-        image: imageUrl,
-        heroImage: heroImageUrl,
+        image: imageUrl ?? null,
+        heroImage: heroImageUrl ?? null,
         author: formData.author || null,
         status: formData.status,
-        publishedAt: formData.status === "PUBLISHED" ? new Date().toISOString() : null,
-        assignedReviewerId: formData.status === "PENDING_REVIEW" && assignedReviewerId ? assignedReviewerId : null,
-        createdBy: session?.user?.id || null,
       };
 
       const res = await fetch("/api/blogs", {
@@ -100,15 +79,20 @@ export default function NewBlogPage() {
         body: JSON.stringify(blogData),
       });
 
+      const data = await res.json().catch(() => ({}));
+
       if (res.ok) {
         router.push("/admin/blogs");
       } else {
-        const data = await res.json();
-        setError(data.error || "Failed to create blog post");
+        setError(data.error || t("admin.blogs.createFailed"));
       }
-    } catch (error) {
-      console.error("Failed to create blog:", error);
-      setError("An error occurred while creating the blog post. Please try again.");
+    } catch (createError) {
+      console.error("Failed to create blog:", createError);
+      setError(
+        createError instanceof Error
+          ? createError.message
+          : "An error occurred while creating the blog post. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -120,9 +104,8 @@ export default function NewBlogPage() {
 
   return (
     <div className="p-6 min-h-screen">
-      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Create Blog Post</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("admin.blogs.newTitle")}</h1>
         <div className="text-sm text-gray-600 dark:text-gray-400">
           Dashboard <span className="mx-2">&gt;</span> Pages{" "}
           <span className="mx-2">&gt;</span> Blog Posts <span className="mx-2">&gt;</span> New
@@ -136,113 +119,84 @@ export default function NewBlogPage() {
       )}
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Main Content */}
         <div className="lg:col-span-2 space-y-6">
           <Card className="bg-white dark:bg-gray-800">
             <CardContent className="p-6 space-y-6">
-              {/* Title */}
               <div>
-                <label
-                  htmlFor="title"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
+                <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Title <span className="text-red-500">*</span>
                 </label>
                 <Input
                   id="title"
-                  placeholder="Enter blog post title"
+                  placeholder={t("admin.blogs.titlePlaceholder")}
                   value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   required
                   className="w-full"
                 />
               </div>
 
-              {/* Slug */}
               <div>
-                <label
-                  htmlFor="slug"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
+                <label htmlFor="slug" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Slug <span className="text-red-500">*</span>
                 </label>
                 <Input
                   id="slug"
                   placeholder="blog-post-slug"
                   value={formData.slug}
-                  onChange={(e) =>
-                    setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })
-                  }
+                  onChange={(e) => {
+                    setSlugTouched(true);
+                    setFormData({
+                      ...formData,
+                      slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""),
+                    });
+                  }}
                   required
                   className="w-full"
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  URL-friendly version of the title (auto-generated from title)
+                  URL-friendly version of the title (auto-generated until you edit it)
                 </p>
               </div>
 
-              {/* Excerpt */}
               <div>
-                <label
-                  htmlFor="excerpt"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
+                <label htmlFor="excerpt" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Excerpt
                 </label>
                 <Textarea
                   id="excerpt"
-                  placeholder="Short description of the blog post"
+                  placeholder={t("admin.blogs.excerptPlaceholder")}
                   value={formData.excerpt}
-                  onChange={(e) =>
-                    setFormData({ ...formData, excerpt: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
                   rows={3}
                   className="w-full"
                 />
-                <p className="mt-1 text-xs text-gray-500">
-                  A brief summary that appears in blog listings
-                </p>
               </div>
 
-              {/* Content */}
               <div>
-                <label
-                  htmlFor="content"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
+                <label htmlFor="content" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Content <span className="text-red-500">*</span>
                 </label>
                 <RichTextEditor
                   content={formData.content}
                   onChange={(html) => setFormData({ ...formData, content: html })}
-                  placeholder="Write your blog post content here... Use the toolbar to format your text."
-                  imageUploadHint="Recommended size: 1200 × 675 px (16:9) for inline images in the post body."
+                  placeholder={t("admin.blogs.contentPlaceholder")}
+                  imageUploadHint="Recommended size: 1200 × 675 px (16:9). Images are uploaded to the server (max 8 MB)."
                 />
-                <p className="mt-2 text-xs text-gray-500">
-                  Use the toolbar above to format your content with headings, lists, links, images, and more.
-                </p>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Right Column - Metadata */}
         <div className="space-y-6">
-          {/* Publish Settings */}
           <Card className="bg-white dark:bg-gray-800">
             <CardContent className="p-6 space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
                 Publish Settings
               </h3>
 
-              {/* Status */}
               <div>
-                <label
-                  htmlFor="status"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
+                <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Status
                 </label>
                 <select
@@ -250,63 +204,23 @@ export default function NewBlogPage() {
                   className="flex h-10 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={formData.status}
                   onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value as "DRAFT" | "PUBLISHED" | "PENDING_REVIEW" })
+                    setFormData({ ...formData, status: e.target.value as BlogStatus })
                   }
                 >
                   <option value="DRAFT">Draft</option>
-                  <option value="PENDING_REVIEW">Send to Review</option>
                   <option value="PUBLISHED">Published</option>
                 </select>
               </div>
 
-              {/* Reviewer Selection - Only show when status is PENDING_REVIEW */}
-              {formData.status === "PENDING_REVIEW" && (
-                <div>
-                  <label
-                    htmlFor="reviewer"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                  >
-                    Assign Reviewer <span className="text-red-500">*</span>
-                  </label>
-                  {isLoadingAdmins ? (
-                    <div className="text-sm text-gray-500 dark:text-gray-400">Loading admins...</div>
-                  ) : (
-                    <select
-                      id="reviewer"
-                      className="flex h-10 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={assignedReviewerId}
-                      onChange={(e) => setAssignedReviewerId(e.target.value)}
-                      required={formData.status === "PENDING_REVIEW"}
-                    >
-                      <option value="">Select an admin reviewer</option>
-                      {adminUsers.map((admin) => (
-                        <option key={admin.id} value={admin.id}>
-                          {admin.name || admin.email}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                  <p className="mt-1 text-xs text-gray-500">
-                    Select an admin user to review this blog post
-                  </p>
-                </div>
-              )}
-
-              {/* Author */}
               <div>
-                <label
-                  htmlFor="author"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
+                <label htmlFor="author" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Author
                 </label>
                 <Input
                   id="author"
-                  placeholder="Author name"
+                  placeholder={t("admin.blogs.authorPlaceholder")}
                   value={formData.author}
-                  onChange={(e) =>
-                    setFormData({ ...formData, author: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, author: e.target.value })}
                   className="w-full"
                 />
               </div>
@@ -314,44 +228,41 @@ export default function NewBlogPage() {
           </Card>
 
           <BlogImageUpload
-            title="Thumbnail / Featured Image"
-            description="Displayed in blog listings, related posts, and admin previews."
+            title={t("admin.blogs.thumbnail")}
+            description={t("admin.blogs.thumbnailHint")}
             image={image}
             onImageChange={setImage}
             inputId="blog-thumbnail-image"
           />
 
           <BlogImageUpload
-            title="Hero Photo"
-            description="Displayed as the full-width banner at the top of the blog post."
+            title={t("admin.blogs.heroPhoto")}
+            description="Shown as the full-width banner at the top of the article page only."
             image={heroImage}
             onImageChange={setHeroImage}
             inputId="blog-hero-image"
           />
 
-          {/* Action Buttons */}
           <div className="flex flex-col gap-3">
             <Button
               type="submit"
-              disabled={isLoading || (formData.status === "PENDING_REVIEW" && !assignedReviewerId)}
+              disabled={isLoading}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium"
             >
               {isLoading
-                ? "Creating..."
+                ? t("common.creating")
                 : formData.status === "PUBLISHED"
-                ? "Publish Post"
-                : formData.status === "PENDING_REVIEW"
-                ? "Send to Review"
-                : "Save Draft"}
+                ? t("admin.blogs.publishPost")
+                : t("admin.blogs.saveDraft")}
             </Button>
             <Button
               type="button"
               onClick={() => router.push("/admin/blogs")}
               disabled={isLoading}
               variant="outline"
-              className="w-full border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium"
+              className="w-full"
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         </div>
@@ -359,4 +270,3 @@ export default function NewBlogPage() {
     </div>
   );
 }
-

@@ -84,6 +84,7 @@ export async function GET(req: Request) {
       price: Number(program.price), // Convert Decimal to number
       image: program.image,
       isActive: program.isActive,
+      openBooking: program.openBooking,
       upcomingSessions: program.sessions.length,
       totalBookings: program._count.bookings,
       includedProducts: program.products.map((tp) => ({
@@ -126,7 +127,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    const { title, description, content, days, price, image, isActive, productIds } = body
+    const { title, description, content, days, price, image, isActive, openBooking, productIds } = body
 
     // Validate required fields
     if (!title || !title.trim()) {
@@ -200,6 +201,7 @@ export async function POST(req: Request) {
         price: parseFloat(price),
         image: image || null,
         isActive: isActive !== undefined ? Boolean(isActive) : true,
+        openBooking: openBooking !== undefined ? Boolean(openBooking) : false,
         products: productIds && Array.isArray(productIds) && productIds.length > 0
           ? {
               create: productIds.map((p: any) => ({

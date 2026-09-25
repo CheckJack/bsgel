@@ -7,6 +7,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { formatPrice } from "@/lib/utils";
 import { Search, ChevronLeft, ChevronRight, Plus, Eye, EyeOff, X, FileText, CheckCircle, XCircle, Download, Pencil, Trash2, Ban, CheckCircle2, Check } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
+import { RejectionModal } from "@/components/admin/rejection-modal";
 
 interface Certification {
   id: string;
@@ -38,6 +40,7 @@ interface BannedEmail {
 
 export default function AdminCustomersPage() {
   const searchParams = useSearchParams();
+  const { t } = useLanguage();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,6 +85,7 @@ export default function AdminCustomersPage() {
   const [customerToBan, setCustomerToBan] = useState<Customer | null>(null);
   const [banReason, setBanReason] = useState("");
   const [isUpdatingCertification, setIsUpdatingCertification] = useState(false);
+  const [rejectModalCustomer, setRejectModalCustomer] = useState<Customer | null>(null);
 
   useEffect(() => {
     fetchCustomers();
@@ -101,7 +105,7 @@ export default function AdminCustomersPage() {
   // Handle userId parameter after customers are loaded
   useEffect(() => {
     const userId = searchParams.get("userId");
-    console.log("🔍 [Customers Page] URL userId:", userId, "Total customers:", customers.length);
+    console.log("🔍 [Customers Page] URL userId:", userId, "customers:", customers.length);
     
     if (userId && customers.length > 0) {
       const customer = customers.find(c => c.id === userId);
@@ -116,7 +120,7 @@ export default function AdminCustomersPage() {
 
   const fetchCertifications = async () => {
     try {
-      const res = await fetch("/api/certifications?isActive=true");
+      const res = await fetch("/api/certifications?isActive=true&assignable=true");
       if (res.ok) {
         const data = await res.json();
         setCertifications(Array.isArray(data) ? data : []);
@@ -209,17 +213,17 @@ export default function AdminCustomersPage() {
 
     // Validation
     if (!formData.name || !formData.email || !formData.phone || !formData.password) {
-      setError("Please fill in all required fields");
+      setError(t("admin.customers.fillRequired"));
       return;
     }
 
     if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError(t("admin.customers.passwordMinLength"));
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("admin.customers.passwordsDoNotMatch"));
       return;
     }
 
@@ -255,10 +259,10 @@ export default function AdminCustomersPage() {
         await fetchCustomers();
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to create customer");
+        setError(data.error || t("admin.customers.createFailed"));
       }
     } catch (error) {
-      setError("An error occurred. Please try again.");
+      setError(t("common.errorOccurred"));
     } finally {
       setIsSubmitting(false);
     }
@@ -290,16 +294,20 @@ export default function AdminCustomersPage() {
         }
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to update certification");
+        setError(data.error || t("admin.customers.certUpdateFailed"));
       }
     } catch (error) {
-      setError("An error occurred. Please try again.");
+      setError(t("common.errorOccurred"));
     } finally {
       setIsValidating(false);
     }
   };
 
-  const handleUpdateCertification = async (customerId: string, certificationId: string | null) => {
+  const handleUpdateCertification = async (
+    customerId: string,
+    certificationId: string | null,
+    options?: { reject?: boolean; reason?: string }
+  ) => {
     setIsUpdatingCertification(true);
     try {
       const res = await fetch(`/api/users/${customerId}/certification`, {
@@ -307,6 +315,9 @@ export default function AdminCustomersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           certificationId: certificationId || null,
+          ...(options?.reject
+            ? { reject: true, reason: options.reason }
+            : {}),
         }),
       });
 
@@ -316,14 +327,28 @@ export default function AdminCustomersPage() {
           const updatedCustomer = await res.json();
           setSelectedCustomer(updatedCustomer);
         }
+        return true;
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to update certification");
+        setError(data.error || t("admin.customers.certUpdateFailed"));
+        return false;
       }
     } catch (error) {
-      setError("An error occurred. Please try again.");
+      setError(t("common.errorOccurred"));
+      return false;
     } finally {
       setIsUpdatingCertification(false);
+    }
+  };
+
+  const handleRejectCertification = async (reason: string) => {
+    if (!rejectModalCustomer) return;
+    const ok = await handleUpdateCertification(rejectModalCustomer.id, null, {
+      reject: true,
+      reason,
+    });
+    if (ok) {
+      setRejectModalCustomer(null);
     }
   };
 
@@ -362,17 +387,17 @@ export default function AdminCustomersPage() {
     setError("");
 
     if (!editFormData.name || !editFormData.email) {
-      setError("Please fill in all required fields");
+      setError(t("admin.customers.fillRequired"));
       return;
     }
 
     if (editFormData.password && editFormData.password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError(t("admin.customers.passwordMinLength"));
       return;
     }
 
     if (editFormData.password !== editFormData.confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("admin.customers.passwordsDoNotMatch"));
       return;
     }
 
@@ -401,10 +426,10 @@ export default function AdminCustomersPage() {
         await fetchCustomers();
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to update customer");
+        setError(data.error || t("admin.customers.updateFailed"));
       }
     } catch (error) {
-      setError("An error occurred. Please try again.");
+      setError(t("common.errorOccurred"));
     } finally {
       setIsSubmitting(false);
     }
@@ -433,10 +458,10 @@ export default function AdminCustomersPage() {
         await fetchCustomers();
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to delete customer");
+        setError(data.error || t("admin.customers.deleteFailed"));
       }
     } catch (error) {
-      setError("An error occurred. Please try again.");
+      setError(t("common.errorOccurred"));
     } finally {
       setIsDeleting(false);
     }
@@ -465,10 +490,10 @@ export default function AdminCustomersPage() {
         setBannedEmails(newBannedEmails);
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to unban customer");
+        setError(data.error || t("admin.customers.unbanFailed"));
       }
     } catch (error) {
-      setError("An error occurred. Please try again.");
+      setError(t("common.errorOccurred"));
     } finally {
       setIsBanning(false);
     }
@@ -500,10 +525,10 @@ export default function AdminCustomersPage() {
         setBanReason("");
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to ban customer");
+        setError(data.error || t("admin.customers.banFailed"));
       }
     } catch (error) {
-      setError("An error occurred. Please try again.");
+      setError(t("common.errorOccurred"));
     } finally {
       setIsBanning(false);
     }
@@ -550,7 +575,7 @@ export default function AdminCustomersPage() {
 
   // Format certification name for display
   const formatCertification = (certification: Certification | null): string => {
-    return certification ? certification.name : "None";
+    return certification ? certification.name : t("admin.customers.none");
   };
 
   if (isLoading) {
@@ -565,7 +590,7 @@ export default function AdminCustomersPage() {
     <div className="p-6 min-h-screen">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Customers</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("admin.customers.title")}</h1>
         <div className="flex items-center gap-4">
           <div className="text-sm text-gray-600 dark:text-gray-400">
             Dashboard <span className="mx-2">&gt;</span> Customers
@@ -575,7 +600,7 @@ export default function AdminCustomersPage() {
             className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
-            Add Customer
+            {t("admin.customers.addCustomer")}
           </Button>
         </div>
       </div>
@@ -590,7 +615,7 @@ export default function AdminCustomersPage() {
                 <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <input
                   type="text"
-                  placeholder="Search customers..."
+                  placeholder={t("admin.customers.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-4 pr-10 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-500 dark:placeholder:text-gray-400"
@@ -607,9 +632,9 @@ export default function AdminCustomersPage() {
                 onChange={(e) => setCertificationFilter(e.target.value)}
                 className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="all">All</option>
-                <option value="pending">Pending Approval</option>
-                <option value="approved">Approved</option>
+                <option value="all">{t("admin.customers.all")}</option>
+                <option value="pending">{t("admin.customers.pendingApproval")}</option>
+                <option value="approved">{t("admin.customers.approved")}</option>
               </select>
             </div>
           </div>
@@ -662,7 +687,7 @@ export default function AdminCustomersPage() {
                         colSpan={10}
                         className="px-6 py-12 text-center text-gray-500 dark:text-gray-400"
                       >
-                        No customers found
+                        {t("admin.customers.noCustomers")}
                       </td>
                   </tr>
                 ) : (
@@ -710,7 +735,7 @@ export default function AdminCustomersPage() {
                           const isPending = hasCertification && !isApproved;
                           
                           if (isPending) {
-                            const certName = customer.certification?.name || "Certification";
+                            const certName = customer.certification?.name || t("admin.customers.certification");
                             return (
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
                                 {certName}
@@ -802,19 +827,19 @@ export default function AdminCustomersPage() {
                                     className="h-7 px-2 text-[10px] bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
                                   >
                                     <Check className="h-3 w-3 mr-1" />
-                                    Approve
+                                    {t("admin.customers.approve")}
                                   </Button>
                                   <Button
                                     size="sm"
                                     variant="outline"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleUpdateCertification(customer.id, null);
+                                      setRejectModalCustomer(customer);
                                     }}
                                     className="h-7 px-2 text-[10px] bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
                                   >
                                     <X className="h-3 w-3 mr-1" />
-                                    Reject
+                                    {t("admin.customers.reject")}
                                   </Button>
                                 </div>
                               );
@@ -853,7 +878,7 @@ export default function AdminCustomersPage() {
                               handleViewDetails(customer);
                             }}
                             className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
-                            title="View Details"
+                            title={t("admin.customers.viewDetails")}
                           >
                             <Eye className="h-4 w-4" />
                           </button>
@@ -863,7 +888,7 @@ export default function AdminCustomersPage() {
                               handleEdit(customer);
                             }}
                             className="p-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors"
-                            title="Edit"
+                            title={t("common.edit")}
                           >
                             <Pencil className="h-4 w-4" />
                           </button>
@@ -874,7 +899,7 @@ export default function AdminCustomersPage() {
                                 handleUnbanClick(customer);
                               }}
                               className="p-2 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/30 rounded-lg transition-colors"
-                              title="Unban User"
+                              title={t("admin.customers.unbanUser")}
                               disabled={isBanning}
                             >
                               <CheckCircle2 className="h-4 w-4" />
@@ -886,7 +911,7 @@ export default function AdminCustomersPage() {
                                 handleBanClick(customer);
                               }}
                               className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                              title="Ban User"
+                              title={t("admin.customers.banUser")}
                             >
                               <Ban className="h-4 w-4" />
                             </button>
@@ -897,7 +922,7 @@ export default function AdminCustomersPage() {
                               handleDeleteClick(customer);
                             }}
                             className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                            title="Delete"
+                            title={t("common.delete")}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -916,7 +941,7 @@ export default function AdminCustomersPage() {
             <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="text-sm text-gray-600 dark:text-gray-400">
-                  Showing {entriesPerPage} entries
+                  {t("common.showing")} {entriesPerPage} {t("common.results")}
                 </div>
                 <div className="flex items-center gap-2 mx-auto sm:mx-0">
                   <button
@@ -1018,7 +1043,7 @@ export default function AdminCustomersPage() {
                   <Input
                     id="name"
                     type="text"
-                    placeholder="Customer name"
+                    placeholder={t("admin.customers.customerName")}
                     value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
@@ -1104,7 +1129,7 @@ export default function AdminCustomersPage() {
                     }
                     className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="">None</option>
+                    <option value="">{t("admin.customers.none")}</option>
                     {certifications.map((cert) => (
                       <option key={cert.id} value={cert.id}>
                         {cert.name}
@@ -1124,7 +1149,7 @@ export default function AdminCustomersPage() {
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Enter password"
+                      placeholder={t("admin.customers.enterPassword")}
                       value={formData.password}
                       onChange={(e) =>
                         setFormData({ ...formData, password: e.target.value })
@@ -1157,7 +1182,7 @@ export default function AdminCustomersPage() {
                     <Input
                       id="confirmPassword"
                       type={showConfirmPassword ? "text" : "password"}
-                      placeholder="Confirm password"
+                      placeholder={t("admin.customers.confirmPassword")}
                       value={formData.confirmPassword}
                       onChange={(e) =>
                         setFormData({
@@ -1209,7 +1234,7 @@ export default function AdminCustomersPage() {
                     disabled={isSubmitting}
                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                   >
-                    {isSubmitting ? "Creating..." : "Create Customer"}
+                    {isSubmitting ? t("common.creating") : t("admin.customers.createCustomer")}
                   </Button>
                 </div>
               </form>
@@ -1265,7 +1290,7 @@ export default function AdminCustomersPage() {
                       Name
                     </label>
                     <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
-                      {selectedCustomer.name || "Not provided"}
+                      {selectedCustomer.name || t("admin.customers.notProvided")}
                     </p>
                   </div>
 
@@ -1283,7 +1308,7 @@ export default function AdminCustomersPage() {
                       Telefone
                     </label>
                     <p className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
-                      {selectedCustomer.phone || "Não informado"}
+                      {selectedCustomer.phone || t("admin.customers.notProvided")}
                     </p>
                   </div>
 
@@ -1352,7 +1377,7 @@ export default function AdminCustomersPage() {
                         disabled={isUpdatingCertification}
                         className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
-                        <option value="">None</option>
+                        <option value="">{t("admin.customers.none")}</option>
                         {certifications.map((cert) => (
                           <option key={cert.id} value={cert.id}>
                             {cert.name}
@@ -1376,16 +1401,16 @@ export default function AdminCustomersPage() {
                                 className="flex-1 bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2"
                               >
                                 <Check className="h-4 w-4" />
-                                Approve Certification
+                                {t("admin.customers.approveCertification")}
                               </Button>
                               <Button
-                                onClick={() => handleUpdateCertification(selectedCustomer.id, null)}
+                                onClick={() => setRejectModalCustomer(selectedCustomer)}
                                 disabled={isUpdatingCertification}
                                 variant="outline"
                                 className="flex-1 border-red-200 text-red-700 hover:bg-red-50 flex items-center justify-center gap-2"
                               >
                                 <X className="h-4 w-4" />
-                                Reject Application
+                                {t("admin.customers.rejectApplication")}
                               </Button>
                             </div>
                           );
@@ -1408,7 +1433,7 @@ export default function AdminCustomersPage() {
                         {selectedCustomer.certificateUrl.startsWith("data:image/") ? (
                           <img
                             src={selectedCustomer.certificateUrl}
-                            alt="Certificate"
+                            alt={t("admin.customers.certificate")}
                             className="max-w-full h-auto max-h-96 mx-auto rounded"
                           />
                         ) : selectedCustomer.certificateUrl.startsWith("data:application/pdf") ? (
@@ -1416,7 +1441,7 @@ export default function AdminCustomersPage() {
                             <iframe
                               src={selectedCustomer.certificateUrl}
                               className="w-full h-full min-h-[400px] rounded border-0"
-                              title="Certificate PDF"
+                              title={t("admin.customers.certificatePdf")}
                               style={{ aspectRatio: "4/3" }}
                             />
                           </div>
@@ -1425,7 +1450,7 @@ export default function AdminCustomersPage() {
                             <iframe
                               src={selectedCustomer.certificateUrl}
                               className="w-full h-full min-h-[400px] rounded border-0"
-                              title="Certificate PDF"
+                              title={t("admin.customers.certificatePdf")}
                               style={{ aspectRatio: "4/3" }}
                             />
                           </div>
@@ -1522,7 +1547,7 @@ export default function AdminCustomersPage() {
                   <Input
                     id="edit-name"
                     type="text"
-                    placeholder="Customer name"
+                    placeholder={t("admin.customers.customerName")}
                     value={editFormData.name}
                     onChange={(e) =>
                       setEditFormData({ ...editFormData, name: e.target.value })
@@ -1570,7 +1595,7 @@ export default function AdminCustomersPage() {
                     }
                     className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="">None</option>
+                    <option value="">{t("admin.customers.none")}</option>
                     {certifications.map((cert) => (
                       <option key={cert.id} value={cert.id}>
                         {cert.name}
@@ -1590,7 +1615,7 @@ export default function AdminCustomersPage() {
                     <Input
                       id="edit-password"
                       type={showEditPassword ? "text" : "password"}
-                      placeholder="Enter new password"
+                      placeholder={t("admin.customers.enterNewPassword")}
                       value={editFormData.password}
                       onChange={(e) =>
                         setEditFormData({ ...editFormData, password: e.target.value })
@@ -1623,7 +1648,7 @@ export default function AdminCustomersPage() {
                       <Input
                         id="edit-confirmPassword"
                         type={showEditConfirmPassword ? "text" : "password"}
-                        placeholder="Confirm new password"
+                        placeholder={t("admin.customers.confirmNewPassword")}
                         value={editFormData.confirmPassword}
                         onChange={(e) =>
                           setEditFormData({
@@ -1674,7 +1699,7 @@ export default function AdminCustomersPage() {
                     disabled={isSubmitting}
                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                   >
-                    {isSubmitting ? "Updating..." : "Update Customer"}
+                    {isSubmitting ? t("common.updating") : t("admin.customers.editCustomer")}
                   </Button>
                 </div>
               </form>
@@ -1743,7 +1768,7 @@ export default function AdminCustomersPage() {
                   disabled={isDeleting}
                   className="flex-1 bg-red-600 hover:bg-red-700 text-white"
                 >
-                  {isDeleting ? "Deleting..." : "Delete Customer"}
+                  {isDeleting ? t("common.deleting") : t("admin.customers.deleteCustomer")}
                 </Button>
               </div>
             </CardContent>
@@ -1800,7 +1825,7 @@ export default function AdminCustomersPage() {
                   </label>
                   <textarea
                     id="ban-reason"
-                    placeholder="Enter reason for banning this customer..."
+                    placeholder={t("admin.customers.banReasonPlaceholder")}
                     value={banReason}
                     onChange={(e) => setBanReason(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
@@ -1829,13 +1854,26 @@ export default function AdminCustomersPage() {
                   disabled={isBanning}
                   className="flex-1 bg-red-600 hover:bg-red-700 text-white"
                 >
-                  {isBanning ? "Banning..." : "Ban Customer"}
+                  {isBanning ? t("admin.customers.banning") : t("admin.customers.banCustomer")}
                 </Button>
               </div>
             </CardContent>
           </Card>
         </div>
       )}
+
+      <RejectionModal
+        isOpen={!!rejectModalCustomer}
+        onClose={() => setRejectModalCustomer(null)}
+        onConfirm={handleRejectCertification}
+        title={t("admin.customers.refuseCertificationTitle")}
+        reasonLabel={t("admin.customers.refuseCertificationReasonLabel")}
+        placeholder={t("admin.customers.refuseCertificationPlaceholder")}
+        confirmLabel={t("admin.customers.refuseCertificationConfirm")}
+        confirmingLabel={t("admin.customers.refuseCertificationConfirming")}
+        helpText={t("admin.customers.refuseCertificationHelp")}
+        emptyError={t("admin.customers.refuseCertificationEmptyError")}
+      />
     </div>
   );
 }

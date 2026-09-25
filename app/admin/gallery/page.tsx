@@ -36,6 +36,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import Image from "next/image";
+import { useLanguage } from "@/contexts/language-context";
 
 interface GalleryItem {
   id: string;
@@ -62,6 +63,7 @@ interface UploadProgress {
 }
 
 export default function GalleryPage() {
+  const { t } = useLanguage();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState("name");
   const [searchQuery, setSearchQuery] = useState("");
@@ -117,11 +119,11 @@ export default function GalleryPage() {
         const data = await response.json();
         setGalleryItems(data);
       } else {
-        toast("Failed to fetch gallery items", "error");
+        toast(t("admin.gallery.fetchFailed"), "error");
       }
     } catch (error) {
       console.error("Error fetching gallery items:", error);
-      toast("Failed to fetch gallery items", "error");
+      toast(t("admin.gallery.fetchFailed"), "error");
     } finally {
       setLoading(false);
     }
@@ -182,7 +184,7 @@ export default function GalleryPage() {
               };
               return updated;
             });
-            toast(`Failed to upload ${file.name}: ${error.error || "Upload failed"}`, "error");
+            toast(t("admin.gallery.uploadFailedDetail", { name: file.name, detail: error.error || t("toasts.uploadFailed") }), "error");
           }
         } catch (error) {
           setUploadProgress(prev => {
@@ -195,7 +197,7 @@ export default function GalleryPage() {
             };
             return updated;
           });
-          toast(`Failed to upload ${file.name}`, "error");
+          toast(t("admin.gallery.uploadFailedNamed", { name: file.name }), "error");
         }
       }
 
@@ -206,11 +208,11 @@ export default function GalleryPage() {
         setUploadDescription("");
         setUploadProgress([]);
         fetchItems();
-        toast("Upload completed", "success");
+        toast(t("admin.gallery.uploadCompleted"), "success");
       }, 1000);
     } catch (error) {
       console.error("Error uploading files:", error);
-      toast("Failed to upload files", "error");
+      toast(t("admin.gallery.uploadFailed"), "error");
     } finally {
       setUploading(false);
     }
@@ -219,7 +221,7 @@ export default function GalleryPage() {
   // Handle create folder
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) {
-      toast("Folder name is required", "error");
+      toast(t("admin.gallery.folderNameRequired"), "error");
       return;
     }
 
@@ -258,22 +260,22 @@ export default function GalleryPage() {
         if (coverPictureInputRef.current) {
           coverPictureInputRef.current.value = "";
         }
-        toast("Folder created successfully", "success");
+        toast(t("admin.gallery.folderCreated"), "success");
         fetchItems();
       } else {
         const error = await response.json();
-        toast(error.error || "Failed to create folder", "error");
+        toast(error.error || t("admin.gallery.folderCreateFailed"), "error");
       }
     } catch (error) {
       console.error("Error creating folder:", error);
-      toast("Failed to create folder", "error");
+      toast(t("admin.gallery.folderCreateFailed"), "error");
     }
   };
 
   // Handle download
   const handleDownload = async (item: GalleryItem) => {
     if (item.type === "FOLDER") {
-      toast("Cannot download folders", "warning");
+      toast(t("admin.gallery.cannotDownloadFolders"), "warning");
       return;
     }
 
@@ -284,7 +286,7 @@ export default function GalleryPage() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      toast("Download started", "success");
+      toast(t("admin.gallery.downloadStarted"), "success");
     }
   };
 
@@ -295,7 +297,7 @@ export default function GalleryPage() {
     );
     
     if (files.length === 0) {
-      toast("No files selected", "warning");
+      toast(t("admin.gallery.noFilesSelected"), "warning");
       return;
     }
 
@@ -310,7 +312,7 @@ export default function GalleryPage() {
       }
     });
     
-    toast(`Downloaded ${files.length} file(s)`, "success");
+    toast(t("admin.gallery.downloadedCount", { count: String(files.length) }), "success");
   };
 
   // Handle delete
@@ -325,15 +327,15 @@ export default function GalleryPage() {
       });
 
       if (response.ok) {
-        toast("Item deleted successfully", "success");
+        toast(t("admin.gallery.deleteSuccess"), "success");
         fetchItems();
       } else {
         const error = await response.json();
-        toast(error.error || "Failed to delete item", "error");
+        toast(error.error || t("admin.gallery.deleteFailed"), "error");
       }
     } catch (error) {
       console.error("Error deleting item:", error);
-      toast("Failed to delete item", "error");
+      toast(t("admin.gallery.deleteFailed"), "error");
     }
   };
 
@@ -342,7 +344,7 @@ export default function GalleryPage() {
     const itemsToDelete = galleryItems.filter(item => selectedItems.has(item.id));
     
     if (itemsToDelete.length === 0) {
-      toast("No items selected", "warning");
+      toast(t("admin.gallery.noItemsSelected"), "warning");
       return;
     }
 
@@ -360,16 +362,16 @@ export default function GalleryPage() {
       const failCount = results.length - successCount;
 
       if (failCount === 0) {
-        toast(`Deleted ${successCount} item(s) successfully`, "success");
+        toast(t("admin.gallery.deletedCountSuccess", { count: String(successCount) }), "success");
       } else {
-        toast(`Deleted ${successCount} item(s), ${failCount} failed`, "warning");
+        toast(t("admin.gallery.deletedCountPartial", { count: String(successCount), failCount: String(failCount) }), "warning");
       }
 
       setSelectedItems(new Set());
       fetchItems();
     } catch (error) {
       console.error("Error deleting items:", error);
-      toast("Failed to delete items", "error");
+      toast(t("admin.gallery.deleteFailed"), "error");
     }
   };
 
@@ -392,18 +394,18 @@ export default function GalleryPage() {
       });
 
       if (response.ok) {
-        toast("Item updated successfully", "success");
+        toast(t("admin.gallery.updateSuccess"), "success");
         setEditingItem(null);
         setEditName("");
         setEditDescription("");
         fetchItems();
       } else {
         const error = await response.json();
-        toast(error.error || "Failed to update item", "error");
+        toast(error.error || t("admin.gallery.updateFailed"), "error");
       }
     } catch (error) {
       console.error("Error updating item:", error);
-      toast("Failed to update item", "error");
+      toast(t("admin.gallery.updateFailed"), "error");
     }
   };
 
@@ -492,7 +494,7 @@ export default function GalleryPage() {
         setUploadFiles(validFiles);
         setShowUploadModal(true);
       } else {
-        toast("Please select valid files to upload", "warning");
+        toast(t("admin.gallery.selectFiles"), "warning");
       }
     }
   };
@@ -589,14 +591,14 @@ export default function GalleryPage() {
               size="icon"
               onClick={handleBack}
               className="flex-shrink-0"
-              aria-label="Go back"
+              aria-label={t("admin.gallery.goBack")}
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-              {folderStack.length > 0 ? folderStack[folderStack.length - 1].name : "All Gallery"}
+              {folderStack.length > 0 ? folderStack[folderStack.length - 1].name : t("admin.gallery.title")}
             </h1>
             {folderStack.length > 0 && (
               <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -619,7 +621,7 @@ export default function GalleryPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
               <input
                 type="text"
-                placeholder="Search here..."
+                placeholder={t("admin.gallery.searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-500 dark:placeholder:text-gray-400"

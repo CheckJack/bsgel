@@ -1,6 +1,6 @@
 import { sendEmail } from "@/lib/email/send";
-
-const siteUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_SITE_URL || "";
+import { emailButton, emailGreeting, emailLayout, escapeHtml } from "@/lib/email/layout";
+import { SITE_URL } from "@/lib/email/config";
 
 export async function sendCustomerBackInStockEmail(opts: {
   to: string;
@@ -8,17 +8,22 @@ export async function sendCustomerBackInStockEmail(opts: {
   productName: string;
   productId: string;
 }) {
-  const productUrl = `${siteUrl}/products/${opts.productId}`;
-  const greeting = opts.customerName ? `Hi ${opts.customerName},` : "Hi,";
+  const productUrl = `${SITE_URL}/products/${opts.productId}`;
+  const greeting = emailGreeting(opts.customerName);
+  const name = escapeHtml(opts.productName);
 
   await sendEmail({
     to: opts.to,
-    subject: `${opts.productName} is back in stock`,
-    html: `
-      <p>${greeting}</p>
-      <p>Good news — <strong>${opts.productName}</strong> is available again.</p>
-      <p><a href="${productUrl}">View product</a></p>
-    `,
+    subject: `${opts.productName} está novamente em stock`,
+    html: emailLayout({
+      title: "Produto novamente em stock",
+      preheader: `${opts.productName} está novamente disponível`,
+      bodyHtml: `
+        <p style="margin:0 0 12px;">${greeting}</p>
+        <p style="margin:0 0 12px;"><strong>${name}</strong> está novamente disponível.</p>
+        ${emailButton(productUrl, "Ver produto")}
+      `,
+    }),
   });
 }
 
@@ -29,16 +34,22 @@ export async function sendAdminLowStockEmail(opts: {
   stockQuantity: number;
   productId: string;
 }) {
-  const stockUrl = `${siteUrl}/admin/stock?urgent=true`;
-  const greeting = opts.adminName ? `Hi ${opts.adminName},` : "Hi,";
+  const stockUrl = `${SITE_URL}/admin/stock?urgent=true`;
+  const greeting = emailGreeting(opts.adminName);
+  const name = escapeHtml(opts.productName);
+  const units = opts.stockQuantity === 1 ? "unidade" : "unidades";
 
   await sendEmail({
     to: opts.to,
-    subject: `Low stock: ${opts.productName}`,
-    html: `
-      <p>${greeting}</p>
-      <p><strong>${opts.productName}</strong> has only ${opts.stockQuantity} unit${opts.stockQuantity === 1 ? "" : "s"} left.</p>
-      <p><a href="${stockUrl}">Manage stock</a></p>
-    `,
+    subject: `Stock baixo: ${opts.productName}`,
+    html: emailLayout({
+      title: "Alerta de stock baixo",
+      preheader: `${opts.productName} tem apenas ${opts.stockQuantity} ${units}`,
+      bodyHtml: `
+        <p style="margin:0 0 12px;">${greeting}</p>
+        <p style="margin:0 0 12px;"><strong>${name}</strong> tem apenas ${opts.stockQuantity} ${units}.</p>
+        ${emailButton(stockUrl, "Gerir stock")}
+      `,
+    }),
   });
 }

@@ -1,5 +1,26 @@
 export const APP_SCROLL_ROOT_SELECTOR = ".app-scroll-root";
 
+/** Scroll container for intersection/lazy-load on mobile/tablet; null on desktop (`display: contents`). */
+export function getAppScrollRootElement(): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+  return document.querySelector<HTMLElement>(APP_SCROLL_ROOT_SELECTOR);
+}
+
+export function getAppScrollIntersectionRoot(): Element | null {
+  const root = getAppScrollRootElement();
+  if (!root) return null;
+
+  const style = getComputedStyle(root);
+  if (style.display === "contents") return null;
+
+  const overflowY = style.overflowY;
+  if (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") {
+    return root;
+  }
+
+  return null;
+}
+
 export function getStableMobileLayoutHeight(): number {
   if (typeof window === "undefined") return 0;
 
@@ -140,4 +161,34 @@ export function scrollAppScrollRootToTop() {
   window.scrollTo(0, 0);
   document.documentElement.scrollTop = 0;
   document.body.scrollTop = 0;
+}
+
+/** Scroll shop listings to the products block (or page top) after pagination. */
+export function scrollShopListingToTop() {
+  if (typeof window === "undefined") return;
+
+  const products = document.getElementById("products");
+  const root = document.querySelector<HTMLElement>(APP_SCROLL_ROOT_SELECTOR);
+  const headerOffset =
+    parseInt(
+      getComputedStyle(document.documentElement).getPropertyValue("--site-header-height") || "0",
+      10
+    ) || 0;
+
+  if (products && root && getComputedStyle(root).overflowY !== "visible") {
+    const rootRect = root.getBoundingClientRect();
+    const productsRect = products.getBoundingClientRect();
+    const nextTop = root.scrollTop + (productsRect.top - rootRect.top) - Math.min(headerOffset, 24);
+    root.scrollTo({ top: Math.max(0, nextTop), behavior: "auto" });
+    return;
+  }
+
+  if (products) {
+    const top =
+      products.getBoundingClientRect().top + window.scrollY - Math.min(headerOffset, 24);
+    window.scrollTo({ top: Math.max(0, top), behavior: "auto" });
+    return;
+  }
+
+  scrollAppScrollRootToTop();
 }

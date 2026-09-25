@@ -20,6 +20,7 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 import { toast, handleApiError, showLoadingToast } from "@/lib/utils";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Blog {
   id: string;
@@ -33,14 +34,29 @@ interface Blog {
   createdAt: string;
   updatedAt: string;
   assignedReviewerId?: string | null;
-  reviewedBy?: string | null;
-  reviewedAt?: string | null;
+}
+
+function getBlogStatusLabel(status: string, translate: (key: string) => string): string {
+  if (status === "PUBLISHED") return translate("admin.blogs.published");
+  if (
+    status === "PENDING_REVIEW" ||
+    status === "APPROVED" ||
+    status === "REJECTED"
+  ) {
+    return translate("admin.blogs.draft");
+  }
+  return status === "DRAFT" ? translate("admin.blogs.draft") : status;
+}
+
+function isPublishedStatus(status: string): boolean {
+  return status === "PUBLISHED";
 }
 
 type SortField = "title" | "publishedAt" | "createdAt" | "updatedAt" | "status";
 type SortOrder = "asc" | "desc";
 
 function AdminBlogsPageContent() {
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -76,7 +92,11 @@ function AdminBlogsPageContent() {
 
     // Apply status filter
     if (statusFilter) {
-      filtered = filtered.filter((blog) => blog.status === statusFilter);
+      if (statusFilter === "DRAFT") {
+        filtered = filtered.filter((blog) => !isPublishedStatus(blog.status));
+      } else {
+        filtered = filtered.filter((blog) => blog.status === statusFilter);
+      }
     }
 
     // Apply search filter
@@ -150,7 +170,7 @@ function AdminBlogsPageContent() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this blog post?")) {
+    if (!confirm(t("admin.blogs.deleteConfirm"))) {
       return;
     }
 
@@ -161,7 +181,7 @@ function AdminBlogsPageContent() {
       });
 
       if (res.ok) {
-        toast("Blog post deleted successfully", "success");
+        toast(t("admin.blogs.deleteSuccess"), "success");
         fetchBlogs();
         setSelectedBlogs((prev) => {
           const newSet = new Set(prev);
@@ -189,7 +209,7 @@ function AdminBlogsPageContent() {
 
       if (res.ok) {
         const data = await res.json();
-        toast(`Blog duplicated successfully: ${data.title}`, "success");
+        toast(t("admin.blogs.duplicateSuccessNamed", { title: data.title }), "success");
         fetchBlogs();
       } else {
         const errorData = await res.json().catch(() => ({}));
@@ -229,7 +249,7 @@ function AdminBlogsPageContent() {
 
   const handleBulkDelete = async () => {
     if (selectedBlogs.size === 0) {
-      toast("Please select at least one blog post", "warning");
+      toast(t("admin.blogs.selectAtLeastOne"), "warning");
       return;
     }
 
@@ -254,7 +274,7 @@ function AdminBlogsPageContent() {
 
       if (res.ok) {
         const data = await res.json();
-        toast(`Successfully deleted ${data.count} blog post(s)`, "success");
+        toast(t("admin.blogs.deleteCountSuccess", { count: String(data.count) }), "success");
         setSelectedBlogs(new Set());
         fetchBlogs();
       } else {
@@ -269,9 +289,9 @@ function AdminBlogsPageContent() {
     }
   };
 
-  const handleBulkStatusChange = async (status: "DRAFT" | "PUBLISHED" | "PENDING_REVIEW") => {
+  const handleBulkStatusChange = async (status: "DRAFT" | "PUBLISHED") => {
     if (selectedBlogs.size === 0) {
-      toast("Please select at least one blog post", "warning");
+      toast(t("admin.blogs.selectAtLeastOne"), "warning");
       return;
     }
 
@@ -292,7 +312,7 @@ function AdminBlogsPageContent() {
 
       if (res.ok) {
         const data = await res.json();
-        toast(`Successfully updated ${data.count} blog post(s) to ${status}`, "success");
+        toast(t("admin.blogs.updateCountStatus", { count: String(data.count), status }), "success");
         setSelectedBlogs(new Set());
         fetchBlogs();
       } else {
@@ -353,7 +373,7 @@ function AdminBlogsPageContent() {
       link.click();
       document.body.removeChild(link);
 
-      toast(`Exported ${filteredBlogs.length} blog posts to CSV`, "success");
+      toast(t("admin.blogs.exportSuccessCount", { count: String(filteredBlogs.length) }), "success");
     } catch (error) {
       console.error("Failed to export blogs:", error);
       handleApiError(error, "export blog posts");
@@ -407,7 +427,7 @@ function AdminBlogsPageContent() {
     <div className="p-6 min-h-screen">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Blog Posts</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("admin.blogs.title")}</h1>
         <div className="text-sm text-gray-600 dark:text-gray-400">
           Dashboard <span className="mx-2">&gt;</span> Pages{" "}
           <span className="mx-2">&gt;</span> Blog Posts
@@ -428,28 +448,21 @@ function AdminBlogsPageContent() {
                   className="bg-green-600 hover:bg-green-700"
                   disabled={isBulkUpdating || isBulkDeleting}
                 >
-                  {isBulkUpdating ? "Updating..." : "Publish Selected"}
-                </Button>
-                <Button
-                  onClick={() => handleBulkStatusChange("PENDING_REVIEW")}
-                  className="bg-blue-600 hover:bg-blue-700"
-                  disabled={isBulkUpdating || isBulkDeleting}
-                >
-                  {isBulkUpdating ? "Updating..." : "Send to Review"}
+                  {isBulkUpdating ? t("common.updating") : t("admin.blogs.publishSelected")}
                 </Button>
                 <Button
                   onClick={() => handleBulkStatusChange("DRAFT")}
                   className="bg-yellow-600 hover:bg-yellow-700"
                   disabled={isBulkUpdating || isBulkDeleting}
                 >
-                  {isBulkUpdating ? "Updating..." : "Draft Selected"}
+                  {isBulkUpdating ? t("common.updating") : t("admin.blogs.draftSelected")}
                 </Button>
                 <Button
                   onClick={handleBulkDelete}
                   className="bg-red-600 hover:bg-red-700 text-white"
                   disabled={isBulkDeleting || isBulkUpdating}
                 >
-                  {isBulkDeleting ? "Deleting..." : "Bulk Delete"}
+                  {isBulkDeleting ? t("common.deleting") : t("admin.blogs.bulkDelete")}
                 </Button>
                 <Button
                   variant="outline"
@@ -501,9 +514,6 @@ function AdminBlogsPageContent() {
               >
                 <option value="">All Status</option>
                 <option value="DRAFT">Draft</option>
-                <option value="PENDING_REVIEW">Pending Review</option>
-                <option value="APPROVED">Approved</option>
-                <option value="REJECTED">Rejected</option>
                 <option value="PUBLISHED">Published</option>
               </select>
 
@@ -513,7 +523,7 @@ function AdminBlogsPageContent() {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <input
                     type="text"
-                    placeholder="Search here..."
+                    placeholder={t("admin.blogs.searchPlaceholder")}
                     value={searchQuery}
                     onChange={(e) => {
                       const value = e.target.value;
@@ -541,7 +551,7 @@ function AdminBlogsPageContent() {
                 disabled={isExporting || filteredBlogs.length === 0}
               >
                 <Download className="h-4 w-4" />
-                {isExporting ? "Exporting..." : "Export"}
+                {isExporting ? t("common.exporting") : t("common.export")}
               </Button>
 
               {/* Add New Button */}
@@ -661,6 +671,7 @@ function AdminBlogsPageContent() {
                                 alt={blog.title}
                                 fill
                                 className="object-cover"
+                                unoptimized
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
@@ -692,20 +703,12 @@ function AdminBlogsPageContent() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                            blog.status === "PUBLISHED"
+                            isPublishedStatus(blog.status)
                               ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                              : blog.status === "PENDING_REVIEW"
-                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
-                              : blog.status === "APPROVED"
-                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
-                              : blog.status === "REJECTED"
-                              ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
                               : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
                           }`}
                         >
-                          {blog.status === "PENDING_REVIEW"
-                            ? "Pending Review"
-                            : blog.status}
+                          {getBlogStatusLabel(blog.status, t)}
                         </span>
                       </td>
 
@@ -729,7 +732,7 @@ function AdminBlogsPageContent() {
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex items-center gap-2">
-                          {blog.status === "PUBLISHED" && (
+                          {isPublishedStatus(blog.status) && (
                             <Link
                               href={`/blog/${blog.slug}`}
                               target="_blank"
@@ -740,7 +743,7 @@ function AdminBlogsPageContent() {
                                 variant="outline"
                                 size="sm"
                                 className="text-xs"
-                                title="View blog post"
+                                title={t("admin.blogs.viewPost")}
                               >
                                 <Eye className="h-3 w-3" />
                               </Button>
@@ -765,7 +768,7 @@ function AdminBlogsPageContent() {
                               handleDuplicate(blog.id);
                             }}
                             disabled={isDuplicating === blog.id}
-                            title="Duplicate blog post"
+                            title={t("admin.blogs.duplicate")}
                           >
                             <Copy className="h-3 w-3" />
                           </Button>

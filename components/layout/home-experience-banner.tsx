@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useLanguage } from "@/contexts/language-context";
 
 const BACKGROUND_IMAGE = "/home-deep-edit-background.jpg";
-const LOGO_IMAGE = "/home-deep-edit-logo.png";
+const BACKGROUND_VIDEO = "/home-deep-edit-background-v2.mp4";
 const SHOP_HREF = "/products";
 
 export function HomeExperienceBanner() {
@@ -16,32 +16,39 @@ export function HomeExperienceBanner() {
       className="relative w-full min-h-[calc(100lvh-var(--site-header-height,113px))] h-[calc(100dvh-var(--site-header-height,113px))] overflow-hidden"
       aria-labelledby="home-deep-edit-banner-heading"
     >
+      {/* Poster / fallback while video loads */}
       <Image
         src={BACKGROUND_IMAGE}
-        alt={t("home.deepEditBannerImageAlt")}
+        alt=""
         fill
         priority={false}
         sizes="100vw"
         className="object-cover object-center"
         unoptimized
+        aria-hidden
       />
+
+      <video
+        key={BACKGROUND_VIDEO}
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        poster={BACKGROUND_IMAGE}
+        aria-label={t("home.deepEditBannerImageAlt")}
+        className="absolute inset-0 h-full w-full object-cover object-center"
+      >
+        <source src={BACKGROUND_VIDEO} type="video/mp4" />
+      </video>
 
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/35 via-black/10 to-transparent" />
 
       <div className="relative z-10 flex h-full items-center px-5 sm:px-8 md:px-12 lg:px-16 xl:px-20">
-        <div className="flex max-w-[min(100%,18rem)] flex-col items-start gap-5 sm:max-w-xs sm:gap-6 md:max-w-sm md:gap-7 lg:max-w-md">
+        <div className="flex max-w-[min(100%,18rem)] flex-col items-start sm:max-w-xs md:max-w-sm lg:max-w-md">
           <h2 id="home-deep-edit-banner-heading" className="sr-only">
             {t("home.deepEditBannerLogoAlt")}
           </h2>
-
-          <Image
-            src={LOGO_IMAGE}
-            alt={t("home.deepEditBannerLogoAlt")}
-            width={320}
-            height={120}
-            className="h-auto w-full max-w-[11rem] sm:max-w-[13rem] md:max-w-[15rem] lg:max-w-[17rem]"
-            unoptimized
-          />
 
           <Link
             href={SHOP_HREF}

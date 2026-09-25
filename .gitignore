@@ -15,9 +15,15 @@
 # production
 /build
 
-# misc
-.DS_Store
+# User / admin uploaded media (MUST survive deploys — never commit binaries)
+# Keep the directory in git via .gitkeep; ignore contents.
+/uploads/
+/public/uploads/**
+!/public/uploads/.gitkeep
 *.pem
+
+# Database dumps from npm run db:backup
+/database-backups/
 
 # large media (exceeds GitHub 100MB limit)
 Bio Sculpture Brand Video.mp4
@@ -39,9 +45,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# prisma
-/prisma/migrations
+# Sentry CLI / build artifacts
+.sentryclirc
 
 # exports
 #/exports
-

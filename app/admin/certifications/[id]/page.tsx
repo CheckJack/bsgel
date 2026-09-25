@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Category {
   id: string;
@@ -17,6 +18,7 @@ interface Certification {
   name: string;
   description: string | null;
   isActive: boolean;
+  isSystem?: boolean;
   categories: {
     id: string;
     name: string;
@@ -25,6 +27,7 @@ interface Certification {
 }
 
 export default function EditCertificationPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
@@ -62,11 +65,11 @@ export default function EditCertificationPage() {
           categoryIds: data.categories.map((c: { id: string }) => c.id),
         });
       } else {
-        setError("Failed to load certification");
+        setError(t("admin.certifications.loadFailed"));
       }
     } catch (error) {
       console.error("Failed to fetch certification:", error);
-      setError("Failed to load certification");
+      setError(t("admin.certifications.loadFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +106,7 @@ export default function EditCertificationPage() {
     setError("");
 
     if (!formData.name.trim()) {
-      setError("Certification name is required");
+      setError(t("admin.certifications.nameRequired"));
       return;
     }
 
@@ -125,12 +128,12 @@ export default function EditCertificationPage() {
         router.push("/admin/certifications");
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to update certification");
+        setError(data.error || t("admin.certifications.updateFailed"));
         setIsSaving(false);
       }
     } catch (error) {
       console.error("Failed to update certification:", error);
-      setError("Failed to update certification. Please try again.");
+      setError(t("admin.certifications.updateFailed"));
       setIsSaving(false);
     }
   };
@@ -155,9 +158,20 @@ export default function EditCertificationPage() {
     <div>
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-          Edit Certification
-        </h1>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            {certification.isSystem
+              ? "Final Client product access"
+              : t("admin.certifications.editTitle")}
+          </h1>
+          {certification.isSystem && (
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 max-w-2xl">
+              Categories selected here are available to non-professional customers
+              (users without a certification). This entry is never assigned to users —
+              access is applied automatically when they sign up as a final client.
+            </p>
+          )}
+        </div>
         <div className="text-sm text-gray-600 dark:text-gray-400">
           Dashboard <span className="mx-2">&gt;</span> Certifications{" "}
           <span className="mx-2">&gt;</span> Edit
@@ -188,10 +202,16 @@ export default function EditCertificationPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                placeholder="e.g., Professional, Initiation, Advanced"
+                placeholder={t("admin.certifications.namePlaceholder")}
                 required
+                disabled={!!certification.isSystem}
                 className="w-full"
               />
+              {certification.isSystem && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  System name cannot be changed
+                </p>
+              )}
             </div>
 
             {/* Description */}
@@ -208,31 +228,33 @@ export default function EditCertificationPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
-                placeholder="Enter a description for this certification..."
+                placeholder={t("admin.certifications.descriptionPlaceholder")}
                 rows={4}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             {/* Active Status */}
-            <div>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formData.isActive}
-                  onChange={(e) =>
-                    setFormData({ ...formData, isActive: e.target.checked })
-                  }
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Active
-                </span>
-              </label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
-                Inactive certifications cannot be assigned to users
-              </p>
-            </div>
+            {!certification.isSystem && (
+              <div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.isActive}
+                    onChange={(e) =>
+                      setFormData({ ...formData, isActive: e.target.checked })
+                    }
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Active
+                  </span>
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+                  Inactive certifications cannot be assigned to users
+                </p>
+              </div>
+            )}
 
             {/* Categories */}
             <div>
@@ -240,7 +262,9 @@ export default function EditCertificationPage() {
                 Allowed Categories
               </label>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                Select the product categories that users with this certification can purchase from
+                {certification.isSystem
+                  ? "Select the product categories that final (non-professional) clients can purchase from"
+                  : "Select the product categories that users with this certification can purchase from"}
               </p>
               <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4 max-h-64 overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
                 {categories.length === 0 ? (
@@ -282,7 +306,7 @@ export default function EditCertificationPage() {
                 disabled={isSaving}
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                {isSaving ? "Saving..." : "Save Changes"}
+                {isSaving ? t("admin.certifications.saving") : t("admin.certifications.saveChanges")}
               </Button>
               <Button
                 type="button"

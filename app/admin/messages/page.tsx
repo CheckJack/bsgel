@@ -122,7 +122,7 @@ export default function AdminMessagesPage() {
       });
       if (res.ok) {
         const updated = await res.json();
-        toast("Message marked as read", "success");
+        toast(t("toasts.messageMarkedRead"), "success");
         await fetchMessages();
         if (selectedMessage?.id === messageId) {
           setSelectedMessage(updated);

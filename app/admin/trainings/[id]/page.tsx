@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
 import { Loader2, ArrowLeft, Search, X, Plus, Upload } from "lucide-react";
 import Link from "next/link";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Product {
   id: string;
@@ -34,6 +35,7 @@ interface ImagePreview {
 }
 
 export default function EditTrainingPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
@@ -55,6 +57,7 @@ export default function EditTrainingPage() {
     price: "",
     image: "",
     isActive: true,
+    openBooking: false,
   });
 
   useEffect(() => {
@@ -110,7 +113,7 @@ export default function EditTrainingPage() {
 
   const handleAddProduct = (product: Product) => {
     if (selectedProducts.some((sp) => sp.productId === product.id)) {
-      toast("Product already added", "info");
+      toast(t("toasts.productAlreadyAdded"), "info");
       return;
     }
     setSelectedProducts([
@@ -144,7 +147,7 @@ export default function EditTrainingPage() {
 
   const handleRemoveDay = (index: number) => {
     if (days.length <= 1) {
-      toast("At least one day is required", "error");
+      toast(t("toasts.atLeastOneDayRequired"), "error");
       return;
     }
     const newDays = days.filter((_, i) => i !== index).map((d, i) => ({ ...d, day: i + 1 }));
@@ -159,7 +162,7 @@ export default function EditTrainingPage() {
 
   const handleImageUpload = async (file: File) => {
     if (!file.type.startsWith("image/")) {
-      toast("Please upload an image file", "error");
+      toast(t("toasts.uploadImageFile"), "error");
       return;
     }
 
@@ -179,14 +182,14 @@ export default function EditTrainingPage() {
         const imageUrl = data.url;
         setImage({ url: imageUrl, file });
         setFormData((prev) => ({ ...prev, image: imageUrl }));
-        toast("Image uploaded successfully", "success");
+        toast(t("toasts.imageUploaded"), "success");
       } else {
         const errorData = await res.json();
-        toast(errorData.error || "Failed to upload image", "error");
+        toast(errorData.error || t("toasts.imageUploadFailed"), "error");
       }
     } catch (error) {
       console.error("Failed to upload image:", error);
-      toast("Failed to upload image. Please try again.", "error");
+      toast(t("toasts.imageUploadFailedRetry"), "error");
     } finally {
       setIsUploadingImage(false);
     }
@@ -235,6 +238,7 @@ export default function EditTrainingPage() {
           price: data.price.toString(),
           image: data.image || "",
           isActive: data.isActive,
+          openBooking: Boolean(data.openBooking),
         });
         
         // Load image
@@ -272,12 +276,12 @@ export default function EditTrainingPage() {
         }
       } else {
         const errorData = await res.json();
-        toast(errorData.error || "Failed to load training program", "error");
+        toast(errorData.error || t("admin.trainings.programLoadFailed"), "error");
         router.push("/admin/trainings");
       }
     } catch (error) {
       console.error("Failed to fetch training program:", error);
-      toast("Failed to load training program. Please try again.", "error");
+      toast(t("admin.trainings.programLoadFailedRetry"), "error");
       router.push("/admin/trainings");
     } finally {
       setIsLoading(false);
@@ -300,6 +304,7 @@ export default function EditTrainingPage() {
           price: parseFloat(formData.price),
           image: formData.image || null,
           isActive: formData.isActive,
+          openBooking: formData.openBooking,
           productIds: selectedProducts.map((sp) => ({
             productId: sp.productId,
             quantity: sp.quantity,
@@ -308,15 +313,15 @@ export default function EditTrainingPage() {
       });
 
       if (res.ok) {
-        toast("Training program updated successfully", "success");
+        toast(t("admin.trainings.programUpdated"), "success");
         router.push("/admin/trainings");
       } else {
         const data = await res.json();
-        toast(data.error || "Failed to update training program", "error");
+        toast(data.error || t("admin.trainings.programUpdateFailed"), "error");
       }
     } catch (error) {
       console.error("Failed to update training program:", error);
-      toast("Failed to update training program. Please try again.", "error");
+      toast(t("admin.trainings.programUpdateFailedRetry"), "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -688,6 +693,28 @@ export default function EditTrainingPage() {
               </div>
               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 Select products that are included in this training package
+              </p>
+            </div>
+
+            {/* Open booking (online any day) */}
+            <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="openBooking"
+                  checked={formData.openBooking}
+                  onChange={(e) => setFormData({ ...formData, openBooking: e.target.checked })}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label
+                  htmlFor="openBooking"
+                  className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  {t("admin.trainings.openBooking")}
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 pl-6">
+                {t("admin.trainings.openBookingHelp")}
               </p>
             </div>
 

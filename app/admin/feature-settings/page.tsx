@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
 import { Loader2, Save, Award, Users } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
 
 export default function FeatureSettingsPage() {
+  const { t } = useLanguage();
   const [settings, setSettings] = useState({
     rewardsEnabled: true,
     affiliateEnabled: true,
@@ -31,7 +33,7 @@ export default function FeatureSettingsPage() {
       }
     } catch (error) {
       console.error("Failed to fetch settings:", error);
-      toast("Failed to load settings", "error");
+      toast(t("toasts.settingsLoadFailed"), "error");
     } finally {
       setIsLoading(false);
     }
@@ -47,14 +49,14 @@ export default function FeatureSettingsPage() {
       });
 
       if (res.ok) {
-        toast("Settings saved successfully", "success");
+        toast(t("toasts.settingsSaved"), "success");
       } else {
         const error = await res.json();
-        toast(error.error || "Failed to save settings", "error");
+        toast(error.error || t("toasts.settingsSaveFailed"), "error");
       }
     } catch (error) {
       console.error("Failed to save settings:", error);
-      toast("Failed to save settings", "error");
+      toast(t("toasts.settingsSaveFailed"), "error");
     } finally {
       setIsSaving(false);
     }

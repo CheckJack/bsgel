@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
+import { APP_SCROLL_ROOT_SELECTOR } from "@/lib/mobile-scroll-root";
 
 export const MOBILE_MAX_WIDTH_PX = 1023;
 
@@ -22,14 +23,36 @@ export function useIsMobile(breakpoint = MOBILE_MAX_WIDTH_PX) {
   return isMobile;
 }
 
-/** False on mobile and when the user prefers reduced motion. */
+/** False until mounted, on mobile, or when the user prefers reduced motion. */
 export function useMotionEnabled() {
   const reduceMotion = useReducedMotion();
   const isMobile = useIsMobile();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return false;
   return !reduceMotion && !isMobile;
 }
 
 export function isMobileViewport(breakpoint = MOBILE_MAX_WIDTH_PX) {
   if (typeof window === "undefined") return false;
   return window.matchMedia(`(max-width: ${breakpoint}px)`).matches;
+}
+
+/** Viewport for whileInView when the page scrolls inside .app-scroll-root (mobile shell). */
+export function useAppScrollInView(options?: { once?: boolean; amount?: number }) {
+  const rootRef = useRef<Element | null>(null);
+
+  useEffect(() => {
+    rootRef.current = document.querySelector(APP_SCROLL_ROOT_SELECTOR);
+  }, []);
+
+  return {
+    once: options?.once ?? true,
+    amount: options?.amount ?? 0.15,
+    root: rootRef,
+  };
 }

@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
+import { useLanguage } from "@/contexts/language-context";
 
 export default function NewAttributePage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const [formData, setFormData] = useState({
     category: "",
@@ -54,13 +56,13 @@ export default function NewAttributePage() {
 
         if (!updateRes.ok) {
           const data = await updateRes.json();
-          const errorMsg = data.error || "Failed to add attribute value";
+          const errorMsg = data.error || t("admin.attributes.addValueFailed");
           setError(errorMsg);
           toast(errorMsg, "error");
           setIsLoading(false);
           return;
         }
-        toast(`Value added to "${existingAttribute.category}" successfully`, "success");
+        toast(t("admin.attributes.valueAddedNamed", { name: existingAttribute.category }), "success");
       } else {
         // Create new attribute
         const res = await fetch("/api/attributes", {
@@ -74,19 +76,19 @@ export default function NewAttributePage() {
 
         if (!res.ok) {
           const data = await res.json();
-          const errorMsg = data.error || "Failed to create attribute";
+          const errorMsg = data.error || t("admin.attributes.createFailed");
           setError(errorMsg);
           toast(errorMsg, "error");
           setIsLoading(false);
           return;
         }
-        toast(`Attribute "${formData.category.trim()}" created successfully`, "success");
+        toast(t("admin.attributes.createSuccessNamed", { name: formData.category.trim() }), "success");
       }
 
       router.push("/admin/attributes");
     } catch (error) {
       console.error("Failed to create attribute:", error);
-      const errorMsg = "Failed to create attribute. Please try again.";
+      const errorMsg = t("admin.attributes.createFailedRetry");
       setError(errorMsg);
       toast(errorMsg, "error");
       setIsLoading(false);

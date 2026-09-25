@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { z } from "zod"
+import { withNotificationI18n } from "@/lib/notifications/i18n"
 
 const updateUserCertificationSchema = z.object({
   certificationId: z.string().min(1, "Certification ID is required"),
@@ -48,6 +49,13 @@ export async function PUT(
       )
     }
 
+    if (certification.isSystem) {
+      return NextResponse.json(
+        { error: "Cannot assign a system certification to users" },
+        { status: 400 }
+      )
+    }
+
     // Update user certification
     // Setting certificateUrl will mark it as pending review again
     const updateData: any = {
@@ -80,6 +88,13 @@ export async function PUT(
           message: "Your certification change has been submitted and is pending review. We'll notify you once it's been reviewed.",
           linkUrl: "/dashboard",
           read: false,
+          metadata: withNotificationI18n(
+            { certificationId },
+            {
+              titleKey: "inApp.certificationUpdateSubmittedTitle",
+              messageKey: "inApp.certificationUpdateSubmittedMessage",
+            }
+          ),
         },
       })
 
@@ -98,6 +113,19 @@ export async function PUT(
             message: `${user.name || user.email} has updated their professional certification for review`,
             linkUrl: `/admin/customers?filter=pending&userId=${user.id}`,
             read: false,
+            metadata: withNotificationI18n(
+              {
+                userId: user.id,
+                name: user.name || user.email,
+                customerName: user.name || user.email,
+                isUpdate: true,
+              },
+              {
+                titleKey: "inApp.updatedCertificationTitle",
+                messageKey: "inApp.updatedCertificationMessage",
+                params: { name: user.name || user.email || "" },
+              }
+            ),
           }))
         })
       }

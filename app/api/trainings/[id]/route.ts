@@ -94,6 +94,7 @@ export async function GET(
       price: Number(program.price), // Convert Decimal to number
       image: program.image,
       isActive: program.isActive,
+      openBooking: program.openBooking,
       sessions: formattedSessions,
       totalBookings: program._count.bookings,
       includedProducts: program.products.map((tp) => ({
@@ -135,7 +136,7 @@ export async function PUT(
     }
 
     const body = await req.json()
-    const { title, description, content, days, price, image, isActive, productIds, displayOrder } = body
+    const { title, description, content, days, price, image, isActive, openBooking, productIds, displayOrder } = body
 
     // Check if program exists
     let existing;
@@ -228,6 +229,7 @@ export async function PUT(
     if (displayOrder !== undefined) updateData.displayOrder = displayOrder
     if (image !== undefined) updateData.image = image || null
     if (isActive !== undefined) updateData.isActive = Boolean(isActive)
+    if (openBooking !== undefined) updateData.openBooking = Boolean(openBooking)
 
     // Handle product associations
     if (productIds !== undefined) {

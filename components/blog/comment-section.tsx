@@ -34,6 +34,7 @@ export function CommentSection({ blogSlug }: CommentSectionProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [commentContent, setCommentContent] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchComments = async () => {
@@ -64,6 +65,7 @@ export function CommentSection({ blogSlug }: CommentSectionProps) {
 
     setIsSubmitting(true);
     setError(null);
+    setPendingMessage(null);
 
     try {
       const res = await fetch(`/api/blogs/slug/${blogSlug}/comments`, {
@@ -73,8 +75,8 @@ export function CommentSection({ blogSlug }: CommentSectionProps) {
       });
 
       if (res.ok) {
-        setComments([await res.json(), ...comments]);
         setCommentContent("");
+        setPendingMessage(t("bioNews.commentPending"));
       } else {
         const data = await res.json();
         setError(data.error || t("bioNews.loadError"));
@@ -93,7 +95,7 @@ export function CommentSection({ blogSlug }: CommentSectionProps) {
 
   return (
     <section className="border-t border-black/10 bg-[#f7f6f4]">
-      <div className="container mx-auto max-w-7xl px-4 py-12 sm:px-6">
+      <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 md:px-6 lg:px-12 xl:px-16">
         <div className="mx-auto max-w-3xl">
       <h2 className="font-display text-2xl text-brand-black">
         {t("bioNews.comments")} ({comments.length})
@@ -116,6 +118,9 @@ export function CommentSection({ blogSlug }: CommentSectionProps) {
             disabled={isSubmitting}
           />
           {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+          {pendingMessage && (
+            <p className="mt-2 text-sm text-green-700">{pendingMessage}</p>
+          )}
           <div className="mt-4 flex justify-end">
             <Button
               type="submit"

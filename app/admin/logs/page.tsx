@@ -19,6 +19,7 @@ import {
 import { AdminLogActionType } from "@prisma/client";
 import { Pagination } from "@/components/ui/pagination";
 import { toast } from "@/components/ui/toast";
+import { useLanguage } from "@/contexts/language-context";
 
 interface AdminLog {
   id: string;
@@ -250,6 +251,7 @@ function LogDetailModal({ log, isOpen, onClose }: LogDetailModalProps) {
 }
 
 export default function AdminLogsPage() {
+  const { t } = useLanguage();
   const { data: session } = useSession();
   const [logs, setLogs] = useState<AdminLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -352,15 +354,15 @@ export default function AdminLogsPage() {
       });
 
       if (response.ok) {
-        toast("All logs have been deleted successfully", "success");
+        toast(t("toasts.logsDeleted"), "success");
         fetchLogs();
       } else {
         const data = await response.json();
-        toast(data.error || "Failed to delete logs", "error");
+        toast(data.error || t("toasts.logsDeleteFailed"), "error");
       }
     } catch (error) {
       console.error("Error deleting logs:", error);
-      toast("An error occurred while deleting logs", "error");
+      toast(t("toasts.logsDeleteError"), "error");
     } finally {
       setIsDeletingAll(false);
     }

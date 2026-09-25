@@ -79,16 +79,22 @@ export async function POST(
       )
     }
 
-    // Find the blog by slug
     const blog = await db.blog.findUnique({
       where: { slug },
-      select: { id: true },
+      select: { id: true, status: true, publishedAt: true },
     })
 
     if (!blog) {
       return NextResponse.json(
         { error: "Blog post not found" },
         { status: 404 }
+      )
+    }
+
+    if (blog.status !== "PUBLISHED" || !blog.publishedAt) {
+      return NextResponse.json(
+        { error: "Comments are not available for this post" },
+        { status: 403 }
       )
     }
 

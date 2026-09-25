@@ -270,8 +270,9 @@ export default function TrainingPage() {
           </div>
 
           {isLoading ? (
-            <div className="flex min-h-[320px] items-center justify-center">
+            <div className="flex min-h-[320px] flex-col items-center justify-center gap-3">
               <Loader2 className="size-8 animate-spin text-gray-400" />
+              <p className="font-header text-sm text-brand-black/60">{t("training.loading")}</p>
             </div>
           ) : filteredPrograms.length === 0 ? (
             <div className="py-12 text-center">

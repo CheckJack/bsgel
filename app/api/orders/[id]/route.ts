@@ -4,6 +4,38 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { ManualPaymentReviewStatus, NotificationType, ShopPaymentMethod } from "@prisma/client"
 import { applyRewardsAfterManualPaymentConfirmed } from "@/lib/manual-order-rewards"
+import { maybeSendOrderConfirmation } from "@/lib/email/order-confirmation"
+import { confirmTrainingBookings } from "@/lib/cart-training"
+import { releaseOrderReservations } from "@/lib/order-reservations"
+
+const ORDER_DETAIL_INCLUDE = {
+  items: {
+    include: {
+      product: true,
+    },
+  },
+  trainingItems: {
+    include: {
+      program: {
+        select: { id: true, title: true, image: true },
+      },
+      session: {
+        select: { id: true, startDate: true, endDate: true, location: true },
+      },
+    },
+  },
+  user: {
+    select: { id: true, email: true, name: true },
+  },
+} as const
+
+const VALID_ORDER_STATUSES = new Set([
+  "PENDING",
+  "PROCESSING",
+  "SHIPPED",
+  "DELIVERED",
+  "CANCELLED",
+])
 
 export async function GET(
   req: Request,
@@ -19,20 +51,7 @@ export async function GET(
 
     const order = await db.order.findUnique({
       where: { id },
-      include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-          },
-        },
-      },
+      include: ORDER_DETAIL_INCLUDE,
     })
 
     if (!order) {
@@ -121,10 +140,15 @@ export async function PATCH(
             manualPaymentStatus: ManualPaymentReviewStatus.CONFIRMED,
             status: "PROCESSING",
           },
-          include: {
-            items: { include: { product: true } },
-          },
+          include: ORDER_DETAIL_INCLUDE,
         })
+
+        // Payment confirmed — convert pending training holds to confirmed seats
+        const orderTrainings = await db.orderTrainingItem.findMany({
+          where: { orderId: id },
+          select: { bookingId: true },
+        })
+        await confirmTrainingBookings(orderTrainings)
 
         await applyRewardsAfterManualPaymentConfirmed({
           userId: existingOrder.userId,
@@ -147,6 +171,12 @@ export async function PATCH(
           console.error("Notify manual payment confirm:", e)
         }
 
+        try {
+          await maybeSendOrderConfirmation(id)
+        } catch (emailError) {
+          console.error("Failed to send order confirmation after manual confirm:", emailError)
+        }
+
         return NextResponse.json(updated)
       }
 
@@ -155,16 +185,18 @@ export async function PATCH(
           return NextResponse.json({ error: "Order is already cancelled" }, { status: 400 })
         }
 
+        const previousStatus = existingOrder.status
+
         const updated = await db.order.update({
           where: { id },
           data: {
             manualPaymentStatus: ManualPaymentReviewStatus.CANCELLED,
             status: "CANCELLED",
           },
-          include: {
-            items: { include: { product: true } },
-          },
+          include: ORDER_DETAIL_INCLUDE,
         })
+
+        await releaseOrderReservations(id, { previousStatus })
 
         try {
           await db.notification.create({
@@ -212,22 +244,36 @@ export async function PATCH(
     }
 
     // Build update data
-    const updateData: any = {}
-    if (status) updateData.status = status
-    // Note: trackingNumber, carrier, estimatedDelivery would need to be added to schema
-    // For now, we'll store them in metadata or add to schema later
+    if (!status || !VALID_ORDER_STATUSES.has(status)) {
+      return NextResponse.json(
+        { error: status ? "Invalid order status" : "Status is required" },
+        { status: 400 }
+      )
+    }
+
+    if (existingOrder.status === status) {
+      const unchanged = await db.order.findUnique({
+        where: { id },
+        include: ORDER_DETAIL_INCLUDE,
+      })
+      return NextResponse.json(unchanged)
+    }
+
+    const updateData = { status }
 
     const order = await db.order.update({
       where: { id },
       data: updateData,
-      include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
-      },
+      include: ORDER_DETAIL_INCLUDE,
     })
+
+    if (status === "CANCELLED" && existingOrder.status !== "CANCELLED") {
+      try {
+        await releaseOrderReservations(id, { previousStatus: existingOrder.status })
+      } catch (releaseError) {
+        console.error("Failed to release order reservations on cancel:", releaseError)
+      }
+    }
 
     // Create notification for the customer if status changed
     if (existingOrder.status !== status && existingOrder.userId) {

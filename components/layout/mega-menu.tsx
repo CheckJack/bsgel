@@ -69,7 +69,7 @@ export function MegaMenu({ isOpen, onClose, onMouseEnter, onMouseLeave }: MegaMe
       >
         <div className="container mx-auto px-4 py-8">
           {isLoading ? (
-            <div className="text-center py-12">Loading categories...</div>
+            <div className="text-center py-12">{t("categories.loadingCategories")}</div>
           ) : categories.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-600">No categories available</p>

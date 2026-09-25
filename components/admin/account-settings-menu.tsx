@@ -6,6 +6,7 @@ import { X, User, Mail, Lock, Camera, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/language-context";
 
 interface AccountSettingsMenuProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface AccountSettingsMenuProps {
 }
 
 export function AccountSettingsMenu({ isOpen, onClose }: AccountSettingsMenuProps) {
+  const { t } = useLanguage();
   const { data: session, update } = useSession();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -64,17 +66,17 @@ export function AccountSettingsMenu({ isOpen, onClose }: AccountSettingsMenuProp
     // Validate password if new password is provided
     if (newPassword) {
       if (newPassword.length < 6) {
-        setError("New password must be at least 6 characters");
+        setError(t("admin.accountSettings.passwordMinLength"));
         setIsLoading(false);
         return;
       }
       if (newPassword !== confirmPassword) {
-        setError("New passwords do not match");
+        setError(t("admin.accountSettings.passwordsDoNotMatch"));
         setIsLoading(false);
         return;
       }
       if (!currentPassword) {
-        setError("Current password is required to change password");
+        setError(t("admin.accountSettings.currentPasswordRequired"));
         setIsLoading(false);
         return;
       }
@@ -98,10 +100,10 @@ export function AccountSettingsMenu({ isOpen, onClose }: AccountSettingsMenuProp
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to update profile");
+        throw new Error(data.error || t("admin.accountSettings.updateFailed"));
       }
 
-      setSuccess("Profile updated successfully!");
+      setSuccess(t("admin.accountSettings.profileUpdated"));
       
       // Update session
       await update();
@@ -117,7 +119,7 @@ export function AccountSettingsMenu({ isOpen, onClose }: AccountSettingsMenuProp
         setSuccess("");
       }, 1500);
     } catch (err: any) {
-      setError(err.message || "Failed to update profile");
+      setError(err.message || t("admin.accountSettings.updateFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -145,12 +147,12 @@ export function AccountSettingsMenu({ isOpen, onClose }: AccountSettingsMenuProp
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            Account Settings
+            {t("admin.accountSettings.title")}
           </h2>
           <button
             onClick={onClose}
             className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-            aria-label="Close settings"
+            aria-label={t("admin.accountSettings.close")}
           >
             <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
           </button>
@@ -186,7 +188,7 @@ export function AccountSettingsMenu({ isOpen, onClose }: AccountSettingsMenuProp
               </div>
               <Input
                 type="url"
-                placeholder="https://example.com/photo.jpg"
+                placeholder={t("admin.accountSettings.photoPlaceholder")}
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
                 className="flex-1"
@@ -205,7 +207,7 @@ export function AccountSettingsMenu({ isOpen, onClose }: AccountSettingsMenuProp
             </label>
             <Input
               type="text"
-              placeholder="Your name"
+              placeholder={t("admin.accountSettings.namePlaceholder")}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -219,7 +221,7 @@ export function AccountSettingsMenu({ isOpen, onClose }: AccountSettingsMenuProp
             </label>
             <Input
               type="email"
-              placeholder="your.email@example.com"
+              placeholder={t("admin.accountSettings.emailPlaceholder")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -243,7 +245,7 @@ export function AccountSettingsMenu({ isOpen, onClose }: AccountSettingsMenuProp
               </label>
               <Input
                 type="password"
-                placeholder="Enter current password"
+                placeholder={t("admin.accountSettings.currentPassword")}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
               />
@@ -257,7 +259,7 @@ export function AccountSettingsMenu({ isOpen, onClose }: AccountSettingsMenuProp
               </label>
               <Input
                 type="password"
-                placeholder="Enter new password (min. 6 characters)"
+                placeholder={t("admin.accountSettings.newPassword")}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
               />
@@ -271,7 +273,7 @@ export function AccountSettingsMenu({ isOpen, onClose }: AccountSettingsMenuProp
               </label>
               <Input
                 type="password"
-                placeholder="Confirm new password"
+                placeholder={t("admin.accountSettings.confirmPassword")}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
@@ -311,7 +313,7 @@ export function AccountSettingsMenu({ isOpen, onClose }: AccountSettingsMenuProp
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  Save Changes
+                  {t("admin.accountSettings.saveChanges")}
                 </>
               )}
             </Button>

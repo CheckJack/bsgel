@@ -4,6 +4,7 @@ import React, { Component, ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/lib/utils";
+import { translate } from "@/lib/i18n";
 
 interface Props {
   children: ReactNode;
@@ -42,7 +43,7 @@ export class AdminErrorBoundary extends Component<Props, State> {
     });
     
     // Show toast notification
-    toast("An unexpected error occurred. Please try refreshing the page.", "error");
+    toast(translate("toasts.unexpectedError"), "error");
   }
 
   handleReset = () => {
@@ -72,10 +73,10 @@ export class AdminErrorBoundary extends Component<Props, State> {
               </div>
               <div className="flex-1">
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                  Something went wrong
+                  {translate("toasts.somethingWrong")}
                 </h1>
                 <p className="text-gray-600 dark:text-gray-400">
-                  An unexpected error occurred while loading this page. This has been logged and we&apos;ll look into it.
+                  {translate("toasts.unexpectedErrorPage")}
                 </p>
               </div>
             </div>
@@ -84,7 +85,7 @@ export class AdminErrorBoundary extends Component<Props, State> {
               <div className="mb-6 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
                 <details className="text-sm">
                   <summary className="cursor-pointer font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Error Details (Development Only)
+                    {translate("toasts.errorDetailsDev")}
                   </summary>
                   <pre className="mt-2 text-xs text-gray-600 dark:text-gray-400 overflow-auto">
                     {this.state.error.toString()}
@@ -100,7 +101,7 @@ export class AdminErrorBoundary extends Component<Props, State> {
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
               >
                 <RefreshCw className="h-4 w-4" />
-                Try Again
+                {translate("toasts.tryAgain")}
               </Button>
               <Button
                 onClick={this.handleReload}
@@ -108,7 +109,7 @@ export class AdminErrorBoundary extends Component<Props, State> {
                 className="flex items-center gap-2"
               >
                 <RefreshCw className="h-4 w-4" />
-                Reload Page
+                {translate("toasts.reloadPage")}
               </Button>
               <Button
                 onClick={() => (window.location.href = "/admin")}
@@ -116,7 +117,7 @@ export class AdminErrorBoundary extends Component<Props, State> {
                 className="flex items-center gap-2"
               >
                 <Home className="h-4 w-4" />
-                Go to Dashboard
+                {translate("toasts.goToDashboard")}
               </Button>
             </div>
           </div>

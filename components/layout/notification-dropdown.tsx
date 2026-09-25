@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/language-context";
+import { resolveNotificationCopy } from "@/lib/notifications/i18n";
 import {
   headerNavActionClass,
   headerNavBadgeClass,
@@ -123,14 +124,7 @@ export function NotificationDropdown({
     }
 
     setOpen(false);
-
-    if (notification.linkUrl) {
-      if (notification.linkUrl.startsWith("http://") || notification.linkUrl.startsWith("https://")) {
-        window.open(notification.linkUrl, "_blank", "noopener,noreferrer");
-      } else {
-        router.push(notification.linkUrl);
-      }
-    }
+    router.push(`/dashboard/notifications?open=${encodeURIComponent(notification.id)}`);
   };
 
   const markAllAsRead = async () => {
@@ -198,13 +192,25 @@ export function NotificationDropdown({
             <h3 className="font-header text-base font-semibold text-brand-black">
               {t("clientPanel.notifications.title")}
             </h3>
-            <button
-              onClick={() => setOpen(false)}
-              className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-black/5"
-              aria-label={t("clientPanel.notifications.close")}
-            >
-              <X className="h-4 w-4 text-brand-black/60" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  router.push("/dashboard/notifications");
+                }}
+                className="px-2 py-1 text-xs font-medium uppercase tracking-[0.12em] text-brand-champagne transition-colors hover:text-brand-black"
+              >
+                {t("clientPanel.notifications.viewAll")}
+              </button>
+              <button
+                onClick={() => setOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-black/5"
+                aria-label={t("clientPanel.notifications.close")}
+              >
+                <X className="h-4 w-4 text-brand-black/60" />
+              </button>
+            </div>
           </div>
 
           <div className="notification-scroll flex-1 overflow-y-auto pr-2">
@@ -220,7 +226,9 @@ export function NotificationDropdown({
               </div>
             ) : (
               <div className="divide-y divide-black/10">
-                {notifications.map((notification) => (
+                {notifications.map((notification) => {
+                  const copy = resolveNotificationCopy(notification, t);
+                  return (
                   <div
                     key={notification.id}
                     className={cn(
@@ -234,7 +242,7 @@ export function NotificationDropdown({
                         <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg border border-black/10">
                           <img
                             src={notification.image}
-                            alt={notification.title}
+                            alt={copy.title}
                             className="h-full w-full object-cover"
                           />
                         </div>
@@ -247,13 +255,14 @@ export function NotificationDropdown({
                         />
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-brand-black">{notification.title}</p>
-                        <p className="mt-1 text-sm text-brand-black/70">{notification.message}</p>
+                        <p className="text-sm font-semibold text-brand-black">{copy.title}</p>
+                        <p className="mt-1 text-sm text-brand-black/70">{copy.message}</p>
                         <p className="mt-2 text-xs text-brand-black/45">{notification.time}</p>
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

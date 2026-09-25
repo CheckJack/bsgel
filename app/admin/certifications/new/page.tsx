@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Category {
   id: string;
@@ -13,6 +14,7 @@ interface Category {
 }
 
 export default function NewCertificationPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
   const [formData, setFormData] = useState({
@@ -59,7 +61,7 @@ export default function NewCertificationPage() {
     setError("");
 
     if (!formData.name.trim()) {
-      setError("Certification name is required");
+      setError(t("admin.certifications.nameRequired"));
       return;
     }
 
@@ -81,12 +83,12 @@ export default function NewCertificationPage() {
         router.push("/admin/certifications");
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to create certification");
+        setError(data.error || t("admin.certifications.createFailed"));
         setIsLoading(false);
       }
     } catch (error) {
       console.error("Failed to create certification:", error);
-      setError("Failed to create certification. Please try again.");
+      setError(t("admin.certifications.createFailed"));
       setIsLoading(false);
     }
   };
@@ -95,9 +97,7 @@ export default function NewCertificationPage() {
     <div>
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-          Create New Certification
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("admin.certifications.newTitle")}</h1>
         <div className="text-sm text-gray-600 dark:text-gray-400">
           Dashboard <span className="mx-2">&gt;</span> Certifications{" "}
           <span className="mx-2">&gt;</span> New
@@ -128,7 +128,7 @@ export default function NewCertificationPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                placeholder="e.g., Professional, Initiation, Advanced"
+                placeholder={t("admin.certifications.namePlaceholder")}
                 required
                 className="w-full"
               />
@@ -148,7 +148,7 @@ export default function NewCertificationPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
-                placeholder="Enter a description for this certification..."
+                placeholder={t("admin.certifications.descriptionPlaceholder")}
                 rows={4}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -222,7 +222,7 @@ export default function NewCertificationPage() {
                 disabled={isLoading}
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                {isLoading ? "Creating..." : "Create Certification"}
+                {isLoading ? t("admin.certifications.creating") : t("admin.certifications.create")}
               </Button>
               <Button
                 type="button"

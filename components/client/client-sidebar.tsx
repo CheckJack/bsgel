@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  LayoutDashboard, 
   ShoppingBag,
   FileDown,
   Settings,
@@ -49,17 +48,6 @@ export function ClientSidebar({ isMobileOpen, onMobileClose }: ClientSidebarProp
 
   // Build nav sections with translations
   const navSections: NavSection[] = [
-    {
-      title: t("clientPanel.sidebar.main"),
-      items: [
-        {
-          title: t("clientPanel.sidebar.dashboard"),
-          href: "/dashboard",
-          icon: LayoutDashboard,
-          badge: null,
-        },
-      ],
-    },
     {
       title: t("clientPanel.sidebar.account"),
       items: [
@@ -212,9 +200,8 @@ export function ClientSidebar({ isMobileOpen, onMobileClose }: ClientSidebarProp
           return featureSettings.affiliateEnabled;
         }
         
-        // Always show: Dashboard, Order History, Messages, Settings
-        if (item.href === "/dashboard" || 
-            item.href === "/dashboard/orders" || 
+        // Always show: Order History, Messages, Settings
+        if (item.href === "/dashboard/orders" || 
             item.href === "/dashboard/messages" ||
             item.href === "/dashboard/settings") {
           return true;

@@ -8,7 +8,7 @@ import { calculatePoints, awardPoints } from "@/lib/points"
 import { checkAndNotifyMilestones } from "@/lib/notifications/affiliate-milestones"
 import { autoPromoteAffiliate } from "@/lib/affiliate-tiers"
 import { calculateShipping } from "@/lib/shipping"
-import { decrementStockForOrder, validateCartStock } from "@/lib/stock"
+import { reserveOrderStock, validateCartStock } from "@/lib/stock"
 import {
   cartWithTrainingInclude,
   clearUserCart,
@@ -16,7 +16,10 @@ import {
   getCartSubtotal,
   isCartEmpty,
 } from "@/lib/cart-training"
-import { ShopPaymentMethod } from "@prisma/client"
+import { ShopPaymentMethod, Prisma } from "@prisma/client"
+import { maybeSendOrderConfirmation } from "@/lib/email/order-confirmation"
+import { saveCheckoutDetailsToUser } from "@/lib/checkout/save-checkout-profile"
+import { resolveEffectiveUnitPrice } from "@/lib/pricing/effective-price"
 
 export async function POST(req: Request) {
   const body = await req.text()
@@ -49,6 +52,13 @@ export async function POST(req: Request) {
   // Handle the event
   if (event.type === "payment_intent.succeeded") {
     const paymentIntent = event.data.object as any
+    const existingOrder = await db.order.findUnique({
+      where: { paymentIntentId: paymentIntent.id },
+      select: { id: true },
+    })
+    if (existingOrder) {
+      return NextResponse.json({ received: true, orderId: existingOrder.id })
+    }
     const {
       userId,
       shippingAddress,
@@ -123,8 +133,10 @@ export async function POST(req: Request) {
           ? ShopPaymentMethod.STRIPE_KLARNA
           : ShopPaymentMethod.STRIPE_CARD
 
-      // Create order first
-      const order = await db.order.create({
+      // Create order first (checkout POST may have already created it)
+      let order
+      try {
+        order = await db.order.create({
         data: {
           userId,
           total: actualTotal, // Use the actual payment amount
@@ -144,7 +156,7 @@ export async function POST(req: Request) {
             create: cart.items.map((item) => ({
               productId: item.productId,
               quantity: item.quantity,
-              price: item.product.price,
+              price: resolveEffectiveUnitPrice(item.product.price, item.product.salePrice),
             })),
           },
           trainingItems: {
@@ -158,9 +170,26 @@ export async function POST(req: Request) {
           },
         },
       })
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+          const existing = await db.order.findUnique({
+            where: { paymentIntentId: paymentIntent.id },
+            select: { id: true },
+          })
+          if (existing) {
+            return NextResponse.json({ received: true, orderId: existing.id })
+          }
+        }
+        throw error
+      }
+
+      await saveCheckoutDetailsToUser(userId, {
+        shippingAddressRaw: typeof shippingAddress === "string" ? shippingAddress : null,
+      })
 
       if (cart.items.length > 0) {
-        await decrementStockForOrder(
+        await reserveOrderStock(
+          order.id,
           cart.items.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
@@ -264,6 +293,7 @@ export async function POST(req: Request) {
               orderId: order.id,
               userId: userId,
               total: actualTotal.toString(),
+              totalFormatted: formatPrice(actualTotal),
               couponCode: couponCode || null,
               customerName: user?.name || null,
               customerEmail: user?.email || null,
@@ -287,12 +317,19 @@ export async function POST(req: Request) {
               orderId: order.id,
               orderStatus: "PROCESSING",
               total: actualTotal.toString(),
+              totalFormatted: formatPrice(actualTotal),
             },
           },
         })
       } catch (notificationError) {
         // Log notification error but don't fail the order creation
         console.error("Failed to create customer notification:", notificationError)
+      }
+
+      try {
+        await maybeSendOrderConfirmation(order.id)
+      } catch (emailError) {
+        console.error("Failed to send order confirmation email:", emailError)
       }
     }
   }

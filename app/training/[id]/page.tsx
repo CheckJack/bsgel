@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -12,6 +12,13 @@ import { toast } from "@/components/ui/toast";
 import { useCart } from "@/contexts/cart-context";
 import { useLanguage } from "@/contexts/language-context";
 import { cn } from "@/lib/utils";
+
+function getStickTop() {
+  const headerVar = getComputedStyle(document.documentElement).getPropertyValue(
+    "--site-header-height"
+  );
+  return (parseFloat(headerVar) || 113) + 20;
+}
 
 interface TrainingSession {
   id: string;
@@ -46,6 +53,7 @@ interface TrainingProgram {
   totalHours?: number;
   price: number;
   image: string | null;
+  openBooking?: boolean;
   sessions: TrainingSession[];
   includedProducts?: IncludedProduct[];
 }
@@ -70,9 +78,109 @@ export default function TrainingProgramDetailPage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [sessionsForDate, setSessionsForDate] = useState<TrainingSession[]>([]);
   const [pendingSession, setPendingSession] = useState<TrainingSession | null>(null);
+  const [pendingOpenDate, setPendingOpenDate] = useState<string | null>(null);
   const [isSubmittingChoice, setIsSubmittingChoice] = useState(false);
 
+  const leftColRef = useRef<HTMLDivElement>(null);
+  const bookingColRef = useRef<HTMLDivElement>(null);
+  const bookingPanelRef = useRef<HTMLDivElement>(null);
+  const [pinMode, setPinMode] = useState<"static" | "fixed" | "absolute">("static");
+  const [fixedPin, setFixedPin] = useState<{ top: number; left: number; width: number } | null>(
+    null
+  );
+  const [absoluteTop, setAbsoluteTop] = useState(0);
+  const [columnHeight, setColumnHeight] = useState(0);
+  const [panelHeight, setPanelHeight] = useState(0);
+
   const locale = language === "pt" ? "pt-PT" : "en-GB";
+
+  const updateBookingPin = useCallback(() => {
+    // Match the xl two-column layout; below that the calendar stacks normally.
+    const isXl = window.matchMedia("(min-width: 1280px)").matches;
+    const left = leftColRef.current;
+    const column = bookingColRef.current;
+    const panel = bookingPanelRef.current;
+
+    if (!isXl || !left || !column || !panel) {
+      setPinMode("static");
+      setFixedPin(null);
+      setColumnHeight(0);
+      setPanelHeight(0);
+      return;
+    }
+
+    const stickTop = getStickTop();
+    const viewH = Math.max(0, window.innerHeight - stickTop);
+    const leftH = left.offsetHeight;
+    const panH = panel.offsetHeight;
+    const colH = Math.max(leftH, panH);
+
+    setColumnHeight(colH);
+    setPanelHeight(panH);
+
+    const leftRect = left.getBoundingClientRect();
+    const columnRect = column.getBoundingClientRect();
+    const scrollY = window.scrollY;
+
+    const leftTopPage = scrollY + leftRect.top;
+    const leftBottomPage = scrollY + leftRect.bottom;
+
+    const pinStart = leftTopPage - stickTop;
+    const pinEnd = leftBottomPage - stickTop - Math.min(panH, viewH);
+
+    if (scrollY < pinStart || pinEnd <= pinStart) {
+      if (scrollY < pinStart) {
+        setPinMode("static");
+        setFixedPin(null);
+      } else {
+        setPinMode("absolute");
+        setFixedPin(null);
+        setAbsoluteTop(Math.max(0, colH - panH));
+      }
+      return;
+    }
+
+    if (scrollY < pinEnd) {
+      setPinMode("fixed");
+      setFixedPin({
+        top: stickTop,
+        left: columnRect.left,
+        width: columnRect.width,
+      });
+      return;
+    }
+
+    setPinMode("absolute");
+    setFixedPin(null);
+    setAbsoluteTop(Math.max(0, colH - panH));
+  }, []);
+
+  useEffect(() => {
+    let raf = 0;
+    const schedule = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(updateBookingPin);
+    };
+
+    schedule();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+
+    const mq = window.matchMedia("(min-width: 1280px)");
+    mq.addEventListener("change", schedule);
+
+    const ro = new ResizeObserver(schedule);
+    if (leftColRef.current) ro.observe(leftColRef.current);
+    if (bookingPanelRef.current) ro.observe(bookingPanelRef.current);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      mq.removeEventListener("change", schedule);
+      ro.disconnect();
+    };
+  }, [updateBookingPin, program, selectedDate, sessionsForDate]);
 
   useEffect(() => {
     const fetchProgram = async () => {
@@ -130,6 +238,22 @@ export default function TrainingProgramDetailPage() {
     return data as { itemsAdded?: number; skippedProducts?: Array<{ productId: string; reason: string }> };
   };
 
+  const reserveOpenDateAndAddToCart = async (dateKey: string) => {
+    const res = await fetch(`/api/trainings/${params.id}/reserve-date`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date: dateKey }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || t("training.failedToBook"));
+    }
+
+    await refreshCart();
+    return data;
+  };
+
   const handleSessionSelect = (sessionItem: TrainingSession) => {
     if (sessionItem.availableSpots <= 0) {
       toast(t("training.sessionFull"), "error");
@@ -141,22 +265,42 @@ export default function TrainingProgramDetailPage() {
       return;
     }
 
+    setPendingOpenDate(null);
     setPendingSession(sessionItem);
+  };
+
+  const handleOpenDateSelect = (dateKey: string) => {
+    setSelectedDate(dateKey);
+    setSessionsForDate([]);
+
+    if (!session?.user) {
+      router.push(`/login?callbackUrl=${encodeURIComponent(`/training/${params.id}`)}`);
+      return;
+    }
+
+    setPendingSession(null);
+    setPendingOpenDate(dateKey);
   };
 
   const closeChoiceModal = () => {
     if (isSubmittingChoice) return;
     setPendingSession(null);
+    setPendingOpenDate(null);
   };
 
   const handleContinueShopping = async () => {
-    if (!pendingSession) return;
+    if (!pendingSession && !pendingOpenDate) return;
 
     setIsSubmittingChoice(true);
     try {
-      await reserveSessionAndAddToCart(pendingSession);
+      if (pendingOpenDate) {
+        await reserveOpenDateAndAddToCart(pendingOpenDate);
+      } else if (pendingSession) {
+        await reserveSessionAndAddToCart(pendingSession);
+      }
       toast(t("training.addedToCartContinue"), "success");
       setPendingSession(null);
+      setPendingOpenDate(null);
       window.dispatchEvent(new CustomEvent("openCartDrawer"));
     } catch (err: any) {
       toast(err?.message || t("training.failedToBook"), "error");
@@ -166,12 +310,17 @@ export default function TrainingProgramDetailPage() {
   };
 
   const handleCheckout = async () => {
-    if (!pendingSession) return;
+    if (!pendingSession && !pendingOpenDate) return;
 
     setIsSubmittingChoice(true);
     try {
-      await reserveSessionAndAddToCart(pendingSession);
+      if (pendingOpenDate) {
+        await reserveOpenDateAndAddToCart(pendingOpenDate);
+      } else if (pendingSession) {
+        await reserveSessionAndAddToCart(pendingSession);
+      }
       setPendingSession(null);
+      setPendingOpenDate(null);
       router.push("/checkout");
     } catch (err: any) {
       toast(err?.message || t("training.failedToBook"), "error");
@@ -180,8 +329,8 @@ export default function TrainingProgramDetailPage() {
     }
   };
 
-  const handleDateClick = (session: any) => {
-    const key = getLocalDateKey(session.startDate);
+  const handleDateClick = (sessionItem: TrainingSession) => {
+    const key = getLocalDateKey(sessionItem.startDate);
     setSelectedDate(key);
     const sameDay = (program?.sessions || []).filter(
       (s) => getLocalDateKey(s.startDate) === key
@@ -194,8 +343,18 @@ export default function TrainingProgramDetailPage() {
     setSessionsForDate([]);
   };
 
+  const formatDateKeyLabel = (dateKey: string) => {
+    const [year, month, day] = dateKey.split("-").map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString(locale, {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   if (isLoading) {
-    return <main className="min-h-screen bg-white p-6">A carregar...</main>;
+    return <main className="min-h-screen bg-white p-6">{t("training.loading")}</main>;
   }
 
   if (error || !program) {
@@ -215,7 +374,7 @@ export default function TrainingProgramDetailPage() {
           </Link>
 
           <div className="grid items-start gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-            <div className="space-y-6">
+            <div ref={leftColRef} className="space-y-6">
               <div className="grid gap-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6 md:grid-cols-[240px_1fr]">
                 <div>
                   {program.image ? (
@@ -307,9 +466,51 @@ export default function TrainingProgramDetailPage() {
               )}
             </div>
 
-            <div className="xl:sticky xl:top-[calc(var(--site-header-height,113px)+1.25rem)] xl:scroll-mt-[calc(var(--site-header-height,113px)+1.25rem)]">
-              <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
-                {!selectedDate ? (
+            <div
+              ref={bookingColRef}
+              className="relative min-w-0"
+              style={
+                columnHeight > 0 && pinMode !== "static"
+                  ? { minHeight: columnHeight }
+                  : undefined
+              }
+            >
+              {pinMode === "fixed" && panelHeight > 0 ? (
+                <div aria-hidden className="invisible" style={{ height: panelHeight }} />
+              ) : null}
+              <div
+                ref={bookingPanelRef}
+                className={cn(
+                  "overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg",
+                  pinMode === "fixed" && "xl:fixed xl:z-20",
+                  pinMode === "absolute" && "xl:absolute xl:left-0 xl:right-0 xl:z-10"
+                )}
+                style={
+                  pinMode === "fixed" && fixedPin
+                    ? {
+                        top: fixedPin.top,
+                        left: fixedPin.left,
+                        width: fixedPin.width,
+                      }
+                    : pinMode === "absolute"
+                      ? { top: absoluteTop }
+                      : undefined
+                }
+              >
+                {program.openBooking ? (
+                  <div className="p-6">
+                    <p className="mb-4 text-sm text-gray-600">
+                      {t("training.openBookingHint")}
+                    </p>
+                    <TrainingCalendar
+                      sessions={(program.sessions as any) || []}
+                      onDateClick={handleDateClick as any}
+                      onOpenDateClick={handleOpenDateSelect}
+                      openBooking
+                      selectedDate={selectedDate}
+                    />
+                  </div>
+                ) : !selectedDate ? (
                   <div className="p-6">
                     <TrainingCalendar
                       sessions={(program.sessions as any) || []}
@@ -383,18 +584,34 @@ export default function TrainingProgramDetailPage() {
         </div>
       </section>
 
-      {pendingSession && program && (
+      {(pendingSession || pendingOpenDate) && program && (
         <TrainingSessionChoiceModal
-          open={Boolean(pendingSession)}
+          open={Boolean(pendingSession || pendingOpenDate)}
           onClose={closeChoiceModal}
           onCheckout={handleCheckout}
           onContinueShopping={handleContinueShopping}
           isSubmitting={isSubmittingChoice}
           programTitle={program.title}
           price={program.price}
-          startLabel={formatTime(pendingSession.startDate)}
-          endLabel={formatTime(pendingSession.endDate)}
-          location={pendingSession.location}
+          startLabel={
+            pendingOpenDate
+              ? formatDateKeyLabel(pendingOpenDate)
+              : pendingSession
+                ? formatTime(pendingSession.startDate)
+                : ""
+          }
+          endLabel={
+            pendingOpenDate
+              ? t("training.online")
+              : pendingSession
+                ? formatTime(pendingSession.endDate)
+                : ""
+          }
+          location={
+            pendingOpenDate
+              ? t("training.online")
+              : pendingSession?.location || null
+          }
         />
       )}
     </main>

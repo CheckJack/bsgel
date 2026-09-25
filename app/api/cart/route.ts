@@ -18,8 +18,10 @@ function serializeProductCartItems(
     quantity: number
     product: {
       id: string
+      slug?: string
       name: string
       price: unknown
+      salePrice: unknown
       image: string | null
       description: string | null
       categoryId: string | null
@@ -33,8 +35,13 @@ function serializeProductCartItems(
     id: item.id,
     product: {
       id: item.product.id,
+      slug: item.product.slug,
       name: item.product.name,
       price: decimalToString(item.product.price as never),
+      salePrice:
+        item.product.salePrice == null
+          ? null
+          : decimalToString(item.product.salePrice as never),
       image: item.product.image,
       description: item.product.description,
       categoryId: item.product.categoryId,
@@ -125,15 +132,6 @@ export async function POST(req: Request) {
       )
     }
 
-    // Validate certification before adding to cart
-    const accessCheck = await canUserPurchaseProduct(session.user.id, productId)
-    if (!accessCheck.canPurchase) {
-      return NextResponse.json(
-        { error: accessCheck.error || "You do not have permission to purchase this product" },
-        { status: 403 }
-      )
-    }
-
     // Get or create cart
     let cart = await db.cart.findUnique({
       where: { userId: session.user.id },
@@ -157,6 +155,7 @@ export async function POST(req: Request) {
     const existingQty = existingItem?.quantity ?? 0
     const resolved = await resolveCartQuantity(productId, quantity, existingQty)
 
+    // Stock first so sold-out products never surface as a certification error.
     if (!resolved.ok) {
       const product = await db.product.findUnique({
         where: { id: productId },
@@ -176,6 +175,19 @@ export async function POST(req: Request) {
         )
       }
       return NextResponse.json(resolved.body, { status: 409 })
+    }
+
+    const accessCheck = await canUserPurchaseProduct(session.user.id, productId)
+    if (!accessCheck.canPurchase) {
+      return NextResponse.json(
+        {
+          error: accessCheck.error || "You do not have permission to purchase this product",
+          code: accessCheck.code || "CERTIFICATION_REQUIRED",
+          categoryName: accessCheck.categoryName,
+          certificationName: accessCheck.certificationName,
+        },
+        { status: 403 }
+      )
     }
 
     await upsertCartItem(session.user.id, productId, resolved.quantity)

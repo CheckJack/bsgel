@@ -7,10 +7,11 @@ import { HomeTrustStatsBar } from "@/components/layout/home-trust-stats-bar";
 import { HomeKitJourneyBanner } from "@/components/layout/home-kit-journey-banner";
 import { FeaturedSpaProducts } from "@/components/layout/featured-spa-products";
 import { FeaturedBasesProducts } from "@/components/layout/featured-bases-products";
-import { HomeExperienceBanner } from "@/components/layout/home-experience-banner";
+import { HomeColourPolishBanner } from "@/components/layout/home-colour-polish-banner";
+import { FeaturedIntempuralProducts } from "@/components/layout/featured-intempural-products";
+import { HomeEnzymeScrubBanner } from "@/components/layout/home-enzyme-scrub-banner";
 import { NailPolishDisplay } from "@/components/layout/nail-polish-display";
 import { HomeEntryLoader } from "@/components/layout/home-entry-loader";
-import { ScrollReveal } from "@/components/layout/scroll-reveal";
 import {
   HOME_ENTRY_LOADER_SCROLL_LOCK_CLASS,
   notifyHomeEntryLoaderComplete,
@@ -19,12 +20,11 @@ import {
   syncAppViewportHeight,
 } from "@/lib/home-entry-loader";
 import { scrollAppScrollRootToTop } from "@/lib/mobile-scroll-root";
+import { HomepageProductsProvider } from "@/contexts/homepage-products-context";
 
 export default function Home() {
-  const [hydrated, setHydrated] = useState(false);
   const [showEntryLoader, setShowEntryLoader] = useState(true);
   const [heroReady, setHeroReady] = useState(false);
-  const [heroEntryRevealed, setHeroEntryRevealed] = useState(false);
 
   useLayoutEffect(() => {
     if ("scrollRestoration" in history) {
@@ -36,14 +36,11 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    setHydrated(true);
-
-    const heroFallback = window.setTimeout(() => setHeroReady(true), 4000);
+    const heroFallback = window.setTimeout(() => setHeroReady(true), 2500);
     const loaderFallback = window.setTimeout(() => {
       setShowEntryLoader(false);
-      setHeroEntryRevealed(true);
       notifyHomeEntryLoaderComplete();
-    }, 6000);
+    }, 4000);
     return () => {
       window.clearTimeout(heroFallback);
       window.clearTimeout(loaderFallback);
@@ -59,13 +56,8 @@ export default function Home() {
     return () => releaseHomeScrollLock();
   }, [showEntryLoader]);
 
-  // Safety: never leave the homepage with scroll locked (e.g. loader timer bug / fast navigation)
   useEffect(() => {
     return () => releaseHomeScrollLock();
-  }, []);
-
-  const handleLoaderExitStart = useCallback(() => {
-    setHeroEntryRevealed(true);
   }, []);
 
   const handleLoaderComplete = useCallback(() => {
@@ -80,44 +72,28 @@ export default function Home() {
     }
   }, [showEntryLoader]);
 
-  if (!hydrated) {
-    return (
-      <div className="home-entry-loader-screen overflow-hidden" aria-hidden>
-        <div className="loader-bg bg-[#857D71]" />
-      </div>
-    );
-  }
-
   return (
     <>
       {showEntryLoader && (
         <HomeEntryLoader
           onComplete={handleLoaderComplete}
-          onExitStart={handleLoaderExitStart}
+          onExitStart={handleLoaderComplete}
           readyToExit={heroReady}
         />
       )}
-      <HomeMainHero
-        onImageReady={() => setHeroReady(true)}
-        entryRevealed={heroEntryRevealed}
-      />
-      <ScrollReveal>
+      {/* No ScrollReveal wrappers — content must always paint on mobile */}
+      <HomepageProductsProvider>
+        <HomeMainHero onImageReady={() => setHeroReady(true)} entryRevealed />
         <FeaturedProducts />
-      </ScrollReveal>
-      <HomeTrustStatsBar />
-      <HomeKitJourneyBanner />
-      <ScrollReveal>
+        <HomeTrustStatsBar />
+        <HomeKitJourneyBanner />
         <FeaturedSpaProducts />
-      </ScrollReveal>
-      <ScrollReveal direction="fade">
-        <HomeExperienceBanner />
-      </ScrollReveal>
-      <ScrollReveal>
+        <HomeEnzymeScrubBanner />
         <FeaturedBasesProducts />
-      </ScrollReveal>
-      <ScrollReveal direction="fade">
-        <NailPolishDisplay />
-      </ScrollReveal>
+        <HomeColourPolishBanner />
+        <FeaturedIntempuralProducts />
+      </HomepageProductsProvider>
+      <NailPolishDisplay />
     </>
   );
 }

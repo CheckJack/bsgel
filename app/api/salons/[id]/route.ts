@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { normalizeOptionalHttpUrl } from "@/lib/salon-social-url";
+import { persistSalonMediaFields } from "@/lib/salons/persist-media";
 
 export async function GET(
   req: Request,
@@ -181,6 +182,27 @@ export async function PATCH(
     if (image !== undefined) updateData.image = toNullIfEmpty(image);
     if (logo !== undefined) updateData.logo = toNullIfEmpty(logo);
     if (images !== undefined) updateData.images = Array.isArray(images) ? images : [];
+
+    // Persist any new base64 media to disk before writing URLs to DB
+    if (
+      updateData.image !== undefined ||
+      updateData.logo !== undefined ||
+      updateData.images !== undefined
+    ) {
+      try {
+        const persisted = await persistSalonMediaFields({
+          salonId: id,
+          image: updateData.image !== undefined ? updateData.image : undefined,
+          logo: updateData.logo !== undefined ? updateData.logo : undefined,
+          images: updateData.images !== undefined ? updateData.images : undefined,
+        });
+        if (persisted.image !== undefined) updateData.image = persisted.image;
+        if (persisted.logo !== undefined) updateData.logo = persisted.logo;
+        if (persisted.images !== undefined) updateData.images = persisted.images;
+      } catch (mediaErr) {
+        console.error("Failed to persist salon media to disk:", mediaErr);
+      }
+    }
     if (description !== undefined) updateData.description = toNullIfEmpty(description);
     if (workingHours !== undefined) updateData.workingHours = workingHours || null;
     if (isActive !== undefined) updateData.isActive = isActive;

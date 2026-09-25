@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { BlogNewsImage } from "@/components/blog/blog-news-image";
 import { useLanguage } from "@/contexts/language-context";
 import { formatNewsDate, getNewsExcerpt, type NewsPost } from "@/components/blog/news-utils";
 
@@ -21,14 +21,13 @@ export function NewsSplitHero({ main, side }: NewsSplitHeroProps) {
         className="group relative min-h-[320px] overflow-hidden bg-brand-black lg:col-span-8 lg:min-h-[480px]"
       >
         {main.image ? (
-          <Image
+          <BlogNewsImage
             src={main.image}
             alt={main.title}
             fill
             className="object-cover opacity-90 transition-transform duration-700 group-hover:scale-[1.03]"
             sizes="(max-width: 1024px) 100vw, 66vw"
             priority
-            unoptimized
           />
         ) : (
           <div className="absolute inset-0 bg-brand-black" />
@@ -78,14 +77,13 @@ export function NewsSplitHero({ main, side }: NewsSplitHeroProps) {
             >
               {post.image && (
                 <div className="relative size-20 shrink-0 overflow-hidden bg-brand-sweet-bianca sm:size-24">
-                  <Image
+                  <BlogNewsImage
                     src={post.image}
                     alt={post.title}
                     fill
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                     sizes="96px"
                     loading="lazy"
-                    unoptimized
                   />
                 </div>
               )}

@@ -8,14 +8,18 @@ import { createPortal } from "react-dom";
 import { signIn, getSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import mobileAuthBackground from "../../../1245667.png";
 import { Eye, EyeOff, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "@/components/ui/toast";
 import { useLanguage } from "@/contexts/language-context";
 import { cn } from "@/lib/utils";
 import { syncAuthMobileBgHeight, clearAuthMobileBgHeight } from "@/lib/mobile-scroll-root";
+
+/** Stable public paths — optimized WebP at display sizes (see public/auth/). */
+const LOGIN_DESKTOP_IMAGE = "/auth/login-desktop.webp";
+const LOGIN_MOBILE_IMAGE = "/auth/login-mobile.webp";
 
 function AuthMobileBackground() {
   const [mounted, setMounted] = useState(false);
@@ -30,13 +34,19 @@ function AuthMobileBackground() {
   }
 
   return createPortal(
-    <div className="auth-mobile-bg-bleed pointer-events-none relative overflow-hidden md:hidden" aria-hidden>
+    <div
+      className="auth-mobile-bg-bleed pointer-events-none relative overflow-hidden bg-[#c8b8a8] lg:hidden"
+      aria-hidden
+    >
       <Image
-        src={mobileAuthBackground}
+        src={LOGIN_MOBILE_IMAGE}
         alt=""
         fill
         className="object-cover"
         priority
+        // Already resized/compressed WebP — serve statically so preload matches LCP URL.
+        unoptimized
+        sizes="100vw"
       />
       <div className="absolute inset-0 bg-black/30" />
     </div>,
@@ -71,10 +81,10 @@ function useAuthLayoutMode() {
 }
 
 function AuthMobileFormPane({
-  isRegisterMode,
+  isExpandedMode,
   children,
 }: {
-  isRegisterMode: boolean;
+  isExpandedMode: boolean;
   children: React.ReactNode;
 }) {
   const [mounted, setMounted] = useState(false);
@@ -96,7 +106,7 @@ function AuthMobileFormPane({
 
   useEffect(() => {
     if (paneRef.current) paneRef.current.scrollTop = 0;
-  }, [isRegisterMode]);
+  }, [isExpandedMode]);
 
   if (!mounted) return null;
   if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
@@ -107,10 +117,10 @@ function AuthMobileFormPane({
     <div
       ref={paneRef}
       data-auth-mobile-pane
-      data-auth-mode={isRegisterMode ? "register" : "login"}
+      data-auth-mode={isExpandedMode ? "register" : "login"}
       className={cn(
-        "auth-mobile-form-pane md:hidden",
-        isRegisterMode ? "auth-mobile-form-pane--register" : "auth-mobile-form-pane--login"
+        "auth-mobile-form-pane lg:hidden",
+        isExpandedMode ? "auth-mobile-form-pane--register" : "auth-mobile-form-pane--login"
       )}
     >
       <div className="auth-mobile-form-pane__inner">{children}</div>
@@ -119,6 +129,8 @@ function AuthMobileFormPane({
   );
 }
 
+type AuthView = "login" | "register" | "verify" | "forgot" | "reset";
+
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -126,31 +138,14 @@ function LoginPageContent() {
   const { t } = useLanguage();
   const { ready: layoutReady, isMobile } = useAuthLayoutMode();
   
-  // Check if we should show register form (from URL param or default)
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
-
-  // Update mode when search params change
-  useEffect(() => {
-    if (searchParams?.get("mode") === "register") {
-      setIsRegisterMode(true);
-    }
-    
-    // Capture referral code from URL if present
-    const refCode = searchParams?.get("ref");
-    if (refCode) {
-      localStorage.setItem("referralCode", refCode);
-      const expiryDate = new Date();
-      expiryDate.setTime(expiryDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-      document.cookie = `referralCode=${refCode}; path=/; expires=${expiryDate.toUTCString()}; SameSite=Lax`;
-      console.log("Referral code captured from login page:", refCode);
-    }
-    
-    // Show success message if user just registered
-    if (searchParams?.get("registered") === "true") {
-      setError("");
-      // Could show a success message here if needed
-    }
-  }, [searchParams]);
+  const [authView, setAuthView] = useState<AuthView>("login");
+  const isExpandedMode =
+    authView === "register" ||
+    authView === "verify" ||
+    authView === "forgot" ||
+    authView === "reset";
+  const registeredToastShown = useRef(false);
+  const desktopFormScrollRef = useRef<HTMLDivElement>(null);
 
   // Login state
   const [email, setEmail] = useState("");
@@ -158,7 +153,18 @@ function LoginPageContent() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Verify email
+  const [verifyEmail, setVerifyEmail] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+
+  // Password reset
+  const [resetToken, setResetToken] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+
   // Register state
   const [formData, setFormData] = useState({
     name: "",
@@ -173,13 +179,51 @@ function LoginPageContent() {
   const [certificatePreview, setCertificatePreview] = useState<string | null>(null);
   const [certifications, setCertifications] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedCertificationId, setSelectedCertificationId] = useState<string | null>(null);
-  
+
   // Track professional registration step
   const [professionalStep, setProfessionalStep] = useState<"certification" | "upload" | "complete">("certification");
 
+  // Update mode when search params change
+  useEffect(() => {
+    const mode = searchParams?.get("mode");
+    const token = searchParams?.get("token") || searchParams?.get("resetToken");
+
+    if (mode === "register") {
+      setAuthView("register");
+    } else if (mode === "reset" && token) {
+      setAuthView("reset");
+      setResetToken(token);
+    } else if (mode === "forgot") {
+      setAuthView("forgot");
+    } else if (mode === "verify") {
+      setAuthView("verify");
+      const e = searchParams?.get("email");
+      if (e) setVerifyEmail(e);
+    }
+
+    // Capture referral code from URL if present
+    const refCode = searchParams?.get("ref");
+    if (refCode) {
+      localStorage.setItem("referralCode", refCode);
+      const expiryDate = new Date();
+      expiryDate.setTime(expiryDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+      document.cookie = `referralCode=${refCode}; path=/; expires=${expiryDate.toUTCString()}; SameSite=Lax`;
+      console.log("Referral code captured from login page:", refCode);
+    }
+
+    // Success toast after verified signup (once), then clean the query
+    if (searchParams?.get("registered") === "true" && !registeredToastShown.current) {
+      registeredToastShown.current = true;
+      setError("");
+      toast(t("auth.verifySuccess"), "success", 6000);
+      setAuthView("login");
+      router.replace("/login", { scroll: false });
+    }
+  }, [searchParams, router, t]);
+
   // Fetch certifications when in professional mode
   useEffect(() => {
-    if (isRegisterMode && formData.userType === "professional") {
+    if (authView === "register" && formData.userType === "professional") {
       fetchCertifications();
       // Reset professional step when switching to professional
       setProfessionalStep("certification");
@@ -199,7 +243,7 @@ function LoginPageContent() {
         setCertificatePreview(null);
       }
     }
-  }, [isRegisterMode, formData.userType]);
+  }, [authView, formData.userType]);
   
   // Update professional step when certification is selected
   useEffect(() => {
@@ -249,6 +293,12 @@ function LoginPageContent() {
     };
   }, []);
 
+  useEffect(() => {
+    if (desktopFormScrollRef.current) {
+      desktopFormScrollRef.current.scrollTop = 0;
+    }
+  }, [authView]);
+
   const fetchCertifications = async () => {
     try {
       const res = await fetch("/api/certifications?public=true&isActive=true");
@@ -274,7 +324,20 @@ function LoginPageContent() {
       });
 
       if (result?.error) {
-        setError(t("auth.invalidCredentials"));
+        const err = String(result.error);
+        if (err.includes("EMAIL_NOT_VERIFIED")) {
+          setError(t("auth.emailNotVerified"));
+          setVerifyEmail(email.trim().toLowerCase());
+          setAuthView("verify");
+        } else if (err.includes("ACCOUNT_BANNED")) {
+          setError(t("auth.accountBanned"));
+        } else if (err.includes("ACCOUNT_INACTIVE")) {
+          setError(t("auth.accountInactive"));
+        } else if (err.includes("RATE_LIMITED") || result.status === 429) {
+          setError(t("auth.rateLimited"));
+        } else {
+          setError(t("auth.invalidCredentials"));
+        }
       } else {
         // Wait a moment for session to be available, then check user role
         // Retry getting session in case of timing issues
@@ -353,7 +416,7 @@ function LoginPageContent() {
 
     if (formData.userType === "professional") {
       if (!selectedCertificationId) {
-        setError("Please select a certification");
+        setError(t("auth.selectCertificationError"));
         return;
       }
       if (!certificateFile) {
@@ -466,12 +529,11 @@ function LoginPageContent() {
           document.cookie = "referralCode=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
         }
 
-        // Switch to login mode and show success
-        setIsRegisterMode(false);
+        const registeredEmail = formData.email.trim().toLowerCase();
+        setVerifyEmail(registeredEmail);
+        setEmail(registeredEmail);
+        setVerificationCode("");
         setError("");
-        // Auto-fill email in login form
-        setEmail(formData.email);
-        // Clear register form
         setFormData({
           name: "",
           email: "",
@@ -487,8 +549,10 @@ function LoginPageContent() {
           URL.revokeObjectURL(certificatePreview);
           setCertificatePreview(null);
         }
-        // Update URL without redirecting
-        router.push("/login?registered=true", { scroll: false });
+        setAuthView("verify");
+        router.replace(`/login?mode=verify&email=${encodeURIComponent(registeredEmail)}`, {
+          scroll: false,
+        });
       }
     } catch (error) {
       setError("An error occurred. Please try again.");
@@ -497,23 +561,244 @@ function LoginPageContent() {
     }
   };
 
+  const handleVerifyEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: verifyEmail.trim().toLowerCase(),
+          code: verificationCode.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || t("auth.invalidCode"));
+      } else {
+        setAuthView("login");
+        setEmail(verifyEmail.trim().toLowerCase());
+        setVerificationCode("");
+        router.push("/login?registered=true", { scroll: false });
+      }
+    } catch {
+      setError(t("auth.errorOccurred"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setError("");
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: verifyEmail.trim().toLowerCase() }),
+      });
+      const data = await res.json();
+      if (res.status === 429) {
+        setError(data.error || t("auth.errorOccurred"));
+      } else if (!res.ok) {
+        setError(data.error || t("auth.errorOccurred"));
+      } else {
+        toast(t("auth.codeResent"), "success", 4000);
+      }
+    } catch {
+      setError(t("auth.errorOccurred"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || t("auth.errorOccurred"));
+      } else {
+        toast(t("auth.forgotPasswordSuccess"), "success", 6000);
+      }
+    } catch {
+      setError(t("auth.errorOccurred"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (newPassword !== confirmNewPassword) {
+      setError(t("auth.passwordsDoNotMatch"));
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError(t("auth.passwordTooShort"));
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: resetToken, password: newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || t("auth.resetPasswordInvalid"));
+      } else {
+        toast(t("auth.resetPasswordSuccess"), "success", 6000);
+        setAuthView("login");
+        setNewPassword("");
+        setConfirmNewPassword("");
+        setResetToken("");
+        router.replace("/login", { scroll: false });
+      }
+    } catch {
+      setError(t("auth.errorOccurred"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const authFormCard = (
         <Card
           className={cn(
-            "relative z-10 mx-auto w-full max-w-md shrink-0",
-            isRegisterMode && "md:my-4"
+            "relative z-10 mx-auto w-full max-w-md shrink-0"
           )}
         >
           <CardHeader>
-            <CardTitle>{isRegisterMode ? t("auth.register") : t("auth.login")}</CardTitle>
+            <CardTitle>
+              {authView === "register"
+                ? t("auth.register")
+                : authView === "verify"
+                  ? t("auth.verifyEmailTitle")
+                  : authView === "forgot"
+                    ? t("auth.forgotPasswordTitle")
+                    : authView === "reset"
+                      ? t("auth.resetPasswordTitle")
+                      : t("auth.login")}
+            </CardTitle>
             <CardDescription>
-              {isRegisterMode
+              {authView === "register"
                 ? t("auth.signUpDescription")
-                : t("auth.loginDescription")}
+                : authView === "verify"
+                  ? t("auth.verifyEmailDescription", { email: verifyEmail || email })
+                  : authView === "forgot"
+                    ? t("auth.forgotPasswordDescription")
+                    : authView === "reset"
+                      ? t("auth.resetPasswordDescription")
+                      : t("auth.loginDescription")}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {isRegisterMode ? (
+            {authView === "verify" ? (
+              <form onSubmit={handleVerifyEmail} className="space-y-4">
+                {error && (
+                  <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">{error}</div>
+                )}
+                <div>
+                  <label htmlFor="verify-code" className="block text-sm font-medium mb-1">
+                    {t("auth.verificationCode")}
+                  </label>
+                  <Input
+                    id="verify-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={verificationCode}
+                    onChange={(e) =>
+                      setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
+                    required
+                    disabled={isLoading}
+                    placeholder="000000"
+                    className="tracking-[0.35em] text-center text-lg"
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading || verificationCode.length < 6}>
+                  {isLoading ? t("auth.verifying") : t("auth.verifyButton")}
+                </Button>
+                <button
+                  type="button"
+                  onClick={handleResendCode}
+                  disabled={isLoading}
+                  className="w-full text-sm text-gray-600 underline hover:opacity-80"
+                >
+                  {isLoading ? t("auth.resendingCode") : t("auth.resendCode")}
+                </button>
+              </form>
+            ) : authView === "forgot" ? (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                {error && (
+                  <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">{error}</div>
+                )}
+                <div>
+                  <label htmlFor="forgot-email" className="block text-sm font-medium mb-1">
+                    {t("auth.email")}
+                  </label>
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? t("auth.forgotPasswordSending") : t("auth.forgotPasswordSubmit")}
+                </Button>
+              </form>
+            ) : authView === "reset" ? (
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                {error && (
+                  <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">{error}</div>
+                )}
+                <div>
+                  <label htmlFor="new-password" className="block text-sm font-medium mb-1">
+                    {t("auth.newPassword")}
+                  </label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="confirm-new-password" className="block text-sm font-medium mb-1">
+                    {t("auth.confirmPassword")}
+                  </label>
+                  <Input
+                    id="confirm-new-password"
+                    type="password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? t("auth.resetPasswordUpdating") : t("auth.resetPasswordSubmit")}
+                </Button>
+              </form>
+            ) : authView === "register" ? (
               // Register Form
               <form onSubmit={handleRegisterSubmit} className="space-y-4">
                 {error && (
@@ -564,14 +849,32 @@ function LoginPageContent() {
                   <label htmlFor="register-password" className="block text-sm font-medium mb-1">
                     {t("auth.password")}
                   </label>
-                  <Input
-                    id="register-password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
-                    disabled={isLoading}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="register-password"
+                      type={showRegisterPassword ? "text" : "password"}
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      required
+                      disabled={isLoading}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegisterPassword((open) => !open)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                      disabled={isLoading}
+                      aria-label={
+                        showRegisterPassword ? t("auth.hidePassword") : t("auth.showPassword")
+                      }
+                    >
+                      {showRegisterPassword ? (
+                        <EyeOff className="h-5 w-5" />
+                      ) : (
+                        <Eye className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex items-start gap-2">
@@ -593,14 +896,34 @@ function LoginPageContent() {
                   <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1">
                     {t("auth.confirmPassword")}
                   </label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    required
-                    disabled={isLoading}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={formData.confirmPassword}
+                      onChange={(e) =>
+                        setFormData({ ...formData, confirmPassword: e.target.value })
+                      }
+                      required
+                      disabled={isLoading}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((open) => !open)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                      disabled={isLoading}
+                      aria-label={
+                        showConfirmPassword ? t("auth.hidePassword") : t("auth.showPassword")
+                      }
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-5 w-5" />
+                      ) : (
+                        <Eye className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {/* User Type Selection */}
@@ -643,7 +966,7 @@ function LoginPageContent() {
                     {professionalStep === "certification" && (
                       <div>
                         <label className="block text-sm font-medium mb-2">
-                          Certification <span className="text-red-500">*</span>
+                          {t("auth.certification")} <span className="text-red-500">*</span>
                         </label>
                         <select
                           value={selectedCertificationId || ""}
@@ -652,7 +975,7 @@ function LoginPageContent() {
                           className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           required
                         >
-                          <option value="">Select a certification</option>
+                          <option value="">{t("auth.selectCertification")}</option>
                           {certifications.map((cert) => (
                             <option key={cert.id} value={cert.id}>
                               {cert.name}
@@ -670,7 +993,7 @@ function LoginPageContent() {
                             <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-medium">
                               ✓
                             </div>
-                            <span>Certification selected</span>
+                            <span>{t("auth.certificationSelected")}</span>
                           </div>
                         </div>
                         <label className="block text-sm font-medium mb-2">
@@ -685,7 +1008,7 @@ function LoginPageContent() {
                                 </div>
                                 <div>
                                   <p className="text-sm font-medium text-gray-900">
-                                    {certificateFile?.name || "Certificate"}
+                                    {certificateFile?.name || t("auth.certificate")}
                                   </p>
                                   <p className="text-xs text-gray-500">
                                     {(certificateFile?.size || 0) / 1024} KB
@@ -738,7 +1061,7 @@ function LoginPageContent() {
                             <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-medium">
                               ✓
                             </div>
-                            <span>Certification selected</span>
+                            <span>{t("auth.certificationSelected")}</span>
                           </div>
                         </div>
                         <div>
@@ -754,7 +1077,7 @@ function LoginPageContent() {
                                   </div>
                                   <div>
                                     <p className="text-sm font-medium text-gray-900">
-                                      {certificateFile?.name || "Certificate"}
+                                      {certificateFile?.name || t("auth.certificate")}
                                     </p>
                                     <p className="text-xs text-gray-500">
                                       {(certificateFile?.size || 0) / 1024} KB
@@ -792,11 +1115,6 @@ function LoginPageContent() {
             ) : (
               // Login Form
               <form onSubmit={handleLoginSubmit} className="space-y-4">
-                {searchParams?.get("registered") === "true" && (
-                  <div className="p-3 text-sm text-green-600 bg-green-50 rounded-md">
-                    {t("auth.accountCreatedSuccess")}
-                  </div>
-                )}
                 {error && (
                   <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
                     {error}
@@ -844,19 +1162,31 @@ function LoginPageContent() {
                     </button>
                   </div>
                 </div>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthView("forgot");
+                      setError("");
+                    }}
+                    className="text-sm text-gray-600 underline hover:opacity-80"
+                  >
+                    {t("auth.forgotPassword")}
+                  </button>
+                </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? t("auth.loggingIn") : t("auth.loginButton")}
                 </Button>
               </form>
             )}
             <p className="mt-4 text-center text-sm text-gray-600">
-              {isRegisterMode ? (
+              {authView === "register" ? (
                 <>
                   {t("auth.switchToLogin")}{" "}
                   <button
                     type="button"
                     onClick={() => {
-                      setIsRegisterMode(false);
+                      setAuthView("login");
                       setError("");
                     }}
                     className="inline border-0 bg-transparent p-0 text-sm font-bold leading-inherit text-gray-600 underline hover:opacity-80"
@@ -864,13 +1194,13 @@ function LoginPageContent() {
                     {t("auth.login")}
                   </button>
                 </>
-              ) : (
+              ) : authView === "login" ? (
                 <>
                   {t("auth.switchToRegister")}{" "}
                   <button
                     type="button"
                     onClick={() => {
-                      setIsRegisterMode(true);
+                      setAuthView("register");
                       setError("");
                     }}
                     className="inline border-0 bg-transparent p-0 text-sm font-bold leading-inherit text-gray-600 underline hover:opacity-80"
@@ -878,6 +1208,18 @@ function LoginPageContent() {
                     {t("auth.register")}
                   </button>
                 </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthView("login");
+                    setError("");
+                    router.replace("/login", { scroll: false });
+                  }}
+                  className="inline border-0 bg-transparent p-0 text-sm font-bold leading-inherit text-gray-600 underline hover:opacity-80"
+                >
+                  {t("auth.backToLogin")}
+                </button>
               )}
             </p>
           </CardContent>
@@ -888,10 +1230,13 @@ function LoginPageContent() {
     <>
       <AuthMobileBackground />
       {!layoutReady ? (
-        <div data-auth-page className="hidden" aria-hidden />
+        // No data-auth-page yet — that attribute collapses main height under 1024px.
+        <div className="relative flex min-h-[calc(100dvh-var(--site-header-height,113px))] w-full items-center justify-center bg-white px-6 py-10">
+          <div className="h-48 w-full max-w-md animate-pulse rounded-lg bg-gray-100" aria-hidden />
+        </div>
       ) : isMobile ? (
         <>
-          <AuthMobileFormPane isRegisterMode={isRegisterMode}>
+          <AuthMobileFormPane isExpandedMode={isExpandedMode}>
             {authFormCard}
           </AuthMobileFormPane>
           <div data-auth-page className="hidden" aria-hidden />
@@ -899,22 +1244,38 @@ function LoginPageContent() {
       ) : (
         <div
           data-auth-page
-          className="relative flex h-full min-h-0 w-full flex-col overflow-hidden md:h-[calc(100dvh-var(--site-header-height,113px))] md:flex-row"
+          className="relative flex h-full min-h-0 w-full flex-col overflow-hidden lg:h-[calc(100dvh-var(--site-header-height,113px))] lg:flex-row"
         >
-          <div className="relative hidden h-full min-h-0 w-full flex-shrink-0 overflow-hidden bg-gray-200 md:block md:w-1/2">
+          <div className="relative hidden h-full min-h-0 w-full flex-shrink-0 overflow-hidden bg-[#986858] lg:block lg:w-1/2">
             <Image
-              src="/328 Peach Pitstop - hand and product (5).jpg"
+              key={LOGIN_DESKTOP_IMAGE}
+              src={LOGIN_DESKTOP_IMAGE}
               alt="Bio Sculpture Nail Products"
               fill
-              className="object-cover"
+              className="object-cover object-center"
               priority
-              sizes="(max-width: 768px) 100vw, 50vw"
-              placeholder="blur"
-              blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+              // Already resized/compressed WebP — serve statically so preload matches LCP URL.
+              unoptimized
+              sizes="50vw"
             />
           </div>
-          <div className="relative z-10 flex h-full min-h-0 w-full items-center justify-center overflow-y-auto px-6 py-4 md:w-1/2">
-            {authFormCard}
+          <div
+            ref={desktopFormScrollRef}
+            className="relative z-10 h-full min-h-0 w-full overflow-y-auto overscroll-contain bg-white px-6 lg:w-1/2"
+          >
+            {/*
+              min-h-full + justify-center centers short forms (login).
+              When register is taller than the viewport, the inner grows and
+              the outer column scrolls the full form without clipping.
+            */}
+            <div
+              className={cn(
+                "mx-auto flex min-h-full w-full max-w-md flex-col py-8",
+                isExpandedMode ? "justify-start pb-24" : "justify-center"
+              )}
+            >
+              {authFormCard}
+            </div>
           </div>
         </div>
       )}
@@ -924,12 +1285,13 @@ function LoginPageContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <>
-        <AuthMobileBackground />
-        <div data-auth-page className="hidden" aria-hidden />
-      </>
-    }>
+    <Suspense
+      fallback={
+        <div className="relative flex min-h-[calc(100dvh-var(--site-header-height,113px))] w-full items-center justify-center bg-white px-6 py-10">
+          <div className="h-48 w-full max-w-md animate-pulse rounded-lg bg-gray-100" aria-hidden />
+        </div>
+      }
+    >
       <LoginPageContent />
     </Suspense>
   );

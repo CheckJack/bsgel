@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { normalizeBlogPostMedia } from "@/lib/blog-public"
 
 export async function GET(
   req: Request,
@@ -20,7 +21,7 @@ export async function GET(
       return NextResponse.json({ error: "Blog not found" }, { status: 404 })
     }
 
-    return NextResponse.json(blog)
+    return NextResponse.json(normalizeBlogPostMedia(blog))
   } catch (error) {
     console.error("Failed to fetch blog:", error)
     return NextResponse.json(

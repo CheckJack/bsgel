@@ -1,3 +1,5 @@
+const { withSentryConfig } = require("@sentry/nextjs");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Production optimizations
@@ -68,13 +70,29 @@ const nextConfig = {
     ]
   },
   
-  webpack: (config) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-    };
-    return config;
+  // Serve newly written upload files via API (next start can miss post-boot public files)
+  async rewrites() {
+    return [
+      {
+        source: "/uploads/:path*",
+        destination: "/api/media/:path*",
+      },
+    ];
   },
 }
 
-module.exports = nextConfig
-
+module.exports = withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: true,
+  // Skip source-map upload unless auth token is configured
+  sourcemaps: {
+    disable: !process.env.SENTRY_AUTH_TOKEN,
+  },
+  widenClientFileUpload: false,
+  // Don't fail the production build if Sentry upload/config errors
+  errorHandler: (err) => {
+    console.warn("[sentry] build warning:", err.message);
+  },
+});

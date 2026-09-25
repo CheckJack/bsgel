@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/language-context";
 import { cn, formatPrice } from "@/lib/utils";
+import { productPath } from "@/lib/products/paths";
 
 const COLOUR_BUILDER_PRODUCT_LIMIT = 4;
 
@@ -290,7 +291,7 @@ function ProductSlideOverlay({ product }: { product: BuilderGelProduct }) {
       </p>
       {product.id ? (
         <Link
-          href={`/products/${product.id}`}
+          href={productPath(product)}
           className="pointer-events-auto mt-4 inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-brand-black/70 transition-colors hover:text-brand-black"
         >
           <span>{t("home.splitHeroViewProduct")}</span>

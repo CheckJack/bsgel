@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
 import { Search, Loader2, Calendar, User, Mail, MapPin, Clock } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
 
 interface Booking {
   id: string;
@@ -34,6 +35,7 @@ interface Booking {
 }
 
 export default function AdminBookingsPage() {
+  const { t } = useLanguage();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -67,12 +69,12 @@ export default function AdminBookingsPage() {
         setBookings(filtered);
       } else {
         const errorData = await res.json();
-        toast(errorData.error || "Failed to fetch bookings", "error");
+        toast(errorData.error || t("admin.trainings.fetchBookingsFailed"), "error");
         setBookings([]);
       }
     } catch (error) {
       console.error("Failed to fetch bookings:", error);
-      toast("Failed to fetch bookings. Please try again.", "error");
+      toast(t("common.errorOccurred"), "error");
       setBookings([]);
     } finally {
       setIsLoading(false);
@@ -92,14 +94,14 @@ export default function AdminBookingsPage() {
         setBookings((prev) =>
           prev.map((b) => (b.id === id ? updated : b))
         );
-        toast("Booking status updated successfully", "success");
+        toast(t("admin.trainings.statusUpdated"), "success");
       } else {
         const data = await res.json();
-        toast(data.error || "Failed to update booking", "error");
+        toast(data.error || t("admin.trainings.updateFailed"), "error");
       }
     } catch (error) {
       console.error("Failed to update booking:", error);
-      toast("Failed to update booking. Please try again.", "error");
+      toast(t("admin.trainings.updateFailed"), "error");
     }
   };
 
@@ -139,9 +141,7 @@ export default function AdminBookingsPage() {
     <div>
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-          Training Bookings
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("admin.trainings.bookingsTitle")}</h1>
         <div className="text-sm text-gray-600 dark:text-gray-400">
           Dashboard <span className="mx-2">&gt;</span> Trainings{" "}
           <span className="mx-2">&gt;</span> Bookings
@@ -158,7 +158,7 @@ export default function AdminBookingsPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                 <input
                   type="text"
-                  placeholder="Search by user, email, or program..."
+                  placeholder={t("admin.trainings.searchBookings")}
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -177,10 +177,10 @@ export default function AdminBookingsPage() {
                 className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Status</option>
-                <option value="PENDING">Pending</option>
-                <option value="CONFIRMED">Confirmed</option>
-                <option value="CANCELLED">Cancelled</option>
-                <option value="COMPLETED">Completed</option>
+                <option value="PENDING">{t("admin.trainings.pending")}</option>
+                <option value="CONFIRMED">{t("admin.trainings.confirmed")}</option>
+                <option value="CANCELLED">{t("admin.trainings.cancelled")}</option>
+                <option value="COMPLETED">{t("admin.trainings.completed")}</option>
               </select>
             </div>
           </div>
@@ -280,10 +280,10 @@ export default function AdminBookingsPage() {
                             onChange={(e) => handleStatusUpdate(booking.id, e.target.value)}
                             className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
-                            <option value="PENDING">Pending</option>
-                            <option value="CONFIRMED">Confirmed</option>
-                            <option value="CANCELLED">Cancelled</option>
-                            <option value="COMPLETED">Completed</option>
+                            <option value="PENDING">{t("admin.trainings.pending")}</option>
+                            <option value="CONFIRMED">{t("admin.trainings.confirmed")}</option>
+                            <option value="CANCELLED">{t("admin.trainings.cancelled")}</option>
+                            <option value="COMPLETED">{t("admin.trainings.completed")}</option>
                           </select>
                         </div>
                       </td>

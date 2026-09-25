@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
+import { useLanguage } from "@/contexts/language-context";
 import { Users, Coins, Link as LinkIcon, Copy, Check, Loader2, Award, Gift, History, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { EarningsChart } from "@/components/affiliate/earnings-chart";
@@ -42,6 +43,7 @@ interface Reward {
 export default function AffiliatePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { t } = useLanguage();
   const [stats, setStats] = useState<AffiliateStats | null>(null);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -67,7 +69,7 @@ export default function AffiliatePage() {
 
   useEffect(() => {
     if (!featureSettings.affiliateEnabled && session) {
-      router.push("/dashboard");
+      router.push("/dashboard/orders");
       return;
     }
     
@@ -110,14 +112,14 @@ export default function AffiliatePage() {
       } else {
         const error = await res.json();
         if (res.status === 403) {
-          router.push("/dashboard");
+          router.push("/dashboard/orders");
           return;
         }
-        toast(error.error || "Failed to load affiliate data", "error");
+        toast(error.error || t("clientPanel.affiliate.loadFailed"), "error");
       }
     } catch (error) {
       console.error("Failed to fetch affiliate data:", error);
-      toast("Failed to load affiliate data. Please try again.", "error");
+      toast(t("clientPanel.affiliate.loadFailedRetry"), "error");
     } finally {
       setIsLoading(false);
     }
@@ -235,7 +237,7 @@ export default function AffiliatePage() {
     if (!reward) return;
     
     if (stats.pointsBalance < reward.pointsCost) {
-      toast("Insufficient points", "error");
+      toast(t("clientPanel.affiliate.insufficientPoints"), "error");
       return;
     }
 
@@ -256,7 +258,7 @@ export default function AffiliatePage() {
         // Show success toast immediately
         const couponCode = data.couponCode || "N/A";
         console.log("Showing toast with coupon code:", couponCode);
-        toast(`Reward redeemed! Coupon code: ${couponCode}`, "success", 5000);
+        toast(t("clientPanel.affiliate.redeemSuccess", { code: couponCode }), "success", 5000);
         
         // Update stats immediately (optimistic update)
         if (stats) {
@@ -287,7 +289,7 @@ export default function AffiliatePage() {
       }
     } catch (error) {
       console.error("Failed to redeem reward:", error);
-      toast("Failed to redeem reward. Please try again.", "error", 5000);
+      toast(t("clientPanel.affiliate.redeemFailed"), "error", 5000);
       setRedeeming(null);
     }
   };

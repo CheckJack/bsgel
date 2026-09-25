@@ -66,6 +66,7 @@ export async function GET(
       name: certification.name,
       description: certification.description,
       isActive: certification.isActive,
+      isSystem: certification.isSystem,
       categories: certification.certificationCategories.map((cc) => ({
         id: cc.category.id,
         name: cc.category.name,
@@ -117,6 +118,22 @@ export async function PUT(
       )
     }
 
+    // System certifications keep a fixed name and stay active
+    if (existingCert.isSystem) {
+      if (name !== undefined && name.trim() !== existingCert.name) {
+        return NextResponse.json(
+          { error: "Cannot rename a system certification" },
+          { status: 400 }
+        )
+      }
+      if (isActive !== undefined && !Boolean(isActive)) {
+        return NextResponse.json(
+          { error: "Cannot deactivate a system certification" },
+          { status: 400 }
+        )
+      }
+    }
+
     // If name is being updated, check for duplicates
     if (name && name.trim() !== existingCert.name) {
       const duplicateCert = await db.certification.findUnique({
@@ -152,13 +169,13 @@ export async function PUT(
     // Update certification
     const updateData: any = {}
 
-    if (name !== undefined) {
+    if (name !== undefined && !existingCert.isSystem) {
       updateData.name = name.trim()
     }
     if (description !== undefined) {
       updateData.description = description?.trim() || null
     }
-    if (isActive !== undefined) {
+    if (isActive !== undefined && !existingCert.isSystem) {
       updateData.isActive = Boolean(isActive)
     }
 
@@ -207,6 +224,7 @@ export async function PUT(
       name: certification.name,
       description: certification.description,
       isActive: certification.isActive,
+      isSystem: certification.isSystem,
       categories: certification.certificationCategories.map((cc) => ({
         id: cc.category.id,
         name: cc.category.name,
@@ -266,6 +284,13 @@ export async function PATCH(
       )
     }
 
+    if (existingCert.isSystem) {
+      return NextResponse.json(
+        { error: "Cannot change status of a system certification" },
+        { status: 400 }
+      )
+    }
+
     // Update only isActive status
     const certification = await db.certification.update({
       where: { id: id },
@@ -297,6 +322,7 @@ export async function PATCH(
       name: certification.name,
       description: certification.description,
       isActive: certification.isActive,
+      isSystem: certification.isSystem,
       categories: certification.certificationCategories.map((cc) => ({
         id: cc.category.id,
         name: cc.category.name,
@@ -349,6 +375,13 @@ export async function DELETE(
       return NextResponse.json(
         { error: "Certification not found" },
         { status: 404 }
+      )
+    }
+
+    if (certification.isSystem) {
+      return NextResponse.json(
+        { error: "Cannot delete a system certification" },
+        { status: 400 }
       )
     }
 

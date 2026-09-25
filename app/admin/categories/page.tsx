@@ -96,12 +96,12 @@ export default function AdminCategoriesPage() {
         setPagination(data.pagination || pagination);
       } else {
         console.error("Failed to fetch categories:", data.error || "Unknown error");
-        toast("Failed to fetch categories", "error");
+        toast(t("categories.fetchFailed"), "error");
         setCategories([]);
       }
     } catch (error) {
       console.error("Failed to fetch categories:", error);
-      toast("Failed to fetch categories", "error");
+      toast(t("categories.fetchFailed"), "error");
       setCategories([]);
     } finally {
       setIsLoading(false);
@@ -208,7 +208,7 @@ export default function AdminCategoriesPage() {
 
       if (res.ok) {
         const data = await res.json();
-        toast(`Category duplicated successfully: ${data.name}`, "success");
+        toast(t("toasts.duplicatedNamed", { resource: t("categories.title"), name: data.name }), "success");
         fetchCategories();
       } else {
         const error = await res.json();
@@ -279,7 +279,7 @@ export default function AdminCategoriesPage() {
       }
     } catch (error) {
       console.error("Failed to bulk delete categories:", error);
-      toast("Failed to delete categories", "error");
+      toast(t("categories.deleteBulkFailed"), "error");
     } finally {
       setIsBulkDeleting(false);
     }
@@ -384,7 +384,7 @@ export default function AdminCategoriesPage() {
       toast(t("categories.exportSuccessWithCount", { count: allCategories.length }), "success");
     } catch (error) {
       console.error("Failed to export categories:", error);
-      toast("Failed to export categories", "error");
+      toast(t("categories.exportError"), "error");
     } finally {
       setIsExporting(false);
     }

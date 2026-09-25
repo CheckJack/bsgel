@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toast, handleApiError } from "@/lib/utils";
+import { useLanguage } from "@/contexts/language-context";
 
 interface AnalyticsData {
   kpis: {
@@ -72,6 +73,7 @@ interface AnalyticsData {
 const COLORS = ["#3b82f6", "#f97316", "#10b981", "#ef4444", "#8b5cf6", "#ec4899"];
 
 export default function AnalyticsPage() {
+  const { t } = useLanguage();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState("30");
@@ -112,7 +114,7 @@ export default function AnalyticsPage() {
 
   const exportToCSV = () => {
     if (!data) {
-      toast("No data available to export", "warning");
+      toast(t("admin.analytics.noDataExport"), "warning");
       return;
     }
 
@@ -138,7 +140,7 @@ export default function AnalyticsPage() {
       a.download = `analytics-${new Date().toISOString().split("T")[0]}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
-      toast("Analytics data exported successfully", "success");
+      toast(t("admin.analytics.exportSuccess"), "success");
     } catch (error) {
       handleApiError(error, "export analytics data");
     }
@@ -205,7 +207,7 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100">Analytics</h1>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100">{t("admin.analytics.title")}</h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             {new Date(data.dateRange.start).toLocaleDateString()} -{" "}
             {new Date(data.dateRange.end).toLocaleDateString()}
@@ -232,7 +234,7 @@ export default function AnalyticsPage() {
           <button
             onClick={fetchAnalytics}
             className="p-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            title="Refresh"
+            title={t("admin.analytics.refresh")}
           >
             <RefreshCw className="h-4 w-4" />
           </button>
@@ -251,7 +253,7 @@ export default function AnalyticsPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <KPICard
-          title="Total Revenue"
+          title={t("admin.analytics.totalRevenue")}
           value={formatCurrency(data.kpis.totalRevenue)}
           trend={data.kpis.revenueTrend}
           icon={<DollarSign className="h-7 w-7" />}
@@ -261,7 +263,7 @@ export default function AnalyticsPage() {
           chartType="line"
         />
         <KPICard
-          title="Total Orders"
+          title={t("admin.analytics.totalOrders")}
           value={data.kpis.totalOrders.toLocaleString()}
           trend={data.kpis.ordersTrend}
           icon={<ShoppingCart className="h-7 w-7" />}
@@ -271,7 +273,7 @@ export default function AnalyticsPage() {
           chartType="line"
         />
         <KPICard
-          title="Total Customers"
+          title={t("admin.analytics.totalCustomers")}
           value={data.kpis.totalCustomers.toLocaleString()}
           trend={data.kpis.customersTrend}
           icon={<Users className="h-7 w-7" />}
@@ -281,7 +283,7 @@ export default function AnalyticsPage() {
           chartType="line"
         />
         <KPICard
-          title="Avg Order Value"
+          title={t("admin.analytics.avgOrderValue")}
           value={formatCurrency(data.kpis.averageOrderValue)}
           trend={0}
           icon={<Package className="h-7 w-7" />}
@@ -498,7 +500,7 @@ export default function AnalyticsPage() {
                       {product.name}
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">
-                      {product.category || "Uncategorized"}
+                      {product.category || t("admin.analytics.uncategorized")}
                     </td>
                     <td className="py-3 px-4 text-sm text-right text-gray-900 dark:text-gray-100">
                       {product.quantity}

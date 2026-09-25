@@ -17,6 +17,7 @@ import mobileTipsHero from "../../../egwhtykjrt.png";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import { CategoryHeroBadge } from "@/components/layout/category-hero-badge";
+import { DesktopHeroVideo } from "@/components/layout/desktop-hero-video";
 import { ShopFiltersDrawer, ShopFiltersToolbar } from "@/components/shop/shop-filters";
 import { ShopProductsTitle } from "@/components/shop/shop-products-title";
 import { ShopEmptyProducts } from "@/components/shop/shop-empty-products";
@@ -26,6 +27,7 @@ import { useShopFilters } from "@/hooks/use-shop-filters";
 
 interface Product {
   id: string;
+  slug?: string;
   name: string;
   description: string | null;
   price: string;
@@ -112,17 +114,11 @@ export default function ShopSectionPage() {
           <>
             <Image src={config.mobileHero} alt={sectionTitle} fill className="object-cover md:hidden" priority unoptimized />
             {config.heroVideo ? (
-              <video
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="auto"
-                aria-label={sectionTitle}
-                className="absolute inset-0 hidden h-full w-full object-cover md:block"
-              >
-                <source src={config.heroVideo} type="video/mp4" />
-              </video>
+              <DesktopHeroVideo
+                src={config.heroVideo}
+                ariaLabel={sectionTitle}
+                className="hidden md:block"
+              />
             ) : (
               <Image src={config.hero} alt={sectionTitle} fill className="hidden object-cover md:block" priority unoptimized />
             )}
@@ -136,7 +132,11 @@ export default function ShopSectionPage() {
         <div className="container mx-auto max-w-7xl">
           <div className="mb-12 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
             <div>
-              <ShopProductsTitle>{sectionTitle} BIO Sculpture</ShopProductsTitle>
+              <ShopProductsTitle>
+                {config.showcasingSection === "utensilios"
+                  ? sectionTitle
+                  : `${sectionTitle} BIO Sculpture`}
+              </ShopProductsTitle>
             </div>
             <ShopFiltersToolbar filters={filters} />
           </div>
@@ -156,6 +156,7 @@ export default function ShopSectionPage() {
                   <ProductCard
                     key={product.id}
                     id={product.id}
+                    slug={product.slug}
                     name={product.name}
                     price={product.price}
                     salePrice={product.salePrice}

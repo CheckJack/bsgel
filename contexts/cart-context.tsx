@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { parseCartStockResponse } from "@/lib/stock-client";
+import { parseCartStockResponse, type CartAddResult } from "@/lib/stock-client";
 import { useLanguage } from "@/contexts/language-context";
 import { toast } from "@/components/ui/toast";
 
@@ -10,8 +10,10 @@ interface CartItem {
   id: string;
   product: {
     id: string;
+    slug?: string;
     name: string;
     price: string;
+    salePrice?: string | null;
     image: string | null;
     description: string | null;
     categoryId: string | null;
@@ -49,6 +51,11 @@ interface CartContextType {
   itemCount: number;
   isLoading: boolean;
   addItem: (productId: string, quantity: number) => Promise<boolean>;
+  /** Same as addItem, but returns why it failed so UI can avoid duplicate toasts. */
+  addItemDetailed: (
+    productId: string,
+    quantity: number
+  ) => Promise<CartAddResult | "unauthenticated">;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   removeItem: (itemId: string) => Promise<boolean>;
   removeTrainingItem: (itemId: string) => Promise<boolean>;
@@ -100,9 +107,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     fetchCart();
   }, [session?.user?.id]); // Only refetch when user ID changes, not on every session update
 
-  const addItem = async (productId: string, quantity: number): Promise<boolean> => {
+  const addItemDetailed = async (
+    productId: string,
+    quantity: number
+  ): Promise<CartAddResult | "unauthenticated"> => {
     if (!session) {
-      return false;
+      return "unauthenticated";
     }
 
     try {
@@ -113,16 +123,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       });
 
       const partialLabel = t("stock.partialAdded");
-      const result = await parseCartStockResponse(res, partialLabel);
+      const result = await parseCartStockResponse(res, partialLabel, t);
       if (result === "ok" || result === "partial") {
         await fetchCart();
-        return true;
       }
-      return false;
+      return result;
     } catch (error) {
       console.error("Failed to add item:", error);
-      return false;
+      return "blocked";
     }
+  };
+
+  const addItem = async (productId: string, quantity: number): Promise<boolean> => {
+    const result = await addItemDetailed(productId, quantity);
+    return result === "ok" || result === "partial";
   };
 
   const updateQuantity = async (itemId: string, quantity: number) => {
@@ -240,6 +254,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         itemCount,
         isLoading,
         addItem,
+        addItemDetailed,
         updateQuantity,
         removeItem,
         removeTrainingItem,

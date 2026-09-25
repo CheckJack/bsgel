@@ -33,10 +33,14 @@ import {
   AlignRight,
   AlignJustify,
   Palette,
+  LayoutGrid,
 } from "lucide-react";
 import { Button } from "./button";
 import { useState, useEffect, useRef } from "react";
 import { TextSelection } from "prosemirror-state";
+import { uploadBlogImage } from "@/lib/blog-images";
+import { BlogProductGridExtension } from "@/components/blog/tiptap/blog-product-grid-extension";
+import { BlogProductGridDialog } from "@/components/admin/blog-product-grid-dialog";
 
 export const RICH_TEXT_INLINE_IMAGE_HINT =
   "Recommended size: 1200 × 675 px (16:9). Images scale to fit the content width.";
@@ -50,12 +54,7 @@ interface RichTextEditorProps {
 }
 
 function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error("Failed to read image file"));
-    reader.readAsDataURL(file);
-  });
+  return uploadBlogImage(file);
 }
 
 export function RichTextEditor({
@@ -70,7 +69,9 @@ export function RichTextEditor({
   const [showImageDialog, setShowImageDialog] = useState(false);
   const [imagePreview, setImagePreview] = useState<{ url: string; file: File } | null>(null);
   const [isInsertingImage, setIsInsertingImage] = useState(false);
+  const [showProductGridDialog, setShowProductGridDialog] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const isInternalUpdateRef = useRef(false);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -104,10 +105,12 @@ export function RichTextEditor({
       Highlight.configure({
         multicolor: true,
       }),
+      BlogProductGridExtension,
     ],
     content,
     editable,
     onUpdate: ({ editor }) => {
+      isInternalUpdateRef.current = true;
       onChange(editor.getHTML());
     },
     editorProps: {
@@ -451,7 +454,14 @@ export function RichTextEditor({
 
   // Update editor content when content prop changes (for edit mode)
   useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
+    if (!editor) return;
+
+    if (isInternalUpdateRef.current) {
+      isInternalUpdateRef.current = false;
+      return;
+    }
+
+    if (content !== editor.getHTML()) {
       editor.commands.setContent(content);
     }
   }, [content, editor]);
@@ -498,11 +508,12 @@ export function RichTextEditor({
 
     setIsInsertingImage(true);
     try {
-      const dataUrl = await fileToDataUrl(imagePreview.file);
-      editor.chain().focus().setImage({ src: dataUrl }).run();
+      const imageUrl = await fileToDataUrl(imagePreview.file);
+      editor.chain().focus().setImage({ src: imageUrl }).run();
       closeImageDialog();
     } catch (error) {
       console.error("Failed to insert image:", error);
+      alert(error instanceof Error ? error.message : "Failed to upload image.");
       setIsInsertingImage(false);
     }
   };
@@ -802,6 +813,19 @@ export function RichTextEditor({
                 </div>
               )}
             </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              title="Insert product grid"
+              onClick={() => {
+                setShowLinkDialog(false);
+                setShowImageDialog(false);
+                setShowProductGridDialog(true);
+              }}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
           </div>
 
           {/* Undo/Redo */}
@@ -832,6 +856,19 @@ export function RichTextEditor({
       <div className="overflow-auto max-h-[600px]">
         <EditorContent editor={editor} />
       </div>
+
+      <BlogProductGridDialog
+        open={showProductGridDialog}
+        onClose={() => setShowProductGridDialog(false)}
+        onConfirm={(productIds, columns) => {
+          editor
+            ?.chain()
+            .focus()
+            .insertBlogProductGrid({ productIds, columns })
+            .run();
+          setShowProductGridDialog(false);
+        }}
+      />
 
       {/* Link Dialog */}
       {showLinkDialog && (

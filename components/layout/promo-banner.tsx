@@ -14,6 +14,7 @@ import { useMotionEnabled } from "@/lib/use-motion-enabled";
 import { useCart } from "@/contexts/cart-context";
 import { buttonVariants } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
+import { dispatchStockToast } from "@/lib/stock-client";
 import {
   COLOUR_BUILDER_HERO_SOURCE,
   type ColourBuilderProduct,
@@ -21,6 +22,7 @@ import {
 } from "@/lib/colour-builder-hero";
 import { cn, formatPrice } from "@/lib/utils";
 import { setAppScrollLocked } from "@/lib/mobile-scroll-root";
+import { productPath } from "@/lib/products/paths";
 
 type BannerSlideId = "shipping" | "colour-builder" | "experience-kit";
 type ActivePopup = BannerSlideId | null;
@@ -38,14 +40,27 @@ const BANNER_SLIDES: BannerSlideId[] = ["shipping", "colour-builder", "experienc
 const KIT_EXPERIENCIA_PRODUCT_URL = "/products/9d720113-d82b-4f8d-ab47-0960d78a1026";
 const AUTO_ADVANCE_MS = 7000;
 
-function PromoColourProductCard({ product }: { product: ColourBuilderProduct }) {
+/** Static popup art — preload so dialogs open with image already painted. */
+const PROMO_POPUP_IMAGE_URLS = [
+  "/popup123.png",
+  "/popup123-mobile.png",
+  "/kit-experiencia-popup.png",
+] as const;
+
+function PromoColourProductCard({
+  product,
+  onNavigate,
+}: {
+  product: ColourBuilderProduct;
+  onNavigate?: () => void;
+}) {
   const { t, language } = useLanguage();
   const router = useRouter();
   const { data: session } = useSession();
-  const { addItem } = useCart();
+  const { addItemDetailed } = useCart();
   const [isAdding, setIsAdding] = useState(false);
 
-  const productUrl = `/products/${product.id}`;
+  const productUrl = productPath(product);
   const displayPrice =
     product.salePrice != null && product.salePrice !== ""
       ? product.salePrice
@@ -54,29 +69,28 @@ function PromoColourProductCard({ product }: { product: ColourBuilderProduct }) 
   const handleAddToCart = async (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    if (product.outOfStock) return;
+    if (product.outOfStock) {
+      dispatchStockToast({
+        error: "OUT_OF_STOCK",
+        productId: product.id,
+        available: 0,
+      });
+      return;
+    }
     if (!session) {
+      onNavigate?.();
       router.push(`/login?callbackUrl=${encodeURIComponent(productUrl)}`);
       return;
     }
 
     setIsAdding(true);
     try {
-      const ok = await addItem(product.id, 1);
-      if (ok) {
+      const result = await addItemDetailed(product.id, 1);
+      if (result === "ok" || result === "partial") {
         window.dispatchEvent(new CustomEvent("openCartDrawer"));
-        toast(
-          language === "pt" ? "Adicionado ao carrinho" : "Added to cart",
-          "success",
-          2500
-        );
-      } else {
-        toast(
-          language === "pt"
-            ? "Não foi possível adicionar. Tente novamente."
-            : "Could not add to cart. Please try again.",
-          "error"
-        );
+        toast(t("cart.addedToCart"), "success", 2500);
+      } else if (result === "blocked") {
+        toast(t("cart.addFailedRetry"), "error");
       }
     } finally {
       setIsAdding(false);
@@ -87,6 +101,7 @@ function PromoColourProductCard({ product }: { product: ColourBuilderProduct }) 
     <article className="group flex min-w-0 flex-col">
       <Link
         href={productUrl}
+        onClick={() => onNavigate?.()}
         className="relative mb-3 flex h-36 items-end justify-center overflow-hidden rounded-xl transition-transform duration-300 group-hover:scale-[1.01] sm:h-40"
         style={{ backgroundColor: product.background }}
       >
@@ -107,6 +122,7 @@ function PromoColourProductCard({ product }: { product: ColourBuilderProduct }) 
       </p>
       <Link
         href={productUrl}
+        onClick={() => onNavigate?.()}
         className="mt-0.5 font-display text-lg font-normal leading-tight tracking-tight text-brand-black transition-opacity hover:opacity-75 sm:text-xl"
       >
         {product.shadeName}
@@ -116,7 +132,7 @@ function PromoColourProductCard({ product }: { product: ColourBuilderProduct }) 
 
       <button
         type="button"
-        disabled={product.outOfStock || isAdding}
+        disabled={isAdding}
         onClick={handleAddToCart}
         className={cn(
           "font-header mt-2 inline-flex h-auto items-center self-start bg-transparent px-0 text-[11px] uppercase tracking-[0.1em] text-pink-900 underline underline-offset-[3px] transition-colors hover:text-pink-800",
@@ -128,7 +144,7 @@ function PromoColourProductCard({ product }: { product: ColourBuilderProduct }) 
         {isAdding ? (
           <Loader2 className="mr-1 size-2.5 animate-spin md:mr-1.5 md:size-3" aria-hidden />
         ) : null}
-        {product.outOfStock ? t("products.outOfStock") : t("products.add")}
+        {t("products.add")}
       </button>
     </article>
   );
@@ -146,6 +162,17 @@ export function PromoBanner() {
 
   useEffect(() => {
     setPortalReady(true);
+  }, []);
+
+  // Warm browser cache for popup art before the user opens a dialog.
+  // Use the raw public URLs (same as unoptimized <Image>) so preload hits.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    for (const src of PROMO_POPUP_IMAGE_URLS) {
+      const img = new window.Image();
+      img.decoding = "async";
+      img.src = src;
+    }
   }, []);
 
   const currentSlide = BANNER_SLIDES[activeSlide];
@@ -276,7 +303,10 @@ export function PromoBanner() {
               onClick={() => setActivePopup(null)}
               aria-hidden="true"
             />
-            <div className="relative z-10 flex h-full w-full items-center justify-center px-4 py-6">
+            <div
+              className="relative z-10 flex h-full w-full items-center justify-center px-4 py-6"
+              onClick={() => setActivePopup(null)}
+            >
             <motion.div
               role="dialog"
               aria-modal="true"
@@ -293,6 +323,7 @@ export function PromoBanner() {
                   sizes="100vw"
                   className="object-cover object-center md:hidden"
                   priority
+                  unoptimized
                 />
                 <Image
                   src="/popup123.png"
@@ -301,6 +332,7 @@ export function PromoBanner() {
                   sizes="420px"
                   className="hidden object-cover object-center md:block"
                   priority
+                  unoptimized
                 />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-brand-black/20 via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-brand-white/10" />
                 <button
@@ -329,7 +361,7 @@ export function PromoBanner() {
                   {t("header.promoPopupMain")}
                 </p>
 
-                <ul className="mt-5 divide-y divide-black/[0.08] border-y border-black/[0.08]">
+                <ul className="mt-5">
                   <li className="py-3.5">
                     <p className="font-header text-[10px] uppercase tracking-[0.14em] text-brand-champagne-dark">
                       {t("header.promoPopupMainlandLabel")}
@@ -375,7 +407,10 @@ export function PromoBanner() {
               onClick={() => setActivePopup(null)}
               aria-hidden="true"
             />
-            <div className="relative z-10 flex h-full min-h-0 w-full items-center justify-center px-4 py-4 sm:py-6">
+            <div
+              className="relative z-10 flex h-full min-h-0 w-full items-center justify-center px-4 py-4 sm:py-6"
+              onClick={() => setActivePopup(null)}
+            >
             <motion.div
               role="dialog"
               aria-modal="true"
@@ -417,6 +452,7 @@ export function PromoBanner() {
 
                 <Link
                   href="/colours#products"
+                  onClick={() => setActivePopup(null)}
                   className="font-header mt-5 hidden items-center gap-2 text-xs uppercase tracking-[0.14em] text-brand-black transition-colors hover:text-brand-champagne-dark md:mt-8 md:inline-flex"
                 >
                   {t("home.splitHeroCta")}
@@ -434,7 +470,11 @@ export function PromoBanner() {
                   ) : colourProducts.length > 0 ? (
                     <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4 lg:gap-4">
                       {colourProducts.map((product) => (
-                        <PromoColourProductCard key={product.id} product={product} />
+                        <PromoColourProductCard
+                          key={product.id}
+                          product={product}
+                          onNavigate={() => setActivePopup(null)}
+                        />
                       ))}
                     </div>
                   ) : (
@@ -444,6 +484,7 @@ export function PromoBanner() {
                       </p>
                       <Link
                         href="/colours#products"
+                        onClick={() => setActivePopup(null)}
                         className={cn(
                           buttonVariants({ variant: "outline" }),
                           "mt-4 inline-flex px-5 py-2 text-sm"
@@ -471,7 +512,10 @@ export function PromoBanner() {
               onClick={() => setActivePopup(null)}
               aria-hidden="true"
             />
-            <div className="relative z-10 flex h-full w-full items-center justify-center px-4 py-6">
+            <div
+              className="relative z-10 flex h-full w-full items-center justify-center px-4 py-6"
+              onClick={() => setActivePopup(null)}
+            >
             <motion.div
               role="dialog"
               aria-modal="true"
@@ -491,6 +535,7 @@ export function PromoBanner() {
                   sizes="(max-width: 768px) 100vw, 400px"
                   className="object-cover object-top"
                   priority
+                  unoptimized
                 />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-brand-black/25 via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:via-transparent md:to-brand-white/10" />
                 <button
@@ -552,7 +597,7 @@ export function PromoBanner() {
         <button
           type="button"
           onClick={goToPreviousSlide}
-          className="absolute left-6 flex size-7 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white sm:left-8 sm:size-8 md:left-10"
+          className="absolute left-6 flex size-7 items-center justify-center rounded-full text-white/90 sm:left-8 sm:size-8 md:left-10"
           aria-label={t("header.promoBannerCarouselPrev")}
         >
           <ChevronLeft className="size-4 sm:size-[18px]" aria-hidden />
@@ -610,7 +655,7 @@ export function PromoBanner() {
         <button
           type="button"
           onClick={goToNextSlide}
-          className="absolute right-6 flex size-7 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white sm:right-8 sm:size-8 md:right-10"
+          className="absolute right-6 flex size-7 items-center justify-center rounded-full text-white/90 sm:right-8 sm:size-8 md:right-10"
           aria-label={t("header.promoBannerCarouselNext")}
         >
           <ChevronRight className="size-4 sm:size-[18px]" aria-hidden />

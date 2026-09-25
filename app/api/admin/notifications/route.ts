@@ -262,19 +262,17 @@ export async function DELETE(req: Request) {
     const { searchParams } = new URL(req.url)
     const type = searchParams.get("type") // "all" or "system" (default: "system")
 
-    // Build where clause
-    const where: any = {}
-    
-    // Only delete SYSTEM notifications by default (admin-created notifications)
-    // Admins can delete all notifications if explicitly requested
-    if (type === "all") {
-      // Delete all notifications (including order notifications, etc.)
-    } else {
-      // Default: only delete SYSTEM notifications (admin-created)
+    // Never wipe per-user (client) inboxes from this admin tool.
+    // Only clear broadcast / unscoped rows (userId null).
+    // Per-campaign deletes use /api/admin/notifications/[id] with specific IDs.
+    const where: any = {
+      userId: null,
+    }
+
+    if (type !== "all") {
       where.type = NotificationType.SYSTEM
     }
 
-    // Delete all matching notifications
     const result = await db.notification.deleteMany({
       where,
     })

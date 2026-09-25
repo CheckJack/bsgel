@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
+import { useLanguage } from "@/contexts/language-context";
 import {
   Search,
   CheckCircle,
@@ -88,6 +89,7 @@ type SortField = "name" | "city" | "status" | "createdAt" | "isBioDiamond";
 type SortDirection = "asc" | "desc";
 
 export default function AdminSalonsPage() {
+  const { t } = useLanguage();
   const searchParams = useSearchParams();
   const [salons, setSalons] = useState<Salon[]>([]);
   const [filteredSalons, setFilteredSalons] = useState<Salon[]>([]);
@@ -244,7 +246,7 @@ export default function AdminSalonsPage() {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
         console.error("❌ Failed to fetch salons:", res.status, res.statusText, errorData);
-        toast(`Failed to fetch salons: ${errorData.error || res.statusText} (${res.status})`, "error");
+        toast(t("admin.salons.fetchFailedDetail", { detail: `${errorData.error || res.statusText} (${res.status})` }), "error");
         setSalons([]);
         return;
       }
@@ -254,7 +256,7 @@ export default function AdminSalonsPage() {
       setSalons(data || []);
     } catch (error: any) {
       console.error("❌ Error fetching salons:", error);
-      toast(`Failed to fetch salons: ${error?.message || "Network error"}`, "error");
+      toast(t("admin.salons.fetchFailedDetail", { detail: error?.message || t("toasts.networkError") }), "error");
       setSalons([]);
     } finally {
       setIsLoading(false);
@@ -376,7 +378,7 @@ export default function AdminSalonsPage() {
     if (!selectedSalon || !reviewAction) return;
 
     if (reviewAction === "reject" && !rejectionReason.trim()) {
-      toast("Please provide a reason for rejection", "warning");
+      toast(t("admin.salons.rejectionReasonRequired"), "warning");
       return;
     }
 
@@ -392,10 +394,7 @@ export default function AdminSalonsPage() {
       });
 
       if (res.ok) {
-        toast(
-          `Salon ${reviewAction === "approve" ? "approved" : "rejected"} successfully`,
-          "success"
-        );
+        toast(reviewAction === "approve" ? t("admin.salons.approveSuccess") : t("admin.salons.rejectSuccess"), "success");
         await fetchSalons();
         setShowReviewModal(false);
         setShowDetailModal(false);
@@ -404,11 +403,11 @@ export default function AdminSalonsPage() {
         setRejectionReason("");
       } else {
         const data = await res.json();
-        toast(data.error || "Failed to process review", "error");
+        toast(data.error || t("admin.salons.reviewFailed"), "error");
       }
     } catch (error) {
       console.error("Failed to review salon:", error);
-      toast("Failed to process review. Please try again.", "error");
+      toast(t("admin.salons.reviewFailed"), "error");
     } finally {
       setIsProcessing(false);
     }
@@ -416,7 +415,7 @@ export default function AdminSalonsPage() {
 
   const handleBulkAction = async (action: "approve" | "reject" | "delete" | "activate" | "deactivate") => {
     if (selectedSalons.size === 0) {
-      toast("Please select at least one salon", "warning");
+      toast(t("admin.salons.selectAtLeastOne"), "warning");
       return;
     }
 
@@ -425,9 +424,9 @@ export default function AdminSalonsPage() {
         return;
       }
     } else if (action === "reject") {
-      const reason = prompt("Please provide a reason for rejection:");
+      const reason = prompt(t("admin.salons.rejectionReasonPrompt"));
       if (!reason || !reason.trim()) {
-        toast("Rejection reason is required", "warning");
+        toast(t("admin.salons.rejectionReasonRequired"), "warning");
         return;
       }
       await performBulkAction(action, reason);
@@ -454,12 +453,12 @@ export default function AdminSalonsPage() {
 
         if (res.ok) {
           const data = await res.json();
-          toast(`Successfully deleted ${data.count} salon(s)`, "success");
+          toast(t("admin.salons.deleteCountSuccess", { count: String(data.count) }), "success");
           setSelectedSalons(new Set());
           await fetchSalons();
         } else {
           const data = await res.json();
-          toast(data.error || "Failed to delete salons", "error");
+          toast(data.error || t("admin.salons.deleteBulkFailed"), "error");
         }
       } else {
         const res = await fetch("/api/salons/bulk", {
@@ -476,23 +475,23 @@ export default function AdminSalonsPage() {
           const data = await res.json();
           const actionText =
             action === "approve"
-              ? "approved"
+              ? t("admin.salons.actionApproved")
               : action === "reject"
-              ? "rejected"
+              ? t("admin.salons.actionRejected")
               : action === "activate"
-              ? "activated"
-              : "deactivated";
-          toast(`Successfully ${actionText} ${data.count} salon(s)`, "success");
+              ? t("admin.salons.actionActivated")
+              : t("admin.salons.actionDeactivated");
+          toast(t("admin.salons.bulkSuccess", { action: actionText, count: String(data.count) }), "success");
           setSelectedSalons(new Set());
           await fetchSalons();
         } else {
           const data = await res.json();
-          toast(data.error || `Failed to ${action} salons`, "error");
+          toast(data.error || t("admin.salons.bulkFailed", { action }), "error");
         }
       }
     } catch (error) {
       console.error(`Failed to bulk ${action} salons:`, error);
-      toast(`Failed to ${action} salons. Please try again.`, "error");
+      toast(t("admin.salons.bulkFailedRetry", { action }), "error");
     } finally {
       setIsBulkProcessing(false);
     }
@@ -508,17 +507,17 @@ export default function AdminSalonsPage() {
       });
 
       if (res.ok) {
-        toast("Salon deleted successfully", "success");
+        toast(t("admin.salons.deleteSuccess"), "success");
         await fetchSalons();
         setShowDeleteModal(false);
         setSelectedSalon(null);
       } else {
         const data = await res.json();
-        toast(data.error || "Failed to delete salon", "error");
+        toast(data.error || t("admin.salons.deleteFailed"), "error");
       }
     } catch (error) {
       console.error("Failed to delete salon:", error);
-      toast("Failed to delete salon. Please try again.", "error");
+      toast(t("admin.salons.deleteFailed"), "error");
     } finally {
       setIsProcessing(false);
     }
@@ -608,7 +607,7 @@ export default function AdminSalonsPage() {
       });
 
       if (res.ok) {
-        toast("Salon updated successfully", "success");
+        toast(t("admin.salons.updateSuccess"), "success");
         await fetchSalons();
         // Refresh selectedSalon with updated data
         const updatedSalon = await fetch(`/api/salons/${selectedSalon.id}`).then(r => r.json());
@@ -618,11 +617,11 @@ export default function AdminSalonsPage() {
         setEditFormData({});
       } else {
         const data = await res.json();
-        toast(data.error || "Failed to update salon", "error");
+        toast(data.error || t("admin.salons.updateFailed"), "error");
       }
     } catch (error) {
       console.error("Failed to update salon:", error);
-      toast("Failed to update salon. Please try again.", "error");
+      toast(t("admin.salons.updateFailedRetry"), "error");
     } finally {
       setIsProcessing(false);
     }
@@ -677,10 +676,10 @@ export default function AdminSalonsPage() {
       link.click();
       document.body.removeChild(link);
 
-      toast(`Exported ${filteredSalons.length} salons to CSV`, "success");
+      toast(t("admin.salons.exportSuccessCount", { count: String(filteredSalons.length) }), "success");
     } catch (error) {
       console.error("Failed to export salons:", error);
-      toast("Failed to export salons", "error");
+      toast(t("admin.salons.exportFailed"), "error");
     } finally {
       setIsExporting(false);
     }
@@ -688,7 +687,7 @@ export default function AdminSalonsPage() {
 
   const handleCreateSalon = async () => {
     if (!createFormData.name.trim() || !createFormData.address.trim() || !createFormData.city.trim()) {
-      toast("Name, address, and city are required", "warning");
+      toast(t("admin.salons.requiredFields"), "warning");
       return;
     }
 
@@ -719,7 +718,7 @@ export default function AdminSalonsPage() {
       });
 
       if (res.ok) {
-        toast("Salon created successfully", "success");
+        toast(t("admin.salons.createSuccess"), "success");
         setShowCreateModal(false);
         setCreateFormData({
           name: "",
@@ -743,11 +742,11 @@ export default function AdminSalonsPage() {
         await fetchSalons();
       } else {
         const data = await res.json();
-        toast(data.error || "Failed to create salon", "error");
+        toast(data.error || t("admin.salons.createFailed"), "error");
       }
     } catch (error) {
       console.error("Failed to create salon:", error);
-      toast("Failed to create salon", "error");
+      toast(t("admin.salons.createFailed"), "error");
     } finally {
       setIsCreating(false);
     }
@@ -791,17 +790,17 @@ export default function AdminSalonsPage() {
       PENDING_REVIEW: {
         icon: AlertCircle,
         color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200",
-        text: "Pending Review",
+        text: t("admin.salons.pendingReview"),
       },
       APPROVED: {
         icon: CheckCircle,
         color: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-200",
-        text: "Approved",
+        text: t("admin.salons.approved"),
       },
       REJECTED: {
         icon: XCircle,
         color: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-200",
-        text: "Rejected",
+        text: t("admin.salons.rejected"),
       },
     };
 
@@ -882,9 +881,9 @@ export default function AdminSalonsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Salons</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t("admin.salons.title")}</h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Manage salon listings and review pending requests
+            {t("admin.salons.subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -893,7 +892,7 @@ export default function AdminSalonsPage() {
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add Salon
+            {t("admin.salons.addSalon")}
           </Button>
           {stats.pending > 0 && (
             <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
@@ -912,7 +911,7 @@ export default function AdminSalonsPage() {
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Create Salon</h2>
+                <h2 className="text-xl font-semibold">{t("admin.salons.createSalon")}</h2>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1090,7 +1089,7 @@ export default function AdminSalonsPage() {
                   Cancel
                 </Button>
                 <Button onClick={handleCreateSalon} disabled={isCreating}>
-                  {isCreating ? "Creating..." : "Create Salon"}
+                  {isCreating ? t("common.creating") : t("admin.salons.createSalon")}
                 </Button>
               </div>
             </CardContent>
@@ -1172,7 +1171,7 @@ export default function AdminSalonsPage() {
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                 <Input
-                  placeholder="Search salons by name, city, address, email, or phone..."
+                  placeholder={t("admin.salons.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -1185,7 +1184,7 @@ export default function AdminSalonsPage() {
                 onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
                 className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="ALL">All Statuses</option>
+                <option value="ALL">{t("admin.salons.allStatuses")}</option>
                 <option value="PENDING_REVIEW">Pending Review ({stats.pending})</option>
                 <option value="APPROVED">Approved ({stats.approved})</option>
                 <option value="REJECTED">Rejected ({stats.rejected})</option>
@@ -1211,7 +1210,7 @@ export default function AdminSalonsPage() {
                 onChange={(e) => setBioDiamondFilter(e.target.value)}
                 className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="all">All Salons</option>
+                <option value="all">{t("admin.salons.all")}</option>
                 <option value="yes">Bio Diamond Only</option>
                 <option value="no">Non-Bio Diamond</option>
               </select>
@@ -1355,7 +1354,7 @@ export default function AdminSalonsPage() {
                 {paginatedSalons.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                      No salons found
+                      {t("admin.salons.noSalons")}
                     </td>
                   </tr>
                 ) : (

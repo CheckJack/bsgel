@@ -5,11 +5,13 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatPrice, stripHtml } from "@/lib/utils";
+import { resolveEffectiveUnitPrice } from "@/lib/pricing/effective-price";
 import { X, Search, Loader2 } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useLanguage } from "@/contexts/language-context";
 import { setAppScrollLocked } from "@/lib/mobile-scroll-root";
+import { productPath } from "@/lib/products/paths";
 
 interface SearchDrawerProps {
   isOpen: boolean;
@@ -20,6 +22,7 @@ interface Product {
   id: string;
   name: string;
   price: string;
+  salePrice?: string | null;
   image: string | null;
   description: string | null;
   category: {
@@ -30,7 +33,7 @@ interface Product {
 
 export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
   const router = useRouter();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -77,7 +80,9 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
     setIsLoading(true);
     const debounceTimer = setTimeout(async () => {
       try {
-        const response = await fetch(`/api/products?search=${encodeURIComponent(searchQuery)}`);
+        const response = await fetch(
+          `/api/products?search=${encodeURIComponent(searchQuery)}&limit=8&skipReviews=true`
+        );
         if (response.ok) {
           const data = await response.json();
           // Handle both array and paginated response formats
@@ -125,7 +130,7 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
 
   const handleProductClick = (productId: string) => {
     onClose();
-    router.push(`/products/${productId}`);
+    router.push(productPath(productId));
   };
 
   const handleViewAllResults = () => {
@@ -188,9 +193,7 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-6 w-6 animate-spin text-brand-black" />
-                  <span className="ml-2 text-brand-black">
-                    {language === "pt" ? "A pesquisar..." : "Searching..."}
-                  </span>
+                  <span className="ml-2 text-brand-black">{t("search.searching")}</span>
                 </div>
               ) : searchQuery.trim() === "" ? (
                 <div className="text-center py-12 text-brand-black/70">
@@ -208,7 +211,7 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                     {products.map((product, index) => (
                       <div
                         key={product.id}
-                        className="flex items-center gap-3 border border-black/10 rounded-lg px-3 py-2.5 hover:bg-black/[0.03] transition-all cursor-pointer"
+                        className="flex cursor-pointer items-center gap-3 rounded-lg border border-black/10 px-3 py-2.5"
                         onClick={() => handleProductClick(product.id)}
                         style={{
                           animation: isVisible
@@ -237,7 +240,7 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                         )}
 
                         <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-1">
-                          <h3 className="truncate font-semibold text-sm leading-snug text-brand-black hover:underline sm:text-base">
+                          <h3 className="truncate text-sm font-semibold leading-snug text-brand-black sm:text-base">
                             {product.name}
                           </h3>
                           {product.category && (
@@ -251,7 +254,9 @@ export function SearchDrawer({ isOpen, onClose }: SearchDrawerProps) {
                             </p>
                           )}
                           <p className="text-base font-bold leading-tight text-brand-black">
-                            {formatPrice(product.price)}
+                            {formatPrice(
+                              resolveEffectiveUnitPrice(product.price, product.salePrice)
+                            )}
                           </p>
                         </div>
                       </div>
