@@ -60,7 +60,11 @@ export function ChatWidget() {
   // Check if we should hide the widget on admin pages or if user is an admin
   const isAdmin = session?.user?.role === "ADMIN";
   const shouldHide =
-    pathname?.startsWith("/admin") || pathname === "/salons" || isAdmin || false;
+    pathname?.startsWith("/admin") ||
+    pathname === "/salons" ||
+    pathname === "/coming-soon" ||
+    isAdmin ||
+    false;
   const isAuthPage = pathname === "/login" || pathname === "/register";
   const liftAboveAuth = isAuthPage && isMobile;
 

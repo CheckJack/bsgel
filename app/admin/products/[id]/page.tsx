@@ -3,13 +3,16 @@
 import { useState, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { ADMIN_SHOWCASING_SECTIONS } from "@/lib/brand-lines";
-import { X, Upload } from "lucide-react";
+import { X, Upload, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  healAdminMediaUrls,
+  uploadProductMediaFile,
+} from "@/lib/products/admin-media-client";
 
 interface Category {
   id: string;
@@ -183,19 +186,20 @@ function EditProductPageContent() {
         discountPrice: discountPriceString,
       });
       
-      // Load existing images
+      // Load existing images; prefer local /uploads over dead WordPress URLs
       const existingImages: ImagePreview[] = [];
-      const isVideo = (url: string) => /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url) || url.startsWith('data:video/');
-      if (product.image) {
-        existingImages.push({ url: product.image, type: isVideo(product.image) ? 'video' : 'image' });
-      }
+      const isVideo = (url: string) =>
+        /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url) || url.startsWith("data:video/");
+      const rawUrls: string[] = [];
+      if (product.image) rawUrls.push(product.image);
       if (product.images && Array.isArray(product.images)) {
         product.images.forEach((img: string) => {
-          if (img) {
-            existingImages.push({ url: img, type: isVideo(img) ? 'video' : 'image' });
-          }
+          if (img) rawUrls.push(img);
         });
       }
+      healAdminMediaUrls(rawUrls).forEach((url) => {
+        existingImages.push({ url, type: isVideo(url) ? "video" : "image" });
+      });
       setImages(existingImages);
 
       // Load existing attributes - handle both old format (string[]) and new format (AttributeValue[])
@@ -234,36 +238,105 @@ function EditProductPageContent() {
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    files.forEach((file) => {
-      if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
-        const url = URL.createObjectURL(file);
-        const type = file.type.startsWith("video/") ? 'video' : 'image';
-        setImages((prev) => [...prev, { url, file, type }]);
+    e.target.value = "";
+    if (files.length === 0) return;
+
+    const productId =
+      formData.id.trim() ||
+      (typeof params.id === "string" ? params.id : params.id?.[0] || "");
+    if (!productId) {
+      setError("Product ID is required before uploading images.");
+      return;
+    }
+
+    setError("");
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+          continue;
+        }
+        if (!file.size) {
+          throw new Error(
+            "One of the files is empty. Download it to this device first (not cloud-only), then try again."
+          );
+        }
+        const type = file.type.startsWith("video/") ? "video" : "image";
+        const url = await uploadProductMediaFile(
+          productId,
+          file,
+          `gallery-${Date.now()}-${i}`
+        );
+        setImages((prev) => [...prev, { url, type }]);
       }
-    });
+    } catch (error: any) {
+      console.error("Failed to upload product media:", error);
+      setError(error?.message || "Failed to upload images. Please try again.");
+    }
   };
 
   const handleImageRemove = (index: number) => {
     setImages((prev) => {
       const updated = [...prev];
-      URL.revokeObjectURL(updated[index].url);
+      const removed = updated[index];
+      if (removed?.url?.startsWith("blob:")) {
+        URL.revokeObjectURL(removed.url);
+      }
       updated.splice(index, 1);
       return updated;
     });
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleImageMove = (index: number, direction: -1 | 1) => {
+    setImages((prev) => {
+      const next = index + direction;
+      if (next < 0 || next >= prev.length) return prev;
+      const updated = [...prev];
+      const [item] = updated.splice(index, 1);
+      updated.splice(next, 0, item);
+      return updated;
+    });
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     const files = Array.from(e.dataTransfer.files);
-    files.forEach((file) => {
-      if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
-        const url = URL.createObjectURL(file);
-        const type = file.type.startsWith("video/") ? 'video' : 'image';
-        setImages((prev) => [...prev, { url, file, type }]);
+    if (files.length === 0) return;
+
+    const productId =
+      formData.id.trim() ||
+      (typeof params.id === "string" ? params.id : params.id?.[0] || "");
+    if (!productId) {
+      setError("Product ID is required before uploading images.");
+      return;
+    }
+
+    setError("");
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+          continue;
+        }
+        if (!file.size) {
+          throw new Error(
+            "One of the files is empty. Download it to this device first (not cloud-only), then try again."
+          );
+        }
+        const type = file.type.startsWith("video/") ? "video" : "image";
+        const url = await uploadProductMediaFile(
+          productId,
+          file,
+          `gallery-${Date.now()}-${i}`
+        );
+        setImages((prev) => [...prev, { url, type }]);
       }
-    });
+    } catch (error: any) {
+      console.error("Failed to upload product media:", error);
+      setError(error?.message || "Failed to upload images. Please try again.");
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -312,33 +385,40 @@ function EditProductPageContent() {
   ) => {
     if (!files || files.length === 0) return;
 
-    const imagePromises = Array.from(files).map((file) => {
-      return new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          resolve(reader.result as string);
-        };
-        reader.onerror = () => {
-          reject(new Error("Failed to read image file"));
-        };
-        reader.readAsDataURL(file);
-      });
-    });
+    const productId =
+      formData.id.trim() ||
+      (typeof params.id === "string" ? params.id : params.id?.[0] || "");
+    if (!productId) {
+      setError("Product ID is required before uploading images.");
+      return;
+    }
 
     try {
-      const imageUrls = await Promise.all(imagePromises);
+      const uploaded: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.startsWith("image/")) continue;
+        const url = await uploadProductMediaFile(
+          productId,
+          file,
+          `attr-${category}-${i}`
+        );
+        uploaded.push(url);
+      }
+      if (uploaded.length === 0) return;
+
       setProductAttributes((prev) => {
         const currentValues = prev[category] || [];
         const updatedValues = currentValues.map((attr) =>
           attr.value === value
-            ? { ...attr, images: [...(attr.images || []), ...imageUrls] }
+            ? { ...attr, images: [...(attr.images || []), ...uploaded] }
             : attr
         );
         return { ...prev, [category]: updatedValues };
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to upload attribute images:", error);
-      setError("Failed to upload images. Please try again.");
+      setError(error?.message || "Failed to upload images. Please try again.");
     }
   };
 
@@ -363,41 +443,9 @@ function EditProductPageContent() {
     setIsLoading(true);
 
     try {
-      // Convert image files to base64 for storage
-      // In production, upload to cloud storage (S3/Cloudinary/etc.) instead
-      const imagePromises = images.map((img) => {
-        if (img.file) {
-          return new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              resolve(reader.result as string);
-            };
-            reader.onerror = () => {
-              reject(new Error("Failed to read image file"));
-            };
-            reader.readAsDataURL(img.file!);
-          });
-        } else {
-          // If it's already a URL (not a file), use it directly
-          return Promise.resolve(img.url);
-        }
-      });
-
-      const imageUrls = await Promise.all(imagePromises);
-
-      // Calculate base price from first size attribute if available
-      let basePrice = 0;
-      if (productAttributes && Object.keys(productAttributes).length > 0) {
-        const sizeAttr = productAttributes['size'] || productAttributes['Size'];
-        if (sizeAttr && sizeAttr.length > 0 && sizeAttr[0].price !== null && sizeAttr[0].price !== undefined) {
-          basePrice = sizeAttr[0].price;
-        }
-      }
-
-      // Always include ID for edit - it should always be present
+      const currentProductId = typeof params.id === "string" ? params.id : params.id[0];
       const productId = formData.id.trim();
-      const currentProductId = typeof params.id === 'string' ? params.id : params.id[0];
-      
+
       // Ensure ID is present
       if (!productId) {
         setError("Product ID is required. Please enter a valid ID.");
@@ -405,17 +453,69 @@ function EditProductPageContent() {
         return;
       }
 
+      // Media should already be uploaded to /uploads on select.
+      // Only send stable public URLs — never blob: previews.
+      const resolvedUrls: string[] = [];
+      for (const img of images) {
+        if (img.file) {
+          // Legacy leftover: upload any file still pending
+          const url = await uploadProductMediaFile(
+            currentProductId,
+            img.file,
+            `gallery-${resolvedUrls.length}`
+          );
+          resolvedUrls.push(url);
+        } else if (img.url && !img.url.startsWith("blob:")) {
+          resolvedUrls.push(img.url);
+        } else if (img.url?.startsWith("blob:")) {
+          throw new Error(
+            "A media preview is still uploading or failed. Remove it and add the image again."
+          );
+        }
+      }
+      const imageUrls = healAdminMediaUrls(resolvedUrls);
+      setImages(
+        imageUrls.map((url) => ({
+          url,
+          type: /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url) ? "video" : "image",
+        }))
+      );
+
+      // Calculate base price from first size attribute if available
+      let basePrice = 0;
+      if (productAttributes && Object.keys(productAttributes).length > 0) {
+        const sizeAttr = productAttributes["size"] || productAttributes["Size"];
+        if (
+          sizeAttr &&
+          sizeAttr.length > 0 &&
+          sizeAttr[0].price !== null &&
+          sizeAttr[0].price !== undefined
+        ) {
+          basePrice = sizeAttr[0].price;
+        }
+      }
+
       // Calculate discount price if discount is enabled
-      const salePrice = formData.hasDiscount && formData.discountPrice && formData.discountPrice.trim() !== ""
-        ? parseFloat(formData.discountPrice) 
-        : null;
-      
-      console.log("Submitting product - hasDiscount:", formData.hasDiscount, "discountPrice:", formData.discountPrice, "salePrice:", salePrice);
-      
+      const salePrice =
+        formData.hasDiscount &&
+        formData.discountPrice &&
+        formData.discountPrice.trim() !== ""
+          ? parseFloat(formData.discountPrice)
+          : null;
+
+      console.log(
+        "Submitting product - hasDiscount:",
+        formData.hasDiscount,
+        "discountPrice:",
+        formData.discountPrice,
+        "salePrice:",
+        salePrice
+      );
+
       const res = await fetch(`/api/products/${currentProductId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        body: JSON.stringify({
           id: productId, // Always send the ID from the form
           name: formData.name,
           description: formData.description || null,
@@ -428,7 +528,8 @@ function EditProductPageContent() {
           featured: formData.featured,
           stockQuantity: parseInt(formData.stockQuantity, 10) || 0,
           hemaFree: formData.hemaFree,
-          attributes: Object.keys(productAttributes).length > 0 ? productAttributes : null,
+          attributes:
+            Object.keys(productAttributes).length > 0 ? productAttributes : null,
           showcasingSections: formData.showcasingSections || [],
         }),
       });
@@ -469,19 +570,24 @@ function EditProductPageContent() {
       } else {
         // Try to parse JSON, but handle cases where response might not be JSON
         let errorMessage = "Failed to update product";
-        try {
-          const data = await res.json();
-          console.error("API Error:", data);
-          errorMessage = data.details || data.error || errorMessage;
-        } catch (parseError) {
-          // If JSON parsing fails, try to get text response
+        if (res.status === 413) {
+          errorMessage =
+            "Upload is too large for the server. Images are uploaded separately now — try again, or use a smaller file.";
+        } else {
           try {
-            const text = await res.text();
-            console.error("API Error (text):", text);
-            errorMessage = text || errorMessage;
-          } catch (textError) {
-            console.error("Failed to parse error response:", textError);
-            errorMessage = `Server error (${res.status}): ${res.statusText}`;
+            const data = await res.json();
+            console.error("API Error:", data);
+            errorMessage = data.details || data.error || errorMessage;
+          } catch (parseError) {
+            // If JSON parsing fails, try to get text response
+            try {
+              const text = await res.text();
+              console.error("API Error (text):", text);
+              errorMessage = text || errorMessage;
+            } catch (textError) {
+              console.error("Failed to parse error response:", textError);
+              errorMessage = `Server error (${res.status}): ${res.statusText}`;
+            }
           }
         }
         setError(errorMessage);
@@ -904,12 +1010,11 @@ function EditProductPageContent() {
                                             key={imgIdx}
                                             className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700"
                                           >
-                                            <Image
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img
                                               src={imgUrl}
                                               alt={`${attrValue.value} image ${imgIdx + 1}`}
-                                              fill
-                                              sizes="(max-width: 768px) 33vw, 10vw"
-                                              className="object-cover"
+                                              className="absolute inset-0 h-full w-full object-cover"
                                             />
                                             <button
                                               type="button"
@@ -970,15 +1075,12 @@ function EditProductPageContent() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              These images will appear for all product attributes. Attribute-specific images (set above) will appear first, followed by these backup images.
+              These images will appear for all product attributes. Attribute-specific images (set above) will appear first, followed by these backup images. Use the arrows to change order — position 1 is the main storefront image.
             </p>
             <div className="grid grid-cols-3 gap-4 mb-4">
-                  {/* Display up to 3 images in slots */}
-                  {Array.from({ length: 3 }).map((_, index) => {
-                    const image = images[index];
-                    return image ? (
+                  {images.map((image, index) => (
                       <div
-                        key={index}
+                        key={`${image.url}-${index}`}
                         className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700"
                       >
                         {image.type === 'video' ? (
@@ -989,30 +1091,57 @@ function EditProductPageContent() {
                             playsInline
                           />
                         ) : (
-                          <Image
+                          // Native img avoids Next optimizer breaking dead/remote admin previews
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
                             src={image.url}
                             alt={`Product image ${index + 1}`}
-                            fill
-                            sizes="(max-width: 768px) 100vw, 33vw"
-                            className="object-cover"
+                            className="absolute inset-0 h-full w-full object-cover"
                           />
                         )}
+                        <span className="absolute top-2 left-2 z-10 min-w-6 h-6 px-1.5 bg-black/70 text-white text-xs font-medium rounded-full flex items-center justify-center">
+                          {index + 1}
+                          {index === 0 ? " · main" : ""}
+                        </span>
                         <button
                           type="button"
                           onClick={() => handleImageRemove(index)}
-                          className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                          className="absolute top-2 right-2 z-10 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                          aria-label={`Remove image ${index + 1}`}
                         >
                           <X className="h-4 w-4" />
                         </button>
+                        {images.length > 1 && (
+                          <div className="absolute bottom-2 left-2 right-2 z-10 flex justify-between gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleImageMove(index, -1)}
+                              disabled={index === 0}
+                              className="w-7 h-7 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                              aria-label={`Move image ${index + 1} earlier`}
+                            >
+                              <ChevronLeft className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleImageMove(index, 1)}
+                              disabled={index === images.length - 1}
+                              className="w-7 h-7 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                              aria-label={`Move image ${index + 1} later`}
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </button>
+                          </div>
+                        )}
                         {image.type === 'video' && (
-                          <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                          <div className="absolute bottom-10 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
                             Video
                           </div>
                         )}
                       </div>
-                    ) : (
+                  ))}
+                  {images.length < 12 && (
                       <div
-                        key={index}
                         onDrop={handleDrop}
                         onDragOver={handleDragOver}
                         className="relative aspect-square rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors bg-gray-50 dark:bg-gray-700"
@@ -1029,33 +1158,10 @@ function EditProductPageContent() {
                           Drop your images here or select click to browse
                         </p>
                       </div>
-                    );
-                  })}
+                  )}
                 </div>
-                {/* Additional upload area if more than 3 images needed */}
-                {images.length >= 3 && images.length < 12 && (
-                  <div className="relative mb-4">
-                    <div
-                      onDrop={handleDrop}
-                      onDragOver={handleDragOver}
-                      className="w-full p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors bg-gray-50 dark:bg-gray-700"
-                    >
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handleImageUpload}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      />
-                      <Upload className="h-8 w-8 text-gray-400 dark:text-gray-500 mb-2" />
-                      <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                        Drop your images here or select click to browse
-                      </p>
-                    </div>
-                  </div>
-                )}
             <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-              Images and videos are optional. Pay attention to the quality of the media you add, comply with the background color standards. Media must be in certain dimensions. Notice that the product shows all the details. The first image/video will be displayed initially, and on hover it will fade to the next media item.
+              Images and videos are optional. Pay attention to the quality of the media you add, comply with the background color standards. Media must be in certain dimensions. Notice that the product shows all the details. The first image/video will be displayed initially, and on hover it will fade to the next media item. Reorder with the arrows, then click Update Product to save.
             </p>
             {images.length > 0 && (
               <p className="mt-2 text-xs font-medium text-gray-700 dark:text-gray-300">

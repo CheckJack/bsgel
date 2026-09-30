@@ -4,17 +4,25 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
-import { Loader2, Save, Award, Users } from "lucide-react";
+import { Loader2, Save, Award, Users, ShieldAlert, RefreshCw } from "lucide-react";
 import { useLanguage } from "@/contexts/language-context";
+
+type FeatureSettingsState = {
+  rewardsEnabled: boolean;
+  affiliateEnabled: boolean;
+  maintenanceMode: boolean;
+};
 
 export default function FeatureSettingsPage() {
   const { t } = useLanguage();
-  const [settings, setSettings] = useState({
+  const [settings, setSettings] = useState<FeatureSettingsState>({
     rewardsEnabled: true,
     affiliateEnabled: true,
+    maintenanceMode: false,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isClearingCache, setIsClearingCache] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -29,6 +37,7 @@ export default function FeatureSettingsPage() {
         setSettings({
           rewardsEnabled: data.rewardsEnabled ?? true,
           affiliateEnabled: data.affiliateEnabled ?? true,
+          maintenanceMode: data.maintenanceMode ?? false,
         });
       }
     } catch (error) {
@@ -49,6 +58,12 @@ export default function FeatureSettingsPage() {
       });
 
       if (res.ok) {
+        const data = await res.json();
+        setSettings({
+          rewardsEnabled: data.rewardsEnabled ?? settings.rewardsEnabled,
+          affiliateEnabled: data.affiliateEnabled ?? settings.affiliateEnabled,
+          maintenanceMode: data.maintenanceMode ?? settings.maintenanceMode,
+        });
         toast(t("toasts.settingsSaved"), "success");
       } else {
         const error = await res.json();
@@ -62,11 +77,29 @@ export default function FeatureSettingsPage() {
     }
   };
 
-  const toggleFeature = (feature: "rewardsEnabled" | "affiliateEnabled") => {
+  const toggleFeature = (feature: keyof FeatureSettingsState) => {
     setSettings((prev) => ({
       ...prev,
       [feature]: !prev[feature],
     }));
+  };
+
+  const clearStorefrontCache = async () => {
+    try {
+      setIsClearingCache(true);
+      const res = await fetch("/api/admin/revalidate-cache", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast(data.message || "Storefront cache cleared", "success");
+      } else {
+        toast(data.error || "Failed to clear cache", "error");
+      }
+    } catch (error) {
+      console.error("Failed to clear cache:", error);
+      toast("Failed to clear cache", "error");
+    } finally {
+      setIsClearingCache(false);
+    }
   };
 
   if (isLoading) {
@@ -82,11 +115,103 @@ export default function FeatureSettingsPage() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Feature Settings</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">
-          Control the visibility of rewards and affiliate programs for customers
+          Control site access, rewards, and affiliate visibility
         </p>
       </div>
 
       <div className="max-w-2xl space-y-6">
+        {/* Maintenance Mode Toggle */}
+        <Card className="border-amber-200 dark:border-amber-900/50">
+          <CardHeader>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                  <ShieldAlert className="h-6 w-6 text-amber-700 dark:text-amber-400" />
+                </div>
+                <div>
+                  <CardTitle>Maintenance mode</CardTitle>
+                  <CardDescription className="mt-1">
+                    When enabled, public visitors only see the Coming Soon page. Admins can still
+                    log in at /login and use the full website and admin backend.
+                  </CardDescription>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-gray-900 dark:text-gray-100">
+                  {settings.maintenanceMode ? "On — site locked for public" : "Off — site open"}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  {settings.maintenanceMode
+                    ? "Customers are redirected to Coming Soon. You keep full access."
+                    : "Everyone can browse and shop normally."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggleFeature("maintenanceMode")}
+                className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 ${
+                  settings.maintenanceMode
+                    ? "bg-amber-500"
+                    : "bg-gray-300 dark:bg-gray-600"
+                }`}
+                aria-label="Toggle maintenance mode"
+              >
+                <span
+                  className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                    settings.maintenanceMode ? "translate-x-7" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Clear storefront cache */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                  <RefreshCw className="h-6 w-6 text-slate-700 dark:text-slate-300" />
+                </div>
+                <div>
+                  <CardTitle>Clear storefront cache</CardTitle>
+                  <CardDescription className="mt-1">
+                    Force product and listing pages to refresh. Safe — does not delete products or
+                    media. Product saves already clear cache automatically; use this if a page still
+                    looks stale.
+                  </CardDescription>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={clearStorefrontCache}
+              disabled={isClearingCache}
+              className="gap-2"
+            >
+              {isClearingCache ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Clearing…
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4" />
+                  Clear cache now
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Rewards Program Toggle */}
         <Card>
           <CardHeader>
@@ -209,4 +334,3 @@ export default function FeatureSettingsPage() {
     </div>
   );
 }
-

@@ -8,8 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import { X, Upload } from "lucide-react";
+import { X, Upload, ChevronLeft, ChevronRight } from "lucide-react";
 import { ADMIN_SHOWCASING_SECTIONS } from "@/lib/brand-lines";
+import {
+  adminMediaUnoptimized,
+  uploadProductMediaFile,
+} from "@/lib/products/admin-media-client";
 
 interface Category {
   id: string;
@@ -138,6 +142,17 @@ export default function NewProductPage() {
     });
   };
 
+  const handleImageMove = (index: number, direction: -1 | 1) => {
+    setImages((prev) => {
+      const next = index + direction;
+      if (next < 0 || next >= prev.length) return prev;
+      const updated = [...prev];
+      const [item] = updated.splice(index, 1);
+      updated.splice(next, 0, item);
+      return updated;
+    });
+  };
+
   const handleSizePriceChange = (size: string, price: string) => {
     setSizePrices((prev) => ({ ...prev, [size]: price }));
   };
@@ -145,28 +160,29 @@ export default function NewProductPage() {
   const handleSizeImageUpload = async (size: string, files: FileList | null) => {
     if (!files || files.length === 0) return;
 
-    const imagePromises = Array.from(files).map((file) => {
-      return new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          resolve(reader.result as string);
-        };
-        reader.onerror = () => {
-          reject(new Error("Failed to read image file"));
-        };
-        reader.readAsDataURL(file);
-      });
-    });
+    const productId = formData.id.trim();
+    if (!productId) {
+      setError("Product ID is required before uploading images.");
+      return;
+    }
 
     try {
-      const imageUrls = await Promise.all(imagePromises);
+      const uploaded: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.startsWith("image/")) continue;
+        uploaded.push(
+          await uploadProductMediaFile(productId, file, `size-${size}-${i}`)
+        );
+      }
+      if (uploaded.length === 0) return;
       setSizeImages((prev) => ({
         ...prev,
-        [size]: [...(prev[size] || []), ...imageUrls],
+        [size]: [...(prev[size] || []), ...uploaded],
       }));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to upload size images:", error);
-      setError("Failed to upload images. Please try again.");
+      setError(error?.message || "Failed to upload images. Please try again.");
     }
   };
 
@@ -217,56 +233,49 @@ export default function NewProductPage() {
     setIsLoading(true);
 
     try {
-      // Convert image files to base64 for storage
-      // In production, upload to cloud storage (S3/Cloudinary/etc.) instead
-      const imagePromises = images.map((img) => {
-        if (img.file) {
-          return new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              resolve(reader.result as string);
-            };
-            reader.onerror = () => {
-              reject(new Error("Failed to read image file"));
-            };
-            reader.readAsDataURL(img.file!);
-          });
-        } else {
-          // If it's already a URL (not a file), use it directly
-          return Promise.resolve(img.url);
-        }
-      });
-
-      const imageUrls = await Promise.all(imagePromises);
-
-      // Convert selected sizes to new attributes format with prices and images
-      const attributes = selectedSizes.length > 0 
-        ? { 
-            size: selectedSizes.map((size) => ({
-              value: size,
-              price: parseFloat(sizePrices[size]),
-              images: sizeImages[size] || [],
-            }))
-          } 
-        : null;
-
-      // Use the first size's price as the base price (for compatibility)
-      const basePrice = selectedSizes.length > 0 ? parseFloat(sizePrices[selectedSizes[0]]) : 0;
-
-      // Always include ID - it should always be set (auto-generated on mount)
       const productId = formData.id.trim();
-      
+
       // Ensure ID is present (should always be the case due to useEffect)
       if (!productId) {
         setError("Product ID is required. Please ensure an ID is generated.");
         setIsLoading(false);
         return;
       }
-      
+
+      // Upload gallery files via multipart first (avoids Nginx 413 on huge JSON)
+      const imageUrls: string[] = [];
+      for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        if (img.file) {
+          imageUrls.push(
+            await uploadProductMediaFile(productId, img.file, `gallery-${i}`)
+          );
+        } else if (img.url && !img.url.startsWith("blob:")) {
+          imageUrls.push(img.url);
+        }
+      }
+
+      // Convert selected sizes to new attributes format with prices and images
+      const attributes =
+        selectedSizes.length > 0
+          ? {
+              size: selectedSizes.map((size) => ({
+                value: size,
+                price: parseFloat(sizePrices[size]),
+                images: sizeImages[size] || [],
+              })),
+            }
+          : null;
+
+      // Use the first size's price as the base price (for compatibility)
+      const basePrice =
+        selectedSizes.length > 0 ? parseFloat(sizePrices[selectedSizes[0]]) : 0;
+
       // Calculate discount price if discount is enabled
-      const salePrice = formData.hasDiscount && formData.discountPrice 
-        ? parseFloat(formData.discountPrice) 
-        : null;
+      const salePrice =
+        formData.hasDiscount && formData.discountPrice
+          ? parseFloat(formData.discountPrice)
+          : null;
 
       const productData = {
         id: productId, // Always include ID
@@ -585,15 +594,12 @@ export default function NewProductPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                These images will appear for all product attributes. Attribute-specific images (set below) will appear first, followed by these backup images.
+                These images will appear for all product attributes. Attribute-specific images (set below) will appear first, followed by these backup images. Use the arrows to change order — position 1 is the main storefront image.
               </p>
               <div className="grid grid-cols-3 gap-4 mb-4">
-                {/* Display up to 3 images in slots */}
-                {Array.from({ length: 3 }).map((_, index) => {
-                  const image = images[index];
-                  return image ? (
+                {images.map((image, index) => (
                     <div
-                      key={index}
+                      key={`${image.url}-${index}`}
                       className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700"
                     >
                       {image.type === 'video' ? (
@@ -610,24 +616,52 @@ export default function NewProductPage() {
                           fill
                           sizes="(max-width: 768px) 100vw, 33vw"
                           className="object-cover"
+                          unoptimized={adminMediaUnoptimized(image.url)}
                         />
                       )}
+                      <span className="absolute top-2 left-2 z-10 min-w-6 h-6 px-1.5 bg-black/70 text-white text-xs font-medium rounded-full flex items-center justify-center">
+                        {index + 1}
+                        {index === 0 ? " · main" : ""}
+                      </span>
                       <button
                         type="button"
                         onClick={() => handleImageRemove(index)}
-                        className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                        className="absolute top-2 right-2 z-10 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                        aria-label={`Remove image ${index + 1}`}
                       >
                         <X className="h-4 w-4" />
                       </button>
+                      {images.length > 1 && (
+                        <div className="absolute bottom-2 left-2 right-2 z-10 flex justify-between gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleImageMove(index, -1)}
+                            disabled={index === 0}
+                            className="w-7 h-7 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                            aria-label={`Move image ${index + 1} earlier`}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleImageMove(index, 1)}
+                            disabled={index === images.length - 1}
+                            className="w-7 h-7 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                            aria-label={`Move image ${index + 1} later`}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
                       {image.type === 'video' && (
-                        <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                        <div className="absolute bottom-10 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
                           Video
                         </div>
                       )}
                     </div>
-                  ) : (
+                ))}
+                {images.length < 12 && (
                     <div
-                      key={index}
                       onDrop={handleDrop}
                       onDragOver={handleDragOver}
                       className="relative aspect-square rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors bg-gray-50 dark:bg-gray-700"
@@ -644,36 +678,13 @@ export default function NewProductPage() {
                         Drop your images here or select click to browse
                       </p>
                     </div>
-                  );
-                })}
+                )}
               </div>
-              {/* Additional upload area if more than 3 images needed */}
-              {images.length >= 3 && images.length < 12 && (
-                <div className="relative mb-4">
-                  <div
-                    onDrop={handleDrop}
-                    onDragOver={handleDragOver}
-                    className="w-full p-6 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors bg-gray-50"
-                  >
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleImageUpload}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    />
-                    <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                    <p className="text-xs text-gray-500 text-center">
-                      Drop your images here or select click to browse
-                    </p>
-                  </div>
-                </div>
-              )}
               <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
                 Images and videos are optional. Pay attention to the quality
                 of the media you add, comply with the background color
                 standards. Media must be in certain dimensions. Notice that
-                the product shows all the details. The first image/video will be displayed initially, and on hover it will fade to the next media item.
+                the product shows all the details. The first image/video will be displayed initially, and on hover it will fade to the next media item. Reorder with the arrows before saving.
               </p>
               {images.length > 0 && (
                 <p className="mt-2 text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -796,7 +807,7 @@ export default function NewProductPage() {
                                   fill
                                   sizes="(max-width: 768px) 33vw, 10vw"
                                   className="object-cover"
-                                  unoptimized={imgUrl?.startsWith('data:') || imgUrl?.startsWith('blob:')}
+                                  unoptimized={adminMediaUnoptimized(imgUrl)}
                                 />
                                 <button
                                   type="button"

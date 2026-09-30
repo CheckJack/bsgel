@@ -302,8 +302,8 @@ export function ProductDetailClient({
 
   const shippingTabText =
     language === "pt"
-      ? "Envio grátis em encomendas acima de 150€. Entrega rápida e fiável em Portugal."
-      : "Free shipping on orders over €150. Fast, reliable delivery across Portugal.";
+      ? "Envio grátis em encomendas acima de 115€. Entrega rápida e fiável em Portugal."
+      : "Free shipping on orders over €115. Fast, reliable delivery across Portugal.";
 
   const returnsTabText =
     language === "pt"
@@ -361,8 +361,8 @@ export function ProductDetailClient({
         isAdding={isAdding}
         freeShippingNote={
           language === "pt"
-            ? "Envio grátis em encomendas acima de 150€"
-            : "Free shipping on orders over €150"
+            ? "Envio grátis em encomendas acima de 115€"
+            : "Free shipping on orders over €115"
         }
         shippingTabText={shippingTabText}
         returnsTabText={returnsTabText}

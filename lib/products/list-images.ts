@@ -65,6 +65,7 @@ export function sanitizeProductList<
 
 /**
  * Sanitize a product detail payload: rewrite top-level inline image/images to API URLs.
+ * Keeps the full gallery (unlike list cards, which trim to primary + hover).
  * Attribute media is left unchanged here (migration converts those to file URLs).
  */
 export function sanitizeProductDetail<
@@ -74,7 +75,16 @@ export function sanitizeProductDetail<
     images?: string[] | null;
   },
 >(product: T): T {
-  return sanitizeProductListImages(product);
+  const media = combinedMedia(product.image, product.images);
+  const sanitizedMedia = media
+    .map((url, index) => toPublicMediaUrl(product.id, url, index))
+    .filter((url): url is string => !!url);
+
+  return {
+    ...product,
+    image: sanitizedMedia[0] ?? null,
+    images: sanitizedMedia.slice(1),
+  };
 }
 
 export function getProductMediaAtIndex(

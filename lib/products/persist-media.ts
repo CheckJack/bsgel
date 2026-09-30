@@ -5,6 +5,10 @@
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
+import {
+  preferLocalProductMedia,
+  safeProductUploadDir,
+} from "@/lib/products/heal-local-media";
 
 const ROOT = path.join(process.cwd(), "public", "uploads", "products");
 
@@ -32,7 +36,7 @@ function parseDataUrl(dataUrl: string): { mime: string; buffer: Buffer } | null 
 }
 
 function safeDir(id: string) {
-  return id.replace(/[^a-zA-Z0-9_-]/g, "_");
+  return safeProductUploadDir(id);
 }
 
 async function getSharp(): Promise<((input: Buffer, opts?: { failOn?: string }) => any) | null> {
@@ -44,6 +48,16 @@ async function getSharp(): Promise<((input: Buffer, opts?: { failOn?: string }) 
   } catch {
     return null;
   }
+}
+
+/** Write raw bytes to public/uploads/products/{id}/ and return a public URL. */
+export async function writeProductMediaBuffer(
+  productId: string,
+  buffer: Buffer,
+  mime: string,
+  hint: string
+) {
+  return writeBuffer(productId, buffer, mime, hint);
 }
 
 async function writeBuffer(productId: string, buffer: Buffer, mime: string, hint: string) {
@@ -84,6 +98,8 @@ async function writeBuffer(productId: string, buffer: Buffer, mime: string, hint
 async function persistUrl(productId: string, url: unknown, hint: string): Promise<string | null> {
   if (url == null) return null;
   if (typeof url !== "string") return null;
+  // Never persist browser-only blob URLs — they vanish after reload.
+  if (url.startsWith("blob:")) return null;
   if (!url.startsWith("data:")) return url;
   const parsed = parseDataUrl(url);
   if (!parsed) return url;
@@ -145,6 +161,17 @@ export async function persistProductMediaFields(opts: {
 
   if (opts.attributes !== undefined) {
     result.attributes = await walk(opts.productId, opts.attributes, { n: 0 });
+  }
+
+  // If local files exist on disk, prefer them over dead WordPress URLs
+  if (opts.image !== undefined || opts.images !== undefined) {
+    const healed = await preferLocalProductMedia({
+      productId: opts.productId,
+      image: result.image !== undefined ? result.image : opts.image,
+      images: result.images !== undefined ? result.images : opts.images,
+    });
+    result.image = healed.image;
+    result.images = healed.images;
   }
 
   return result;

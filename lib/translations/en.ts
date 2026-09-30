@@ -3397,5 +3397,11 @@ export const en = {
     goToDashboard: "Go to Dashboard",
     errorDetailsDev: "Error Details (Development Only)",
   },
+  comingSoon: {
+    brand: "Bio Sculpture",
+    title: "Coming soon",
+    body: "We're putting the finishing touches on the new BIO Sculpture Portugal experience. Please check back shortly.",
+    staffLogin: "Staff login",
+  },
 };
 

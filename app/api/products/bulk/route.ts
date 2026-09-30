@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { Prisma } from "@prisma/client"
+import { revalidateProductsCache } from "@/lib/products/revalidate-cache"
 
 export async function PATCH(req: Request) {
   try {
@@ -199,7 +200,9 @@ export async function PATCH(req: Request) {
       })
       
       await Promise.all(updatePromises)
-      
+
+      revalidateProductsCache(productIds)
+
       return NextResponse.json({
         message: "Products updated successfully",
         count: productIds.length,
@@ -216,6 +219,7 @@ export async function PATCH(req: Request) {
           data: updateData,
         })
 
+        revalidateProductsCache(productIds)
         return NextResponse.json({
           message: "Products updated successfully",
           count: result.count,
@@ -249,6 +253,7 @@ export async function PATCH(req: Request) {
                 console.warn("Failed to update showcasingSections:", e)
               }
             }
+            revalidateProductsCache(productIds)
             return NextResponse.json({
               message: "Products updated successfully (some fields skipped due to missing columns)",
               count: result.count,
@@ -265,6 +270,7 @@ export async function PATCH(req: Request) {
                   },
                   data: { showcasingSections: updateData.showcasingSections },
                 })
+                revalidateProductsCache(productIds)
                 return NextResponse.json({
                   message: "Products updated successfully",
                   count: result.count,
@@ -325,6 +331,8 @@ export async function DELETE(req: Request) {
         },
       },
     })
+
+    revalidateProductsCache(productIds)
 
     return NextResponse.json({
       message: "Products deleted successfully",

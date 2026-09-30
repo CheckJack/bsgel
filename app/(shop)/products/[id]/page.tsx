@@ -13,7 +13,7 @@ import {
   type ProductDetailData,
 } from "./product-detail-client";
 
-export const revalidate = 300;
+export const revalidate = 60;
 
 type PageProps = {
   params: Promise<{ id: string }>;

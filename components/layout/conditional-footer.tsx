@@ -20,6 +20,11 @@ export function ConditionalFooter() {
   if (pathname === "/login" || pathname === "/register") {
     return null;
   }
+
+  // Maintenance / coming soon
+  if (pathname === "/coming-soon") {
+    return null;
+  }
   
   // Hide footer on diagnosis page
   if (pathname === "/diagnosis") {

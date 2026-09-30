@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ensureUniqueProductSlug } from "@/lib/products/resolve";
+import { revalidateProductCache } from "@/lib/products/revalidate-cache";
 
 export async function POST(
   req: Request,
@@ -84,6 +85,11 @@ export async function POST(
           },
         },
       },
+    });
+
+    revalidateProductCache({
+      id: duplicatedProduct.id,
+      slug: (duplicatedProduct as { slug?: string | null }).slug,
     });
 
     return NextResponse.json(duplicatedProduct, { status: 201 });

@@ -11,6 +11,11 @@ export function ConditionalNavbar() {
     return null;
   }
 
+  // Maintenance / coming soon — no promo, menu, search, or cart
+  if (pathname === "/coming-soon") {
+    return null;
+  }
+
   return <Navbar />;
 }
 

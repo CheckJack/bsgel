@@ -7,6 +7,7 @@ import { logAdminAction, extractRequestInfo } from "@/lib/admin-logger"
 import { persistProductMediaFields } from "@/lib/products/persist-media"
 import { getProductList } from "@/lib/products/get-product-list"
 import { ensureUniqueProductSlug } from "@/lib/products/resolve"
+import { revalidateProductCache } from "@/lib/products/revalidate-cache"
 
 export async function GET(req: Request) {
   try {
@@ -285,6 +286,11 @@ export async function POST(req: Request) {
     } else {
       console.log("⚠️ NOT LOGGING PRODUCT CREATION - No session or userId");
     }
+
+    revalidateProductCache({
+      id: product.id,
+      slug: (product as { slug?: string | null }).slug,
+    })
 
     return NextResponse.json(product, { status: 201 })
   } catch (error: any) {

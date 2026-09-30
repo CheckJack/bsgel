@@ -8,6 +8,7 @@ import { updateProductStock } from "@/lib/stock"
 import { sanitizeProductDetail } from "@/lib/products/list-images"
 import { persistProductMediaFields } from "@/lib/products/persist-media"
 import { findProductIdByParam } from "@/lib/products/resolve"
+import { revalidateProductCache } from "@/lib/products/revalidate-cache"
 
 export async function GET(
   req: Request,
@@ -224,9 +225,12 @@ export async function GET(
       reviewCount: reviewCount,
     })
 
-    // Add caching headers for better performance (cache for 5 minutes)
+    // Add caching headers for better performance (short CDN cache; browsers revalidate)
     const headers = new Headers();
-    headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+    headers.set(
+      "Cache-Control",
+      "public, max-age=0, s-maxage=60, stale-while-revalidate=300"
+    );
 
     return NextResponse.json(serializedProduct, { headers })
   } catch (error: any) {
@@ -411,96 +415,159 @@ export async function PATCH(
     if (newId !== undefined && typeof newId === "string" && newId.trim().length > 0) {
       const trimmedNewId = newId.trim();
       if (trimmedNewId !== id) {
-        // ID is changing - need to use raw SQL to update ID and all foreign key references
+        // Rename primary key: free slug → create new id → rewire FKs → delete old.
+        // Creating with the same slug while the old row exists hits Product.slug unique.
         try {
-          await db.$transaction(async (tx) => {
-            // First, get the current product data (only scalar fields, no relations)
-            const currentProduct = await tx.product.findUnique({
-              where: { id },
-              select: {
-                name: true,
-                slug: true,
-                description: true,
-                price: true,
-                salePrice: true,
-                image: true,
-                images: true,
-                featured: true,
-                outOfStock: true,
-                hemaFree: true,
-                categoryId: true,
-                attributes: true,
-                showcasingSections: true,
-              },
-            });
-            
-            if (!currentProduct) {
-              throw new Error("Product not found");
-            }
-            
-            // Prepare product data, excluding relation syntax from updateData
-            const { category: categoryRelation, subcategories: subcategoriesRelation, ...updateDataScalars } = updateData;
-            
-            // Merge current product with updated scalar fields (only scalar fields, no relations)
-            const newProductData: any = {
-              id: trimmedNewId,
-              name: updateDataScalars.name ?? currentProduct.name,
-              slug: currentProduct.slug,
-              description: updateDataScalars.description ?? currentProduct.description,
-              price: updateDataScalars.price ?? currentProduct.price,
-              salePrice: updateDataScalars.salePrice !== undefined ? updateDataScalars.salePrice : currentProduct.salePrice,
-              image: updateDataScalars.image ?? currentProduct.image,
-              images: updateDataScalars.images ?? currentProduct.images,
-              featured: updateDataScalars.featured ?? currentProduct.featured,
-              outOfStock: updateDataScalars.outOfStock ?? currentProduct.outOfStock,
-              hemaFree: updateDataScalars.hemaFree ?? currentProduct.hemaFree,
-              categoryId: categoryId !== undefined ? (categoryId || null) : currentProduct.categoryId,
-              attributes: updateDataScalars.attributes ?? currentProduct.attributes,
-              showcasingSections: updateDataScalars.showcasingSections ?? currentProduct.showcasingSections,
-            };
-            
-            // Create new product with new ID (only scalar fields, no relation syntax)
-            await tx.product.create({
-              data: newProductData,
-            });
-            
-            // Update all foreign key references
-            // Update CartItem
-            await tx.cartItem.updateMany({
-              where: { productId: id },
-              data: { productId: trimmedNewId },
-            });
-            
-            // Update OrderItem
-            await tx.orderItem.updateMany({
-              where: { productId: id },
-              data: { productId: trimmedNewId },
-            });
-            
-            // Update ProductReview
-            await tx.productReview.updateMany({
-              where: { productId: id },
-              data: { productId: trimmedNewId },
-            });
-            
-            // Update ProductSubcategory
-            await tx.productSubcategory.updateMany({
-              where: { productId: id },
-              data: { productId: trimmedNewId },
-            });
-            
-            // Update TrainingProgramProduct
-            await tx.trainingProgramProduct.updateMany({
-              where: { productId: id },
-              data: { productId: trimmedNewId },
-            });
-            
-            // Delete old product
-            await tx.product.delete({
-              where: { id },
-            });
-          });
-          
+          await db.$transaction(
+            async (tx) => {
+              const currentProduct = await tx.product.findUnique({
+                where: { id },
+                select: {
+                  name: true,
+                  slug: true,
+                  description: true,
+                  price: true,
+                  salePrice: true,
+                  discountPercentage: true,
+                  image: true,
+                  images: true,
+                  featured: true,
+                  outOfStock: true,
+                  hemaFree: true,
+                  categoryId: true,
+                  attributes: true,
+                  showcasingSections: true,
+                  stockQuantity: true,
+                },
+              });
+
+              if (!currentProduct) {
+                throw new Error("Product not found");
+              }
+
+              const originalSlug = currentProduct.slug;
+              const tempSlug = `tmp-id-change-${Date.now()}-${Math.random()
+                .toString(36)
+                .slice(2, 10)}`;
+
+              // Free unique slug so the new row can keep the public URL
+              await tx.product.update({
+                where: { id },
+                data: { slug: tempSlug },
+              });
+
+              const {
+                category: _categoryRelation,
+                subcategories: _subcategoriesRelation,
+                ...updateDataScalars
+              } = updateData;
+
+              const newProductData: Record<string, unknown> = {
+                id: trimmedNewId,
+                name: updateDataScalars.name ?? currentProduct.name,
+                slug: originalSlug,
+                description:
+                  updateDataScalars.description !== undefined
+                    ? updateDataScalars.description
+                    : currentProduct.description,
+                price: updateDataScalars.price ?? currentProduct.price,
+                salePrice:
+                  updateDataScalars.salePrice !== undefined
+                    ? updateDataScalars.salePrice
+                    : currentProduct.salePrice,
+                discountPercentage: currentProduct.discountPercentage,
+                image:
+                  updateDataScalars.image !== undefined
+                    ? updateDataScalars.image
+                    : currentProduct.image,
+                images:
+                  updateDataScalars.images !== undefined
+                    ? updateDataScalars.images
+                    : currentProduct.images,
+                featured: updateDataScalars.featured ?? currentProduct.featured,
+                outOfStock:
+                  updateDataScalars.outOfStock ?? currentProduct.outOfStock,
+                hemaFree: updateDataScalars.hemaFree ?? currentProduct.hemaFree,
+                stockQuantity: currentProduct.stockQuantity,
+                categoryId:
+                  categoryId !== undefined
+                    ? categoryId || null
+                    : currentProduct.categoryId,
+                attributes:
+                  updateDataScalars.attributes !== undefined
+                    ? updateDataScalars.attributes
+                    : currentProduct.attributes,
+                showcasingSections:
+                  updateDataScalars.showcasingSections ??
+                  currentProduct.showcasingSections,
+              };
+
+              await tx.product.create({
+                data: newProductData as any,
+              });
+
+              // Rewire foreign keys (and soft ID lists) to the new product id
+              await tx.cartItem.updateMany({
+                where: { productId: id },
+                data: { productId: trimmedNewId },
+              });
+              await tx.orderItem.updateMany({
+                where: { productId: id },
+                data: { productId: trimmedNewId },
+              });
+              await tx.productReview.updateMany({
+                where: { productId: id },
+                data: { productId: trimmedNewId },
+              });
+              await tx.productSubcategory.updateMany({
+                where: { productId: id },
+                data: { productId: trimmedNewId },
+              });
+              await tx.trainingProgramProduct.updateMany({
+                where: { productId: id },
+                data: { productId: trimmedNewId },
+              });
+              await tx.stockBackInStockAlert.updateMany({
+                where: { productId: id },
+                data: { productId: trimmedNewId },
+              });
+
+              const couponsWithInclude = await tx.coupon.findMany({
+                where: { includedProducts: { has: id } },
+                select: { id: true, includedProducts: true },
+              });
+              for (const coupon of couponsWithInclude) {
+                await tx.coupon.update({
+                  where: { id: coupon.id },
+                  data: {
+                    includedProducts: coupon.includedProducts.map((pid) =>
+                      pid === id ? trimmedNewId : pid
+                    ),
+                  },
+                });
+              }
+
+              const couponsWithExclude = await tx.coupon.findMany({
+                where: { excludedProducts: { has: id } },
+                select: { id: true, excludedProducts: true },
+              });
+              for (const coupon of couponsWithExclude) {
+                await tx.coupon.update({
+                  where: { id: coupon.id },
+                  data: {
+                    excludedProducts: coupon.excludedProducts.map((pid) =>
+                      pid === id ? trimmedNewId : pid
+                    ),
+                  },
+                });
+              }
+
+              await tx.product.delete({
+                where: { id },
+              });
+            },
+            { timeout: 30000 }
+          );
           // Fetch the updated product with new ID
           product = await db.product.findUnique({
             where: { id: trimmedNewId },
@@ -822,6 +889,14 @@ export async function PATCH(
       console.log("⚠️ NOT LOGGING - isAdmin:", isAdmin, "hasSession:", !!session, "userId:", session?.user?.id);
     }
 
+    // Bust storefront ISR so admin edits show up immediately
+    revalidateProductCache({
+      id: String(serializedProduct.id),
+      slug: (serializedProduct as { slug?: string | null }).slug,
+      previousId: id !== serializedProduct.id ? id : undefined,
+      previousSlug: (productBefore as { slug?: string | null } | null)?.slug,
+    })
+
     return NextResponse.json(serializedProduct)
   } catch (error: any) {
     console.error("Failed to update product:", error)
@@ -871,6 +946,11 @@ export async function DELETE(
 
     await db.product.delete({
       where: { id: id },
+    })
+
+    revalidateProductCache({
+      id,
+      slug: (product as { slug?: string | null }).slug,
     })
 
     // Log admin action

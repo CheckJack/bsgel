@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import mobileEthosHero from "../../../egw657.png";
 import { GeminiHeroBadge } from "@/components/layout/category-hero-badge";
-import { DesktopHeroVideo } from "@/components/layout/desktop-hero-video";
 import { ProductCard } from "@/components/product/product-card";
 import { ProductReviews } from "@/components/product/product-reviews";
 import { ShopProductsHeader } from "@/components/shop/shop-products-header";
@@ -15,6 +13,11 @@ import { useLanguage } from "@/contexts/language-context";
 import { useShopFilters } from "@/hooks/use-shop-filters";
 import { fetchShopCategories } from "@/lib/shop-categories";
 import { BRAND_LINE_SLUGS, findCategoryByBrandSlug } from "@/lib/brand-lines";
+
+/** Served as-is (unoptimized) — drop final exports over these paths without re-encoding. */
+const ETHOS_HERO_MOBILE = "/ethos-hero-mobile.png";
+const ETHOS_HERO_TABLET = "/ethos-hero-tablet.png";
+const ETHOS_HERO_DESKTOP = "/ethos-hero-desktop.png";
 
 interface Product {
   id: string;
@@ -91,11 +94,35 @@ export default function EthosPage() {
     <>
       <section className="relative h-[36vh] w-full overflow-hidden md:h-[44vh]">
         <GeminiHeroBadge />
-        <Image src={mobileEthosHero} alt={t("nav.shopMenu.ethos")} fill className="object-cover md:hidden" priority unoptimized />
-        <DesktopHeroVideo
-          src="/natural-nail-treatments/hero-background.mp4"
-          ariaLabel={t("nav.shopMenu.ethos")}
-          className="hidden md:block"
+        {/* Mobile &lt; 768 — original pixels, object-cover (no stretch), no Next optimizer */}
+        <Image
+          src={ETHOS_HERO_MOBILE}
+          alt={t("nav.shopMenu.ethos")}
+          fill
+          priority
+          unoptimized
+          sizes="100vw"
+          className="object-cover object-center md:hidden"
+        />
+        {/* Tablet 768–1023 */}
+        <Image
+          src={ETHOS_HERO_TABLET}
+          alt={t("nav.shopMenu.ethos")}
+          fill
+          priority
+          unoptimized
+          sizes="100vw"
+          className="hidden object-cover object-center md:block lg:hidden"
+        />
+        {/* Desktop ≥ 1024 */}
+        <Image
+          src={ETHOS_HERO_DESKTOP}
+          alt={t("nav.shopMenu.ethos")}
+          fill
+          priority
+          unoptimized
+          sizes="100vw"
+          className="hidden object-cover object-center lg:block"
         />
       </section>
 

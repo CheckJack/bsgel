@@ -3,28 +3,30 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { logAdminAction } from "@/lib/admin-logger";
+import {
+  getMaintenanceMode,
+  setMaintenanceMode,
+} from "@/lib/maintenance";
 
 // GET - Get feature settings (public endpoint, but admin can update)
 export async function GET(req: Request) {
   try {
-    // Fetch both settings in parallel using findMany for better performance
     const settings = await db.systemSettings.findMany({
       where: {
         key: {
-          in: ["rewardsEnabled", "affiliateEnabled"],
+          in: ["rewardsEnabled", "affiliateEnabled", "maintenanceMode"],
         },
       },
     });
 
-    // Create a map for quick lookup
-    const settingsMap = new Map(settings.map(s => [s.key, s.value === "true"]));
+    const settingsMap = new Map(settings.map((s) => [s.key, s.value === "true"]));
 
     const response = {
       rewardsEnabled: settingsMap.get("rewardsEnabled") ?? true,
       affiliateEnabled: settingsMap.get("affiliateEnabled") ?? true,
+      maintenanceMode: settingsMap.get("maintenanceMode") ?? false,
     };
 
-    // Add cache headers for better performance (cache for 30 seconds)
     return NextResponse.json(response, {
       headers: {
         "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
@@ -32,19 +34,22 @@ export async function GET(req: Request) {
     });
   } catch (error: any) {
     console.error("Failed to fetch feature settings:", error);
-    
-    // If SystemSettings model doesn't exist yet, return defaults
+
     if (error?.code === "P2021" || error?.message?.includes("does not exist")) {
-      return NextResponse.json({
-        rewardsEnabled: true,
-        affiliateEnabled: true,
-      }, {
-        headers: {
-          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+      return NextResponse.json(
+        {
+          rewardsEnabled: true,
+          affiliateEnabled: true,
+          maintenanceMode: false,
         },
-      });
+        {
+          headers: {
+            "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+          },
+        }
+      );
     }
-    
+
     return NextResponse.json(
       { error: "Failed to fetch feature settings" },
       { status: 500 }
@@ -56,22 +61,25 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session || !session.user || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
-    const { rewardsEnabled, affiliateEnabled } = body;
+    const { rewardsEnabled, affiliateEnabled, maintenanceMode } = body;
 
-    if (typeof rewardsEnabled !== "boolean" || typeof affiliateEnabled !== "boolean") {
+    if (
+      typeof rewardsEnabled !== "boolean" ||
+      typeof affiliateEnabled !== "boolean" ||
+      typeof maintenanceMode !== "boolean"
+    ) {
       return NextResponse.json(
         { error: "Invalid request body" },
         { status: 400 }
       );
     }
 
-    // Update or create rewards setting
     try {
       await db.systemSettings.upsert({
         where: { key: "rewardsEnabled" },
@@ -87,7 +95,6 @@ export async function POST(req: Request) {
       throw upsertError;
     }
 
-    // Update or create affiliate setting
     try {
       await db.systemSettings.upsert({
         where: { key: "affiliateEnabled" },
@@ -103,22 +110,28 @@ export async function POST(req: Request) {
       throw upsertError;
     }
 
-    // Log admin action
+    await setMaintenanceMode(maintenanceMode);
+
     await logAdminAction({
       userId: session.user.id,
       actionType: "UPDATE",
       resourceType: "SystemSettings",
-      description: `Updated feature settings: Rewards=${rewardsEnabled}, Affiliate=${affiliateEnabled}`,
+      description: `Updated feature settings: Rewards=${rewardsEnabled}, Affiliate=${affiliateEnabled}, Maintenance=${maintenanceMode}`,
       details: {
         rewardsEnabled,
         affiliateEnabled,
+        maintenanceMode,
       },
     });
+
+    // Confirm persisted value (respects MAINTENANCE_FORCE_OFF)
+    const effectiveMaintenance = await getMaintenanceMode();
 
     return NextResponse.json({
       success: true,
       rewardsEnabled,
       affiliateEnabled,
+      maintenanceMode: effectiveMaintenance,
     });
   } catch (error: any) {
     console.error("Failed to update feature settings:", error);
@@ -128,18 +141,16 @@ export async function POST(req: Request) {
       meta: error?.meta,
       stack: error?.stack?.substring(0, 500),
     });
-    
-    // If SystemSettings model doesn't exist yet, return error
+
     if (error?.code === "P2021" || error?.message?.includes("does not exist")) {
       return NextResponse.json(
         { error: "SystemSettings model not found. Please run database migrations." },
         { status: 500 }
       );
     }
-    
-    // Return more detailed error message for debugging
+
     return NextResponse.json(
-      { 
+      {
         error: "Failed to update feature settings",
         details: error?.message || "Unknown error",
         code: error?.code,
@@ -148,4 +159,3 @@ export async function POST(req: Request) {
     );
   }
 }
-

@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef, Suspense } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +11,7 @@ import { toast } from "@/components/ui/toast";
 import { Search, Lightbulb, ChevronLeft, ChevronRight, X, Download, Copy, Filter } from "lucide-react";
 import { useLanguage } from "@/contexts/language-context";
 import { ADMIN_SHOWCASING_SECTIONS } from "@/lib/brand-lines";
+import { resolveAdminThumbnail } from "@/lib/products/admin-media-client";
 
 interface AttributeValue {
   value: string;
@@ -26,6 +26,7 @@ interface Product {
   salePrice?: string | null;
   featured: boolean;
   image: string | null;
+  images?: string[];
   attributes?: Record<string, AttributeValue[] | string[]>;
   createdAt: string;
   category: {
@@ -770,19 +771,21 @@ function AdminProductsPageContent() {
                         <td className="px-3 sm:px-6 py-3 sm:py-4">
                           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                             <div className="relative w-10 h-10 sm:w-14 sm:h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0">
-                              {product.image ? (
-                                <Image
-                                  src={product.image}
-                                  alt={product.name}
-                                  fill
-                                  sizes="(max-width: 640px) 40px, 56px"
-                                  className="object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500 text-xs">
-                                  No Image
-                                </div>
-                              )}
+                              {(() => {
+                                const thumb = resolveAdminThumbnail(product.image, product.images);
+                                return thumb ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={thumb}
+                                    alt={product.name}
+                                    className="absolute inset-0 h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500 text-xs">
+                                    No Image
+                                  </div>
+                                );
+                              })()}
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">
