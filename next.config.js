@@ -5,6 +5,10 @@ const nextConfig = {
   // Production optimizations
   reactStrictMode: true,
   swcMinify: true,
+  experimental: {
+    // Next 14: keep pdf-parse/pdfjs out of the server webpack bundle
+    serverComponentsExternalPackages: ["pdf-parse", "pdfjs-dist"],
+  },
   
   images: {
     // Remove localhost - use remotePatterns for production

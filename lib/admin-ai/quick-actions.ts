@@ -17,7 +17,7 @@ const BY_PREFIX: { prefix: string; actions: QuickAction[] }[] = [
     actions: [
       { id: "stock-urgent", labelKey: "urgentStock", promptEn: "Show urgent stock on this page", promptPt: "Mostra stock urgente" },
       { id: "stock-out", labelKey: "outOfStock", promptEn: "List out of stock products", promptPt: "Lista produtos sem stock" },
-      { id: "pdf-import", labelKey: "importPdf", promptEn: "I will upload a supplier PDF — prepare to match products and add incoming stock", promptPt: "Vou carregar um PDF de fornecedor — prepara para corresponder produtos e adicionar stock" },
+      { id: "pdf-import", labelKey: "importPdf", promptEn: "I will upload a supplier PDF. Código is the product ID — look up by ID and add Quantidade as incoming stock", promptPt: "Vou carregar um PDF de fornecedor. Código é o ID do produto — procura por ID e adiciona Quantidade como stock a entrar" },
     ],
   },
   {

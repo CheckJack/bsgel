@@ -396,12 +396,47 @@ export function AdminAiWidget() {
       const form = new FormData();
       form.append("file", file);
       const res = await fetch("/api/admin/ai/upload", { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const raw = await res.text();
+      let data: {
+        error?: string;
+        fileName?: string;
+        mimeType?: string;
+        size?: number;
+        extractedText?: string;
+        imageBase64?: string;
+      } = {};
+      if (raw) {
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          throw new Error(
+            raw.trim()
+              ? `Upload failed (HTTP ${res.status}): ${raw.slice(0, 160)}`
+              : `Upload failed (HTTP ${res.status}, empty response). Try again or upload a screenshot.`
+          );
+        }
+      } else if (!res.ok) {
+        throw new Error(`Upload failed (HTTP ${res.status}, empty response). Try again or upload a screenshot.`);
+      }
+      if (!res.ok) throw new Error(data.error || `Upload failed (HTTP ${res.status})`);
       if (data.extractedText) {
-        setAttachment({ fileName: data.fileName, mimeType: data.mimeType, size: data.size, kind: "pdf", extractedText: data.extractedText });
+        setAttachment({
+          fileName: data.fileName || file.name,
+          mimeType: data.mimeType || file.type,
+          size: data.size || file.size,
+          kind: "pdf",
+          extractedText: data.extractedText,
+        });
       } else if (data.imageBase64) {
-        setAttachment({ fileName: data.fileName, mimeType: data.mimeType, size: data.size, kind: "image", imageBase64: data.imageBase64 });
+        setAttachment({
+          fileName: data.fileName || file.name,
+          mimeType: data.mimeType || file.type,
+          size: data.size || file.size,
+          kind: "image",
+          imageBase64: data.imageBase64,
+        });
+      } else {
+        throw new Error(data.error || "Upload succeeded but no PDF text or image was returned.");
       }
     } catch (e) {
       setMessages((prev) => [...prev, { id: `e-${Date.now()}`, role: "assistant", content: e instanceof Error ? e.message : t("adminAi.errorGeneric"), variant: "error" }]);
@@ -421,7 +456,7 @@ export function AdminAiWidget() {
   const runPdfWizard = () => {
     if (!attachment?.extractedText) return;
     sendMessage(
-      "Analyze this supplier order PDF. Match each product to our catalog, show current stock + incoming quantity, and propose add_incoming_stock updates. Present a confirmation table before applying."
+      "Analyze this purchase order PDF and add incoming stock. The Código column is the product ID — use get_product with that ID (do not match by name). Quantidade is the incoming quantity. For each line: new stock = current + Quantidade. List any Código that does not exist. Show a confirmation table: Código | Product name | Current | Incoming | New — then wait for my confirm."
     );
   };
 

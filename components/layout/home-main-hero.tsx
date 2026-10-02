@@ -10,9 +10,11 @@ import { useMotionEnabled } from "@/lib/use-motion-enabled";
 import { PressLogoMarquee } from "@/components/layout/press-logo-marquee";
 import { cn } from "@/lib/utils";
 
-const HERO_IMAGE_MOBILE = "/home-main-hero-mobile.png";
-const HERO_IMAGE_TABLET = "/home-main-hero-tablet.png";
-const HERO_IMAGE_DESKTOP = "/home-main-hero-desktop.png";
+// Cache-bust when hero assets are replaced in /public (same filenames)
+const HERO_ASSET_VERSION = "20261002";
+const HERO_IMAGE_MOBILE = `/home-main-hero-mobile.png?v=${HERO_ASSET_VERSION}`;
+const HERO_IMAGE_TABLET = `/home-main-hero-tablet.png?v=${HERO_ASSET_VERSION}`;
+const HERO_IMAGE_DESKTOP = `/home-main-hero-desktop.png?v=${HERO_ASSET_VERSION}`;
 const HERO_BADGE_IMAGE = "/home-hero-badge.svg";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
